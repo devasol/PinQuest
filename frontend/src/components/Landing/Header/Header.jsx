@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Search, Menu, X, Bell, User, MapPin } from "lucide-react";
 
 const Header = () => {
@@ -30,8 +31,8 @@ const Header = () => {
   };
 
   const navigationItems = [
-    { name: "Discover", href: "#discover" },
-    { name: "Categories", href: "#categories" },
+    { name: "Discover", to: "/discover" },
+    { name: "Categories", to: "#categories" },
     { name: "Maps", href: "#maps" },
     { name: "Community", href: "#community" },
   ];
@@ -58,15 +59,26 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8 ml-8">
-            {navigationItems.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
-              >
-                {item.name}
-              </a>
-            ))}
+            {navigationItems.map((item) => {
+              const isInternalLink = item.to && item.to.startsWith('/');
+              return isInternalLink ? (
+                <Link
+                  key={item.name}
+                  to={item.to}
+                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
+                >
+                  {item.name}
+                </Link>
+              ) : (
+                <a
+                  key={item.name}
+                  href={item.href || item.to}
+                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
+                >
+                  {item.name}
+                </a>
+              );
+            })}
           </nav>
 
           {/* Search Bar */}
@@ -141,16 +153,28 @@ const Header = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-200 shadow-lg">
           <div className="px-4 py-2 space-y-1">
-            {navigationItems.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors duration-200"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {item.name}
-              </a>
-            ))}
+            {navigationItems.map((item) => {
+              const isInternalLink = item.to && item.to.startsWith('/');
+              return isInternalLink ? (
+                <Link
+                  key={item.name}
+                  to={item.to}
+                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.name}
+                </Link>
+              ) : (
+                <a
+                  key={item.name}
+                  href={item.href || item.to}
+                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors duration-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.name}
+                </a>
+              );
+            })}
           </div>
         </div>
       )}
