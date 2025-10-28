@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Sparkles,
 } from "lucide-react";
+import MapComponent from "../MapComponent/MapComponent";
 
 const Landing = () => {
   const [currentFeature, setCurrentFeature] = useState(0);
@@ -215,15 +216,8 @@ const Landing = () => {
 
             {/* Demo Map/Image */}
             <div className="relative">
-              <div className="aspect-square rounded-3xl bg-gradient-to-br from-blue-100 to-purple-100 border border-gray-200 p-8">
-                <div className="w-full h-full rounded-2xl bg-gradient-to-br from-blue-200/50 to-purple-200/50 border border-gray-200 flex items-center justify-center">
-                  <div className="text-center">
-                    <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium">
-                      Interactive Map Preview
-                    </p>
-                  </div>
-                </div>
+              <div className="aspect-square rounded-3xl bg-gradient-to-br from-blue-100 to-purple-100 border border-gray-200 p-4">
+                <MapComponent className="rounded-2xl" />
               </div>
 
               {/* Floating Elements */}
