@@ -38,7 +38,7 @@ const Header = () => {
 
   const navigationItems = [
     { name: "Discover", to: "/discover" },
-    { name: "Categories", to: "#categories" },
+    { name: "Categories", to: "/categories" },
     { name: "Maps", href: "#maps" },
     { name: "Community", href: "#community" },
   ];
