@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
   useMapEvents,
+  useMap,
 } from "react-leaflet";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion"; // eslint-disable-line no-unused-vars
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import Header from "../Landing/Header/Header";
 
 // Fix for missing marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -34,6 +36,19 @@ const createCustomIcon = (color = "blue") => {
   });
 };
 
+// Custom icon for user location
+const createUserLocationIcon = () => {
+  return new L.Icon({
+    iconUrl: "https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+    shadowUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+    iconSize: [30, 46],
+    iconAnchor: [15, 46],
+    popupAnchor: [0, -46],
+    shadowSize: [41, 41],
+  });
+};
+
 // Component to handle map click events
 function MapClickHandler({ onMapClick }) {
   useMapEvents({
@@ -42,8 +57,21 @@ function MapClickHandler({ onMapClick }) {
   return null;
 }
 
+// Component to get map instance reference
+function MapRefHandler({ mapRef }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    mapRef.current = map;
+    return () => {
+      mapRef.current = null;
+    };
+  }, [map, mapRef]);
+  
+  return null;
+}
+
 const MapView = () => {
-  const [isLoaded, setIsLoaded] = useState(false);
   const [activePopup, setActivePopup] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showPostForm, setShowPostForm] = useState(false);
@@ -56,6 +84,9 @@ const MapView = () => {
     postedBy: "",
     category: "general",
   });
+  const [userLocation, setUserLocation] = useState([51.505, -0.09]); // Default location
+  const [hasUserLocation, setHasUserLocation] = useState(false);
+  const mapRef = useRef();
 
   // Sample initial locations data
   const initialLocations = [
@@ -96,19 +127,50 @@ const MapView = () => {
     },
   ];
 
-  const [locations, setLocations] = useState(initialLocations);
-
   useEffect(() => {
-    setIsLoaded(true);
+    // Function to get user's location
+    const getUserLocation = () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            setUserLocation([latitude, longitude]);
+            setHasUserLocation(true);
+            
+            // Fly to user location when map is loaded and location is available
+            if (mapRef.current) {
+              mapRef.current.flyTo([latitude, longitude], 15);
+            }
+          },
+          (error) => {
+            console.error("Error getting user location:", error);
+            // Use default location if geolocation fails
+            setHasUserLocation(false);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000, // 10 seconds
+            maximumAge: 0, // Do not use cached position
+          }
+        );
+      } else {
+        console.log("Geolocation is not supported by this browser.");
+        setHasUserLocation(false);
+      }
+    };
+
     // Load posts from localStorage on component mount
     const savedPosts = localStorage.getItem("userPosts");
     if (savedPosts) {
       setUserPosts(JSON.parse(savedPosts));
     }
+
+    // Get user location
+    getUserLocation();
   }, []);
 
   // Combine initial locations with user posts
-  const allLocations = [...locations, ...userPosts];
+  const allLocations = [...initialLocations, ...userPosts];
 
   const filteredLocations = allLocations.filter(
     (location) =>
@@ -201,34 +263,51 @@ const MapView = () => {
     });
   };
 
+  const flyToLocation = (position) => {
+    if (mapRef.current) {
+      mapRef.current.flyTo(position, 15); // Zoom level 15 for better focus
+    }
+  };
+
+  const handleSidebarItemClick = (locationId) => {
+    const location = allLocations.find(loc => loc.id === locationId);
+    if (location) {
+      setActivePopup(locationId);
+      flyToLocation(location.position);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="max-w-7xl mx-auto"
-      >
-        {/* Header Section */}
-        <div className="text-center mb-8">
-          <motion.h1
-            className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            Community Map
-          </motion.h1>
-          <motion.p
-            className="text-lg text-gray-600 max-w-2xl mx-auto"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
-            Discover amazing places and share your own discoveries with the
-            community
-          </motion.p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Header />
+
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto"
+        >
+          {/* Header Section */}
+          <div className="text-center mb-8 mt-12">
+            <motion.h1
+              className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              Community Map
+            </motion.h1>
+            <motion.p
+              className="text-lg text-gray-600 max-w-2xl mx-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              Discover amazing places and share your own discoveries with the
+              community
+            </motion.p>
+          </div>
 
         {/* Search Bar */}
         <motion.div
@@ -295,7 +374,7 @@ const MapView = () => {
                           ? "bg-blue-50 border-2 border-blue-200 shadow-md"
                           : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
                       }`}
-                      onClick={() => setActivePopup(location.id)}
+                      onClick={() => handleSidebarItemClick(location.id)}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -353,7 +432,7 @@ const MapView = () => {
                     </p>
                   </div>
                   <MapContainer
-                    center={[51.505, -0.09]}
+                    center={userLocation}
                     zoom={13}
                     style={{ height: "600px", width: "100%" }}
                     className="rounded-xl"
@@ -364,6 +443,7 @@ const MapView = () => {
                     />
 
                     <MapClickHandler onMapClick={handleMapClick} />
+                    <MapRefHandler mapRef={mapRef} />
 
                     {filteredLocations.map((location) => (
                       <Marker
@@ -371,7 +451,7 @@ const MapView = () => {
                         position={location.position}
                         icon={getIconByCategory(location.category)}
                         eventHandlers={{
-                          click: () => setActivePopup(location.id),
+                          click: () => handleSidebarItemClick(location.id),
                         }}
                       >
                         <Popup
@@ -423,6 +503,30 @@ const MapView = () => {
                         </Popup>
                       </Marker>
                     ))}
+                    
+                    {/* User Location Marker */}
+                    {hasUserLocation && (
+                      <Marker
+                        key="user-location"
+                        position={userLocation}
+                        icon={createUserLocationIcon()}
+                      >
+                        <Popup className="custom-popup">
+                          <div className="p-4">
+                            <h3 className="font-bold text-xl text-gray-800 mb-2">
+                              Your Location
+                            </h3>
+                            <p className="text-gray-600 mb-3">
+                              This is your current location.
+                            </p>
+                            <div className="text-sm text-gray-500">
+                              <div>Latitude: {userLocation[0].toFixed(6)}</div>
+                              <div>Longitude: {userLocation[1].toFixed(6)}</div>
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
                   </MapContainer>
                 </div>
               </div>
@@ -648,7 +752,8 @@ const MapView = () => {
             markers for details
           </p>
         </motion.div>
-      </motion.div>
+        </motion.div>
+      </div>
 
       {/* Custom CSS for additional styling */}
       <style jsx global>{`
@@ -692,6 +797,13 @@ const MapView = () => {
           .custom-popup .leaflet-popup-content {
             min-width: 300px;
             max-width: 350px;
+          }
+        }
+        
+        /* Adjust header for mobile */
+        @media (max-width: 768px) {
+          nav .hidden.md\\:block {
+            display: none;
           }
         }
       `}</style>
