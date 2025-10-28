@@ -5,13 +5,17 @@ const {
   getAllPosts, 
   getPostById, 
   updatePost, 
-  deletePost 
+  deletePost,
+  getPostsByLocation
 } = require("../controllers/postController");
 
 // Routes
 router.route("/")
   .post(createPost)
   .get(getAllPosts);
+
+// Route to get posts by location
+router.get("/by-location", getPostsByLocation);
 
 router.route("/:id")
   .get(getPostById)

@@ -12,6 +12,9 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import Header from "../Landing/Header/Header";
 
+// API base URL - adjust based on your backend URL
+const API_BASE_URL = 'http://localhost:9000/api/v1';
+
 // Fix for missing marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -182,46 +185,47 @@ const MapView = () => {
   const [isSearching, setIsSearching] = useState(false);
   const mapRef = useRef();
 
-  // Sample initial locations data
-  const initialLocations = [
-    {
-      id: 1,
-      position: [51.505, -0.09],
-      title: "Central Park",
-      description: "Beautiful urban park with walking trails and scenic views",
-      type: "park",
-      category: "nature",
-      postedBy: "System",
-      datePosted: new Date().toISOString(),
-      image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400",
-    },
-    {
-      id: 2,
-      position: [51.51, -0.08],
-      title: "City Museum",
-      description: "Historical artifacts and cultural exhibitions",
-      type: "museum",
-      category: "culture",
-      postedBy: "System",
-      datePosted: new Date().toISOString(),
-      image:
-        "https://images.unsplash.com/photo-1596383513331-ec1d8e97a5b5?w=400",
-    },
-    {
-      id: 3,
-      position: [51.5, -0.1],
-      title: "Shopping District",
-      description: "Modern shopping center with various brands",
-      type: "shopping",
-      category: "shopping",
-      postedBy: "System",
-      datePosted: new Date().toISOString(),
-      image:
-        "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400",
-    },
-  ];
 
+
+  // Fetch posts from the backend API
   useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/posts`);
+        const result = await response.json();
+        
+        if (result.status === "success") {
+          // Transform the API data to match the format expected by the frontend
+          // and filter out posts with invalid location data
+          const transformedPosts = result.data
+            .filter(post => {
+              // Check if the post has valid location data
+              return post.location && 
+                     typeof post.location.latitude === 'number' && 
+                     typeof post.location.longitude === 'number' &&
+                     !isNaN(post.location.latitude) && 
+                     !isNaN(post.location.longitude);
+            })
+            .map(post => ({
+              id: post._id,
+              title: post.title,
+              description: post.description,
+              image: post.image,
+              postedBy: post.postedBy,
+              category: post.category || "general",
+              datePosted: post.datePosted,
+              position: [post.location.latitude, post.location.longitude],
+              type: "user-post",
+            }));
+          setUserPosts(transformedPosts);
+        } else {
+          console.error("Error fetching posts:", result.message);
+        }
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      }
+    };
+
     const getUserLocation = () => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -250,19 +254,14 @@ const MapView = () => {
       }
     };
 
-    const savedPosts = localStorage.getItem("userPosts");
-    if (savedPosts) {
-      setUserPosts(JSON.parse(savedPosts));
-    }
-
+    fetchPosts();
     getUserLocation();
   }, []);
 
-  // Combine initial locations with user posts
-  const allLocations = [...initialLocations, ...userPosts];
+  // All locations are now from the database
+  const allLocations = userPosts;
 
-  // Filter local posts normally, but if search query is for a global location, 
-  // we should still show local posts if they match the query
+  // Filter posts based on search query
   const filteredLocations = allLocations.filter(
     (location) =>
       location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -292,36 +291,64 @@ const MapView = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    const newPost = {
-      id: Date.now(),
-      position: clickPosition,
-      title: formData.title,
-      description: formData.description,
-      image: formData.image,
-      postedBy: formData.postedBy,
-      category: formData.category,
-      datePosted: new Date().toISOString(),
-      type: "user-post",
-    };
-
     try {
-      const updatedPosts = [...userPosts, newPost];
-      setUserPosts(updatedPosts);
-      localStorage.setItem("userPosts", JSON.stringify(updatedPosts));
+      // Prepare the post data with location
+      const postData = {
+        title: formData.title,
+        description: formData.description,
+        image: formData.image,
+        postedBy: formData.postedBy,
+        category: formData.category,
+        location: {
+          latitude: parseFloat(clickPosition[0]),
+          longitude: parseFloat(clickPosition[1])
+        }
+      };
 
-      alert("Post created successfully!");
-      setShowPostForm(false);
-      setClickPosition(null);
-      setFormData({
-        title: "",
-        description: "",
-        image: "",
-        postedBy: "",
-        category: "general",
+      // Send the post to the backend
+      const response = await fetch(`${API_BASE_URL}/posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(postData),
       });
+
+      const result = await response.json();
+
+      if (result.status === "success") {
+        // Add the new post to the local state
+        const newPost = {
+          id: result.data._id, // Use the ID from the database
+          position: [parseFloat(result.data.location.latitude), parseFloat(result.data.location.longitude)],
+          title: formData.title,
+          description: formData.description,
+          image: formData.image,
+          postedBy: formData.postedBy,
+          category: result.data.category || formData.category,
+          datePosted: result.data.datePosted,
+          type: "user-post",
+        };
+        
+        setUserPosts(prevPosts => [...prevPosts, newPost]);
+        
+        alert("Post created successfully!");
+        setShowPostForm(false);
+        setClickPosition(null);
+        setFormData({
+          title: "",
+          description: "",
+          image: "",
+          postedBy: "",
+          category: "general",
+        });
+      } else {
+        console.error("Error creating post:", result.message);
+        alert("Error creating post: " + result.message);
+      }
     } catch (error) {
       console.error("Error:", error);
-      alert("Error creating post");
+      alert("Error creating post. Please try again.");
     }
   };
 
@@ -390,62 +417,74 @@ const MapView = () => {
           <MapClickHandler onMapClick={handleMapClick} />
           <MapRefHandler mapRef={mapRef} />
 
-          {filteredLocations.map((location) => (
-            <Marker
-              key={location.id}
-              position={location.position}
-              icon={getIconByCategory(location.category)}
-              eventHandlers={{
-                click: () => handleSidebarItemClick(location.id),
-              }}
-            >
-              <Popup
-                className="custom-popup"
-                onOpen={() => setActivePopup(location.id)}
-                onClose={() => setActivePopup(null)}
+          {filteredLocations.map((location) => {
+            // Check if location.position is valid before creating the marker
+            if (!location.position || !Array.isArray(location.position) || 
+                location.position.length !== 2 || 
+                typeof location.position[0] !== 'number' || 
+                typeof location.position[1] !== 'number' ||
+                isNaN(location.position[0]) || isNaN(location.position[1])) {
+              console.warn(`Invalid location position for post ${location.id}:`, location.position);
+              return null; // Skip rendering this marker if location is invalid
+            }
+            
+            return (
+              <Marker
+                key={location.id}
+                position={location.position}
+                icon={getIconByCategory(location.category)}
+                eventHandlers={{
+                  click: () => handleSidebarItemClick(location.id),
+                }}
               >
-                <div className="p-6 min-w-[400px] max-w-[500px]">
-                  {location.image && (
-                    <img
-                      src={location.image}
-                      alt={location.title}
-                      className="w-full h-48 object-cover rounded-lg mb-4"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                      }}
-                    />
-                  )}
-                  <h3 className="font-bold text-2xl text-gray-800 mb-3">
-                    {location.title}
-                  </h3>
-                  <p className="text-gray-600 mb-4 text-base">
-                    {location.description}
-                  </p>
-                  <div className="space-y-2 text-base text-gray-500">
-                    <div className="flex justify-between">
-                      <span>Posted by:</span>
-                      <span className="font-medium">{location.postedBy}</span>
+                <Popup
+                  className="custom-popup"
+                  onOpen={() => setActivePopup(location.id)}
+                  onClose={() => setActivePopup(null)}
+                >
+                  <div className="p-6 min-w-[400px] max-w-[500px]">
+                    {location.image && (
+                      <img
+                        src={location.image}
+                        alt={location.title}
+                        className="w-full h-48 object-cover rounded-lg mb-4"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    )}
+                    <h3 className="font-bold text-2xl text-gray-800 mb-3">
+                      {location.title}
+                    </h3>
+                    <p className="text-gray-600 mb-4 text-base">
+                      {location.description}
+                    </p>
+                    <div className="space-y-2 text-base text-gray-500">
+                      <div className="flex justify-between">
+                        <span>Posted by:</span>
+                        <span className="font-medium">{location.postedBy}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Category:</span>
+                        <span className="font-medium capitalize">
+                          {location.category}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Date:</span>
+                        <span className="font-medium">
+                          {formatDate(location.datePosted)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Category:</span>
-                      <span className="font-medium capitalize">
-                        {location.category}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Date:</span>
-                      <span className="font-medium">
-                        {formatDate(location.datePosted)}
-                      </span>
-                    </div>
+                    <button className="mt-6 w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors duration-300 font-medium">
+                      View Details
+                    </button>
                   </div>
-                  <button className="mt-6 w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors duration-300 font-medium">
-                    View Details
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+                </Popup>
+              </Marker>
+            );
+          })}
 
           {/* User Location Marker */}
           {hasUserLocation && (
