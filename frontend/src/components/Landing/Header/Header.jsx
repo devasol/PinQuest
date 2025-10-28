@@ -6,18 +6,24 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Default to false, but in a real app this would check auth status
 
   // Handle scroll effect
   useEffect(() => {
-    /*************  ✨ Windsurf Command ⭐  *************/
-    /**
-     * Handle scroll event to update isScrolled state
-     * @returns {void}
-     */
-    /*******  9a14ea4d-d983-43d1-83fb-2ed2371bc258  *******/ const handleScroll =
-      () => {
-        setIsScrolled(window.scrollY > 10);
-      };
+    // Check authentication status on component mount
+    // In a real app, this would check with your auth provider
+    const checkAuthStatus = () => {
+      // For demo purposes, checking localStorage for a token
+      // In a real app, you'd use your authentication provider (Auth0, Firebase, etc.)
+      const token = localStorage.getItem('token');
+      setIsLoggedIn(!!token); // Convert to boolean
+    };
+    
+    checkAuthStatus();
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -110,13 +116,28 @@ const Header = () => {
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
 
-            {/* User Profile */}
-            <button className="flex items-center space-x-2 p-2 text-gray-700 hover:text-blue-600 transition-colors">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 text-white" />
-              </div>
-              <span className="hidden sm:block font-medium">Profile</span>
-            </button>
+            {/* Login button for unauthenticated users or Profile button for authenticated users */}
+            {isLoggedIn ? (
+              // Profile button for logged in users
+              <Link 
+                to="/profile" 
+                className="flex items-center space-x-2 p-2 text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
+                </div>
+                <span className="hidden sm:block font-medium">Profile</span>
+              </Link>
+            ) : (
+              // Login button for unauthenticated users
+              <Link 
+                to="/login" 
+                className="flex items-center space-x-2 p-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+              >
+                <span className="hidden sm:block font-medium">Login</span>
+                <User className="h-4 w-4" />
+              </Link>
+            )}
 
             {/* Mobile Menu Button */}
             <button
