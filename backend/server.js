@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const dbConnect = require("./config/dbConfig");
 const postsRoute = require("./routes/postsRoute");
+const userRoute = require("./routes/userRoute");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +23,8 @@ app.use("/api/v1/home", (req, res) => {
 
 // Posts routes
 app.use("/api/v1/posts", postsRoute);
+
+app.use("/api/v1/users", userRoute);
 
 dbConnect();
 

@@ -16,11 +16,13 @@ const postSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  comments: [{
-    text: String,
-    postedBy: String,
-    date: { type: Date, default: Date.now }
-  }],
+  comments: [
+    {
+      text: String,
+      postedBy: String,
+      date: { type: Date, default: Date.now },
+    },
+  ],
   postedBy: {
     type: String,
   },
@@ -31,7 +33,7 @@ const postSchema = new mongoose.Schema({
   location: {
     latitude: Number,
     longitude: Number,
-  }
+  },
 });
 
 module.exports = mongoose.model("Post", postSchema);

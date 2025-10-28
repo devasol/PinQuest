@@ -72,6 +72,95 @@ function MapRefHandler({ mapRef }) {
   return null;
 }
 
+// Component to handle geocoding (search) events
+function Geocoder({ searchQuery, setSearchQuery, mapRef, setSuggestions, suggestions, setIsSearching }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    let timeoutId;
+
+    if (searchQuery.trim().length > 2) {
+      timeoutId = setTimeout(async () => {
+        setIsSearching(true); // Indicate that we're searching globally
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`
+          );
+          const results = await response.json();
+          setSuggestions(results.map(result => ({
+            display_name: result.display_name,
+            lat: parseFloat(result.lat),
+            lon: parseFloat(result.lon)
+          })));
+          setIsOpen(true);
+        } catch (error) {
+          console.error('Geocoding error:', error);
+          setSuggestions([]);
+        } finally {
+          setIsSearching(false); // Stop searching indicator
+        }
+      }, 300); // Debounce the search
+    } else {
+      setSuggestions([]);
+      setIsOpen(false);
+      setIsSearching(false); // Clear searching state
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [searchQuery, setIsSearching, setSuggestions]);
+
+  const handleSuggestionClick = (suggestion) => {
+    if (mapRef.current) {
+      mapRef.current.flyTo([suggestion.lat, suggestion.lon], 15);
+    }
+    setSearchQuery(suggestion.display_name);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <svg
+          className="h-5 w-5 text-gray-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+      </div>
+      <input
+        type="text"
+        placeholder="Search for any place in the world..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onFocus={() => searchQuery && suggestions.length > 0 && setIsOpen(true)}
+        className="block w-full pl-10 pr-3 py-4 border border-gray-300 rounded-2xl bg-white/95 backdrop-blur-sm shadow-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+      />
+      {isOpen && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden max-h-60 overflow-y-auto">
+          {suggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              className="p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              <div className="font-medium text-gray-800">{suggestion.display_name}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const MapView = () => {
   const [activePopup, setActivePopup] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,6 +178,8 @@ const MapView = () => {
   const [hasUserLocation, setHasUserLocation] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [showStats, setShowStats] = useState(true);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const mapRef = useRef();
 
   // Sample initial locations data
@@ -170,6 +261,8 @@ const MapView = () => {
   // Combine initial locations with user posts
   const allLocations = [...initialLocations, ...userPosts];
 
+  // Filter local posts normally, but if search query is for a global location, 
+  // we should still show local posts if they match the query
   const filteredLocations = allLocations.filter(
     (location) =>
       location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -380,36 +473,22 @@ const MapView = () => {
         </MapContainer>
         {/* Floating UI Elements */}
         {/* Search Bar - Top Center */}
+        {/* Floating UI Elements */}
+        {/* Search Bar - Top Center */}
         <motion.div
           className="absolute top-6 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg
-                className="h-5 w-5 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search locations, descriptions, or categories..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full pl-10 pr-3 py-4 border border-gray-300 rounded-2xl bg-white/95 backdrop-blur-sm shadow-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
-            />
-          </div>
+          <Geocoder
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            mapRef={mapRef}
+            setSuggestions={setSuggestions}
+            suggestions={suggestions}
+            setIsSearching={setIsSearching}
+          />
         </motion.div>
         {/* Toggle Sidebar Button */}
         <motion.button
@@ -455,55 +534,62 @@ const MapView = () => {
                   </div>
                   <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                     <AnimatePresence>
-                      {filteredLocations.map((location, index) => (
-                        <motion.div
-                          key={location.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ delay: index * 0.1 }}
-                          className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
-                            activePopup === location.id
-                              ? "bg-blue-50 border-2 border-blue-200 shadow-md"
-                              : "bg-gray-50/80 hover:bg-gray-100 border-2 border-transparent"
-                          }`}
-                          onClick={() => handleSidebarItemClick(location.id)}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <div className="flex items-start space-x-3">
-                            <div
-                              className={`w-3 h-3 rounded-full mt-2 ${
-                                location.category === "nature"
-                                  ? "bg-green-500"
-                                  : location.category === "culture"
-                                  ? "bg-yellow-500"
-                                  : location.category === "shopping"
-                                  ? "bg-purple-500"
-                                  : location.category === "food"
-                                  ? "bg-red-500"
-                                  : "bg-blue-500"
-                              }`}
-                            />
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-gray-800">
-                                {location.title}
-                              </h3>
-                              <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                {location.description}
-                              </p>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-gray-500">
-                                  By {location.postedBy}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {formatDate(location.datePosted)}
-                                </span>
+                      {filteredLocations.length > 0 ? (
+                        filteredLocations.map((location, index) => (
+                          <motion.div
+                            key={location.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ delay: index * 0.1 }}
+                            className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
+                              activePopup === location.id
+                                ? "bg-blue-50 border-2 border-blue-200 shadow-md"
+                                : "bg-gray-50/80 hover:bg-gray-100 border-2 border-transparent"
+                            }`}
+                            onClick={() => handleSidebarItemClick(location.id)}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div
+                                className={`w-3 h-3 rounded-full mt-2 ${
+                                  location.category === "nature"
+                                    ? "bg-green-500"
+                                    : location.category === "culture"
+                                    ? "bg-yellow-500"
+                                    : location.category === "shopping"
+                                    ? "bg-purple-500"
+                                    : location.category === "food"
+                                    ? "bg-red-500"
+                                    : "bg-blue-500"
+                                }`}
+                              />
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-gray-800">
+                                  {location.title}
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                  {location.description}
+                                </p>
+                                <div className="flex items-center justify-between mt-2">
+                                  <span className="text-xs text-gray-500">
+                                    By {location.postedBy}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {formatDate(location.datePosted)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No matching posts found</p>
+                          <p className="text-sm mt-2">Try a different search term</p>
+                        </div>
+                      )}
                     </AnimatePresence>
                   </div>
                 </div>
