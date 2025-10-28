@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Search, Menu, X, Bell, User, MapPin } from "lucide-react";
 
-const Header = () => {
+const Header = ({ isDiscoverPage = false }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,7 +46,9 @@ const Header = () => {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
+        isDiscoverPage
+          ? "bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200"
+          : isScrolled
           ? "bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200"
           : "bg-white/90 backdrop-blur-sm"
       }`}
@@ -54,14 +56,14 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-2">
             <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
               <MapPin className="h-6 w-6 text-white" />
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               PinQuest
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8 ml-8">
