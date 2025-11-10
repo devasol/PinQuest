@@ -1,5 +1,5 @@
 // API service for authentication
-const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 // Create a base configuration for fetch requests
 const apiRequest = async (endpoint, options = {}) => {
