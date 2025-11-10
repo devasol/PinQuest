@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const { login, signup, googleLogin } = useAuth();
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: "",
@@ -14,6 +16,7 @@ const Login = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -27,6 +30,7 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setSuccess("");
 
     try {
       let result;
@@ -47,7 +51,13 @@ const Login = () => {
         });
       }
 
-      if (!result.success) {
+      if (result.success) {
+        setSuccess(isLogin ? "Login successful! Redirecting..." : "Account created successfully! Redirecting...");
+        // Wait a moment before redirecting to show the success message
+        setTimeout(() => {
+          navigate("/"); // Redirect to home page after successful login/signup
+        }, 1500);
+      } else {
         setError(result.error || (isLogin ? "Login failed" : "Signup failed"));
       }
     } catch (err) {
@@ -267,6 +277,13 @@ const Login = () => {
                 )}
               </div>
 
+              {/* Success Message */}
+              {success && (
+                <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm">
+                  {success}
+                </div>
+              )}
+              
               {/* Error Message */}
               {error && (
                 <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">

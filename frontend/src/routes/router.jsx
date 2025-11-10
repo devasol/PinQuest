@@ -4,6 +4,8 @@ import HomePage from "../pages/HomePage/HomePage";
 import DiscoverPage from "../pages/DiscoverPage/DiscoverPage";
 import LoginPage from "../pages/LoginPage/LoginPage";
 import CategoriesPage from "../pages/CategoriesPage/CategoriesPage";
+import ProfilePage from "../pages/ProfilePage/ProfilePage";
+
 const router = createBrowserRouter([
   {
     element: <HomePage />,
@@ -18,6 +20,11 @@ const router = createBrowserRouter([
   {
     element: <LoginPage />,
     path: "/login",
+    // error:</>
+  },
+  {
+    element: <ProfilePage />,
+    path: "/profile",
     // error:</>
   },
   {
