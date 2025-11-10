@@ -179,6 +179,7 @@ const MapView = () => {
     postedBy: "",
     category: "general",
   });
+  const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState([51.505, -0.09]);
   const [hasUserLocation, setHasUserLocation] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
@@ -192,6 +193,7 @@ const MapView = () => {
   // Fetch posts from the backend API
   useEffect(() => {
     const fetchPosts = async () => {
+      setIsLoading(true); // Show loading state
       try {
         const headers = {
           'Content-Type': 'application/json',
@@ -237,6 +239,8 @@ const MapView = () => {
         }
       } catch (error) {
         console.error("Error fetching posts:", error);
+      } finally {
+        setIsLoading(false); // Hide loading state
       }
     };
 
@@ -432,6 +436,17 @@ const MapView = () => {
       <div className="relative w-full h-[calc(100vh-4rem)]">
         {" "}
         {/* 4rem = 64px which is header height */}
+        
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[1001] flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+              <p className="text-xl font-medium text-gray-700">Loading map data...</p>
+            </div>
+          </div>
+        )}
+        
         {/* Map */}
         <MapContainer
           center={userLocation}
