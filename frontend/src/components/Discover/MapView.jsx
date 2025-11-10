@@ -166,7 +166,7 @@ function Geocoder({ searchQuery, setSearchQuery, mapRef, setSuggestions, suggest
 }
 
 const MapView = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [activePopup, setActivePopup] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showPostForm, setShowPostForm] = useState(false);
@@ -186,6 +186,7 @@ const MapView = () => {
   const [showStats, setShowStats] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [filterMine, setFilterMine] = useState(false); // New state for filtering user's posts
   const mapRef = useRef();
 
 
@@ -279,12 +280,14 @@ const MapView = () => {
   // All locations are now from the database
   const allLocations = userPosts;
 
-  // Filter posts based on search query
+  // Filter posts based on search query and user's posts if applicable
   const filteredLocations = allLocations.filter(
     (location) =>
-      location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      location.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      location.category.toLowerCase().includes(searchQuery.toLowerCase())
+      (searchQuery === "" || 
+       location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       location.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       location.category.toLowerCase().includes(searchQuery.toLowerCase())) &&
+      (!filterMine || location.postedBy === user?.name)
   );
 
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -297,11 +300,16 @@ const MapView = () => {
     
     setClickPosition([e.latlng.lat, e.latlng.lng]);
     setShowPostForm(true);
+    
+    // Pre-populate the form with user's name from auth context
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const userName = storedUser.name || '';
+    
     setFormData({
       title: "",
       description: "",
       image: "",
-      postedBy: "",
+      postedBy: userName,
       category: "general",
     });
   };
@@ -365,6 +373,11 @@ const MapView = () => {
         };
         
         setUserPosts(prevPosts => [...prevPosts, newPost]);
+        
+        // Also store the user's email for filtering
+        if (formData.postedBy) {
+          localStorage.setItem('userEmail', formData.postedBy);
+        }
         
         alert("Post created successfully!");
         setShowPostForm(false);
@@ -558,22 +571,55 @@ const MapView = () => {
         {/* Floating UI Elements */}
         {/* Search Bar - Top Center */}
         {/* Floating UI Elements */}
-        {/* Search Bar - Top Center */}
-        <motion.div
-          className="absolute top-6 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <Geocoder
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            mapRef={mapRef}
-            setSuggestions={setSuggestions}
-            suggestions={suggestions}
-            setIsSearching={setIsSearching}
-          />
-        </motion.div>
+        {/* Search Bar and Filter Controls - Top Center */}
+        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4 flex flex-col items-center space-y-4">
+          <div className="w-full flex items-center space-x-3">
+            <Geocoder
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              mapRef={mapRef}
+              setSuggestions={setSuggestions}
+              suggestions={suggestions}
+              setIsSearching={setIsSearching}
+            />
+            {isAuthenticated && (
+              <motion.button
+                className={`px-4 py-4 rounded-2xl shadow-2xl backdrop-blur-sm transition-all duration-300 flex items-center justify-center ${
+                  filterMine 
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' 
+                    : 'bg-white/90 text-gray-700 hover:bg-white'
+                }`}
+                onClick={() => setFilterMine(!filterMine)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Show only my posts"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </motion.button>
+            )}
+          </div>
+          {filterMine && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full bg-blue-50 border border-blue-200 rounded-xl p-3 text-center"
+            >
+              <p className="text-blue-800 font-medium">Showing only your posts</p>
+            </motion.div>
+          )}
+        </div>
         {/* Toggle Sidebar Button */}
         <motion.button
           className="absolute top-6 left-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300"
