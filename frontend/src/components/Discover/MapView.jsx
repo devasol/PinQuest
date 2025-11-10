@@ -193,7 +193,19 @@ const MapView = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/posts`);
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        
+        // Add auth token if available
+        const token = localStorage.getItem('token');
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/posts`, {
+          headers
+        });
         const result = await response.json();
         
         if (result.status === "success") {
@@ -314,12 +326,21 @@ const MapView = () => {
         }
       };
 
+      // Prepare headers with auth token
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add auth token if available
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       // Send the post to the backend
       const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(postData),
       });
 
