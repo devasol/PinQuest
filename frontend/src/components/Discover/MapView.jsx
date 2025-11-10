@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import Header from "../Landing/Header/Header";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = 'http://localhost:9000/api/v1';
@@ -165,6 +166,7 @@ function Geocoder({ searchQuery, setSearchQuery, mapRef, setSuggestions, suggest
 }
 
 const MapView = () => {
+  const { isAuthenticated } = useAuth();
   const [activePopup, setActivePopup] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showPostForm, setShowPostForm] = useState(false);
@@ -270,6 +272,14 @@ const MapView = () => {
   );
 
   const handleMapClick = (e) => {
+    if (!isAuthenticated) {
+      // Show message to login
+      alert("Please login to add a pin to the map!");
+      // Optionally redirect to login page
+      // window.location.href = '/login';
+      return;
+    }
+    
     setClickPosition([e.latlng.lat, e.latlng.lng]);
     setShowPostForm(true);
     setFormData({
@@ -686,7 +696,9 @@ const MapView = () => {
         >
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 rounded-2xl shadow-2xl text-center backdrop-blur-sm">
             <p className="font-semibold text-lg">
-              💡 Click anywhere on the map to add a post!
+              {isAuthenticated 
+                ? "💡 Click anywhere on the map to add a post!"
+                : "💡 Login to add a post to the map!"}
             </p>
           </div>
         </motion.div>
