@@ -14,7 +14,7 @@ import Header from "../Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
 // API base URL - adjust based on your backend URL
-const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 // Fix for missing marker icons
 delete L.Icon.Default.prototype._getIconUrl;
