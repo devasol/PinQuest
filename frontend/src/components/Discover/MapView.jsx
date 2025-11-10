@@ -14,7 +14,7 @@ import Header from "../Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
 // API base URL - adjust based on your backend URL
-const API_BASE_URL = 'http://localhost:9000/api/v1';
+const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 // Fix for missing marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -271,12 +271,11 @@ const MapView = () => {
       location.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
   const handleMapClick = (e) => {
     if (!isAuthenticated) {
-      // Show message to login
-      alert("Please login to add a pin to the map!");
-      // Optionally redirect to login page
-      // window.location.href = '/login';
+      setShowLoginModal(true);
       return;
     }
     
@@ -893,6 +892,67 @@ const MapView = () => {
                       </button>
                     </div>
                   </form>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+      
+      {/* Login Required Modal */}
+      <AnimatePresence>
+        {showLoginModal && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="fixed inset-0 bg-gradient-to-br from-blue-400/40 via-purple-500/40 to-indigo-600/40 backdrop-blur-md z-[2000]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLoginModal(false)}
+            />
+
+            {/* Modal Content */}
+            <div className="fixed inset-0 flex items-center justify-center z-[2001] p-4">
+              <motion.div
+                className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/30 w-full max-w-md"
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: "spring", damping: 25 }}
+              >
+                <div className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  
+                  <h2 className="text-2xl font-bold text-gray-800 mb-3">
+                    Authentication Required
+                  </h2>
+                  
+                  <p className="text-gray-600 mb-6">
+                    You need to be logged in to add pins to the map. Please login to continue.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => {
+                        setShowLoginModal(false);
+                        window.location.href = '/login';
+                      }}
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl"
+                    >
+                      Login Now
+                    </button>
+                    <button
+                      onClick={() => setShowLoginModal(false)}
+                      className="flex-1 bg-gray-300 text-gray-800 py-3 px-4 rounded-xl hover:bg-gray-400 transition-all duration-300 font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </div>
