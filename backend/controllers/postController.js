@@ -477,6 +477,68 @@ const getComments = async (req, res) => {
   }
 };
 
+// @desc    Search posts
+// @route   GET /api/v1/posts/search
+// @access  Public
+const searchPosts = async (req, res) => {
+  try {
+    const { q, category, limit = 10, page = 1 } = req.query;
+    
+    // Build search query
+    let query = {};
+    
+    // Text search in title and description
+    if (q) {
+      query.$or = [
+        { title: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } }
+      ];
+    }
+    
+    // Filter by category if provided
+    if (category) {
+      query.category = { $regex: category, $options: 'i' };
+    }
+    
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+    
+    // Execute search with pagination
+    const posts = await Post.find(query)
+      .populate('postedBy', 'name avatar')
+      .populate({
+        path: 'comments.user',
+        select: 'name avatar'
+      })
+      .sort({ datePosted: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // Get total count for pagination info
+    const total = await Post.countDocuments(query);
+    
+    res.status(200).json({
+      status: "success",
+      data: {
+        posts,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalPosts: total,
+          hasNext: parseInt(page) * limit < total,
+          hasPrev: parseInt(page) > 1
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error searching posts:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   createPost,
   getAllPosts,
@@ -489,5 +551,6 @@ module.exports = {
   addComment,
   updateComment,
   deleteComment,
-  getComments
+  getComments,
+  searchPosts
 };

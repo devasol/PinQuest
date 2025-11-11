@@ -12,7 +12,8 @@ const {
   addComment,
   updateComment,
   deleteComment,
-  getComments
+  getComments,
+  searchPosts
 } = require("../controllers/postController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -20,6 +21,9 @@ const { protect } = require("../middleware/authMiddleware");
 router.route("/")
   .post(createPost)
   .get(getAllPosts);
+
+// Search route
+router.route("/search").get(searchPosts);
 
 // Route to get posts by location
 router.get("/by-location", getPostsByLocation);
