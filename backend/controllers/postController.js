@@ -314,7 +314,7 @@ const deletePost = async (req, res) => {
 // @access  Private
 const likePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id).populate('postedBy', '_id');
+    const post = await Post.findById(req.params.id).populate('postedBy', '_id name');
     
     if (!post) {
       return res.status(404).json({
@@ -342,7 +342,7 @@ const likePost = async (req, res) => {
     await post.save();
     
     // Create notification for the post owner
-    if (post.postedBy && post.postedBy._id) {
+    if (post.postedBy && post.postedBy._id.toString()) {
       await createLikeNotification(post._id, req.user._id, post.postedBy._id);
     }
     
@@ -357,11 +357,11 @@ const likePost = async (req, res) => {
       });
       
       // Notify the post owner
-      if (post.postedBy && post.postedBy._id) {
+      if (post.postedBy && post.postedBy._id.toString()) {
         emitToUser(io, post.postedBy._id.toString(), 'postLikedByUser', {
           postId: post._id,
           likerId: req.user._id,
-          likerName: req.user.name,
+          likerName: req.user.name, // req.user.name should be available from auth middleware
           message: `Your post "${post.title}" was liked`
         });
       }
@@ -542,13 +542,15 @@ const updateComment = async (req, res) => {
     }
 
     // Find the comment
-    const comment = post.comments.find(c => c._id.toString() === commentId);
-    if (!comment) {
+    const commentIndex = post.comments.findIndex(c => c._id.toString() === commentId);
+    if (commentIndex === -1) {
       return res.status(404).json({
         status: "fail",
         message: "Comment not found"
       });
     }
+
+    const comment = post.comments[commentIndex];
 
     // Check if user owns the comment
     if (comment.user.toString() !== req.user._id.toString()) {
@@ -559,8 +561,8 @@ const updateComment = async (req, res) => {
     }
 
     // Update the comment
-    comment.text = text;
-    comment.date = Date.now();
+    post.comments[commentIndex].text = text;
+    post.comments[commentIndex].date = Date.now();
     await post.save();
 
     // Populate the user info for the returned comment
@@ -616,7 +618,7 @@ const deleteComment = async (req, res) => {
 
     // Check if user owns the comment or is the post owner
     const isCommentOwner = comment.user.toString() === req.user._id.toString();
-    const isPostOwner = post.postedBy && post.postedBy.toString() === req.user._id.toString();
+    const isPostOwner = post.postedBy && post.postedBy._id.toString() === req.user._id.toString();
     
     if (!isCommentOwner && !isPostOwner) {
       return res.status(401).json({
