@@ -16,10 +16,11 @@ const {
   searchPosts
 } = require("../controllers/postController");
 const { protect } = require("../middleware/authMiddleware");
+const upload = require("../middleware/uploadMiddleware");
 
 // Routes
 router.route("/")
-  .post(createPost)
+  .post(protect, upload.single('image'), createPost)
   .get(getAllPosts);
 
 // Search route
@@ -30,8 +31,8 @@ router.get("/by-location", getPostsByLocation);
 
 router.route("/:id")
   .get(getPostById)
-  .patch(updatePost)
-  .delete(deletePost);
+  .patch(protect, upload.single('image'), updatePost)
+  .delete(protect, deletePost);
 
 // Like/unlike routes
 router.route("/:id/like").put(protect, likePost);

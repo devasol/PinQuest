@@ -1,9 +1,10 @@
 const Post = require("../models/posts");
 const { createLikeNotification, createCommentNotification } = require('../utils/notificationUtils');
+const { uploadImageToCloudinary } = require('../utils/mediaUtils');
 
 const createPost = async (req, res) => {
   try {
-    const { title, description, image, postedBy, location, category } = req.body;
+    const { title, description, postedBy, location, category } = req.body;
 
     // Validate required location fields
     if (!location || typeof location.latitude === 'undefined' || typeof location.longitude === 'undefined') {
@@ -11,6 +12,30 @@ const createPost = async (req, res) => {
         status: "fail",
         message: "Location with latitude and longitude is required"
       });
+    }
+
+    // Handle image upload if present
+    let image = null;
+    if (req.file) {
+      try {
+        const uploadResult = await uploadImageToCloudinary(req.file);
+        image = {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id
+        };
+      } catch (uploadError) {
+        console.error("Error uploading image to Cloudinary:", uploadError);
+        return res.status(400).json({
+          status: "fail",
+          message: "Error uploading image"
+        });
+      }
+    } else if (req.body.image) {
+      // For backward compatibility - if image is provided in request body
+      image = {
+        url: req.body.image,
+        publicId: null // No public ID if it's not a Cloudinary upload
+      };
     }
 
     const newPost = new Post({
@@ -121,19 +146,86 @@ const getPostById = async (req, res) => {
 
 const updatePost = async (req, res) => {
   try {
-    const post = await Post.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
-    if (!post) {
+    const { title, description, postedBy, location, category } = req.body;
+
+    // Find the existing post
+    const existingPost = await Post.findById(req.params.id);
+    if (!existingPost) {
       return res.status(404).json({
         status: "fail",
         message: "Post not found"
       });
     }
+
+    // Handle image upload if present
+    let image = existingPost.image; // Keep existing image by default
+    if (req.file) {
+      try {
+        // If there's an existing image with a publicId, delete it from Cloudinary
+        if (existingPost.image && existingPost.image.publicId) {
+          const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+          await deleteImageFromCloudinary(existingPost.image.publicId);
+        }
+
+        const uploadResult = await uploadImageToCloudinary(req.file);
+        image = {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id
+        };
+      } catch (uploadError) {
+        console.error("Error uploading image to Cloudinary:", uploadError);
+        return res.status(400).json({
+          status: "fail",
+          message: "Error uploading image"
+        });
+      }
+    } else if (req.body.image === null || req.body.image === '') {
+      // If image is explicitly set to null or empty string, clear it
+      // If there's an existing image with a publicId, delete it from Cloudinary
+      if (existingPost.image && existingPost.image.publicId) {
+        const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+        await deleteImageFromCloudinary(existingPost.image.publicId);
+      }
+      image = null;
+    }
+
+    // Prepare the update object
+    const updateData = {
+      title,
+      description,
+      image,
+      postedBy,
+      category: category || "general"
+    };
+
+    // Update location if provided
+    if (location) {
+      if (!location.latitude || !location.longitude) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Location with latitude and longitude is required"
+        });
+      }
+      updateData.location = {
+        type: 'Point',
+        coordinates: [parseFloat(location.longitude), parseFloat(location.latitude)],
+        latitude: parseFloat(location.latitude),
+        longitude: parseFloat(location.longitude)
+      };
+    }
+
+    const updatedPost = await Post.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      {
+        new: true,
+        runValidators: true
+      }
+    );
+
     res.status(200).json({
       status: "success",
-      data: post
+      data: updatedPost
     });
   } catch (error) {
     res.status(400).json({
@@ -145,13 +237,21 @@ const updatePost = async (req, res) => {
 
 const deletePost = async (req, res) => {
   try {
-    const post = await Post.findByIdAndDelete(req.params.id);
+    const post = await Post.findById(req.params.id);
     if (!post) {
       return res.status(404).json({
         status: "fail",
         message: "Post not found"
       });
     }
+
+    // If the post has an image with a publicId, delete it from Cloudinary
+    if (post.image && post.image.publicId) {
+      const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+      await deleteImageFromCloudinary(post.image.publicId);
+    }
+
+    await Post.findByIdAndDelete(req.params.id);
     res.status(204).json({
       status: "success",
       data: null

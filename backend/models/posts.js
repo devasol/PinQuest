@@ -10,7 +10,8 @@ const postSchema = new mongoose.Schema({
     required: [true, "Description input is required"],
   },
   image: {
-    type: String,
+    url: String,      // Public URL of the image
+    publicId: String, // Cloudinary public ID for deletion purposes
   },
   likes: [{
     user: {
