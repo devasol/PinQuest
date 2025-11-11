@@ -13,7 +13,7 @@ const protect = async (req, res, next) => {
 
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Token decoded successfully:', decoded);
+      console.log('Token decoded successfully for user ID:', decoded.id);
 
       // Get user from token and attach to request
       req.user = await User.findById(decoded.id).select('-password');
@@ -26,10 +26,11 @@ const protect = async (req, res, next) => {
         });
       }
 
-      console.log('User authenticated:', req.user._id);
+      console.log('User authenticated successfully:', req.user._id, 'Name:', req.user.name);
       next();
     } catch (error) {
       console.error('Token verification error:', error.message);
+      console.error('Error name:', error.name);
       console.error('Error stack:', error.stack);
       
       // Check if it's a specific JWT error
@@ -53,7 +54,7 @@ const protect = async (req, res, next) => {
   }
 
   if (!token) {
-    console.log('No token provided');
+    console.log('No token provided in authorization header');
     return res.status(401).json({
       status: 'fail',
       message: 'Not authorized, no token',
