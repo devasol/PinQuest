@@ -1,147 +1,230 @@
 const User = require('../models/User');
-const { generateToken } = require('../utils/jwt');
-const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
-// Signup endpoint
-const signup = async (req, res) => {
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: '30d',
+  });
+};
+
+// @desc    Register user
+// @route   POST /api/v1/auth/register
+// @access  Public
+const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide name, email and password',
+      });
+    }
+
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ 
-        message: 'User already exists with this email' 
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'User already exists with this email',
       });
     }
 
     // Create new user
-    const user = new User({
+    const user = await User.create({
       name,
       email,
-      password
+      password,
     });
 
-    await user.save();
-
-    // Generate JWT token
-    const token = generateToken(user._id);
-
-    // Don't send password in response
-    const userResponse = { ...user._doc };
-    delete userResponse.password;
-
-    res.status(201).json({
-      message: 'User created successfully',
-      token,
-      user: userResponse
-    });
-  } catch (error) {
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
-      const errors = {};
-      Object.keys(error.errors).forEach((key) => {
-        errors[key] = error.errors[key].message;
+    if (user) {
+      res.status(201).json({
+        status: 'success',
+        data: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          token: generateToken(user._id),
+        },
       });
-      return res.status(400).json({ message: 'Validation Error', errors });
+    } else {
+      res.status(400).json({
+        status: 'fail',
+        message: 'Invalid user data',
+      });
     }
-
-    console.error('Signup error:', error);
-    res.status(500).json({ message: 'Server error during signup' });
+  } catch (error) {
+    console.error('Error registering user:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
   }
 };
 
-// Login endpoint
-const login = async (req, res) => {
+// @desc    Login user
+// @route   POST /api/v1/auth/login
+// @access  Public
+const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check if email and password exist
+    // Validation
     if (!email || !password) {
       return res.status(400).json({
-        message: 'Please provide email and password'
+        status: 'fail',
+        message: 'Please provide email and password',
       });
     }
 
-    // Check if user exists & select password field to compare
+    // Check if user exists & password is correct
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({
-        message: 'Invalid email or password'
+        status: 'fail',
+        message: 'Invalid email or password',
       });
     }
 
-    // Check if password is correct
-    const isPasswordCorrect = await user.comparePassword(password);
-    if (!isPasswordCorrect) {
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
       return res.status(401).json({
-        message: 'Invalid email or password'
+        status: 'fail',
+        message: 'Invalid email or password',
       });
     }
-
-    // Generate JWT token
-    const token = generateToken(user._id);
-
-    // Don't send password in response
-    const userResponse = { ...user._doc };
-    delete userResponse.password;
 
     res.status(200).json({
-      message: 'Login successful',
-      token,
-      user: userResponse
+      status: 'success',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        token: generateToken(user._id),
+      },
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    console.error('Error logging in user:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
   }
 };
 
-// Login with Google (will be called by Passport.js)
-const googleLogin = async (req, res) => {
+// @desc    Logout user
+// @route   POST /api/v1/auth/logout
+// @access  Private
+const logoutUser = async (req, res) => {
   try {
-    // Passport.js will handle authentication
-    // If we reach this point, user is authenticated
-    const token = generateToken(req.user._id);
-
-    // Don't send password in response
-    const userResponse = { ...req.user._doc };
-    if(userResponse.password) delete userResponse.password;
-
-    // For Google OAuth, redirect back to frontend with token
-    // You can either redirect to frontend with token in URL or set a cookie
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}?token=${token}`);
+    // In a real application, you might want to add the token to a blacklist
+    res.status(200).json({
+      status: 'success',
+      message: 'Logged out successfully',
+    });
   } catch (error) {
-    console.error('Google login error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
+    console.error('Error logging out user:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
   }
 };
 
-// Get current user profile
+// @desc    Get user profile
+// @route   GET /api/v1/auth/profile
+// @access  Private
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user); // req.user is set by authenticateToken middleware
-    
+    const user = await User.findById(req.user._id);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found',
+      });
     }
 
-    // Don't send password in response
-    const userResponse = { ...user._doc };
-    if(userResponse.password) delete userResponse.password;
-
-    res.status(200).json({ user: userResponse });
+    res.status(200).json({
+      status: 'success',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      },
+    });
   } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({ message: 'Server error getting profile' });
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Update user profile
+// @route   PUT /api/v1/auth/profile
+// @access  Private
+const updateProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found',
+      });
+    }
+
+    // Update user fields
+    const allowedUpdates = ['name', 'email', 'avatar'];
+    const updates = Object.keys(req.body);
+    
+    const isValidUpdate = updates.every((update) => allowedUpdates.includes(update));
+    if (!isValidUpdate) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid updates',
+      });
+    }
+
+    // Check if email is being updated and already exists for another user
+    if (req.body.email && req.body.email !== user.email) {
+      const emailExists = await User.findOne({ email: req.body.email });
+      if (emailExists) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Email already in use',
+        });
+      }
+    }
+
+    updates.forEach((update) => (user[update] = req.body[update]));
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
   }
 };
 
 module.exports = {
-  signup,
-  login,
-  googleLogin,
-  getProfile
+  registerUser,
+  loginUser,
+  logoutUser,
+  getProfile,
+  updateProfile,
 };
