@@ -26,9 +26,28 @@ const io = socketIo(server, {
   }
 });
 
-// Enable CORS for all routes with proper configuration
+// Enable CORS for all routes with flexible origin handling
+const allowedOrigins = [
+  process.env.CLIENT_URL || 'http://localhost:5173',
+  'http://localhost:5174',  // Common Vite default port
+  'http://localhost:3000',  // Common React dev port
+  'http://localhost:3001',  // Alternative React dev port
+  'http://localhost:8080',  // Alternative dev port
+  'http://localhost:8000'   // Alternative dev port
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173", // Allow frontend origin
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in our allowed list
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true, // Allow cookies and credentials
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -37,17 +56,8 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Handle preflight requests explicitly - use a catch-all middleware instead of wildcard
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL || 'http://localhost:5173');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
+// The cors middleware we set up above should handle preflight requests automatically
+// No need for explicit OPTIONS route that causes path-to-regexp issues
 
 // Initialize Passport middleware
 require('./config/passport')(passport);
