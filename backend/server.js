@@ -14,6 +14,7 @@ const notificationsRoute = require('./routes/notificationsRoute');
 const feedRoute = require('./routes/feedRoute');
 const reportsRoute = require('./routes/reportsRoute');
 const messagesRoute = require('./routes/messagesRoute');
+const analyticsRoute = require('./routes/analyticsRoute');
 require('./config/passport');
 
 const app = express();
@@ -63,6 +64,9 @@ app.use("/api/v1/reports", reportsRoute);
 
 // Messages routes
 app.use("/api/v1/messages", messagesRoute);
+
+// Analytics routes
+app.use("/api/v1/analytics", analyticsRoute);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
