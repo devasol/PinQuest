@@ -13,7 +13,10 @@ const {
   updateComment,
   deleteComment,
   getComments,
-  searchPosts
+  searchPosts,
+  getNearbyPosts,
+  getPostsWithinArea,
+  getPostDistance
 } = require("../controllers/postController");
 const { protect } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");

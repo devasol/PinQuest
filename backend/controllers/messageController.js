@@ -103,7 +103,7 @@ const getConversations = async (req, res) => {
                 '$recipient',
                 '$sender'
               ]
-            ]
+            }
           },
           unreadCount: {
             $sum: {

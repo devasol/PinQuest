@@ -13,7 +13,9 @@ const {
   unfollowUser,
   getUserFollowers,
   getUserFollowing,
-  checkFollowingStatus
+  checkFollowingStatus,
+  getUserPreferences,
+  updateUserPreferences
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
