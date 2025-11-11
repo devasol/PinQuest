@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Post = require('../models/posts');
+const { createFollowNotification } = require('../utils/notificationUtils');
 
 // @desc    Get user by ID
 // @route   GET /api/v1/users/:id
@@ -235,6 +236,9 @@ const followUser = async (req, res) => {
     // Save both users
     await currentUser.save();
     await targetUser.save();
+    
+    // Create notification for the followed user
+    await createFollowNotification(currentUserId, targetUserId);
     
     res.status(200).json({
       status: 'success',

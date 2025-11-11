@@ -1,4 +1,5 @@
 const Post = require("../models/posts");
+const { createLikeNotification, createCommentNotification } = require('../utils/notificationUtils');
 
 const createPost = async (req, res) => {
   try {
@@ -168,7 +169,7 @@ const deletePost = async (req, res) => {
 // @access  Private
 const likePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findById(req.params.id).populate('postedBy', '_id');
     
     if (!post) {
       return res.status(404).json({
@@ -194,6 +195,11 @@ const likePost = async (req, res) => {
     post.likesCount = post.likes.length;
     
     await post.save();
+    
+    // Create notification for the post owner
+    if (post.postedBy && post.postedBy._id) {
+      await createLikeNotification(post._id, req.user._id, post.postedBy._id);
+    }
     
     res.status(200).json({
       status: "success",
@@ -277,7 +283,7 @@ const addComment = async (req, res) => {
       });
     }
 
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).populate('postedBy', '_id');
     if (!post) {
       return res.status(404).json({
         status: "fail",
@@ -303,6 +309,11 @@ const addComment = async (req, res) => {
     
     const addedComment = populatedPost.comments[0]; // First comment is the newly added one
 
+    // Create notification for the post owner
+    if (post.postedBy && post.postedBy._id && post.postedBy._id.toString() !== req.user._id.toString()) {
+      await createCommentNotification(post._id, req.user._id, post.postedBy._id, text);
+    }
+    
     res.status(201).json({
       status: "success",
       data: {
