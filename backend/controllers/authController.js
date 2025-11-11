@@ -56,6 +56,7 @@ const registerUser = async (req, res) => {
         },
       });
     } else {
+      console.log('Failed to create user:', { name, email });
       res.status(400).json({
         status: 'fail',
         message: 'Invalid user data',
@@ -63,6 +64,17 @@ const registerUser = async (req, res) => {
     }
   } catch (error) {
     console.error('Error registering user:', error);
+    console.error('Error details:', error.message, error.code, error.name);
+    
+    // Handle MongoDB duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        status: 'fail',
+        message: `${field} already exists`,
+      });
+    }
+    
     res.status(500).json({
       status: 'error',
       message: error.message,
@@ -119,6 +131,8 @@ const loginUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Error logging in user:', error);
+    console.error('Error details:', error.message, error.code, error.name);
+    
     res.status(500).json({
       status: 'error',
       message: error.message,
@@ -150,14 +164,17 @@ const logoutUser = async (req, res) => {
 // @access  Private
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).select('-password');
     if (!user) {
+      console.log('Profile fetch failed: User not found for ID:', req.user._id);
       return res.status(404).json({
         status: 'fail',
         message: 'User not found',
       });
     }
 
+    console.log('Profile fetched successfully for user:', user._id, 'Name:', user.name);
+    
     res.status(200).json({
       status: 'success',
       data: {
@@ -165,10 +182,17 @@ const getProfile = async (req, res) => {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
+        isVerified: user.isVerified,
+        favoritesCount: user.favoritesCount,
+        followingCount: user.followingCount,
+        followersCount: user.followersCount,
+        preferences: user.preferences
       },
     });
   } catch (error) {
     console.error('Error fetching user profile:', error);
+    console.error('Error details:', error.message, error.code, error.name);
+    
     res.status(500).json({
       status: 'error',
       message: error.message,
