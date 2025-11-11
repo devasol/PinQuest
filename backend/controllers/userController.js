@@ -27,6 +27,166 @@ const getUserById = async (req, res) => {
   }
 };
 
+// @desc    Add post to user's favorites
+// @route   POST /api/v1/users/favorites
+// @access  Private
+const addFavorite = async (req, res) => {
+  try {
+    const { postId } = req.body;
+    
+    if (!postId) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Post ID is required'
+      });
+    }
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    // Check if post is already in favorites
+    const isAlreadyFavorited = user.favorites.some(fav => 
+      fav.post.toString() === postId
+    );
+    
+    if (isAlreadyFavorited) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Post already in favorites'
+      });
+    }
+    
+    // Add to favorites
+    user.favorites.push({ post: postId });
+    await user.save();
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        user: user._id,
+        favorites: user.favorites
+      }
+    });
+  } catch (error) {
+    console.error('Error adding favorite:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Remove post from user's favorites
+// @route   DELETE /api/v1/users/favorites/:postId
+// @access  Private
+const removeFavorite = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    // Remove from favorites
+    user.favorites = user.favorites.filter(fav => 
+      fav.post.toString() !== postId
+    );
+    
+    await user.save();
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        user: user._id,
+        favorites: user.favorites
+      }
+    });
+  } catch (error) {
+    console.error('Error removing favorite:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get user's favorite posts
+// @route   GET /api/v1/users/favorites
+// @access  Private
+const getFavorites = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate({
+      path: 'favorites.post',
+      populate: {
+        path: 'postedBy',
+        select: 'name avatar'
+      }
+    });
+    
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      data: user.favorites
+    });
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Check if a post is favorited by user
+// @route   GET /api/v1/users/favorites/:postId
+// @access  Private
+const isFavorite = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    const isFavorited = user.favorites.some(fav => 
+      fav.post.toString() === postId
+    );
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        isFavorited,
+        postId
+      }
+    });
+  } catch (error) {
+    console.error('Error checking favorite status:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 // @desc    Update user profile
 // @route   PUT /api/v1/users/:id
 // @access  Private
@@ -153,4 +313,8 @@ module.exports = {
   getUserPosts,
   deleteUser,
   getAllUsers,
+  addFavorite,
+  removeFavorite,
+  getFavorites,
+  isFavorite
 };

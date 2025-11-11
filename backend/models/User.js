@@ -28,6 +28,16 @@ const userSchema = new mongoose.Schema({
   avatar: {
     type: String, // URL to user's avatar
   },
+  favorites: [{
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post'
+    },
+    dateAdded: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   isVerified: {
     type: Boolean,
     default: false
@@ -36,6 +46,11 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: Date
 }, {
   timestamps: true
+});
+
+// Add virtual field for favorites count
+userSchema.virtual('favoritesCount').get(function() {
+  return this.favorites ? this.favorites.length : 0;
 });
 
 // Hash password before saving
