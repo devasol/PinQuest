@@ -3,6 +3,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const passport = require('passport');
+const http = require('http');
+const socketIo = require('socket.io');
 const dbConnect = require("./config/dbConfig");
 const postsRoute = require("./routes/postsRoute");
 const userRoute = require("./routes/userRoute");
@@ -15,7 +17,13 @@ const messagesRoute = require('./routes/messagesRoute');
 require('./config/passport');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    methods: ["GET", "POST"]
+  }
+});
 
 // Middleware
 app.use(cors());
@@ -56,9 +64,40 @@ app.use("/api/v1/reports", reportsRoute);
 // Messages routes
 app.use("/api/v1/messages", messagesRoute);
 
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('New client connected:', socket.id);
+
+  // Join room based on user ID if authenticated
+  socket.on('join-user-room', (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`User ${userId} joined room user_${userId}`);
+  });
+
+  // Join room based on post ID for post-specific updates
+  socket.on('join-post-room', (postId) => {
+    socket.join(`post_${postId}`);
+    console.log(`Socket joined post room: post_${postId}`);
+  });
+
+  // Join room for global updates
+  socket.on('join-global-room', () => {
+    socket.join('global');
+    console.log(`Socket joined global room`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+// Make io available to other modules
+app.set('io', io);
+
 dbConnect();
 
-app.listen(PORT, (err) => {
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, (err) => {
   return err
     ? console.log("Server is not running!")
     : console.log(`Server is running on port: ${PORT}.`);

@@ -1,6 +1,7 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const Post = require('../models/posts');
+const { emitToUser } = require('../utils/socketUtils');
 
 // @desc    Get user notifications
 // @route   GET /api/v1/notifications
@@ -70,6 +71,15 @@ const markAsRead = async (req, res) => {
     
     notification.read = true;
     await notification.save();
+    
+    // Emit real-time event for read notification
+    const io = req.app.get('io');
+    if (io) {
+      emitToUser(io, req.user._id, 'notificationRead', {
+        notificationId: notification._id,
+        message: 'A notification was marked as read'
+      });
+    }
     
     res.status(200).json({
       status: 'success',

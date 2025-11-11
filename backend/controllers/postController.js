@@ -1,6 +1,7 @@
 const Post = require("../models/posts");
 const { createLikeNotification, createCommentNotification } = require('../utils/notificationUtils');
 const { uploadImageToCloudinary } = require('../utils/mediaUtils');
+const { emitToUser, emitToPost, emitGlobal } = require('../utils/socketUtils');
 
 const createPost = async (req, res) => {
   try {
@@ -53,6 +54,16 @@ const createPost = async (req, res) => {
     });
 
     const savedPost = await newPost.save();
+    
+    // Emit real-time event for new post
+    const io = req.app.get('io');
+    if (io) {
+      emitGlobal(io, 'newPost', {
+        post: savedPost,
+        message: 'A new post has been created'
+      });
+    }
+    
     res.status(201).json({
       status: "success",
       data: savedPost
@@ -252,6 +263,16 @@ const deletePost = async (req, res) => {
     }
 
     await Post.findByIdAndDelete(req.params.id);
+    
+    // Emit real-time event for deleted post
+    const io = req.app.get('io');
+    if (io) {
+      emitGlobal(io, 'postDeleted', {
+        postId: req.params.id,
+        message: 'A post was deleted'
+      });
+    }
+    
     res.status(204).json({
       status: "success",
       data: null
@@ -299,6 +320,27 @@ const likePost = async (req, res) => {
     // Create notification for the post owner
     if (post.postedBy && post.postedBy._id) {
       await createLikeNotification(post._id, req.user._id, post.postedBy._id);
+    }
+    
+    // Emit real-time event for like
+    const io = req.app.get('io');
+    if (io) {
+      emitToPost(io, post._id, 'postLiked', {
+        postId: post._id,
+        likerId: req.user._id,
+        likesCount: post.likesCount,
+        message: 'A post was liked'
+      });
+      
+      // Notify the post owner
+      if (post.postedBy && post.postedBy._id) {
+        emitToUser(io, post.postedBy._id.toString(), 'postLikedByUser', {
+          postId: post._id,
+          likerId: req.user._id,
+          likerName: req.user.name,
+          message: `Your post "${post.title}" was liked`
+        });
+      }
     }
     
     res.status(200).json({
@@ -350,6 +392,17 @@ const unlikePost = async (req, res) => {
     post.likesCount = post.likes.length;
     
     await post.save();
+    
+    // Emit real-time event for unlike
+    const io = req.app.get('io');
+    if (io) {
+      emitToPost(io, post._id, 'postUnliked', {
+        postId: post._id,
+        unlikerId: req.user._id,
+        likesCount: post.likesCount,
+        message: 'A post was unliked'
+      });
+    }
     
     res.status(200).json({
       status: "success",
@@ -412,6 +465,16 @@ const addComment = async (req, res) => {
     // Create notification for the post owner
     if (post.postedBy && post.postedBy._id && post.postedBy._id.toString() !== req.user._id.toString()) {
       await createCommentNotification(post._id, req.user._id, post.postedBy._id, text);
+    }
+    
+    // Emit real-time event for new comment
+    const io = req.app.get('io');
+    if (io) {
+      emitToPost(io, post._id, 'newComment', {
+        postId: post._id,
+        comment: addedComment,
+        message: 'A new comment was added'
+      });
     }
     
     res.status(201).json({

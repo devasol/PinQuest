@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
+const { emitToUser } = require('../utils/socketUtils');
 
 // @desc    Send a message
 // @route   POST /api/v1/messages
@@ -49,6 +50,15 @@ const sendMessage = async (req, res) => {
     // Populate sender and recipient for response
     await message.populate('sender', 'name avatar');
     await message.populate('recipient', 'name avatar');
+
+    // Emit real-time event for new message
+    const io = req.app.get('io');
+    if (io) {
+      emitToUser(io, recipientId, 'newMessage', {
+        message,
+        message: 'You have a new message'
+      });
+    }
 
     res.status(201).json({
       status: 'success',
