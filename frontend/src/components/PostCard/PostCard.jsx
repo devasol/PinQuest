@@ -2,6 +2,13 @@
 import React, { useState } from 'react';
 import { Heart, MessageCircle, Share, Bookmark, MapPin, User } from 'lucide-react';
 
+// src/components/PostCard/PostCard.jsx
+import React, { useState } from 'react';
+import { Heart, MessageCircle, Share, Bookmark, MapPin, User } from 'lucide-react';
+
+// API base URL - should be consistent with other components
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+
 const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
   const [liked, setLiked] = useState(
     post.likes && post.likes.some(like => like.user === currentUser?._id)
@@ -18,7 +25,7 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
     }
 
     try {
-      const response = await fetch(`/api/v1/posts/${post._id}/${liked ? 'unlike' : 'like'}`, {
+      const response = await fetch(`${API_BASE_URL}/posts/${post._id}/${liked ? 'unlike' : 'like'}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -46,7 +53,7 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
     try {
       if (bookmarked) {
         // Remove from favorites
-        const response = await fetch(`/api/v1/users/favorites/${post._id}`, {
+        const response = await fetch(`${API_BASE_URL}/users/favorites/${post._id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -59,7 +66,7 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
         }
       } else {
         // Add to favorites
-        const response = await fetch('/api/v1/users/favorites', {
+        const response = await fetch(`${API_BASE_URL}/users/favorites`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${authToken}`,
