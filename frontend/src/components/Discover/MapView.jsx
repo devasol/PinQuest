@@ -228,7 +228,7 @@ const MapView = () => {
               title: post.title,
               description: post.description,
               image: post.image,
-              postedBy: post.postedBy,
+              postedBy: post.postedBy && typeof post.postedBy === 'object' ? post.postedBy.name : post.postedBy,
               category: post.category || "general",
               datePosted: post.datePosted,
               position: [post.location.latitude, post.location.longitude],
@@ -302,15 +302,12 @@ const MapView = () => {
     setShowPostForm(true);
     
     // Pre-populate the form with user's name from auth context
-    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userName = storedUser.name || '';
-    
     setFormData({
       title: "",
       description: "",
       image: "",
-      postedBy: userName,
       category: "general",
+      // Don't include postedBy since the backend will automatically use the authenticated user ID
     });
   };
 
@@ -325,12 +322,11 @@ const MapView = () => {
     e.preventDefault();
 
     try {
-      // Prepare the post data with location
+      // Prepare the post data with location (don't send postedBy - backend will use authenticated user)
       const postData = {
         title: formData.title,
         description: formData.description,
         image: formData.image,
-        postedBy: formData.postedBy,
         category: formData.category,
         location: {
           latitude: parseFloat(clickPosition[0]),
@@ -366,18 +362,13 @@ const MapView = () => {
           title: formData.title,
           description: formData.description,
           image: formData.image,
-          postedBy: formData.postedBy,
+          postedBy: result.data.postedBy.name, // Use the populated user name from the backend
           category: result.data.category || formData.category,
           datePosted: result.data.datePosted,
           type: "user-post",
         };
         
         setUserPosts(prevPosts => [...prevPosts, newPost]);
-        
-        // Also store the user's email for filtering
-        if (formData.postedBy) {
-          localStorage.setItem('userEmail', formData.postedBy);
-        }
         
         alert("Post created successfully!");
         setShowPostForm(false);
@@ -386,7 +377,6 @@ const MapView = () => {
           title: "",
           description: "",
           image: "",
-          postedBy: "",
           category: "general",
         });
       } else {
@@ -923,23 +913,8 @@ const MapView = () => {
                         />
                       </div>
 
-                      <div>
-                        <label
-                          className="block text-gray-700 mb-2 font-medium"
-                          htmlFor="postedBy"
-                        >
-                          Your Name *
-                        </label>
-                        <input
-                          type="text"
-                          id="postedBy"
-                          name="postedBy"
-                          value={formData.postedBy}
-                          onChange={handleFormChange}
-                          required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
-                          placeholder="Enter your name"
-                        />
+                      <div className="md:col-span-2 text-sm text-gray-600 bg-blue-50 p-4 rounded-xl">
+                        <p>ℹ️ Your post will be automatically associated with your account. No need to enter your name.</p>
                       </div>
 
                       <div className="md:col-span-2">
