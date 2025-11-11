@@ -10,6 +10,7 @@ const authRoute = require('./routes/auth');
 const categoriesRoute = require('./routes/categoriesRoute');
 const notificationsRoute = require('./routes/notificationsRoute');
 const feedRoute = require('./routes/feedRoute');
+const reportsRoute = require('./routes/reportsRoute');
 require('./config/passport');
 
 const app = express();
@@ -47,6 +48,9 @@ app.use("/api/v1/notifications", notificationsRoute);
 
 // Feed routes
 app.use("/api/v1/feed", feedRoute);
+
+// Reports routes
+app.use("/api/v1/reports", reportsRoute);
 
 dbConnect();
 
