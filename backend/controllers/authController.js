@@ -4,8 +4,9 @@ const bcrypt = require('bcryptjs');
 const { uploadImageToCloudinary, deleteImageFromCloudinary } = require('../utils/mediaUtils');
 
 const generateToken = (id) => {
+  console.log('Generating token for user ID:', id);
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
+    expiresIn: process.env.JWT_EXPIRE || '30d', // Use the environment variable for expiration
   });
 };
 
@@ -24,9 +25,12 @@ const registerUser = async (req, res) => {
       });
     }
 
+    console.log('Registration attempt for email:', email);
+    
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
+      console.log('Registration failed: User already exists with email:', email);
       return res.status(400).json({
         status: 'fail',
         message: 'User already exists with this email',
@@ -41,6 +45,7 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
+      console.log('User successfully registered:', user._id, 'Name:', user.name);
       res.status(201).json({
         status: 'success',
         data: {
@@ -80,9 +85,12 @@ const loginUser = async (req, res) => {
       });
     }
 
+    console.log('Login attempt for email:', email);
+    
     // Check if user exists & password is correct
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
+      console.log('Login failed: No user found with email:', email);
       return res.status(401).json({
         status: 'fail',
         message: 'Invalid email or password',
@@ -91,12 +99,15 @@ const loginUser = async (req, res) => {
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      console.log('Login failed: Invalid password for user:', user._id);
       return res.status(401).json({
         status: 'fail',
         message: 'Invalid email or password',
       });
     }
 
+    console.log('User successfully logged in:', user._id, 'Name:', user.name);
+    
     res.status(200).json({
       status: 'success',
       data: {
