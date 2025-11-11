@@ -261,11 +261,233 @@ const unlikePost = async (req, res) => {
   }
 };
 
+// @desc    Add a comment to a post
+// @route   POST /api/v1/posts/:id/comments
+// @access  Private
+const addComment = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const postId = req.params.id;
+    
+    // Validate input
+    if (!text) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Comment text is required"
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found"
+      });
+    }
+
+    // Create new comment
+    const newComment = {
+      user: req.user._id,
+      text
+    };
+
+    post.comments.unshift(newComment);
+    await post.save();
+
+    // Populate the user info for the returned comment
+    const populatedPost = await Post.findById(postId)
+      .populate({
+        path: 'comments.user',
+        select: 'name avatar'
+      });
+    
+    const addedComment = populatedPost.comments[0]; // First comment is the newly added one
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        comment: addedComment
+      }
+    });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+};
+
+// @desc    Update a comment on a post
+// @route   PUT /api/v1/posts/:postId/comments/:commentId
+// @access  Private
+const updateComment = async (req, res) => {
+  try {
+    const { text } = req.body;
+    const postId = req.params.postId;
+    const commentId = req.params.commentId;
+
+    // Validate input
+    if (!text) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Comment text is required"
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found"
+      });
+    }
+
+    // Find the comment
+    const comment = post.comments.find(c => c._id.toString() === commentId);
+    if (!comment) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Comment not found"
+      });
+    }
+
+    // Check if user owns the comment
+    if (comment.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({
+        status: "fail",
+        message: "User not authorized to update this comment"
+      });
+    }
+
+    // Update the comment
+    comment.text = text;
+    comment.date = Date.now();
+    await post.save();
+
+    // Populate the user info for the returned comment
+    const populatedPost = await Post.findById(postId)
+      .populate({
+        path: 'comments.user',
+        select: 'name avatar'
+      });
+    
+    const updatedComment = populatedPost.comments.find(c => c._id.toString() === commentId);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        comment: updatedComment
+      }
+    });
+  } catch (error) {
+    console.error("Error updating comment:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+};
+
+// @desc    Delete a comment from a post
+// @route   DELETE /api/v1/posts/:postId/comments/:commentId
+// @access  Private
+const deleteComment = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const commentId = req.params.commentId;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found"
+      });
+    }
+
+    // Find the comment
+    const commentIndex = post.comments.findIndex(c => c._id.toString() === commentId);
+    if (commentIndex === -1) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Comment not found"
+      });
+    }
+
+    const comment = post.comments[commentIndex];
+
+    // Check if user owns the comment or is the post owner
+    const isCommentOwner = comment.user.toString() === req.user._id.toString();
+    const isPostOwner = post.postedBy && post.postedBy.toString() === req.user._id.toString();
+    
+    if (!isCommentOwner && !isPostOwner) {
+      return res.status(401).json({
+        status: "fail",
+        message: "User not authorized to delete this comment"
+      });
+    }
+
+    // Remove the comment
+    post.comments.splice(commentIndex, 1);
+    await post.save();
+
+    res.status(200).json({
+      status: "success",
+      data: null
+    });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get all comments for a post
+// @route   GET /api/v1/posts/:id/comments
+// @access  Public
+const getComments = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found"
+      });
+    }
+
+    // Populate user info for all comments
+    const populatedPost = await Post.findById(req.params.id)
+      .populate({
+        path: 'comments.user',
+        select: 'name avatar'
+      });
+
+    res.status(200).json({
+      status: "success",
+      data: populatedPost.comments
+    });
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   createPost,
   getAllPosts,
   getPostById,
   updatePost,
   deletePost,
-  getPostsByLocation
+  getPostsByLocation,
+  likePost,
+  unlikePost,
+  addComment,
+  updateComment,
+  deleteComment,
+  getComments
 };

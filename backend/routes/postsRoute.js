@@ -8,7 +8,11 @@ const {
   deletePost,
   getPostsByLocation,
   likePost,
-  unlikePost
+  unlikePost,
+  addComment,
+  updateComment,
+  deleteComment,
+  getComments
 } = require("../controllers/postController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -28,5 +32,9 @@ router.route("/:id")
 // Like/unlike routes
 router.route("/:id/like").put(protect, likePost);
 router.route("/:id/unlike").put(protect, unlikePost);
+
+// Comment routes
+router.route("/:id/comments").post(protect, addComment).get(getComments);
+router.route("/:postId/comments/:commentId").put(protect, updateComment).delete(protect, deleteComment);
 
 module.exports = router;
