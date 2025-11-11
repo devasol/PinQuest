@@ -24,7 +24,7 @@ const upload = require("../middleware/uploadMiddleware");
 // Routes
 router.route("/")
   .post(protect, upload.single('image'), createPost)
-  .get(getAllPosts);
+  .get(getAllPosts);  // Get all posts should be public
 
 // Search route
 router.route("/search").get(searchPosts);

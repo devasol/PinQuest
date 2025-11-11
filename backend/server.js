@@ -26,14 +26,28 @@ const io = socketIo(server, {
   }
 });
 
-// Middleware
+// Enable CORS for all routes with proper configuration
 app.use(cors({
   origin: process.env.CLIENT_URL || "http://localhost:5173", // Allow frontend origin
   credentials: true, // Allow cookies and credentials
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Handle preflight requests explicitly - use a catch-all middleware instead of wildcard
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL || 'http://localhost:5173');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Initialize Passport middleware
 require('./config/passport')(passport);
