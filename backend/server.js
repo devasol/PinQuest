@@ -39,7 +39,38 @@ app.use(express.urlencoded({ extended: true }));
 require('./config/passport')(passport);
 app.use(passport.initialize());
 
-// Routes
+// Health check endpoint
+app.get("/api/v1/health", async (req, res) => {
+  try {
+    // Test database connection by trying to fetch a count
+    const User = require('./models/User');
+    const Post = require('./models/posts');
+    
+    // Perform a simple check to see if DB connections are working
+    const userCount = await User.countDocuments();
+    const postCount = await Post.countDocuments();
+    
+    res.status(200).json({
+      status: "success",
+      message: "Server is running",
+      timestamp: new Date().toISOString(),
+      database: "connected",
+      counts: {
+        users: userCount,
+        posts: postCount
+      }
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(503).json({
+      status: "error",
+      message: "Service unavailable",
+      error: error.message
+    });
+  }
+});
+
+// API home route
 app.use("/api/v1/home", (req, res) => {
   res.status(200).json({
     status: "success",
