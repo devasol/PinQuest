@@ -11,10 +11,11 @@ const apiRequest = async (endpoint, options = {}) => {
     ...options,
   };
 
-  // Add token to headers if available
+  // Add token to headers if available (ensure it's properly trimmed)
   const token = localStorage.getItem('token');
   if (token && !options.skipAuth) {
-    config.headers['Authorization'] = `Bearer ${token}`;
+    const trimmedToken = token.trim();
+    config.headers['Authorization'] = `Bearer ${trimmedToken}`;
   }
 
   try {

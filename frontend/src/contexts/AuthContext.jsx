@@ -23,15 +23,23 @@ export const AuthProvider = ({ children }) => {
     const tokenFromUrl = urlParams.get('token');
     
     if (tokenFromUrl) {
-      // Save token to localStorage and remove it from URL
-      localStorage.setItem('token', tokenFromUrl);
+      // Save token to localStorage and remove it from URL (ensure proper trimming)
+      const trimmedToken = tokenFromUrl.trim();
+      localStorage.setItem('token', trimmedToken);
       // Clean the URL to remove the token
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    const token = localStorage.getItem('token');
+    let token = localStorage.getItem('token');
     if (token) {
-      // Verify token and get user profile
+      // Verify token and get user profile (ensure token is properly trimmed)
+      const trimmedToken = token.trim();
+      if (token !== trimmedToken) {
+        // If the token was trimmed, update it in storage
+        localStorage.setItem('token', trimmedToken);
+        token = trimmedToken;
+      }
+      
       const fetchUserProfile = async () => {
         try {
           const data = await authService.getProfile();
@@ -55,7 +63,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const data = await authService.login({ email, password });
-      localStorage.setItem('token', data.token);
+      // Ensure token is properly trimmed before storing
+      const trimmedToken = data.token.trim();
+      localStorage.setItem('token', trimmedToken);
       setUser(data.user);
       setIsAuthenticated(true);
       return { success: true, data };
@@ -67,7 +77,9 @@ export const AuthProvider = ({ children }) => {
   const signup = async (userData) => {
     try {
       const data = await authService.signup(userData);
-      localStorage.setItem('token', data.token);
+      // Ensure token is properly trimmed before storing
+      const trimmedToken = data.token.trim();
+      localStorage.setItem('token', trimmedToken);
       setUser(data.user);
       setIsAuthenticated(true);
       return { success: true, data };

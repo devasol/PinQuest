@@ -322,34 +322,47 @@ const MapView = () => {
     e.preventDefault();
 
     try {
-      // Prepare the post data with location (don't send postedBy - backend will use authenticated user)
-      const postData = {
-        title: formData.title,
-        description: formData.description,
-        image: formData.image,
-        category: formData.category,
-        location: {
-          latitude: parseFloat(clickPosition[0]),
-          longitude: parseFloat(clickPosition[1])
-        }
-      };
-
-      // Prepare headers with auth token
-      const headers = {
-        'Content-Type': 'application/json',
-      };
+      // Create FormData object to properly handle file uploads
+      const postData = new FormData();
       
-      // Add auth token if available
+      // Append all fields to the FormData
+      postData.append('title', formData.title);
+      postData.append('description', formData.description);
+      postData.append('category', formData.category);
+      
+      // Handle image properly - if it's a URL string, send it as text; if it's a file, append as file
+      if (formData.image && typeof formData.image === 'string' && !formData.image.startsWith('http')) {
+        // This shouldn't happen as HTTP strings should be URLs, but just in case
+        postData.append('image', formData.image);
+      } else if (formData.image && typeof formData.image === 'string') {
+        // It's a URL string, so send it as a string field
+        postData.append('image', formData.image);
+      } else if (formData.image && formData.image instanceof File) {
+        // It's a file object, append it as a file
+        postData.append('image', formData.image, formData.image.name);
+      }
+      
+      // Add location as stringified JSON since FormData can't handle nested objects
+      postData.append('location', JSON.stringify({
+        latitude: parseFloat(clickPosition[0]),
+        longitude: parseFloat(clickPosition[1])
+      }));
+
+      // Prepare headers with auth token (don't set Content-Type for FormData - browser will set it with boundary)
+      const headers = {};
+      
+      // Add auth token if available (ensure it's properly trimmed)
       const token = localStorage.getItem('token');
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        const trimmedToken = token.trim();
+        headers['Authorization'] = `Bearer ${trimmedToken}`;
       }
 
       // Send the post to the backend
       const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(postData),
+        body: postData,
       });
 
       const result = await response.json();
@@ -361,7 +374,7 @@ const MapView = () => {
           position: [parseFloat(result.data.location.latitude), parseFloat(result.data.location.longitude)],
           title: formData.title,
           description: formData.description,
-          image: formData.image,
+          image: result.data.image, // Use image from response
           postedBy: result.data.postedBy.name, // Use the populated user name from the backend
           category: result.data.category || formData.category,
           datePosted: result.data.datePosted,
