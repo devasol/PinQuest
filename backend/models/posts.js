@@ -12,19 +12,31 @@ const postSchema = new mongoose.Schema({
   image: {
     type: String,
   },
-  likes: {
+  likes: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    }
+  }],
+  likesCount: {
     type: Number,
     default: 0,
   },
   comments: [
     {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
       text: String,
-      postedBy: String,
       date: { type: Date, default: Date.now },
     },
   ],
   postedBy: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   datePosted: {
     type: Date,
@@ -47,6 +59,17 @@ const postSchema = new mongoose.Schema({
     latitude: Number,
     longitude: Number,
   },
+});
+
+// Virtual to get likes count
+postSchema.virtual('likeCount').get(function() {
+  return this.likes.length;
+});
+
+// Middleware to update likesCount before saving
+postSchema.pre('save', function(next) {
+  this.likesCount = this.likes.length;
+  next();
 });
 
 module.exports = mongoose.model("Post", postSchema);

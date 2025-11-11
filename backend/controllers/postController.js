@@ -163,6 +163,104 @@ const deletePost = async (req, res) => {
   }
 };
 
+// @desc    Like a post
+// @route   PUT /api/v1/posts/:id/like
+// @access  Private
+const likePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found"
+      });
+    }
+
+    // Check if user already liked the post
+    const alreadyLiked = post.likes.some(like => 
+      like.user.toString() === req.user._id.toString()
+    );
+    
+    if (alreadyLiked) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Post already liked"
+      });
+    }
+
+    // Add user to likes array
+    post.likes.push({ user: req.user._id });
+    post.likesCount = post.likes.length;
+    
+    await post.save();
+    
+    res.status(200).json({
+      status: "success",
+      data: {
+        postId: post._id,
+        likes: post.likes,
+        likesCount: post.likesCount
+      }
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "fail",
+      message: error.message
+    });
+  }
+};
+
+// @desc    Unlike a post
+// @route   PUT /api/v1/posts/:id/unlike
+// @access  Private
+const unlikePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found"
+      });
+    }
+
+    // Check if user already liked the post
+    const alreadyLiked = post.likes.some(like => 
+      like.user.toString() === req.user._id.toString()
+    );
+    
+    if (!alreadyLiked) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Post has not been liked yet"
+      });
+    }
+
+    // Remove user from likes array
+    post.likes = post.likes.filter(like => 
+      like.user.toString() !== req.user._id.toString()
+    );
+    post.likesCount = post.likes.length;
+    
+    await post.save();
+    
+    res.status(200).json({
+      status: "success",
+      data: {
+        postId: post._id,
+        likes: post.likes,
+        likesCount: post.likesCount
+      }
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "fail",
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   createPost,
   getAllPosts,

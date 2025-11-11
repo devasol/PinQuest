@@ -6,8 +6,11 @@ const {
   getPostById, 
   updatePost, 
   deletePost,
-  getPostsByLocation
+  getPostsByLocation,
+  likePost,
+  unlikePost
 } = require("../controllers/postController");
+const { protect } = require("../middleware/authMiddleware");
 
 // Routes
 router.route("/")
@@ -21,5 +24,9 @@ router.route("/:id")
   .get(getPostById)
   .patch(updatePost)
   .delete(deletePost);
+
+// Like/unlike routes
+router.route("/:id/like").put(protect, likePost);
+router.route("/:id/unlike").put(protect, unlikePost);
 
 module.exports = router;
