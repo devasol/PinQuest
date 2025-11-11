@@ -187,6 +187,238 @@ const isFavorite = async (req, res) => {
   }
 };
 
+// @desc    Follow a user
+// @route   POST /api/v1/users/:id/follow
+// @access  Private
+const followUser = async (req, res) => {
+  try {
+    const { id: targetUserId } = req.params;
+    const currentUserId = req.user._id;
+    
+    // Don't allow user to follow themselves
+    if (targetUserId === currentUserId.toString()) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'You cannot follow yourself'
+      });
+    }
+    
+    // Get both users
+    const currentUser = await User.findById(currentUserId);
+    const targetUser = await User.findById(targetUserId);
+    
+    if (!currentUser || !targetUser) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    // Check if already following
+    const isAlreadyFollowing = currentUser.following.some(following => 
+      following.user.toString() === targetUserId
+    );
+    
+    if (isAlreadyFollowing) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Already following this user'
+      });
+    }
+    
+    // Add to current user's following
+    currentUser.following.push({ user: targetUserId });
+    
+    // Add to target user's followers
+    targetUser.followers.push({ user: currentUserId });
+    
+    // Save both users
+    await currentUser.save();
+    await targetUser.save();
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        following: currentUser.following,
+        followers: targetUser.followers
+      }
+    });
+  } catch (error) {
+    console.error('Error following user:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Unfollow a user
+// @route   DELETE /api/v1/users/:id/unfollow
+// @access  Private
+const unfollowUser = async (req, res) => {
+  try {
+    const { id: targetUserId } = req.params;
+    const currentUserId = req.user._id;
+    
+    // Get both users
+    const currentUser = await User.findById(currentUserId);
+    const targetUser = await User.findById(targetUserId);
+    
+    if (!currentUser || !targetUser) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    // Check if following
+    const isFollowing = currentUser.following.some(following => 
+      following.user.toString() === targetUserId
+    );
+    
+    if (!isFollowing) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Not following this user'
+      });
+    }
+    
+    // Remove from current user's following
+    currentUser.following = currentUser.following.filter(following => 
+      following.user.toString() !== targetUserId
+    );
+    
+    // Remove from target user's followers
+    targetUser.followers = targetUser.followers.filter(follower => 
+      follower.user.toString() !== currentUserId
+    );
+    
+    // Save both users
+    await currentUser.save();
+    await targetUser.save();
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        following: currentUser.following,
+        followers: targetUser.followers
+      }
+    });
+  } catch (error) {
+    console.error('Error unfollowing user:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get user's followers
+// @route   GET /api/v1/users/:id/followers
+// @access  Public
+const getUserFollowers = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findById(id).populate({
+      path: 'followers.user',
+      select: 'name avatar'
+    });
+    
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        followers: user.followers,
+        count: user.followersCount
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching followers:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get users that user is following
+// @route   GET /api/v1/users/:id/following
+// @access  Public
+const getUserFollowing = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findById(id).populate({
+      path: 'following.user',
+      select: 'name avatar'
+    });
+    
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        following: user.following,
+        count: user.followingCount
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching following:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Check if current user follows target user
+// @route   GET /api/v1/users/:id/is-following
+// @access  Private
+const checkFollowingStatus = async (req, res) => {
+  try {
+    const { id: targetUserId } = req.params;
+    const currentUserId = req.user._id;
+    
+    const currentUser = await User.findById(currentUserId);
+    if (!currentUser) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    const isFollowing = currentUser.following.some(following => 
+      following.user.toString() === targetUserId
+    );
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        isFollowing,
+        targetUserId
+      }
+    });
+  } catch (error) {
+    console.error('Error checking following status:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 // @desc    Update user profile
 // @route   PUT /api/v1/users/:id
 // @access  Private
@@ -316,5 +548,10 @@ module.exports = {
   addFavorite,
   removeFavorite,
   getFavorites,
-  isFavorite
+  isFavorite,
+  followUser,
+  unfollowUser,
+  getUserFollowers,
+  getUserFollowing,
+  checkFollowingStatus
 };

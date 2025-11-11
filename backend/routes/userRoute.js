@@ -8,7 +8,12 @@ const {
   addFavorite,
   removeFavorite,
   getFavorites,
-  isFavorite
+  isFavorite,
+  followUser,
+  unfollowUser,
+  getUserFollowers,
+  getUserFollowing,
+  checkFollowingStatus
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 const router = express.Router();
@@ -25,5 +30,12 @@ router.route("/:id").delete(protect, deleteUser);
 // Favorites routes
 router.route("/favorites").post(protect, addFavorite).get(protect, getFavorites);
 router.route("/favorites/:postId").delete(protect, removeFavorite).get(protect, isFavorite);
+
+// Following/follower routes
+router.route("/:id/follow").post(protect, followUser);
+router.route("/:id/unfollow").delete(protect, unfollowUser);
+router.route("/:id/followers").get(getUserFollowers);
+router.route("/:id/following").get(getUserFollowing);
+router.route("/:id/is-following").get(protect, checkFollowingStatus);
 
 module.exports = router;

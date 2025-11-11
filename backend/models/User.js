@@ -38,6 +38,26 @@ const userSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  following: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    dateAdded: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  followers: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    dateAdded: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   isVerified: {
     type: Boolean,
     default: false
@@ -51,6 +71,16 @@ const userSchema = new mongoose.Schema({
 // Add virtual field for favorites count
 userSchema.virtual('favoritesCount').get(function() {
   return this.favorites ? this.favorites.length : 0;
+});
+
+// Add virtual field for following count
+userSchema.virtual('followingCount').get(function() {
+  return this.following ? this.following.length : 0;
+});
+
+// Add virtual field for followers count
+userSchema.virtual('followersCount').get(function() {
+  return this.followers ? this.followers.length : 0;
 });
 
 // Hash password before saving
