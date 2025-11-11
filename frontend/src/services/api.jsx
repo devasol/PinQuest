@@ -28,9 +28,9 @@ const apiRequest = async (endpoint, options = {}) => {
 };
 
 export const authService = {
-  // Signup user
+  // Signup user - Backend route is /auth/register
   signup: async (userData) => {
-    return apiRequest('/auth/signup', {
+    return apiRequest('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });

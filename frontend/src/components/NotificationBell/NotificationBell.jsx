@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, BellOff } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+
 const NotificationBell = ({ userId, authToken }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -14,7 +16,7 @@ const NotificationBell = ({ userId, authToken }) => {
     
     setIsLoading(true);
     try {
-      const response = await fetch('/api/v1/notifications', {
+      const response = await fetch(`${API_BASE_URL}/notifications`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -40,7 +42,7 @@ const NotificationBell = ({ userId, authToken }) => {
     if (!authToken) return;
     
     try {
-      const response = await fetch('/api/v1/notifications/unread-count', {
+      const response = await fetch(`${API_BASE_URL}/notifications/unread-count`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'
@@ -61,7 +63,7 @@ const NotificationBell = ({ userId, authToken }) => {
     if (!authToken) return;
     
     try {
-      await fetch(`/api/v1/notifications/${notificationId}`, {
+      await fetch(`${API_BASE_URL}/notifications/${notificationId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -86,7 +88,7 @@ const NotificationBell = ({ userId, authToken }) => {
     if (!authToken) return;
     
     try {
-      await fetch('/api/v1/notifications/read-all', {
+      await fetch(`${API_BASE_URL}/notifications/read-all`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
