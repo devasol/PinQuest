@@ -1,10 +1,11 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const logger = require('../utils/logger');
 const { uploadImageToCloudinary, deleteImageFromCloudinary } = require('../utils/mediaUtils');
 
 const generateToken = (id) => {
-  console.log('Generating token for user ID:', id);
+  logger.debug('Generating token for user ID:', { userId: id });
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '30d', // Use the environment variable for expiration
   });
@@ -25,12 +26,12 @@ const registerUser = async (req, res) => {
       });
     }
 
-    console.log('Registration attempt for email:', email);
+    logger.info('Registration attempt', { email });
     
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      console.log('Registration failed: User already exists with email:', email);
+      logger.warn('Registration failed - user already exists', { email });
       return res.status(400).json({
         status: 'fail',
         message: 'User already exists with this email',
@@ -45,7 +46,7 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
-      console.log('User successfully registered:', user._id, 'Name:', user.name);
+      logger.info('User successfully registered', { userId: user._id, name: user.name, email: user.email });
       res.status(201).json({
         status: 'success',
         data: {
@@ -56,15 +57,14 @@ const registerUser = async (req, res) => {
         },
       });
     } else {
-      console.log('Failed to create user:', { name, email });
+      logger.error('Failed to create user', { name, email });
       res.status(400).json({
         status: 'fail',
         message: 'Invalid user data',
       });
     }
   } catch (error) {
-    console.error('Error registering user:', error);
-    console.error('Error details:', error.message, error.code, error.name);
+    logger.error('Error registering user', { error: error.message, stack: error.stack, code: error.code, name: error.name });
     
     // Handle MongoDB duplicate key errors
     if (error.code === 11000) {
@@ -97,12 +97,12 @@ const loginUser = async (req, res) => {
       });
     }
 
-    console.log('Login attempt for email:', email);
+    logger.info('Login attempt', { email });
     
     // Check if user exists & password is correct
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
-      console.log('Login failed: No user found with email:', email);
+      logger.warn('Login failed - user not found', { email });
       return res.status(401).json({
         status: 'fail',
         message: 'Invalid email or password',
@@ -111,14 +111,14 @@ const loginUser = async (req, res) => {
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      console.log('Login failed: Invalid password for user:', user._id);
+      logger.warn('Login failed - invalid password', { userId: user._id, email });
       return res.status(401).json({
         status: 'fail',
         message: 'Invalid email or password',
       });
     }
 
-    console.log('User successfully logged in:', user._id, 'Name:', user.name);
+    logger.info('User successfully logged in', { userId: user._id, name: user.name, email: user.email });
     
     res.status(200).json({
       status: 'success',
@@ -130,8 +130,7 @@ const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error logging in user:', error);
-    console.error('Error details:', error.message, error.code, error.name);
+    logger.error('Error logging in user', { error: error.message, stack: error.stack, code: error.code, name: error.name });
     
     res.status(500).json({
       status: 'error',
@@ -166,14 +165,14 @@ const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
     if (!user) {
-      console.log('Profile fetch failed: User not found for ID:', req.user._id);
+      logger.warn('Profile fetch failed - user not found', { userId: req.user._id });
       return res.status(404).json({
         status: 'fail',
         message: 'User not found',
       });
     }
 
-    console.log('Profile fetched successfully for user:', user._id, 'Name:', user.name);
+    logger.debug('Profile fetched successfully', { userId: user._id, name: user.name });
     
     res.status(200).json({
       status: 'success',
@@ -190,8 +189,7 @@ const getProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    console.error('Error details:', error.message, error.code, error.name);
+    logger.error('Error fetching user profile', { error: error.message, stack: error.stack, userId: req.user._id });
     
     res.status(500).json({
       status: 'error',
