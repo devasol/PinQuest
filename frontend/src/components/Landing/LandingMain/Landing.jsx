@@ -12,7 +12,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import MapComponent from "../MapComponent/MapComponent";
-import { LandingWorldMap } from "@/components/ui/landing-world-map";
 
 const Landing = () => {
   const [currentFeature, setCurrentFeature] = useState(0);
@@ -53,47 +52,27 @@ const Landing = () => {
   ];
 
   return (
-    <div className="min-h-screen dark:bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 bg-gradient-to-br from-blue-900 to-indigo-900 relative z-0">
-      {/* Hero Section with World Map Background */}
-      <section className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-16">
-        <div className="absolute inset-0 z-0 opacity-60">
-          <LandingWorldMap
-            dots={[
-              {
-                start: {
-                  lat: 64.2008,
-                  lng: -149.4937,
-                }, // Alaska (Fairbanks)
-                end: {
-                  lat: 34.0522,
-                  lng: -118.2437,
-                }, // Los Angeles
-              },
-              {
-                start: { lat: 64.2008, lng: -149.4937 }, // Alaska (Fairbanks)
-                end: { lat: -15.7975, lng: -47.8919 }, // Brazil (Brasília)
-              },
-              {
-                start: { lat: -15.7975, lng: -47.8919 }, // Brazil (Brasília)
-                end: { lat: 38.7223, lng: -9.1393 }, // Lisbon
-              },
-              {
-                start: { lat: 51.5074, lng: -0.1278 }, // London
-                end: { lat: 28.6139, lng: 77.209 }, // New Delhi
-              },
-              {
-                start: { lat: 28.6139, lng: 77.209 }, // New Delhi
-                end: { lat: 43.1332, lng: 131.9113 }, // Vladivostok
-              },
-              {
-                start: { lat: 28.6139, lng: 77.209 }, // New Delhi
-                end: { lat: -1.2921, lng: 36.8219 }, // Nairobi
-              },
-            ]}
-          />
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative z-0">
+      {/* Hero Section */}
+      <section 
+        className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-16"
+        style={{
+          backgroundImage: `url('https://images.unsplash.com/photo-1524661135-423995f22d0b?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1474')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
+        }}
+      >
+        {/* Background overlay to maintain text readability */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-purple-900/60 to-slate-900/80"></div>
         
-        {/* Content overlay */}
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden z-0">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl"></div>
+        </div>
+
         <div
           className={`relative z-10 max-w-7xl mx-auto text-center transition-all duration-1000 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
