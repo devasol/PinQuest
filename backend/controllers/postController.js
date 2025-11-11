@@ -39,11 +39,15 @@ const createPost = async (req, res) => {
       };
     }
 
+    // Use authenticated user ID for postedBy if available (from middleware)
+    // This prevents users from impersonating others by changing the postedBy field in the frontend
+    const postCreatorId = req.user ? req.user._id : null;
+
     const newPost = new Post({
       title,
       description,
       image,
-      postedBy,
+      postedBy: postCreatorId, // Use the authenticated user ID, not what's provided in the request
       category: category || "general",
       location: {
         type: 'Point',
@@ -79,7 +83,9 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
   try {
-    const posts = await Post.find().sort({ datePosted: -1 });
+    const posts = await Post.find()
+      .populate('postedBy', 'name email avatar') // Populate the user data for the poster
+      .sort({ datePosted: -1 });
     console.log(`Fetched ${posts.length} posts from database`);
     res.status(200).json({
       status: "success",
@@ -119,7 +125,8 @@ const getPostsByLocation = async (req, res) => {
           $maxDistance: radiusInMeters
         }
       }
-    });
+    })
+    .populate('postedBy', 'name email avatar'); // Populate the user data for the poster
 
     res.status(200).json({
       status: "success",
@@ -136,7 +143,8 @@ const getPostsByLocation = async (req, res) => {
 
 const getPostById = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findById(req.params.id)
+      .populate('postedBy', 'name email avatar'); // Populate the user data for the poster
     if (!post) {
       return res.status(404).json({
         status: "fail",
@@ -165,6 +173,14 @@ const updatePost = async (req, res) => {
       return res.status(404).json({
         status: "fail",
         message: "Post not found"
+      });
+    }
+
+    // Check if the user is authorized to update this post
+    if (existingPost.postedBy.toString() !== req.user._id.toString()) {
+      return res.status(401).json({
+        status: "fail",
+        message: "Not authorized to update this post"
       });
     }
 
@@ -201,11 +217,11 @@ const updatePost = async (req, res) => {
     }
 
     // Prepare the update object
+    // Don't allow changing the postedBy field - it should always remain as the original creator
     const updateData = {
       title,
       description,
       image,
-      postedBy,
       category: category || "general"
     };
 
@@ -253,6 +269,14 @@ const deletePost = async (req, res) => {
       return res.status(404).json({
         status: "fail",
         message: "Post not found"
+      });
+    }
+
+    // Check if the user is authorized to delete this post
+    if (post.postedBy.toString() !== req.user._id.toString()) {
+      return res.status(401).json({
+        status: "fail",
+        message: "Not authorized to delete this post"
       });
     }
 
@@ -785,7 +809,7 @@ const getPostsWithinArea = async (req, res) => {
         $lte: parseFloat(maxLng)
       }
     })
-    .populate('postedBy', 'name avatar')
+    .populate('postedBy', 'name email avatar')
     .populate({
       path: 'comments.user',
       select: 'name avatar'
