@@ -15,6 +15,16 @@ const createPost = async (req, res) => {
       });
     }
 
+    // Verify that the user is authenticated
+    if (!req.user) {
+      return res.status(401).json({
+        status: "fail",
+        message: "Authentication required to create a post"
+      });
+    }
+
+    console.log('Creating post for user:', req.user._id, 'Name:', req.user.name);
+
     // Handle image upload if present
     let image = null;
     if (req.file) {
@@ -39,15 +49,13 @@ const createPost = async (req, res) => {
       };
     }
 
-    // Use authenticated user ID for postedBy if available (from middleware)
-    // This prevents users from impersonating others by changing the postedBy field in the frontend
-    const postCreatorId = req.user ? req.user._id : null;
-
+    // Use authenticated user ID for postedBy (from middleware)
+    // This ensures security by preventing users from impersonating others
     const newPost = new Post({
       title,
       description,
       image,
-      postedBy: postCreatorId, // Use the authenticated user ID, not what's provided in the request
+      postedBy: req.user._id, // Use the authenticated user ID
       category: category || "general",
       location: {
         type: 'Point',
@@ -59,23 +67,41 @@ const createPost = async (req, res) => {
 
     const savedPost = await newPost.save();
     
+    // Populate the postedBy field before sending response to include user info
+    const populatedPost = await Post.findById(savedPost._id)
+      .populate('postedBy', 'name email avatar');
+    
+    console.log('Post created successfully:', savedPost._id, 'by user:', req.user._id);
+    
     // Emit real-time event for new post
     const io = req.app.get('io');
     if (io) {
       emitGlobal(io, 'newPost', {
-        post: savedPost,
+        post: populatedPost,
         message: 'A new post has been created'
       });
     }
     
     res.status(201).json({
       status: "success",
-      data: savedPost
+      data: populatedPost
     });
   } catch (error) {
     console.error("Error creating post:", error);
-    res.status(400).json({
-      status: "fail",
+    console.error("Error details:", error.message, error.code, error.name);
+    
+    // Handle specific MongoDB errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Validation error',
+        errors
+      });
+    }
+    
+    res.status(500).json({
+      status: "error",
       message: error.message
     });
   }
@@ -93,8 +119,10 @@ const getAllPosts = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching posts:", error);
-    res.status(400).json({
-      status: "fail",
+    console.error("Error details:", error.message, error.code, error.name);
+    
+    res.status(500).json({
+      status: "error",
       message: error.message
     });
   }
@@ -184,6 +212,8 @@ const updatePost = async (req, res) => {
       });
     }
 
+    console.log('Updating post:', req.params.id, 'by user:', req.user._id);
+
     // Handle image upload if present
     let image = existingPost.image; // Keep existing image by default
     if (req.file) {
@@ -248,15 +278,30 @@ const updatePost = async (req, res) => {
         new: true,
         runValidators: true
       }
-    );
+    ).populate('postedBy', 'name email avatar'); // Populate user data for response
+
+    console.log('Post updated successfully:', updatedPost._id);
 
     res.status(200).json({
       status: "success",
       data: updatedPost
     });
   } catch (error) {
-    res.status(400).json({
-      status: "fail",
+    console.error("Error updating post:", error);
+    console.error("Error details:", error.message, error.code, error.name);
+    
+    // Handle specific MongoDB errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Validation error',
+        errors
+      });
+    }
+    
+    res.status(500).json({
+      status: "error",
       message: error.message
     });
   }
@@ -280,6 +325,8 @@ const deletePost = async (req, res) => {
       });
     }
 
+    console.log('Deleting post:', req.params.id, 'by user:', req.user._id);
+
     // If the post has an image with a publicId, delete it from Cloudinary
     if (post.image && post.image.publicId) {
       const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
@@ -287,6 +334,8 @@ const deletePost = async (req, res) => {
     }
 
     await Post.findByIdAndDelete(req.params.id);
+    
+    console.log('Post deleted successfully:', req.params.id);
     
     // Emit real-time event for deleted post
     const io = req.app.get('io');
@@ -302,8 +351,11 @@ const deletePost = async (req, res) => {
       data: null
     });
   } catch (error) {
-    res.status(400).json({
-      status: "fail",
+    console.error("Error deleting post:", error);
+    console.error("Error details:", error.message, error.code, error.name);
+    
+    res.status(500).json({
+      status: "error",
       message: error.message
     });
   }
