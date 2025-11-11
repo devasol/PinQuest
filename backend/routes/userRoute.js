@@ -39,4 +39,7 @@ router.route("/:id/followers").get(getUserFollowers);
 router.route("/:id/following").get(getUserFollowing);
 router.route("/:id/is-following").get(protect, checkFollowingStatus);
 
+// User preferences routes
+router.route("/preferences").get(protect, getUserPreferences).put(protect, updateUserPreferences);
+
 module.exports = router;

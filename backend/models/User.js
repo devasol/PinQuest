@@ -59,6 +59,21 @@ const userSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  preferences: {
+    theme: {
+      type: String,
+      enum: ['light', 'dark', 'system'],
+      default: 'light'
+    },
+    notifications: {
+      type: Boolean,
+      default: true
+    },
+    emailNotifications: {
+      type: Boolean,
+      default: true
+    }
+  },
   isVerified: {
     type: Boolean,
     default: false

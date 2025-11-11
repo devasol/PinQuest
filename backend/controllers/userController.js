@@ -423,6 +423,83 @@ const checkFollowingStatus = async (req, res) => {
   }
 };
 
+// @desc    Get user preferences
+// @route   GET /api/v1/users/preferences
+// @access  Private
+const getUserPreferences = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('preferences');
+    
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      data: user.preferences
+    });
+  } catch (error) {
+    console.error('Error fetching user preferences:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Update user preferences
+// @route   PUT /api/v1/users/preferences
+// @access  Private
+const updateUserPreferences = async (req, res) => {
+  try {
+    const { theme, notifications, emailNotifications } = req.body;
+    
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    // Update only the fields that are provided
+    if (theme !== undefined) {
+      if (!['light', 'dark', 'system'].includes(theme)) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Invalid theme. Must be light, dark, or system'
+        });
+      }
+      user.preferences.theme = theme;
+    }
+    
+    if (notifications !== undefined) {
+      user.preferences.notifications = notifications;
+    }
+    
+    if (emailNotifications !== undefined) {
+      user.preferences.emailNotifications = emailNotifications;
+    }
+    
+    await user.save();
+    
+    res.status(200).json({
+      status: 'success',
+      data: user.preferences
+    });
+  } catch (error) {
+    console.error('Error updating user preferences:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 // @desc    Update user profile
 // @route   PUT /api/v1/users/:id
 // @access  Private
@@ -592,5 +669,7 @@ module.exports = {
   unfollowUser,
   getUserFollowers,
   getUserFollowing,
-  checkFollowingStatus
+  checkFollowingStatus,
+  getUserPreferences,
+  updateUserPreferences
 };
