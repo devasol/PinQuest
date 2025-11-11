@@ -7,6 +7,7 @@ const dbConnect = require("./config/dbConfig");
 const postsRoute = require("./routes/postsRoute");
 const userRoute = require("./routes/userRoute");
 const authRoute = require('./routes/auth');
+const categoriesRoute = require('./routes/categoriesRoute');
 require('./config/passport');
 
 const app = express();
@@ -35,6 +36,9 @@ app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/posts", postsRoute);
 
 app.use("/api/v1/users", userRoute);
+
+// Categories routes
+app.use("/api/v1/categories", categoriesRoute);
 
 dbConnect();
 
