@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { uploadImageToCloudinary, deleteImageFromCloudinary } = require('../utils/mediaUtils');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -177,9 +178,31 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    // Update user fields
-    const allowedUpdates = ['name', 'email', 'avatar'];
-    const updates = Object.keys(req.body);
+    // Handle avatar upload if present
+    if (req.file) {
+      try {
+        // If there's an existing avatar with a publicId, delete it from Cloudinary
+        if (user.avatar && user.avatar.publicId) {
+          await deleteImageFromCloudinary(user.avatar.publicId);
+        }
+
+        const uploadResult = await uploadImageToCloudinary(req.file);
+        user.avatar = {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id
+        };
+      } catch (uploadError) {
+        console.error("Error uploading avatar to Cloudinary:", uploadError);
+        return res.status(400).json({
+          status: "fail",
+          message: "Error uploading avatar"
+        });
+      }
+    }
+
+    // Update other user fields (excluding avatar from req.body)
+    const allowedUpdates = ['name', 'email'];
+    const updates = Object.keys(req.body).filter(key => key !== 'avatar'); // Exclude avatar from req.body since it's handled separately
     
     const isValidUpdate = updates.every((update) => allowedUpdates.includes(update));
     if (!isValidUpdate) {

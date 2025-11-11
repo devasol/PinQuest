@@ -26,7 +26,8 @@ const userSchema = new mongoose.Schema({
     sparse: true // Allows multiple null values but enforces uniqueness for non-null values
   },
   avatar: {
-    type: String, // URL to user's avatar
+    url: String,      // Public URL of the avatar
+    publicId: String, // Cloudinary public ID for deletion purposes
   },
   favorites: [{
     post: {

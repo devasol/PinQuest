@@ -428,9 +428,42 @@ const checkFollowingStatus = async (req, res) => {
 // @access  Private
 const updateUser = async (req, res) => {
   try {
-    // Only update allowed fields
-    const allowedUpdates = ['name', 'email', 'avatar'];
-    const updates = Object.keys(req.body);
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found',
+      });
+    }
+
+    // Handle avatar upload if present
+    if (req.file) {
+      try {
+        // If there's an existing avatar with a publicId, delete it from Cloudinary
+        if (user.avatar && user.avatar.publicId) {
+          const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+          await deleteImageFromCloudinary(user.avatar.publicId);
+        }
+
+        const { uploadImageToCloudinary } = require('../utils/mediaUtils');
+        const uploadResult = await uploadImageToCloudinary(req.file);
+        user.avatar = {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id
+        };
+      } catch (uploadError) {
+        console.error("Error uploading avatar to Cloudinary:", uploadError);
+        return res.status(400).json({
+          status: "fail",
+          message: "Error uploading avatar"
+        });
+      }
+    }
+
+    // Update other user fields (excluding avatar from req.body)
+    const allowedUpdates = ['name', 'email'];
+    const updates = Object.keys(req.body).filter(key => key !== 'avatar'); // Exclude avatar from req.body since it's handled separately
+    
     const isValidUpdate = updates.every(update => allowedUpdates.includes(update));
     
     if (!isValidUpdate) {
@@ -440,17 +473,19 @@ const updateUser = async (req, res) => {
       });
     }
 
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    }).select('-password');
-
-    if (!user) {
-      return res.status(404).json({
-        status: 'fail',
-        message: 'User not found',
-      });
+    // Check if email is being updated and already exists for another user
+    if (req.body.email && req.body.email !== user.email) {
+      const emailExists = await User.findOne({ email: req.body.email });
+      if (emailExists) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Email already in use',
+        });
+      }
     }
+
+    updates.forEach(update => (user[update] = req.body[update]));
+    await user.save();
 
     res.status(200).json({
       status: 'success',
