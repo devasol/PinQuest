@@ -650,6 +650,153 @@ const searchPosts = async (req, res) => {
   }
 };
 
+// @desc    Get posts within a radius of a location
+// @route   GET /api/v1/posts/nearby
+// @access  Public
+const getNearbyPosts = async (req, res) => {
+  try {
+    const { latitude, longitude, radius = 10, limit = 20 } = req.query;
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Latitude and longitude are required"
+      });
+    }
+
+    // Convert radius from kilometers to meters for MongoDB query
+    const radiusInMeters = parseFloat(radius) * 1000;
+
+    const posts = await Post.find({
+      "location.coordinates": {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(longitude), parseFloat(latitude)]
+          },
+          $maxDistance: radiusInMeters
+        }
+      }
+    })
+    .populate('postedBy', 'name avatar')
+    .populate({
+      path: 'comments.user',
+      select: 'name avatar'
+    })
+    .limit(parseInt(limit));
+
+    res.status(200).json({
+      status: "success",
+      data: posts
+    });
+  } catch (error) {
+    console.error("Error fetching nearby posts:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get posts within a rectangular area
+// @route   GET /api/v1/posts/within
+// @access  Public
+const getPostsWithinArea = async (req, res) => {
+  try {
+    const { minLat, maxLat, minLng, maxLng } = req.query;
+
+    if (!minLat || !maxLat || !minLng || !maxLng) {
+      return res.status(400).json({
+        status: "fail",
+        message: "minLat, maxLat, minLng, and maxLng are required for area bounds"
+      });
+    }
+
+    const posts = await Post.find({
+      "location.latitude": {
+        $gte: parseFloat(minLat),
+        $lte: parseFloat(maxLat)
+      },
+      "location.longitude": {
+        $gte: parseFloat(minLng),
+        $lte: parseFloat(maxLng)
+      }
+    })
+    .populate('postedBy', 'name avatar')
+    .populate({
+      path: 'comments.user',
+      select: 'name avatar'
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: posts
+    });
+  } catch (error) {
+    console.error("Error fetching posts within area:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get distance between user and post
+// @route   GET /api/v1/posts/:id/distance
+// @access  Public
+const getPostDistance = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.query;
+    const postId = req.params.id;
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Latitude and longitude are required"
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found"
+      });
+    }
+
+    // Calculate distance using the haversine formula
+    const userLat = parseFloat(latitude);
+    const userLng = parseFloat(longitude);
+    const postLat = post.location.latitude;
+    const postLng = post.location.longitude;
+
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (postLat - userLat) * Math.PI / 180;
+    const dLon = (postLng - userLng) * Math.PI / 180;
+    
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(userLat * Math.PI / 180) * Math.cos(postLat * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    const distance = R * c; // Distance in km
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        distance: distance,
+        unit: "kilometers"
+      }
+    });
+  } catch (error) {
+    console.error("Error calculating distance:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   createPost,
   getAllPosts,
@@ -663,5 +810,8 @@ module.exports = {
   updateComment,
   deleteComment,
   getComments,
-  searchPosts
+  searchPosts,
+  getNearbyPosts,
+  getPostsWithinArea,
+  getPostDistance
 };

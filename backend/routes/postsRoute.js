@@ -29,6 +29,11 @@ router.route("/search").get(searchPosts);
 // Route to get posts by location
 router.get("/by-location", getPostsByLocation);
 
+// Geolocation-based routes
+router.get("/nearby", getNearbyPosts);
+router.get("/within", getPostsWithinArea);
+router.get("/:id/distance", getPostDistance);
+
 router.route("/:id")
   .get(getPostById)
   .patch(protect, upload.single('image'), updatePost)
