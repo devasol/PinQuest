@@ -18,57 +18,36 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is logged in on initial load
   useEffect(() => {
-    // Check for token in URL (from Google OAuth redirect)
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenFromUrl = urlParams.get('token');
-    
-    if (tokenFromUrl) {
-      // Save token to localStorage and remove it from URL (ensure proper trimming)
-      const trimmedToken = tokenFromUrl.trim();
-      localStorage.setItem('token', trimmedToken);
-      // Clean the URL to remove the token
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
-    let token = localStorage.getItem('token');
+    const token = localStorage.getItem('token');
     if (token) {
-      // Verify token and get user profile (ensure token is properly trimmed)
-      const trimmedToken = token.trim();
-      if (token !== trimmedToken) {
-        // If the token was trimmed, update it in storage
-        localStorage.setItem('token', trimmedToken);
-        token = trimmedToken;
-      }
-      
-      const fetchUserProfile = async () => {
+      // Get user from localStorage if available
+      const storedUser = localStorage.getItem('firebaseUser');
+      if (storedUser) {
         try {
-          const data = await authService.getProfile();
-          setUser(data.user);
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
           setIsAuthenticated(true);
         } catch (error) {
-          console.error('Error fetching user profile:', error);
-          localStorage.removeItem('token');
-          setIsAuthenticated(false);
-        } finally {
-          setLoading(false);
+          console.error('Error parsing stored user:', error);
         }
-      };
-      
-      fetchUserProfile();
-    } else {
-      setLoading(false);
+      }
     }
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
     try {
       const data = await authService.login({ email, password });
-      // Ensure token is properly trimmed before storing
-      const trimmedToken = data.token.trim();
-      localStorage.setItem('token', trimmedToken);
-      setUser(data.user);
-      setIsAuthenticated(true);
-      return { success: true, data };
+      if (data.success) {
+        // Store token and user data
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('firebaseUser', JSON.stringify(data.user));
+        setUser(data.user);
+        setIsAuthenticated(true);
+        return { success: true, data };
+      } else {
+        return { success: false, error: data.error };
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -77,21 +56,53 @@ export const AuthProvider = ({ children }) => {
   const signup = async (userData) => {
     try {
       const data = await authService.signup(userData);
-      // Ensure token is properly trimmed before storing
-      const trimmedToken = data.token.trim();
-      localStorage.setItem('token', trimmedToken);
-      setUser(data.user);
-      setIsAuthenticated(true);
-      return { success: true, data };
+      if (data.success) {
+        // Store token and user data
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('firebaseUser', JSON.stringify(data.user));
+        setUser(data.user);
+        setIsAuthenticated(true);
+        return { success: true, data };
+      } else {
+        return { success: false, error: data.error };
+      }
     } catch (error) {
       return { success: false, error: error.message };
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
+    try {
+      await authService.logout();
+      localStorage.removeItem('token');
+      localStorage.removeItem('firebaseUser');
+      setUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('firebaseUser');
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const data = await authService.googleLogin();
+      if (data.success) {
+        // Store token and user data
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('firebaseUser', JSON.stringify(data.user));
+        setUser(data.user);
+        setIsAuthenticated(true);
+        return { success: true, data };
+      } else {
+        return { success: false, error: data.error };
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   };
 
   const value = {
@@ -101,7 +112,7 @@ export const AuthProvider = ({ children }) => {
     login,
     signup,
     logout,
-    googleLogin: authService.googleLogin,
+    googleLogin: handleGoogleLogin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

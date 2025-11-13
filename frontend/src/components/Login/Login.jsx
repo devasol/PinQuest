@@ -67,8 +67,20 @@ const Login = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    googleLogin();
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await googleLogin();
+      if (result.success) {
+        setSuccess("Google login successful! Redirecting...");
+        setTimeout(() => {
+          navigate("/"); // Redirect to home page after successful login
+        }, 1500);
+      } else {
+        setError(result.error || "Google login failed");
+      }
+    } catch (err) {
+      setError(err.message || "An error occurred during Google login");
+    }
   };
 
   const switchMode = () => {

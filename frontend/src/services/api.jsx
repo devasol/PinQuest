@@ -1,3 +1,5 @@
+import { firebaseAuthService } from './firebaseAuth.js';
+
 // API service for authentication
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
@@ -57,32 +59,57 @@ const apiRequest = async (endpoint, options = {}) => {
 };
 
 export const authService = {
-  // Signup user - Backend route is /auth/register
+  // Signup user with Firebase
   signup: async (userData) => {
-    return apiRequest('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
+    // Normalize the userData to make sure it has the expected structure
+    const email = userData.email;
+    const password = userData.password;
+    const name = userData.name || userData.displayName;
+    
+    return firebaseAuthService.signup(email, password, name);
   },
 
-  // Login user
-  login: async (credentials) => {
-    return apiRequest('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    });
+  // Login user with Firebase
+  login: async (email, password) => {
+    // Handle both single object parameter and separate email/password parameters
+    let emailParam, passwordParam;
+    if (typeof email === 'object' && email.email && email.password) {
+      // If email is an object with email and password properties
+      emailParam = email.email;
+      passwordParam = email.password;
+    } else {
+      // If email and password are separate parameters
+      emailParam = email;
+      passwordParam = password;
+    }
+    
+    return firebaseAuthService.login(emailParam, passwordParam);
   },
 
-  // Google login redirect
-  googleLogin: () => {
-    window.location.href = `${API_BASE_URL}/auth/google`;
+  // Google login with Firebase
+  googleLogin: async () => {
+    return firebaseAuthService.googleLogin();
   },
 
-  // Get current user profile
+  // Get current user profile from your backend (you may need to implement this endpoint)
   getProfile: async () => {
-    return apiRequest('/auth/profile', {
-      skipAuth: false, // We want to include the auth token for this request
-    });
+    // This would typically call your backend API to get user profile
+    // For now, we'll return the Firebase user data that's stored
+    const token = localStorage.getItem('token');
+    if (token) {
+      // In a real backend scenario, you'd make an API call to your backend
+      // that verifies the Firebase token and returns user profile data
+      return { 
+        user: JSON.parse(localStorage.getItem('firebaseUser') || '{}') 
+      };
+    } else {
+      throw new Error('No authentication token found');
+    }
+  },
+
+  // Logout user
+  logout: async () => {
+    return firebaseAuthService.logout();
   },
 
   // Health check to see if API is accessible
