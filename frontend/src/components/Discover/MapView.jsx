@@ -250,7 +250,7 @@ const MapView = () => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    image: "",
+    image: null, // Changed from string to null to handle both URL strings and File objects
     postedBy: "",
     category: "general",
   });
@@ -507,17 +507,26 @@ const MapView = () => {
     setFormData({
       title: "",
       description: "",
-      image: "",
+      image: null,
       category: "general",
       // Don't include postedBy since the backend will automatically use the authenticated user ID
     });
   };
 
   const handleFormChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    // Update image URL only if it's currently a string (not a File object)
+    if (name === 'image') {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    } else if (name !== 'image') {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleFormSubmit = async (e) => {
@@ -567,8 +576,10 @@ const MapView = () => {
         postData.append('image', formData.image, formData.image.name);
         
         // Properly format location as a nested object in FormData
-        postData.append('location[latitude]', parseFloat(clickPosition[0]));
-        postData.append('location[longitude]', parseFloat(clickPosition[1]));
+        postData.append('location', JSON.stringify({
+          latitude: parseFloat(clickPosition[0]),
+          longitude: parseFloat(clickPosition[1])
+        }));
         
         isFormData = true;
       } else {
@@ -606,6 +617,27 @@ const MapView = () => {
         body: isFormData ? postData : JSON.stringify(postData),
       });
 
+      // Check if the response is OK before trying to parse JSON
+      if (!response.ok) {
+        // Try to get error message from response
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorText = await response.text();
+          console.error('Server error response:', errorText);
+          // Try to parse as JSON if possible, otherwise use as text
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || errorMessage;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (textError) {
+          console.error('Error reading error response:', textError);
+        }
+        showNotification(`Error creating post: ${errorMessage}`, 'error');
+        return;
+      }
+
       const result = await response.json();
 
       if (result.status === "success") {
@@ -615,7 +647,7 @@ const MapView = () => {
           position: [parseFloat(result.data.location.latitude), parseFloat(result.data.location.longitude)],
           title: formData.title,
           description: formData.description,
-          image: result.data.image, // Use image from response
+          image: result.data.image, // This could be a string URL or an object with a url property
           postedBy: result.data.postedBy && typeof result.data.postedBy === 'object' 
             ? result.data.postedBy.name 
             : result.data.postedBy, 
@@ -632,7 +664,7 @@ const MapView = () => {
         setFormData({
           title: "",
           description: "",
-          image: "",
+          image: null,
           category: "general",
         });
       } else {
@@ -641,7 +673,12 @@ const MapView = () => {
       }
     } catch (error) {
       console.error("Error:", error);
-      showNotification("Error creating post. Please try again.", 'error');
+      // Check if this is a JSON parsing error
+      if (error instanceof SyntaxError) {
+        showNotification("Server returned invalid response. Please try again later.", 'error');
+      } else {
+        showNotification("Error creating post. Please try again.", 'error');
+      }
     }
   };
 
@@ -759,7 +796,7 @@ const MapView = () => {
                   }}
                 >
                   <div className="p-6 min-w-[400px] max-w-[500px]">
-                    {location.image && (
+                    {(location.image && typeof location.image === 'string') ? (
                       <img
                         src={location.image}
                         alt={location.title}
@@ -768,7 +805,16 @@ const MapView = () => {
                           e.target.style.display = "none";
                         }}
                       />
-                    )}
+                    ) : (location.image && location.image.url) ? (
+                      <img
+                        src={location.image.url}
+                        alt={location.title}
+                        className="w-full h-48 object-cover rounded-lg mb-4"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    ) : null}
                     <h3 className="font-bold text-2xl text-gray-800 mb-3">
                       {location.title}
                     </h3>
@@ -1274,22 +1320,42 @@ const MapView = () => {
                         />
                       </div>
 
-                      <div>
+                      <div className="md:col-span-2">
                         <label
                           className="block text-gray-700 mb-2 font-medium"
-                          htmlFor="image"
                         >
-                          Image URL
+                          Image
                         </label>
-                        <input
-                          type="url"
-                          id="image"
-                          name="image"
-                          value={formData.image}
-                          onChange={handleFormChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
-                          placeholder="https://example.com/image.jpg"
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <input
+                              type="text"
+                              id="image"
+                              name="image"
+                              value={typeof formData.image === 'string' ? formData.image : ''}
+                              onChange={handleFormChange}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                              placeholder="Enter image URL"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Enter a URL to an image</p>
+                          </div>
+                          <div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  setFormData({
+                                    ...formData,
+                                    image: e.target.files[0] // Store the File object directly
+                                  });
+                                }
+                              }}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Or upload an image file</p>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="md:col-span-2 text-sm text-gray-600 bg-blue-50 p-4 rounded-xl">
