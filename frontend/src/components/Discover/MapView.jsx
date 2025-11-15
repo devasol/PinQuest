@@ -745,6 +745,12 @@ const MapView = () => {
                                 if (mapRef.current) {
                                   mapRef.current.closePopup();
                                 }
+                                // Clear routing if it's showing directions to the current location
+                                if (showRouting) {
+                                  setShowRouting(false);
+                                  setRoutingStart(null);
+                                  setRoutingEnd(null);
+                                }
                               }}
                             >
                               Close
@@ -1036,8 +1042,6 @@ const MapView = () => {
               setShowRouting(false);
               setRoutingStart(null);
               setRoutingEnd(null);
-              // Also hide the stats that were shown when routing
-              setShowStatsWhenRouting(false);
             } else {
               // If not routing, toggle the regular stats panel
               setShowStats(!showStats);
