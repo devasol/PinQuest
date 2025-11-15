@@ -524,62 +524,86 @@ const MapView = () => {
     e.preventDefault();
 
     try {
-      // Create FormData object to properly handle file uploads
-      const postData = new FormData();
-      
-      // Append all fields to the FormData
-      postData.append('title', formData.title);
-      postData.append('description', formData.description);
-      postData.append('category', formData.category);
-      
-      // Handle image properly - if it's a URL string, send it as text; if it's a file, append as file
-      if (formData.image && typeof formData.image === 'string' && !formData.image.startsWith('http')) {
-        // This shouldn't happen as HTTP strings should be URLs, but just in case
-        postData.append('image', formData.image);
-      } else if (formData.image && typeof formData.image === 'string') {
-        // It's a URL string, so send it as a string field
-        postData.append('image', formData.image);
-      } else if (formData.image && formData.image instanceof File) {
-        // It's a file object, append it as a file
-        postData.append('image', formData.image, formData.image.name);
+      // Check if we have valid location data
+      if (!clickPosition || clickPosition.length !== 2 || 
+          typeof clickPosition[0] !== 'number' || typeof clickPosition[1] !== 'number' ||
+          isNaN(clickPosition[0]) || isNaN(clickPosition[1])) {
+        showNotification("Invalid location data. Please click on the map again.", 'error');
+        return;
       }
-      
-      // Add location as stringified JSON since FormData can't handle nested objects
-      postData.append('location', JSON.stringify({
-        latitude: parseFloat(clickPosition[0]),
-        longitude: parseFloat(clickPosition[1])
-      }));
 
-      // Prepare headers with fresh auth token (don't set Content-Type for FormData - browser will set it with boundary)
-      const headers = {};
-      
-      // Get fresh token to ensure it's not expired
-      const currentUser = auth.currentUser;
+      // Check if we have a valid token
       let token = localStorage.getItem('token');
       
-      if (currentUser && token) {
-        try {
-          // Get a fresh token to ensure it's not expired
-          const freshToken = await currentUser.getIdToken(true); // Force refresh
-          localStorage.setItem('token', freshToken);
-          token = freshToken;
-        } catch (error) {
-          console.error('Error refreshing token:', error);
-          // Fallback to stored token if refresh fails
+      if (!token) {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          try {
+            const freshToken = await currentUser.getIdToken(true); // Force refresh
+            localStorage.setItem('token', freshToken);
+            token = freshToken;
+          } catch (error) {
+            console.error('Error getting token:', error);
+          }
         }
       }
-      
-      // Add auth token if available (ensure it's properly trimmed)
-      if (token) {
-        const trimmedToken = token.trim();
-        headers['Authorization'] = `Bearer ${trimmedToken}`;
+
+      if (!token) {
+        showNotification("Authentication required. Please login.", 'error');
+        return;
+      }
+
+      // Create form data based on whether we have an image file or URL
+      let postData;
+      let isFormData = false;
+
+      // Check if the image is a file (for file upload) or a URL
+      if (formData.image && formData.image instanceof File) {
+        // Use FormData for file uploads
+        postData = new FormData();
+        postData.append('title', formData.title);
+        postData.append('description', formData.description);
+        postData.append('category', formData.category);
+        postData.append('image', formData.image, formData.image.name);
+        
+        // Properly format location as a nested object in FormData
+        postData.append('location[latitude]', parseFloat(clickPosition[0]));
+        postData.append('location[longitude]', parseFloat(clickPosition[1]));
+        
+        isFormData = true;
+      } else {
+        // Use regular JSON for no file or URL string
+        postData = {
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          location: {
+            latitude: parseFloat(clickPosition[0]),
+            longitude: parseFloat(clickPosition[1])
+          }
+        };
+
+        // Include image URL if it exists
+        if (formData.image && typeof formData.image === 'string') {
+          postData.image = formData.image;
+        }
+      }
+
+      // Prepare headers
+      const headers = {
+        'Authorization': `Bearer ${token.trim()}`
+      };
+
+      // Set content type only if not FormData
+      if (!isFormData) {
+        headers['Content-Type'] = 'application/json';
       }
 
       // Send the post to the backend
       const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
-        headers,
-        body: postData,
+        headers: headers,
+        body: isFormData ? postData : JSON.stringify(postData),
       });
 
       const result = await response.json();
@@ -592,7 +616,9 @@ const MapView = () => {
           title: formData.title,
           description: formData.description,
           image: result.data.image, // Use image from response
-          postedBy: result.data.postedBy.name, // Use the populated user name from the backend
+          postedBy: result.data.postedBy && typeof result.data.postedBy === 'object' 
+            ? result.data.postedBy.name 
+            : result.data.postedBy, 
           category: result.data.category || formData.category,
           datePosted: result.data.datePosted,
           type: "user-post",
@@ -1370,7 +1396,7 @@ const MapView = () => {
         )}
       </AnimatePresence>
       {/* Custom CSS */}
-      <style jsx global>{`
+      <style>{`
         .custom-popup .leaflet-popup-content-wrapper {
           border-radius: 16px;
           box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
