@@ -6,8 +6,41 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "../config/firebase";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+
 // Firebase authentication service
 export const firebaseAuthService = {
+  // Helper function to exchange Firebase token for backend JWT token
+  exchangeFirebaseToken: async (firebaseToken) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/firebase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ firebaseToken }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.status === 'success') {
+        return {
+          success: true,
+          user: data.data,
+          token: data.data.token
+        };
+      } else {
+        throw new Error(data.message || 'Token exchange failed');
+      }
+    } catch (error) {
+      console.error('Firebase token exchange error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
   // Login with email and password
   login: async (email, password) => {
     try {
@@ -18,19 +51,28 @@ export const firebaseAuthService = {
       
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
-      const idToken = await user.getIdToken();
+      const firebaseIdToken = await user.getIdToken();
       
-      // Return user info and token
-      return {
-        success: true,
-        user: {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-        },
-        token: idToken
-      };
+      // Exchange Firebase token for backend JWT token
+      const tokenExchangeResult = await firebaseAuthService.exchangeFirebaseToken(firebaseIdToken);
+      
+      if (tokenExchangeResult.success) {
+        return {
+          success: true,
+          user: {
+            _id: tokenExchangeResult.user._id,
+            uid: user.uid,
+            email: tokenExchangeResult.user.email,
+            name: tokenExchangeResult.user.name,
+            displayName: user.displayName,
+            photoURL: tokenExchangeResult.user.avatar?.url || user.photoURL,
+            isVerified: tokenExchangeResult.user.isVerified,
+          },
+          token: tokenExchangeResult.token
+        };
+      } else {
+        throw new Error(tokenExchangeResult.error || 'Failed to exchange token');
+      }
     } catch (error) {
       console.error('Firebase login error:', error);
       return {
@@ -61,18 +103,28 @@ export const firebaseAuthService = {
       // Wait for a brief moment to ensure the profile is updated before getting the token
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      const idToken = await user.getIdToken();
+      const firebaseIdToken = await user.getIdToken();
       
-      return {
-        success: true,
-        user: {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-        },
-        token: idToken
-      };
+      // Exchange Firebase token for backend JWT token
+      const tokenExchangeResult = await firebaseAuthService.exchangeFirebaseToken(firebaseIdToken);
+      
+      if (tokenExchangeResult.success) {
+        return {
+          success: true,
+          user: {
+            _id: tokenExchangeResult.user._id,
+            uid: user.uid,
+            email: tokenExchangeResult.user.email,
+            name: tokenExchangeResult.user.name,
+            displayName: user.displayName,
+            photoURL: tokenExchangeResult.user.avatar?.url || user.photoURL,
+            isVerified: tokenExchangeResult.user.isVerified,
+          },
+          token: tokenExchangeResult.token
+        };
+      } else {
+        throw new Error(tokenExchangeResult.error || 'Failed to exchange token');
+      }
     } catch (error) {
       console.error('Firebase signup error:', error);
       return {
@@ -92,18 +144,28 @@ export const firebaseAuthService = {
 
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      const idToken = await user.getIdToken();
+      const firebaseIdToken = await user.getIdToken();
       
-      return {
-        success: true,
-        user: {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-        },
-        token: idToken
-      };
+      // Exchange Firebase token for backend JWT token
+      const tokenExchangeResult = await firebaseAuthService.exchangeFirebaseToken(firebaseIdToken);
+      
+      if (tokenExchangeResult.success) {
+        return {
+          success: true,
+          user: {
+            _id: tokenExchangeResult.user._id,
+            uid: user.uid,
+            email: tokenExchangeResult.user.email,
+            name: tokenExchangeResult.user.name,
+            displayName: user.displayName,
+            photoURL: tokenExchangeResult.user.avatar?.url || user.photoURL,
+            isVerified: tokenExchangeResult.user.isVerified,
+          },
+          token: tokenExchangeResult.token
+        };
+      } else {
+        throw new Error(tokenExchangeResult.error || 'Failed to exchange token');
+      }
     } catch (error) {
       console.error('Firebase Google login error:', error);
       if (error.code === 'auth/popup-closed-by-user') {

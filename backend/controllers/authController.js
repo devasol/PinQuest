@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const logger = require('../utils/logger');
 const { uploadImageToCloudinary, deleteImageFromCloudinary } = require('../utils/mediaUtils');
+const generateTokenUtil = require('../utils/generateToken'); // Changed variable name to avoid conflicts
 
 const generateToken = (id) => {
   logger.debug('Generating token for user ID:', { userId: id });
@@ -277,10 +278,208 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// Note: Firebase Admin SDK is imported inside the firebaseAuthLogin function to avoid loading it unless needed
+
+// @desc    Firebase authentication - exchange Firebase token for backend JWT
+// @route   POST /api/v1/auth/firebase
+// @access  Public
+const firebaseAuthLogin = async (req, res) => {
+  try {
+    const { firebaseToken } = req.body;
+
+    if (!firebaseToken) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Firebase token is required',
+      });
+    }
+
+    logger.info('Firebase token exchange attempt');
+
+    // Import Firebase Admin SDK inside the function to avoid conflicts
+    const { initializeApp, cert } = require('firebase-admin/app');
+    const { getAuth } = require('firebase-admin/auth');
+
+    // Initialize Firebase Admin SDK if credentials are properly configured
+    let app;
+    let decodedToken;
+    let isVerifiedToken = false;
+    
+    // Check if we have the required Firebase credentials
+    if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL) {
+      try {
+        // Replace escaped newlines in the private key and ensure proper format
+        let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+        
+        // Handle different possible formats of the private key
+        if (typeof privateKey === 'string') {
+          // Replace escaped newlines with actual newlines
+          privateKey = privateKey.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+          
+          // Ensure the private key starts and ends correctly
+          if (!privateKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
+            privateKey = '-----BEGIN PRIVATE KEY-----\n' + privateKey;
+          }
+          if (!privateKey.endsWith('-----END PRIVATE KEY-----\n')) {
+            privateKey = privateKey + '\n-----END PRIVATE KEY-----\n';
+          }
+        }
+        
+        // Validate that the private key looks like a proper PEM format
+        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----') || !privateKey.includes('-----END PRIVATE KEY-----')) {
+          logger.error('Invalid Firebase private key format: key does not contain proper PEM boundaries');
+          return res.status(500).json({
+            status: 'error',
+            message: 'Server configuration error - Invalid Firebase private key format',
+          });
+        }
+        
+        // Check if app is already initialized
+        const firebaseApps = require('firebase-admin/app').getApps();
+        const existingApp = firebaseApps.find(app => app && app.name === 'firebase-auth');
+        
+        if (existingApp) {
+          app = existingApp;
+        } else {
+          app = initializeApp({
+            credential: cert({
+              projectId: process.env.FIREBASE_PROJECT_ID,
+              clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+              privateKey: privateKey,
+            })
+          }, 'firebase-auth'); // Use a specific name for the app instance
+        }
+        
+        // Verify the Firebase ID token properly using Firebase Admin SDK
+        const auth = getAuth(app);
+        decodedToken = await auth.verifyIdToken(firebaseToken);
+        logger.debug('Firebase token verified successfully', { 
+          userId: decodedToken.uid, 
+          email: decodedToken.email,
+          isEmailVerified: decodedToken.email_verified
+        });
+        isVerifiedToken = true;
+        
+      } catch (verificationError) {
+        logger.error('Firebase token verification failed:', verificationError.message);
+        return res.status(401).json({
+          status: 'fail',
+          message: 'Invalid or expired Firebase token',
+        });
+      }
+    } else {
+      // DEVELOPMENT FALLBACK: If Firebase credentials aren't configured, try to decode the token manually
+      // This is NOT secure and should only be used for development purposes
+      logger.warn('Firebase credentials not configured, using development fallback. THIS IS NOT SECURE FOR PRODUCTION!');
+      
+      try {
+        // In a real Firebase token, the payload is the second part of the JWT
+        // Split the token into parts and decode the payload
+        const tokenParts = firebaseToken.split('.');
+        if (tokenParts.length !== 3) {
+          throw new Error('Invalid token format');
+        }
+        
+        // Decode the payload (second part)
+        const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+        
+        // Basic validation for development purposes
+        if (!payload.uid || !payload.email) {
+          throw new Error('Token does not contain required fields (uid, email)');
+        }
+        
+        // For development, we'll accept this as verified if it has the basic fields
+        decodedToken = payload;
+        logger.debug('Firebase token decoded in development mode', { 
+          userId: decodedToken.uid, 
+          email: decodedToken.email,
+          isEmailVerified: decodedToken.email_verified
+        });
+        isVerifiedToken = false; // Mark as not verified since we didn't use proper Firebase verification
+      } catch (decodeError) {
+        logger.error('Firebase token decoding failed in development mode:', decodeError.message);
+        return res.status(401).json({
+          status: 'fail',
+          message: 'Invalid Firebase token format',
+        });
+      }
+    }
+
+    // Check if user exists in our database
+    let user = await User.findOne({ 
+      $or: [
+        { googleId: decodedToken.uid }, // For Google auth users
+        { email: decodedToken.email }   // For email/password users
+      ]
+    });
+
+    if (!user) {
+      // Create a new user if they don't exist
+      // For Google users, we'll create a random password since OAuth users don't have passwords
+      const userData = {
+        googleId: decodedToken.uid,
+        email: decodedToken.email,
+        name: decodedToken.name || decodedToken.email.split('@')[0] || decodedToken.uid,
+        avatar: decodedToken.picture ? { url: decodedToken.picture } : undefined,
+        isVerified: decodedToken.email_verified || isVerifiedToken
+      };
+      
+      // Since this is a Google/Firebase user (has googleId), we set a random password to satisfy schema requirements
+      // OAuth users won't actually use this password for authentication
+      if (decodedToken.uid) {
+        // Generate a random password for OAuth users (they won't use it)
+        const randomPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+        userData.password = randomPassword;
+      }
+      
+      user = await User.create(userData);
+      
+      logger.info('New user created from Firebase authentication', { 
+        userId: user._id, 
+        email: user.email 
+      });
+    }
+
+    // Generate backend JWT token using the utility function
+    const token = generateTokenUtil(user._id);
+
+    logger.info('Firebase token exchanged for backend JWT successfully', { 
+      userId: user._id, 
+      email: user.email 
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        isVerified: user.isVerified,
+        token: token,
+      },
+    });
+
+  } catch (error) {
+    logger.error('Error in Firebase authentication', { 
+      error: error.message, 
+      stack: error.stack,
+      code: error.code, 
+      name: error.name 
+    });
+    
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error during authentication',
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   logoutUser,
   getProfile,
   updateProfile,
+  firebaseAuthLogin,
 };

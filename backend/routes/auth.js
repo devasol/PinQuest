@@ -1,6 +1,6 @@
 const express = require('express');
 const passport = require('passport');
-const { registerUser, loginUser, logoutUser, getProfile, updateProfile } = require('../controllers/authController');
+const { registerUser, loginUser, logoutUser, getProfile, updateProfile, firebaseAuthLogin } = require('../controllers/authController');
 const { forgotPassword, resetPassword, updatePassword } = require('../controllers/passwordController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -13,6 +13,9 @@ router.route('/profile').get(protect, getProfile).put(protect, upload.single('av
 router.route('/forgot-password').post(forgotPassword);
 router.route('/reset-password/:resetToken').put(resetPassword);
 router.route('/update-password').put(protect, updatePassword);
+
+// Firebase authentication route to exchange Firebase token for backend JWT token
+router.route('/firebase').post(firebaseAuthLogin);
 
 // Google OAuth routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

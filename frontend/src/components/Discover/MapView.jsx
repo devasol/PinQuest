@@ -13,7 +13,9 @@ import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import L from "leaflet";
 import Header from "../Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { auth } from "../../config/firebase";
 import RoutingMachine from "./RoutingMachine";
+import NotificationModal from "../NotificationModal";
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
@@ -280,8 +282,23 @@ const MapView = () => {
           'Content-Type': 'application/json',
         };
         
+        // Get fresh token to ensure it's not expired
+        const currentUser = auth.currentUser;
+        let token = localStorage.getItem('token');
+        
+        if (currentUser && token) {
+          try {
+            // Get a fresh token to ensure it's not expired
+            const freshToken = await currentUser.getIdToken(true); // Force refresh
+            localStorage.setItem('token', freshToken);
+            token = freshToken;
+          } catch (error) {
+            console.error('Error refreshing token:', error);
+            // Fallback to stored token if refresh fails
+          }
+        }
+        
         // Add auth token if available
-        const token = localStorage.getItem('token');
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
@@ -360,7 +377,7 @@ const MapView = () => {
   // Function to get directions from user's current location to a post location
   const getDirections = (destinationPosition) => {
     if (!isAuthenticated) {
-      alert('Please login to get directions');
+      showNotification('Please login to get directions', 'warning');
       return;
     }
     
@@ -398,7 +415,24 @@ const MapView = () => {
         },
         (error) => {
           console.error("Error getting user location for directions:", error);
-          alert("Could not get your location for directions. Please enable location services and try again.");
+          let errorMessage = "Could not get your location for directions. Please enable location services and try again.";
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Location access denied. Please enable location services in your browser settings.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable.";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "The request to get your location timed out.";
+              break;
+            default:
+              errorMessage = "An unknown error occurred while getting your location.";
+              break;
+          }
+          
+          showNotification(errorMessage, 'error');
         },
         {
           enableHighAccuracy: true,
@@ -407,7 +441,7 @@ const MapView = () => {
         }
       );
     } else {
-      alert("Geolocation is not supported by this browser. Please use a different browser to get directions.");
+      showNotification("Geolocation is not supported by this browser. Please use a different browser to get directions.", 'error');
     }
   };
 
@@ -438,6 +472,27 @@ const MapView = () => {
   );
 
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [notification, setNotification] = useState({
+    show: false,
+    message: '',
+    type: 'info' // 'success', 'error', 'info', 'warning'
+  });
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({
+      show: true,
+      message,
+      type
+    });
+  };
+
+  const hideNotification = () => {
+    setNotification({
+      show: false,
+      message: '',
+      type: 'info'
+    });
+  };
 
   const handleMapClick = (e) => {
     if (!isAuthenticated) {
@@ -495,11 +550,26 @@ const MapView = () => {
         longitude: parseFloat(clickPosition[1])
       }));
 
-      // Prepare headers with auth token (don't set Content-Type for FormData - browser will set it with boundary)
+      // Prepare headers with fresh auth token (don't set Content-Type for FormData - browser will set it with boundary)
       const headers = {};
       
+      // Get fresh token to ensure it's not expired
+      const currentUser = auth.currentUser;
+      let token = localStorage.getItem('token');
+      
+      if (currentUser && token) {
+        try {
+          // Get a fresh token to ensure it's not expired
+          const freshToken = await currentUser.getIdToken(true); // Force refresh
+          localStorage.setItem('token', freshToken);
+          token = freshToken;
+        } catch (error) {
+          console.error('Error refreshing token:', error);
+          // Fallback to stored token if refresh fails
+        }
+      }
+      
       // Add auth token if available (ensure it's properly trimmed)
-      const token = localStorage.getItem('token');
       if (token) {
         const trimmedToken = token.trim();
         headers['Authorization'] = `Bearer ${trimmedToken}`;
@@ -530,7 +600,7 @@ const MapView = () => {
         
         setUserPosts(prevPosts => [...prevPosts, newPost]);
         
-        alert("Post created successfully!");
+        showNotification("Post created successfully!", 'success');
         setShowPostForm(false);
         setClickPosition(null);
         setFormData({
@@ -541,11 +611,11 @@ const MapView = () => {
         });
       } else {
         console.error("Error creating post:", result.message);
-        alert("Error creating post: " + result.message);
+        showNotification("Error creating post: " + result.message, 'error');
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Error creating post. Please try again.");
+      showNotification("Error creating post. Please try again.", 'error');
     }
   };
 
@@ -1351,6 +1421,15 @@ const MapView = () => {
           }
         }
       `}</style>
+      
+      {/* Notification Modal */}
+      <NotificationModal
+        show={notification.show}
+        onClose={hideNotification}
+        message={notification.message}
+        type={notification.type}
+        autoClose={notification.type === 'error' ? 0 : 5000} // Don't auto-close error messages
+      />
     </div>
   );
 };

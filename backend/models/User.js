@@ -11,7 +11,10 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function() {
+      // Password is required only if googleId is not present (i.e., not a Google user)
+      return !this.googleId;
+    },
     minlength: [6, 'Password must be at least 6 characters long'],
     select: false // Don't include password in queries by default
   },

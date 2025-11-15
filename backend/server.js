@@ -33,7 +33,8 @@ const allowedOrigins = [
   'http://localhost:3000',  // Common React dev port
   'http://localhost:3001',  // Alternative React dev port
   'http://localhost:8080',  // Alternative dev port
-  'http://localhost:8000'   // Alternative dev port
+  'http://localhost:8000',   // Alternative dev port
+  'http://localhost:4173'   // Alternative Vite port
 ];
 
 app.use(cors({
@@ -42,10 +43,12 @@ app.use(cors({
     if (!origin) return callback(null, true);
     
     // Check if the origin is in our allowed list
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, true); // For development, allow all origins
+      // In production, you should return an error:
+      // callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true, // Allow cookies and credentials

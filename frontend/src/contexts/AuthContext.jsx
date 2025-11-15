@@ -37,12 +37,19 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const data = await authService.login({ email, password });
+      const data = await authService.login(email, password);
       if (data.success) {
         // Store token and user data
         localStorage.setItem('token', data.token);
-        localStorage.setItem('firebaseUser', JSON.stringify(data.user));
-        setUser(data.user);
+        // Store user info in a simpler format
+        const userInfo = {
+          _id: data.user._id,
+          email: data.user.email,
+          name: data.user.name,
+          isVerified: data.user.isVerified
+        };
+        localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
+        setUser(userInfo);
         setIsAuthenticated(true);
         return { success: true, data };
       } else {
@@ -55,12 +62,19 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (userData) => {
     try {
-      const data = await authService.signup(userData);
+      const data = await authService.signup(userData.email, userData.password, userData.name);
       if (data.success) {
         // Store token and user data
         localStorage.setItem('token', data.token);
-        localStorage.setItem('firebaseUser', JSON.stringify(data.user));
-        setUser(data.user);
+        // Store user info in a simpler format
+        const userInfo = {
+          _id: data.user._id,
+          email: data.user.email,
+          name: data.user.name,
+          isVerified: data.user.isVerified
+        };
+        localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
+        setUser(userInfo);
         setIsAuthenticated(true);
         return { success: true, data };
       } else {
@@ -80,6 +94,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
     } catch (error) {
       console.error('Error during logout:', error);
+      // Even if the API call fails, still clear local storage
       localStorage.removeItem('token');
       localStorage.removeItem('firebaseUser');
       setUser(null);
@@ -89,12 +104,19 @@ export const AuthProvider = ({ children }) => {
 
   const handleGoogleLogin = async () => {
     try {
+      // Google login must continue to use Firebase OAuth
       const data = await authService.googleLogin();
       if (data.success) {
-        // Store token and user data
+        // Store token and user data after successful Google login
         localStorage.setItem('token', data.token);
-        localStorage.setItem('firebaseUser', JSON.stringify(data.user));
-        setUser(data.user);
+        const userInfo = {
+          _id: data.user._id,
+          email: data.user.email,
+          name: data.user.name,
+          isVerified: data.user.isVerified
+        };
+        localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
+        setUser(userInfo);
         setIsAuthenticated(true);
         return { success: true, data };
       } else {

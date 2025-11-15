@@ -1,7 +1,38 @@
 import { firebaseAuthService } from './firebaseAuth.js';
+import { directAuthApi } from './authApi.js';
+import { auth } from '../config/firebase'; // Import auth for current user access
 
 // API service for authentication
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+
+// Helper function to get a fresh Firebase token
+const getFreshToken = async () => {
+  try {
+    // Get the current Firebase user from localStorage
+    const firebaseUserStr = localStorage.getItem('firebaseUser');
+    if (!firebaseUserStr) {
+      return null;
+    }
+    
+    const firebaseUser = JSON.parse(firebaseUserStr);
+    const userId = firebaseUser.uid;
+    
+    // Get the current user from Firebase auth to ensure we have an up-to-date token
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.uid === userId) {
+      // Get a fresh token (this refreshes if needed)
+      const freshToken = await currentUser.getIdToken(true); // Force refresh
+      localStorage.setItem('token', freshToken);
+      return freshToken;
+    } else {
+      // If current user doesn't match stored user, use the stored token
+      return localStorage.getItem('token');
+    }
+  } catch (error) {
+    console.error('Error refreshing Firebase token:', error);
+    return localStorage.getItem('token'); // Fallback to stored token
+  }
+};
 
 // Create a base configuration for fetch requests
 const apiRequest = async (endpoint, options = {}) => {
@@ -14,7 +45,13 @@ const apiRequest = async (endpoint, options = {}) => {
   };
 
   // Add token to headers if available (ensure it's properly trimmed)
-  const token = localStorage.getItem('token');
+  let token = localStorage.getItem('token');
+  if (token && !options.skipAuth) {
+    // Try to get a fresh token if authentication is required
+    const freshToken = await getFreshToken();
+    token = freshToken || token; // Use fresh token if available, otherwise use stored
+  }
+
   if (token && !options.skipAuth) {
     const trimmedToken = token.trim();
     config.headers['Authorization'] = `Bearer ${trimmedToken}`;
@@ -59,57 +96,52 @@ const apiRequest = async (endpoint, options = {}) => {
 };
 
 export const authService = {
-  // Signup user with Firebase
-  signup: async (userData) => {
-    // Normalize the userData to make sure it has the expected structure
-    const email = userData.email;
-    const password = userData.password;
-    const name = userData.name || userData.displayName;
-    
-    return firebaseAuthService.signup(email, password, name);
+  // Direct signup with backend
+  signup: async (email, password, name) => {
+    return directAuthApi.signup({ email, password, name });
   },
 
-  // Login user with Firebase
+  // Direct login with backend
   login: async (email, password) => {
-    // Handle both single object parameter and separate email/password parameters
-    let emailParam, passwordParam;
-    if (typeof email === 'object' && email.email && email.password) {
-      // If email is an object with email and password properties
-      emailParam = email.email;
-      passwordParam = email.password;
-    } else {
-      // If email and password are separate parameters
-      emailParam = email;
-      passwordParam = password;
-    }
-    
-    return firebaseAuthService.login(emailParam, passwordParam);
+    return directAuthApi.login(email, password);
   },
 
-  // Google login with Firebase
+  // Google login with Firebase (must continue to use Firebase for OAuth)
   googleLogin: async () => {
     return firebaseAuthService.googleLogin();
   },
 
-  // Get current user profile from your backend (you may need to implement this endpoint)
+  // Get current user profile from your backend
   getProfile: async () => {
-    // This would typically call your backend API to get user profile
-    // For now, we'll return the Firebase user data that's stored
     const token = localStorage.getItem('token');
-    if (token) {
-      // In a real backend scenario, you'd make an API call to your backend
-      // that verifies the Firebase token and returns user profile data
-      return { 
-        user: JSON.parse(localStorage.getItem('firebaseUser') || '{}') 
-      };
-    } else {
+    if (!token) {
       throw new Error('No authentication token found');
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch profile');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      throw error;
     }
   },
 
   // Logout user
   logout: async () => {
-    return firebaseAuthService.logout();
+    return directAuthApi.logout();
   },
 
   // Health check to see if API is accessible
@@ -124,5 +156,10 @@ export const authService = {
       console.error('Health check error:', error);
       throw error;
     }
+  },
+
+  // Google login - this must continue to use Firebase for OAuth
+  googleLogin: async () => {
+    return firebaseAuthService.googleLogin();
   },
 };

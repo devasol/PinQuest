@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const dbConnect = async () => {
   try {
-    const db = process.env.MONGODB_URI || "mongodb://localhost:27017/pin_quest";
+    const db = process.env.MONGODB_URL || process.env.MONGODB_URI || "mongodb://localhost:27017/pin_quest";
     
     // Add connection options for better handling
     const conn = await mongoose.connect(db, {
