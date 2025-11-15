@@ -167,6 +167,77 @@ function Geocoder({ searchQuery, setSearchQuery, mapRef, setSuggestions, suggest
   );
 }
 
+// Custom hook for drag functionality
+const useDraggable = (initialPosition = { x: 0, y: 0 }) => {
+  const [position, setPosition] = useState(initialPosition);
+  const [isDragging, setIsDragging] = useState(false);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
+
+  const handleTouchStart = (e) => {
+    setIsDragging(true);
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    setOffset({
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging) return;
+
+      setPosition({
+        x: e.clientX - offset.x,
+        y: e.clientY - offset.y
+      });
+    };
+
+    const handleTouchMove = (e) => {
+      if (!isDragging) return;
+      const touch = e.touches[0];
+
+      setPosition({
+        x: touch.clientX - offset.x,
+        y: touch.clientY - offset.y
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    const handleTouchEnd = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchend', handleTouchEnd);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, offset]);
+
+  return { position, isDragging, handleMouseDown, handleTouchStart };
+};
+
 const MapView = () => {
   const { isAuthenticated, user } = useAuth();
   const [activePopup, setActivePopup] = useState(null);
@@ -194,6 +265,10 @@ const MapView = () => {
   const [routingEnd, setRoutingEnd] = useState(null);
   const [showRouting, setShowRouting] = useState(false);
   const [travelMode, setTravelMode] = useState('driving'); // 'driving' or 'walking'
+  
+  // Draggable positions for UI elements
+  const statsPanelDrag = useDraggable({ x: 24, y: 80 }); // Initial position for stats panel (top-right)
+  const sidebarDrag = useDraggable({ x: 24, y: 80 }); // Initial position for sidebar (top-left)
 
 
   // Fetch posts from the backend API
@@ -661,14 +736,6 @@ const MapView = () => {
                             <button 
                               className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 font-medium"
                               onClick={() => {
-                                // Close the routing if showing directions to this location
-                                if (routingEnd && 
-                                    Math.abs(routingEnd[0] - location.position[0]) < 0.0001 && 
-                                    Math.abs(routingEnd[1] - location.position[1]) < 0.0001) {
-                                  setShowRouting(false);
-                                  setRoutingStart(null);
-                                  setRoutingEnd(null);
-                                }
                                 // Close popup
                                 if (mapRef.current) {
                                   mapRef.current.closePopup();
@@ -767,13 +834,21 @@ const MapView = () => {
             </motion.div>
           )}
         </div>
-        {/* Toggle Sidebar Button */}
+        {/* Toggle Sidebar Button - different behavior when routing is active */}
         <motion.button
           className="absolute top-6 left-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.8 }}
-          onClick={() => setShowSidebar(!showSidebar)}
+          onClick={() => {
+            if (showRouting) {
+              // When routing is active, toggle showSidebarWhenRouting
+              setShowSidebarWhenRouting(!showSidebarWhenRouting);
+            } else {
+              // When not routing, toggle the regular sidebar
+              setShowSidebar(!showSidebar);
+            }
+          }}
         >
           <svg
             className="w-6 h-6 text-gray-700"
@@ -789,15 +864,21 @@ const MapView = () => {
             />
           </svg>
         </motion.button>
-        {/* Collapsible Sidebar */}
+        {/* Collapsible Sidebar - Custom Draggable */}
         <AnimatePresence>
           {showSidebar && (
             <motion.div
-              className="absolute top-20 left-6 z-[1000] w-80 max-h-[70vh] overflow-hidden"
+              className="fixed z-[1000] w-80 max-h-[70vh] overflow-hidden cursor-move"
+              style={{
+                left: `${sidebarDrag.position.x}px`,
+                top: `${sidebarDrag.position.y}px`,
+              }}
               initial={{ opacity: 0, x: -300 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -300 }}
               transition={{ type: "spring", damping: 25 }}
+              onMouseDown={sidebarDrag.handleMouseDown}
+              onTouchStart={sidebarDrag.handleTouchStart}
             >
               <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/30">
                 <div className="p-6">
@@ -874,17 +955,23 @@ const MapView = () => {
             </motion.div>
           )}
         </AnimatePresence>
-        {/* Stats Panel - Top Right */}
+        {/* Stats Panel - Custom Draggable */}
         <AnimatePresence>
           {showStats && (
             <motion.div
-              className="absolute top-20 right-6 z-[1000]"
+              className="fixed z-[1000] cursor-move"
+              style={{
+                left: `${statsPanelDrag.position.x}px`,
+                top: `${statsPanelDrag.position.y}px`,
+              }}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ delay: 1 }}
+              onMouseDown={statsPanelDrag.handleMouseDown}
+              onTouchStart={statsPanelDrag.handleTouchStart}
             >
-              <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/30 p-6">
+              <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/30 p-6 min-w-[240px]">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600 mb-1">
@@ -930,27 +1017,57 @@ const MapView = () => {
             </p>
           </div>
         </motion.div>
-        {/* Toggle Stats Button */}
+        {/* Toggle Stats Button or Clear Route Button when routing is active */}
         <motion.button
-          className="absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300"
+          className={`absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300 ${
+            showRouting ? 'bg-red-500 hover:bg-red-600' : ''
+          }`}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 1 }}
-          onClick={() => setShowStats(!showStats)}
+          onClick={() => {
+            if (showRouting) {
+              // If routing is active, clear the route
+              setShowRouting(false);
+              setRoutingStart(null);
+              setRoutingEnd(null);
+              // Also hide the stats that were shown when routing
+              setShowStatsWhenRouting(false);
+            } else {
+              // If not routing, toggle the regular stats panel
+              setShowStats(!showStats);
+            }
+          }}
         >
-          <svg
-            className="w-6 h-6 text-gray-700"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-            />
-          </svg>
+          {showRouting ? (
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="w-6 h-6 text-gray-700"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              />
+            </svg>
+          )}
         </motion.button>
       </div>
       {/* Post Creation Form Modal */}
