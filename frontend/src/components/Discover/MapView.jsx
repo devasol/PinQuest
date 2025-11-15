@@ -268,6 +268,42 @@ const MapView = () => {
   const [showRouting, setShowRouting] = useState(false);
   const [travelMode, setTravelMode] = useState('driving'); // 'driving' or 'walking'
   
+  // Map layout state
+  const [mapLayout, setMapLayout] = useState(() => {
+    // Try to get saved preference from localStorage
+    const savedLayout = localStorage.getItem('mapLayout');
+    return savedLayout || 'default'; // Default to 'default' if no preference saved
+  });
+  
+  // Map layout options
+  const mapLayouts = {
+    default: {
+      name: 'Default',
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+    },
+    satellite: {
+      name: 'Satellite',
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    },
+    terrain: {
+      name: 'Terrain',
+      url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+    },
+    dark: {
+      name: 'Dark',
+      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+    },
+    light: {
+      name: 'Light',
+      url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+    }
+  };
+  
   // Draggable positions for UI elements
   const statsPanelDrag = useDraggable({ x: 24, y: 80 }); // Initial position for stats panel (top-right)
   const sidebarDrag = useDraggable({ x: 24, y: 80 }); // Initial position for sidebar (top-left)
@@ -751,8 +787,8 @@ const MapView = () => {
           className="absolute inset-0"
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution={mapLayouts[mapLayout].attribution}
+            url={mapLayouts[mapLayout].url}
           />
 
           <MapClickHandler onMapClick={handleMapClick} />
@@ -1170,6 +1206,54 @@ const MapView = () => {
             </p>
           </div>
         </motion.div>
+        {/* Map Layout Selector */}
+        <div className="absolute top-6 right-32 z-[1000]">
+          <div className="relative group">
+            <motion.button
+              className="bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.9 }}
+            >
+              <svg
+                className="w-6 h-6 text-gray-700"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276a1 1 0 001.447-.894V5.618a1 1 0 00-1.447-.894L15 7m0 13v-3m0-4H9m4 0V9m0 0H9m4 0v4m0 4h.01"
+                />
+              </svg>
+            </motion.button>
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white/95 backdrop-blur-lg rounded-xl shadow-2xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 overflow-hidden">
+              <div className="p-2">
+                <p className="px-3 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">Map Layout</p>
+                {Object.entries(mapLayouts).map(([key, layout]) => (
+                  <button
+                    key={key}
+                    className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+                      mapLayout === key 
+                        ? 'bg-blue-100 text-blue-700 font-medium' 
+                        : 'hover:bg-gray-100 text-gray-700'
+                    }`}
+                    onClick={() => {
+                      setMapLayout(key);
+                      // Save preference to localStorage
+                      localStorage.setItem('mapLayout', key);
+                    }}
+                  >
+                    {layout.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        
         {/* Toggle Stats Button or Clear Route Button when routing is active */}
         <motion.button
           className={`absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300 ${
