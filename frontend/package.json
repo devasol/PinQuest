@@ -14,10 +14,12 @@
     "firebase": "^12.5.0",
     "framer-motion": "^12.23.24",
     "leaflet": "^1.9.4",
+    "leaflet-routing-machine": "^3.2.12",
     "lucide-react": "^0.548.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-leaflet": "^5.0.0",
+    "react-leaflet-routing-machine": "^0.0.5",
     "react-router-dom": "^7.9.4",
     "tailwindcss": "^4.1.16"
   },

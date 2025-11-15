@@ -9,9 +9,11 @@ import {
 } from "react-leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import "leaflet/dist/leaflet.css";
+import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import L from "leaflet";
 import Header from "../Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import RoutingMachine from "./RoutingMachine";
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
@@ -188,7 +190,10 @@ const MapView = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [filterMine, setFilterMine] = useState(false); // New state for filtering user's posts
   const mapRef = useRef();
-
+  const [routingStart, setRoutingStart] = useState(null);
+  const [routingEnd, setRoutingEnd] = useState(null);
+  const [showRouting, setShowRouting] = useState(false);
+  const [travelMode, setTravelMode] = useState('driving'); // 'driving' or 'walking'
 
 
   // Fetch posts from the backend API
@@ -276,6 +281,68 @@ const MapView = () => {
     fetchPosts();
     getUserLocation();
   }, []);
+
+  // Function to get directions from user's current location to a post location
+  const getDirections = (destinationPosition) => {
+    if (!isAuthenticated) {
+      alert('Please login to get directions');
+      return;
+    }
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const startPosition = [latitude, longitude];
+          
+          setRoutingStart(startPosition);
+          setRoutingEnd(destinationPosition);
+          setShowRouting(true);
+          
+          // Close any active popup
+          setActivePopup(null);
+          
+          // Fly to the route area
+          if (mapRef.current) {
+            // Calculate center point between start and end
+            const centerLat = (startPosition[0] + destinationPosition[0]) / 2;
+            const centerLng = (startPosition[1] + destinationPosition[1]) / 2;
+            const center = [centerLat, centerLng];
+            
+            // Determine appropriate zoom level based on distance
+            const distance = calculateDistance(startPosition[0], startPosition[1], destinationPosition[0], destinationPosition[1]);
+            const zoom = distance < 1 ? 14 : distance < 5 ? 12 : distance < 20 ? 10 : 8;
+            
+            mapRef.current.flyTo(center, zoom);
+          }
+        },
+        (error) => {
+          console.error("Error getting user location for directions:", error);
+          alert("Could not get your location for directions. Please enable location services and try again.");
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by this browser. Please use a different browser to get directions.");
+    }
+  };
+
+  // Helper function to calculate distance between two points (in km)
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2); 
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    return R * c; // Distance in km
+  };
 
   // All locations are now from the database
   const allLocations = userPosts;
@@ -478,6 +545,16 @@ const MapView = () => {
           <MapClickHandler onMapClick={handleMapClick} />
           <MapRefHandler mapRef={mapRef} />
 
+          {/* Routing Machine Component */}
+          {showRouting && routingStart && routingEnd && (
+            <RoutingMachine 
+              start={routingStart} 
+              end={routingEnd} 
+              isVisible={showRouting} 
+              travelMode={travelMode}
+            />
+          )}
+
           {filteredLocations.map((location) => {
             // Check if location.position is valid before creating the marker
             if (!location.position || !Array.isArray(location.position) || 
@@ -501,7 +578,9 @@ const MapView = () => {
                 <Popup
                   className="custom-popup"
                   onOpen={() => setActivePopup(location.id)}
-                  onClose={() => setActivePopup(null)}
+                  onClose={() => {
+                    setActivePopup(null);
+                  }}
                 >
                   <div className="p-6 min-w-[400px] max-w-[500px]">
                     {location.image && (
@@ -538,9 +617,74 @@ const MapView = () => {
                         </span>
                       </div>
                     </div>
-                    <button className="mt-6 w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors duration-300 font-medium">
-                      View Details
-                    </button>
+                    <div className="mt-4">
+                      {isAuthenticated ? (
+                        <div className="space-y-3">
+                          <div className="flex space-x-2">
+                            <button
+                              className={`flex-1 py-2 px-3 rounded-lg font-medium transition-colors duration-300 ${
+                                travelMode === 'driving' 
+                                  ? 'bg-blue-500 text-white' 
+                                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTravelMode('driving');
+                              }}
+                            >
+                              Driving
+                            </button>
+                            <button
+                              className={`flex-1 py-2 px-3 rounded-lg font-medium transition-colors duration-300 ${
+                                travelMode === 'walking' 
+                                  ? 'bg-blue-500 text-white' 
+                                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTravelMode('walking');
+                              }}
+                            >
+                              Walking
+                            </button>
+                          </div>
+                          <div className="flex space-x-3">
+                            <button 
+                              className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors duration-300 font-medium"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent popup from closing
+                                getDirections(location.position);
+                              }}
+                            >
+                              Get Directions
+                            </button>
+                            <button 
+                              className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 font-medium"
+                              onClick={() => {
+                                // Close the routing if showing directions to this location
+                                if (routingEnd && 
+                                    Math.abs(routingEnd[0] - location.position[0]) < 0.0001 && 
+                                    Math.abs(routingEnd[1] - location.position[1]) < 0.0001) {
+                                  setShowRouting(false);
+                                  setRoutingStart(null);
+                                  setRoutingEnd(null);
+                                }
+                                // Close popup
+                                if (mapRef.current) {
+                                  mapRef.current.closePopup();
+                                }
+                              }}
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button className="w-full bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 font-medium">
+                          View Details
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </Popup>
               </Marker>
