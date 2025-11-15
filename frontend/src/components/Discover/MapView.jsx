@@ -370,26 +370,31 @@ const MapView = () => {
           const { latitude, longitude } = position.coords;
           const startPosition = [latitude, longitude];
           
-          setRoutingStart(startPosition);
-          setRoutingEnd(destinationPosition);
-          setShowRouting(true);
-          
-          // Close any active popup
-          setActivePopup(null);
-          
-          // Fly to the route area
-          if (mapRef.current) {
-            // Calculate center point between start and end
-            const centerLat = (startPosition[0] + destinationPosition[0]) / 2;
-            const centerLng = (startPosition[1] + destinationPosition[1]) / 2;
-            const center = [centerLat, centerLng];
+          // Clear previous routing before setting new one
+          setRoutingStart(null);
+          setRoutingEnd(null);
+          setTimeout(() => {
+            setRoutingStart(startPosition);
+            setRoutingEnd(destinationPosition);
+            setShowRouting(true);
             
-            // Determine appropriate zoom level based on distance
-            const distance = calculateDistance(startPosition[0], startPosition[1], destinationPosition[0], destinationPosition[1]);
-            const zoom = distance < 1 ? 14 : distance < 5 ? 12 : distance < 20 ? 10 : 8;
+            // Close any active popup
+            setActivePopup(null);
             
-            mapRef.current.flyTo(center, zoom);
-          }
+            // Fly to the route area
+            if (mapRef.current) {
+              // Calculate center point between start and end
+              const centerLat = (startPosition[0] + destinationPosition[0]) / 2;
+              const centerLng = (startPosition[1] + destinationPosition[1]) / 2;
+              const center = [centerLat, centerLng];
+              
+              // Determine appropriate zoom level based on distance
+              const distance = calculateDistance(startPosition[0], startPosition[1], destinationPosition[0], destinationPosition[1]);
+              const zoom = distance < 1 ? 14 : distance < 5 ? 12 : distance < 20 ? 10 : 8;
+              
+              mapRef.current.flyTo(center, zoom);
+            }
+          }, 100); // Small delay to ensure proper cleanup
         },
         (error) => {
           console.error("Error getting user location for directions:", error);
