@@ -1373,9 +1373,18 @@ const MapView = () => {
                             </motion.div>
                           ))
                         ) : (
-                          <div className="text-center py-8 text-gray-500">
-                            <p>No matching posts found</p>
-                            <p className="text-sm mt-2">Try a different search term</p>
+                          <div className="text-center py-8">
+                            {filterMine && isAuthenticated ? (
+                              <div className="text-gray-500">
+                                <p className="text-lg">You haven't posted anything yet</p>
+                                <p className="text-sm mt-2 text-gray-400">Start by clicking anywhere on the map to create your first post!</p>
+                              </div>
+                            ) : (
+                              <div className="text-gray-500">
+                                <p>No matching posts found</p>
+                                <p className="text-sm mt-2">Try a different search term</p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </AnimatePresence>
