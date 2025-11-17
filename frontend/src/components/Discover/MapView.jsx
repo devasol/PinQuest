@@ -255,7 +255,7 @@ const MapView = () => {
     category: "general",
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState([51.505, -0.09]);
+  const [userLocation, setUserLocation] = useState(null); // Initialize as null to indicate no location yet
   const [hasUserLocation, setHasUserLocation] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
   const [showStats, setShowStats] = useState(true);
@@ -272,13 +272,13 @@ const MapView = () => {
   const [mapLayout, setMapLayout] = useState(() => {
     // Try to get saved preference from localStorage
     const savedLayout = localStorage.getItem('mapLayout');
-    return savedLayout || 'default'; // Default to 'default' if no preference saved
+    return savedLayout || 'labels'; // Default to 'labels' if no preference saved
   });
   
   // Map layout options
   const mapLayouts = {
     default: {
-      name: 'Default',
+      name: 'Streets',
       url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
     },
@@ -300,6 +300,12 @@ const MapView = () => {
     light: {
       name: 'Light',
       url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+    },
+    // New layout with enhanced labeling
+    labels: {
+      name: 'Labels',
+      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
     }
   };
@@ -378,28 +384,67 @@ const MapView = () => {
       }
     };
 
-    const getUserLocation = () => {
+    // Get user location with improved accuracy
+    const watchUserLocation = () => {
       if (navigator.geolocation) {
+        // First, get a high accuracy position
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            const { latitude, longitude } = position.coords;
+            const { latitude, longitude, accuracy } = position.coords;
             setUserLocation([latitude, longitude]);
             setHasUserLocation(true);
+            console.log(`Initial location: ${latitude}, ${longitude} with accuracy: ${accuracy} meters`);
 
             if (mapRef.current) {
               mapRef.current.flyTo([latitude, longitude], 15);
             }
           },
           (error) => {
-            console.error("Error getting user location:", error);
+            console.error("Error getting initial user location:", error);
             setHasUserLocation(false);
           },
           {
             enableHighAccuracy: true,
-            timeout: 10000,
+            timeout: 15000,
             maximumAge: 0,
           }
         );
+
+        // Set up continuous location watching for more accurate positioning
+        const watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            const { latitude, longitude, accuracy, timestamp } = position.coords;
+            
+            // Only update if the new position is more accurate than the current one
+            // or if it's the first update after initial positioning
+            if (!userLocation || accuracy < 50) { // Update if accuracy is better than 50 meters
+              setUserLocation([latitude, longitude]);
+              setHasUserLocation(true);
+              console.log(`Updated location: ${latitude}, ${longitude} with accuracy: ${accuracy} meters at ${new Date(timestamp).toLocaleTimeString()}`);
+              
+              // Optionally fly to new location if it's significantly more accurate
+              if (accuracy < 30 && mapRef.current) { // Only fly to location if accuracy is better than 30 meters
+                mapRef.current.flyTo([latitude, longitude], 15, {
+                  animate: true
+                });
+              }
+            }
+          },
+          (error) => {
+            console.error("Error watching user location:", error);
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 10000, // Accept cached positions up to 10 seconds old
+            timeout: 20000,    // Wait up to 20 seconds for a position
+            distanceFilter: 5  // Update only when user moves at least 5 meters
+          }
+        );
+
+        // Clean up the watch when component unmounts
+        return () => {
+          navigator.geolocation.clearWatch(watchId);
+        };
       } else {
         console.log("Geolocation is not supported by this browser.");
         setHasUserLocation(false);
@@ -407,7 +452,7 @@ const MapView = () => {
     };
 
     fetchPosts();
-    getUserLocation();
+    watchUserLocation();
   }, []);
 
   // Function to get directions from user's current location to a post location
@@ -418,16 +463,20 @@ const MapView = () => {
     }
     
     if (navigator.geolocation) {
+      // Use high accuracy to get the most precise location for directions
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
+          const { latitude, longitude, accuracy } = position.coords;
           const startPosition = [latitude, longitude];
+          console.log(`Direction start location: ${latitude}, ${longitude} with accuracy: ${accuracy} meters`);
+          
+          const updatedStartPosition = [latitude, longitude];
           
           // Clear previous routing before setting new one
           setRoutingStart(null);
           setRoutingEnd(null);
           setTimeout(() => {
-            setRoutingStart(startPosition);
+            setRoutingStart(updatedStartPosition);
             setRoutingEnd(destinationPosition);
             setShowRouting(true);
             
@@ -437,12 +486,12 @@ const MapView = () => {
             // Fly to the route area
             if (mapRef.current) {
               // Calculate center point between start and end
-              const centerLat = (startPosition[0] + destinationPosition[0]) / 2;
-              const centerLng = (startPosition[1] + destinationPosition[1]) / 2;
+              const centerLat = (updatedStartPosition[0] + destinationPosition[0]) / 2;
+              const centerLng = (updatedStartPosition[1] + destinationPosition[1]) / 2;
               const center = [centerLat, centerLng];
               
               // Determine appropriate zoom level based on distance
-              const distance = calculateDistance(startPosition[0], startPosition[1], destinationPosition[0], destinationPosition[1]);
+              const distance = calculateDistance(updatedStartPosition[0], updatedStartPosition[1], destinationPosition[0], destinationPosition[1]);
               const zoom = distance < 1 ? 14 : distance < 5 ? 12 : distance < 20 ? 10 : 8;
               
               mapRef.current.flyTo(center, zoom);
@@ -472,7 +521,7 @@ const MapView = () => {
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 20000, // Increased timeout for more accurate positioning
           maximumAge: 0,
         }
       );
@@ -781,12 +830,13 @@ const MapView = () => {
         
         {/* Map */}
         <MapContainer
-          center={userLocation}
-          zoom={13}
+          center={userLocation || [20, 0]} // Default to world view until location is acquired
+          zoom={userLocation ? 15 : 2}
           style={{ height: "100%", width: "100%" }}
           className="absolute inset-0"
         >
           <TileLayer
+            key={mapLayout} // This ensures the TileLayer re-renders when layout changes
             attribution={mapLayouts[mapLayout].attribution}
             url={mapLayouts[mapLayout].url}
           />
@@ -948,7 +998,7 @@ const MapView = () => {
           })}
 
           {/* User Location Marker */}
-          {hasUserLocation && (
+          {hasUserLocation && userLocation && (
             <Marker
               key="user-location"
               position={userLocation}
