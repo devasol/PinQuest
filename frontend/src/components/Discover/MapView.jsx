@@ -1301,22 +1301,20 @@ const MapView = () => {
                   </div>
                   
                   {isAuthenticated && (
-                    <div>
+                    <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
+                      <span>Show Only My Posts</span>
                       <button
-                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-                          filterMine 
-                            ? 'bg-purple-100 text-purple-700 font-medium' 
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                          filterMine ? 'bg-blue-500' : 'bg-gray-300'
                         }`}
                         onClick={() => setFilterMine(!filterMine)}
                       >
-                        Show My Posts Only
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                            filterMine ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
                       </button>
-                      {filterMine && (
-                        <div className="mt-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                          Showing only your posts
-                        </div>
-                      )}
                     </div>
                   )}
                   
