@@ -272,7 +272,7 @@ const MapView = () => {
   const [mapLayout, setMapLayout] = useState(() => {
     // Try to get saved preference from localStorage
     const savedLayout = localStorage.getItem('mapLayout');
-    return savedLayout || 'labels'; // Default to 'labels' if no preference saved
+    return savedLayout || 'google_style'; // Default to 'google_style' for more detailed labels
   });
   
   // Map layout options
@@ -304,9 +304,15 @@ const MapView = () => {
     },
     // New layout with enhanced labeling
     labels: {
-      name: 'Labels',
+      name: 'Detailed Labels',
       url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+    },
+    // Google Maps style layer with more POIs
+    google_style: {
+      name: 'Google Style',
+      url: 'https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM contributors</a>'
     }
   };
   
@@ -314,6 +320,91 @@ const MapView = () => {
   const statsPanelDrag = useDraggable({ x: 24, y: 80 }); // Initial position for stats panel (top-right)
   const sidebarDrag = useDraggable({ x: 24, y: 80 }); // Initial position for sidebar (top-left)
 
+  // State for Points of Interest (POIs)
+  const [pois, setPois] = useState([]);
+  const [showPoiLayer, setShowPoiLayer] = useState(true); // Toggle for showing POIs
+  
+  // Function to fetch nearby Points of Interest using Overpass API
+  const fetchPois = async (bounds) => {
+    if (!bounds || !showPoiLayer) return;
+    
+    try {
+      // Convert bounds to bbox format for Overpass API
+      const bbox = `${bounds._southWest.lat},${bounds._southWest.lng},${bounds._northEast.lat},${bounds._northEast.lng}`;
+      
+      // Overpass API query to fetch various types of POIs
+      const query = `
+        [out:json][timeout:25];
+        (
+          node["amenity"](bbox);
+          node["tourism"](bbox);
+          node["shop"](bbox);
+          node["restaurant"](bbox);
+          node["cafe"](bbox);
+          node["hotel"](bbox);
+          node["attraction"](bbox);
+          node["landmark"](bbox);
+          node["building"](bbox);
+          node["place"](bbox);
+        );
+        out body;
+      `.replace('bbox', bbox);
+      
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `data=${encodeURIComponent(query)}`
+      });
+      
+      const data = await response.json();
+      
+      // Process the POI data into a format we can use
+      const processedPois = data.elements
+        .filter(element => element.type === 'node') // Only process nodes for simplicity
+        .map(element => {
+          return {
+            id: element.id,
+            lat: element.lat,
+            lng: element.lon,
+            tags: element.tags || {},
+            name: element.tags.name || element.tags.amenity || element.tags.tourism || 'Point of Interest',
+            type: element.tags.amenity || element.tags.tourism || element.tags.shop || 'poi',
+            position: [element.lat, element.lon]
+          };
+        })
+        .filter(poi => poi.position[0] && poi.position[1]); // Filter out invalid positions
+      
+      setPois(processedPois);
+    } catch (error) {
+      console.error('Error fetching POIs:', error);
+    }
+  };
+  
+  // Effect to fetch POIs when map bounds change
+  useEffect(() => {
+    if (!mapRef.current || !showPoiLayer) return;
+    
+    const handleMapMove = () => {
+      const bounds = mapRef.current.getBounds();
+      fetchPois(bounds);
+    };
+    
+    // Fetch POIs initially and when map moves
+    const map = mapRef.current;
+    if (map) {
+      handleMapMove();
+      map.on('moveend', handleMapMove);
+    }
+    
+    // Cleanup event listener
+    return () => {
+      if (map) {
+        map.off('moveend', handleMapMove);
+      }
+    };
+  }, [showPoiLayer, mapRef.current]);
 
   // Fetch posts from the backend API
   useEffect(() => {
@@ -794,6 +885,50 @@ const MapView = () => {
     });
   };
 
+  // Helper function to get initial letter from POI type
+  const getInitialFromPoiType = (type) => {
+    if (!type) return '?';
+    
+    const typeMap = {
+      'restaurant': 'R',
+      'cafe': 'C',
+      'hotel': 'H',
+      'shop': 'S',
+      'park': 'P',
+      'museum': 'M',
+      'bank': 'B',
+      'hospital': 'H',
+      'pharmacy': 'P',
+      'school': 'S',
+      'university': 'U',
+      'library': 'L',
+      'church': 'C',
+      'fuel': 'F',
+      'post_office': 'P',
+      'police': 'P',
+      'fire_station': 'F',
+      'theatre': 'T',
+      'cinema': 'C',
+      'bar': 'B',
+      'pub': 'P',
+      'fast_food': 'F',
+      'supermarket': 'S',
+      'marketplace': 'M',
+      'attraction': 'A',
+      'tourism': 'T',
+      'monument': 'M',
+      'gallery': 'G',
+      'stadium': 'S',
+      'zoo': 'Z',
+      'parking': 'P',
+      'toilets': 'W',
+      'information': 'i',
+      'viewpoint': 'V'
+    };
+    
+    return typeMap[type] || type.charAt(0).toUpperCase();
+  };
+
   const flyToLocation = (position) => {
     if (mapRef.current) {
       mapRef.current.flyTo(position, 15);
@@ -1020,6 +1155,39 @@ const MapView = () => {
               </Popup>
             </Marker>
           )}
+          
+          {/* Points of Interest Layer */}
+          {showPoiLayer && pois.map((poi) => (
+            <Marker
+              key={`poi-${poi.id}`}
+              position={poi.position}
+              icon={new L.DivIcon({
+                className: 'custom-poi-marker',
+                html: `<div style="background-color: #4F46E5; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${getInitialFromPoiType(poi.type)}</div>`,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+              })}
+              eventHandlers={{
+                click: () => {
+                  setActivePopup(`poi-${poi.id}`);
+                }
+              }}
+            >
+              <Popup className="custom-popup">
+                <div className="p-4">
+                  <h3 className="font-bold text-lg text-gray-800 mb-1">
+                    {poi.name}
+                  </h3>
+                  <p className="text-gray-600 text-sm capitalize mb-2">
+                    {poi.type.replace('_', ' ')}
+                  </p>
+                  <div className="text-xs text-gray-500">
+                    <div>Click for more details</div>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
         </MapContainer>
         {/* Floating UI Elements */}
         {/* Search Bar - Top Center */}
@@ -1303,6 +1471,38 @@ const MapView = () => {
             </div>
           </div>
         </div>
+        
+        {/* Toggle POI Layer Button */}
+        <motion.button
+          className={`absolute top-6 right-16 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300 ${
+            showPoiLayer ? 'bg-blue-500 hover:bg-blue-600' : ''
+          }`}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.95 }}
+          onClick={() => setShowPoiLayer(!showPoiLayer)}
+          title="Toggle Points of Interest"
+        >
+          <svg
+            className={`w-6 h-6 ${showPoiLayer ? 'text-white' : 'text-gray-700'}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        </motion.button>
         
         {/* Toggle Stats Button or Clear Route Button when routing is active */}
         <motion.button
@@ -1636,6 +1836,13 @@ const MapView = () => {
           z-index: 999;
         }
 
+        /* Custom POI marker styles */
+        .custom-poi-marker {
+          text-align: center;
+          font-weight: bold;
+          cursor: pointer;
+        }
+        
         /* Responsive adjustments */
         @media (max-width: 768px) {
           .custom-popup .leaflet-popup-content-wrapper {
