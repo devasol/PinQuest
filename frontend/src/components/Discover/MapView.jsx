@@ -324,7 +324,6 @@ const MapView = () => {
   const [showPoiLayer, setShowPoiLayer] = useState(true); // Toggle for showing POIs
   
   // State for sidebar and its sections
-  const [showSidebar, setShowSidebar] = useState(true);
   const [activeSidebarTab, setActiveSidebarTab] = useState('explore'); // explore, stats, map-settings, pois
   const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [showMapSettings, setShowMapSettings] = useState(false);
