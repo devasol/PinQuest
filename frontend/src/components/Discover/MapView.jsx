@@ -1160,12 +1160,12 @@ const MapView = () => {
                     <div className="mt-4">
                       {isAuthenticated ? (
                         <div className="space-y-3">
-                          <div className="flex space-x-2">
+                          <div className="flex space-x-1">
                             <button
-                              className={`flex-1 p-2 rounded-lg transition-colors duration-300 ${
+                              className={`p-2 rounded-lg transition-colors duration-300 ${
                                 travelMode === 'driving' 
-                                  ? 'bg-blue-500 text-white' 
-                                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                                  ? 'bg-blue-100 text-blue-600' 
+                                  : 'hover:bg-gray-200'
                               }`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1178,10 +1178,10 @@ const MapView = () => {
                               </svg>
                             </button>
                             <button
-                              className={`flex-1 p-2 rounded-lg transition-colors duration-300 ${
+                              className={`p-2 rounded-lg transition-colors duration-300 ${
                                 travelMode === 'walking' 
-                                  ? 'bg-blue-500 text-white' 
-                                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                                  ? 'bg-blue-100 text-blue-600' 
+                                  : 'hover:bg-gray-200'
                               }`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1194,9 +1194,9 @@ const MapView = () => {
                               </svg>
                             </button>
                           </div>
-                          <div className="flex space-x-3">
+                          <div className="flex items-center space-x-1">
                             <button 
-                              className="flex-1 bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition-colors duration-300"
+                              className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
                               onClick={(e) => {
                                 e.stopPropagation(); // Prevent popup from closing
                                 getDirections(location.position);
@@ -1208,10 +1208,10 @@ const MapView = () => {
                               </svg>
                             </button>
                             <button 
-                              className={`flex-1 p-3 rounded-lg transition-colors duration-300 ${
+                              className={`p-2 rounded-lg transition-colors duration-300 ${
                                 savedLocations.some(saved => saved.id === location.id) 
-                                  ? 'bg-green-500 text-white' 
-                                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                                  ? 'bg-green-100 text-green-600' 
+                                  : 'hover:bg-gray-200'
                               }`}
                               onClick={(e) => {
                                 e.stopPropagation(); // Prevent popup from closing
@@ -1231,8 +1231,9 @@ const MapView = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                               </svg>
                             </button>
+                            <div className="flex-1"></div> {/* Spacer to push the close button to the right */}
                             <button 
-                              className="flex-1 bg-gray-200 text-gray-800 p-3 rounded-lg hover:bg-gray-300 transition-colors duration-300"
+                              className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
                               onClick={() => {
                                 // Close popup
                                 if (mapRef.current) {
@@ -1247,15 +1248,9 @@ const MapView = () => {
                               }}
                               title={showRouting ? 'Close Direction' : 'Close'}
                             >
-                              {showRouting ? (
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              ) : (
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              )}
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
                             </button>
                           </div>
                         </div>
@@ -1336,12 +1331,12 @@ const MapView = () => {
                     </div>
                   </div>
                   <div className="mt-4">
-                    <div className="flex space-x-3">
+                    <div className="flex items-center space-x-1">
                       <button 
-                        className={`flex-1 p-3 rounded-lg transition-colors duration-300 ${
+                        className={`p-2 rounded-lg transition-colors duration-300 ${
                           savedLocations.some(saved => saved.id === `poi-${poi.id}`) 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                            ? 'bg-green-100 text-green-600' 
+                            : 'hover:bg-gray-200'
                         }`}
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent popup from closing
@@ -1372,8 +1367,9 @@ const MapView = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                         </svg>
                       </button>
+                      <div className="flex-1"></div> {/* Spacer to push the close button to the right */}
                       <button 
-                        className="flex-1 bg-gray-200 text-gray-800 p-3 rounded-lg hover:bg-gray-300 transition-colors duration-300"
+                        className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
                         onClick={() => {
                           // Close popup
                           if (mapRef.current) {
