@@ -324,7 +324,95 @@ const MapView = () => {
   const [showPoiLayer, setShowPoiLayer] = useState(true); // Toggle for showing POIs
   
   // State for sidebar and its sections
-  const [activeSidebarTab, setActiveSidebarTab] = useState(''); // '', explore, stats, map-settings, pois
+  const [activeSidebarTab, setActiveSidebarTab] = useState(''); // '', explore, stats, map-settings, pois, saved, recents
+  // State for saved/bookmarked locations
+  const [savedLocations, setSavedLocations] = useState([]);
+  // State for recently viewed locations
+  const [recentLocations, setRecentLocations] = useState([]);
+  
+  // Function to save a location
+  const saveLocation = (location) => {
+    // Check if location is already saved
+    const isAlreadySaved = savedLocations.some(saved => saved.id === location.id);
+    
+    if (!isAlreadySaved) {
+      const newSavedLocation = {
+        ...location,
+        savedAt: new Date().toISOString()
+      };
+      
+      const updatedSavedLocations = [newSavedLocation, ...savedLocations]; // Add to the top
+      setSavedLocations(updatedSavedLocations);
+      
+      // Save to localStorage
+      localStorage.setItem('savedLocations', JSON.stringify(updatedSavedLocations));
+      
+      showNotification('Location saved!', 'success');
+    } else {
+      showNotification('Location already saved!', 'info');
+    }
+  };
+  
+  // Function to remove a saved location
+  const removeSavedLocation = (locationId) => {
+    const updatedSavedLocations = savedLocations.filter(location => location.id !== locationId);
+    setSavedLocations(updatedSavedLocations);
+    
+    // Update localStorage
+    localStorage.setItem('savedLocations', JSON.stringify(updatedSavedLocations));
+    
+    showNotification('Location removed from saved!', 'info');
+  };
+  
+  // Function to add a location to recents
+  const addRecentLocation = (location) => {
+    // Check if location is already in recents
+    const existingIndex = recentLocations.findIndex(recent => recent.id === location.id);
+    let updatedRecents = [...recentLocations];
+    
+    if (existingIndex !== -1) {
+      // If already exists, move to the top
+      const [existingLocation] = updatedRecents.splice(existingIndex, 1);
+      updatedRecents = [existingLocation, ...updatedRecents];
+    } else {
+      // If new, add to the top
+      const newRecentLocation = {
+        ...location,
+        viewedAt: new Date().toISOString()
+      };
+      updatedRecents = [newRecentLocation, ...updatedRecents];
+    }
+    
+    // Limit to 20 recent items
+    updatedRecents = updatedRecents.slice(0, 20);
+    
+    setRecentLocations(updatedRecents);
+    
+    // Save to localStorage
+    localStorage.setItem('recentLocations', JSON.stringify(updatedRecents));
+  };
+  
+  // Function to load saved and recent locations from localStorage on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem('savedLocations');
+    const recents = localStorage.getItem('recentLocations');
+    
+    if (saved) {
+      try {
+        setSavedLocations(JSON.parse(saved));
+      } catch (e) {
+        console.error('Error parsing saved locations:', e);
+      }
+    }
+    
+    if (recents) {
+      try {
+        setRecentLocations(JSON.parse(recents));
+      } catch (e) {
+        console.error('Error parsing recent locations:', e);
+      }
+    }
+  }, []);
   const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [showMapSettings, setShowMapSettings] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
@@ -1017,7 +1105,10 @@ const MapView = () => {
               >
                 <Popup
                   className="custom-popup"
-                  onOpen={() => setActivePopup(location.id)}
+                  onOpen={() => {
+                    setActivePopup(location.id);
+                    addRecentLocation(location);
+                  }}
                   onClose={() => {
                     setActivePopup(null);
                   }}
@@ -1097,18 +1188,41 @@ const MapView = () => {
                               Walking
                             </button>
                           </div>
-                          <div className="flex space-x-3">
+                          <div className="space-y-3">
+                            <div className="flex space-x-3">
+                              <button 
+                                className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors duration-300 font-medium"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent popup from closing
+                                  getDirections(location.position);
+                                }}
+                              >
+                                Get Directions
+                              </button>
+                              <button 
+                                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors duration-300 ${
+                                  savedLocations.some(saved => saved.id === location.id) 
+                                    ? 'bg-green-500 text-white' 
+                                    : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent popup from closing
+                                  // Check if location is already saved
+                                  const isAlreadySaved = savedLocations.some(saved => saved.id === location.id);
+                                  if (!isAlreadySaved) {
+                                    saveLocation(location);
+                                  } else {
+                                    // If already saved, we could potentially remove it
+                                    // For now, just show notification that it's already saved
+                                    showNotification('Location already saved!', 'info');
+                                  }
+                                }}
+                              >
+                                {savedLocations.some(saved => saved.id === location.id) ? 'Saved ✓' : 'Save'}
+                              </button>
+                            </div>
                             <button 
-                              className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors duration-300 font-medium"
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent popup from closing
-                                getDirections(location.position);
-                              }}
-                            >
-                              Get Directions
-                            </button>
-                            <button 
-                              className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 font-medium"
+                              className="w-full bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 font-medium"
                               onClick={() => {
                                 // Close popup
                                 if (mapRef.current) {
@@ -1175,20 +1289,81 @@ const MapView = () => {
               })}
               eventHandlers={{
                 click: () => {
+                  addRecentLocation(poi); // Add POI to recents when popup opens
                   setActivePopup(`poi-${poi.id}`);
                 }
               }}
             >
               <Popup className="custom-popup">
-                <div className="p-4">
-                  <h3 className="font-bold text-lg text-gray-800 mb-1">
+                <div className="p-6 min-w-[400px] max-w-[500px]">
+                  <h3 className="font-bold text-2xl text-gray-800 mb-3">
                     {poi.name}
                   </h3>
-                  <p className="text-gray-600 text-sm capitalize mb-2">
+                  <p className="text-gray-600 mb-4 text-base">
                     {poi.type.replace('_', ' ')}
                   </p>
-                  <div className="text-xs text-gray-500">
-                    <div>Click for more details</div>
+                  <div className="space-y-2 text-base text-gray-500">
+                    <div className="flex justify-between">
+                      <span>Category:</span>
+                      <span className="font-medium capitalize">
+                        {poi.type.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Location:</span>
+                      <span className="font-medium">
+                        {poi.position[0].toFixed(4)}, {poi.position[1].toFixed(4)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <div className="space-y-3">
+                      <div className="flex space-x-3">
+                        <button 
+                          className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors duration-300 ${
+                            savedLocations.some(saved => saved.id === `poi-${poi.id}`) 
+                              ? 'bg-green-500 text-white' 
+                              : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent popup from closing
+                            
+                            // Convert POI to location format for saving
+                            const poiLocation = {
+                              id: `poi-${poi.id}`,
+                              title: poi.name,
+                              description: `${poi.type.replace('_', ' ')} at this location`,
+                              position: poi.position,
+                              postedBy: 'OpenStreetMap',
+                              category: 'poi',
+                              datePosted: new Date().toISOString(),
+                              type: 'poi'
+                            };
+                            
+                            // Check if location is already saved
+                            const isAlreadySaved = savedLocations.some(saved => saved.id === `poi-${poi.id}`);
+                            if (!isAlreadySaved) {
+                              saveLocation(poiLocation);
+                            } else {
+                              showNotification('POI already saved!', 'info');
+                            }
+                          }}
+                        >
+                          {savedLocations.some(saved => saved.id === `poi-${poi.id}`) ? 'Saved ✓' : 'Save'}
+                        </button>
+                        <button 
+                          className="flex-1 bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 font-medium"
+                          onClick={() => {
+                            // Close popup
+                            if (mapRef.current) {
+                              mapRef.current.closePopup();
+                            }
+                          }}
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </Popup>
@@ -1214,7 +1389,7 @@ const MapView = () => {
         </motion.div>
         
         {/* Static Icon Sidebar */}
-        <div className="absolute left-0 top-0 h-full w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-6">
+        <div className="absolute left-0 top-0 h-full w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-3">
           <button
             className={`p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === 'explore' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
@@ -1249,6 +1424,30 @@ const MapView = () => {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+          
+          <button
+            className={`p-3 rounded-xl transition-all duration-200 ${
+              activeSidebarTab === 'saved' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
+            }`}
+            onClick={() => setActiveSidebarTab(activeSidebarTab === 'saved' ? '' : 'saved')}
+            title="Saved Locations"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </button>
+          
+          <button
+            className={`p-3 rounded-xl transition-all duration-200 ${
+              activeSidebarTab === 'recents' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-200'
+            }`}
+            onClick={() => setActiveSidebarTab(activeSidebarTab === 'recents' ? '' : 'recents')}
+            title="Recent Locations"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </button>
           
@@ -1571,6 +1770,156 @@ const MapView = () => {
                       <p className="text-sm text-gray-600">Not logged in</p>
                     )}
                   </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <AnimatePresence>
+          {activeSidebarTab === 'saved' && (
+            <motion.div
+              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col"
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ type: "spring", damping: 25 }}
+            >
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-800">Saved Locations</h2>
+                <button 
+                  onClick={() => setActiveSidebarTab('')}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-4">
+                  {savedLocations.length > 0 ? (
+                    <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
+                      {savedLocations.map((location, index) => (
+                        <motion.div
+                          key={location.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
+                          onClick={() => {
+                            if (mapRef.current) {
+                              mapRef.current.flyTo(location.position, 15);
+                              setActivePopup(location.id);
+                            }
+                          }}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-800">{location.title}</h3>
+                              <p className="text-sm text-gray-600 mt-1 line-clamp-2">{location.description}</p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs text-gray-500">
+                                  {location.type === 'poi' 
+                                    ? `From OpenStreetMap` 
+                                    : `By ${location.postedBy}`
+                                  }
+                                </span>
+                                <span className="text-xs text-gray-500">{new Date(location.savedAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeSavedLocation(location.id);
+                              }}
+                              className="ml-2 text-red-500 hover:text-red-700"
+                              title="Remove from saved"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      <p className="mt-4 text-lg">No saved locations yet</p>
+                      <p className="text-sm mt-2">Locations you save will appear here</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <AnimatePresence>
+          {activeSidebarTab === 'recents' && (
+            <motion.div
+              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col"
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ type: "spring", damping: 25 }}
+            >
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-800">Recent Locations</h2>
+                <button 
+                  onClick={() => setActiveSidebarTab('')}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-4">
+                  {recentLocations.length > 0 ? (
+                    <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
+                      {recentLocations.map((location, index) => (
+                        <motion.div
+                          key={location.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
+                          onClick={() => {
+                            if (mapRef.current) {
+                              mapRef.current.flyTo(location.position, 15);
+                              setActivePopup(location.id);
+                            }
+                          }}
+                        >
+                          <h3 className="font-semibold text-gray-800">{location.title}</h3>
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{location.description}</p>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-xs text-gray-500">
+                              {location.type === 'poi' 
+                                ? `From OpenStreetMap` 
+                                : `By ${location.postedBy}`
+                              }
+                            </span>
+                            <span className="text-xs text-gray-500">{new Date(location.viewedAt).toLocaleDateString()}</span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="mt-4 text-lg">No recent locations</p>
+                      <p className="text-sm mt-2">Locations you view will appear here</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
