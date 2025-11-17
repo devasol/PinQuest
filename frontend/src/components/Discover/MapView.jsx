@@ -258,7 +258,6 @@ const MapView = () => {
   const [userLocation, setUserLocation] = useState(null); // Initialize as null to indicate no location yet
   const [hasUserLocation, setHasUserLocation] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [showStats, setShowStats] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [filterMine, setFilterMine] = useState(false); // New state for filtering user's posts
@@ -316,13 +315,21 @@ const MapView = () => {
     }
   };
   
-  // Draggable positions for UI elements
+  // Draggable positions for UI elements (keeping for backward compatibility)
   const statsPanelDrag = useDraggable({ x: 24, y: 80 }); // Initial position for stats panel (top-right)
   const sidebarDrag = useDraggable({ x: 24, y: 80 }); // Initial position for sidebar (top-left)
 
   // State for Points of Interest (POIs)
   const [pois, setPois] = useState([]);
   const [showPoiLayer, setShowPoiLayer] = useState(true); // Toggle for showing POIs
+  
+  // State for sidebar and its sections
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [activeSidebarTab, setActiveSidebarTab] = useState('explore'); // explore, stats, map-settings, pois
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
+  const [showMapSettings, setShowMapSettings] = useState(false);
+  const [showStatsPanel, setShowStatsPanel] = useState(false);
+  const [showPoiSettings, setShowPoiSettings] = useState(false);
   
   // Function to fetch nearby Points of Interest using Overpass API
   const fetchPois = async (bounds) => {
@@ -1241,174 +1248,6 @@ const MapView = () => {
             </motion.div>
           )}
         </div>
-        {/* Toggle Sidebar Button - different behavior when routing is active */}
-        <motion.button
-          className="absolute top-6 left-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.8 }}
-          onClick={() => {
-            if (showRouting) {
-              // When routing is active, toggle showSidebarWhenRouting
-              setShowSidebarWhenRouting(!showSidebarWhenRouting);
-            } else {
-              // When not routing, toggle the regular sidebar
-              setShowSidebar(!showSidebar);
-            }
-          }}
-        >
-          <svg
-            className="w-6 h-6 text-gray-700"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-        </motion.button>
-        {/* Collapsible Sidebar - Custom Draggable */}
-        <AnimatePresence>
-          {showSidebar && (
-            <motion.div
-              className="fixed z-[1000] w-80 max-h-[70vh] overflow-hidden cursor-move"
-              style={{
-                left: `${sidebarDrag.position.x}px`,
-                top: `${sidebarDrag.position.y}px`,
-              }}
-              initial={{ opacity: 0, x: -300 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -300 }}
-              transition={{ type: "spring", damping: 25 }}
-              onMouseDown={sidebarDrag.handleMouseDown}
-              onTouchStart={sidebarDrag.handleTouchStart}
-            >
-              <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/30">
-                <div className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">
-                      Community Posts
-                    </h2>
-                    <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-                      {allLocations.length} locations
-                    </span>
-                  </div>
-                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                    <AnimatePresence>
-                      {filteredLocations.length > 0 ? (
-                        filteredLocations.map((location, index) => (
-                          <motion.div
-                            key={location.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ delay: index * 0.1 }}
-                            className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
-                              activePopup === location.id
-                                ? "bg-blue-50 border-2 border-blue-200 shadow-md"
-                                : "bg-gray-50/80 hover:bg-gray-100 border-2 border-transparent"
-                            }`}
-                            onClick={() => handleSidebarItemClick(location.id)}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <div className="flex items-start space-x-3">
-                              <div
-                                className={`w-3 h-3 rounded-full mt-2 ${
-                                  location.category === "nature"
-                                    ? "bg-green-500"
-                                    : location.category === "culture"
-                                    ? "bg-yellow-500"
-                                    : location.category === "shopping"
-                                    ? "bg-purple-500"
-                                    : location.category === "food"
-                                    ? "bg-red-500"
-                                    : "bg-blue-500"
-                                }`}
-                              />
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-gray-800">
-                                  {location.title}
-                                </h3>
-                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                  {location.description}
-                                </p>
-                                <div className="flex items-center justify-between mt-2">
-                                  <span className="text-xs text-gray-500">
-                                    By {location.postedBy}
-                                  </span>
-                                  <span className="text-xs text-gray-500">
-                                    {formatDate(location.datePosted)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          <p>No matching posts found</p>
-                          <p className="text-sm mt-2">Try a different search term</p>
-                        </div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {/* Stats Panel - Custom Draggable */}
-        <AnimatePresence>
-          {showStats && (
-            <motion.div
-              className="fixed z-[1000] cursor-move"
-              style={{
-                left: `${statsPanelDrag.position.x}px`,
-                top: `${statsPanelDrag.position.y}px`,
-              }}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ delay: 1 }}
-              onMouseDown={statsPanelDrag.handleMouseDown}
-              onTouchStart={statsPanelDrag.handleTouchStart}
-            >
-              <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/30 p-6 min-w-[240px]">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600 mb-1">
-                      {allLocations.length}
-                    </div>
-                    <div className="text-sm text-gray-600">Total Locations</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600 mb-1">
-                      {userPosts.length}
-                    </div>
-                    <div className="text-sm text-gray-600">User Posts</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600 mb-1">
-                      {new Set(allLocations.map((l) => l.category)).size}
-                    </div>
-                    <div className="text-sm text-gray-600">Categories</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600 mb-1">
-                      24/7
-                    </div>
-                    <div className="text-sm text-gray-600">Live Updates</div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
         {/* Add Post Button - Bottom Center */}
         <motion.div
           className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[1000]"
@@ -1424,67 +1263,297 @@ const MapView = () => {
             </p>
           </div>
         </motion.div>
-        {/* Map Layout Selector */}
-        <div className="absolute top-6 right-32 z-[1000]">
-          <div className="relative group">
-            <motion.button
-              className="bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.9 }}
-            >
-              <svg
-                className="w-6 h-6 text-gray-700"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276a1 1 0 001.447-.894V5.618a1 1 0 00-1.447-.894L15 7m0 13v-3m0-4H9m4 0V9m0 0H9m4 0v4m0 4h.01"
-                />
-              </svg>
-            </motion.button>
-            <div className="absolute top-full right-0 mt-2 w-48 bg-white/95 backdrop-blur-lg rounded-xl shadow-2xl border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 overflow-hidden">
-              <div className="p-2">
-                <p className="px-3 py-2 text-sm font-semibold text-gray-700 border-b border-gray-200">Map Layout</p>
-                {Object.entries(mapLayouts).map(([key, layout]) => (
-                  <button
-                    key={key}
-                    className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-                      mapLayout === key 
-                        ? 'bg-blue-100 text-blue-700 font-medium' 
-                        : 'hover:bg-gray-100 text-gray-700'
-                    }`}
-                    onClick={() => {
-                      setMapLayout(key);
-                      // Save preference to localStorage
-                      localStorage.setItem('mapLayout', key);
-                    }}
-                  >
-                    {layout.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
         
-        {/* Toggle POI Layer Button */}
+        {/* Main Sidebar */}
+        <AnimatePresence>
+          {showSidebar && (
+            <motion.div
+              className="absolute left-0 top-0 h-full w-80 bg-white/90 backdrop-blur-lg rounded-r-2xl shadow-2xl border border-white/30 z-[1000] flex flex-col"
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ type: "spring", damping: 25 }}
+            >
+              {/* Sidebar Header */}
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-gray-800">Map Controls</h2>
+                  <button 
+                    onClick={() => setShowSidebar(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Sidebar Navigation */}
+              <div className="flex border-b border-gray-200">
+                <button
+                  className={`flex-1 py-3 text-sm font-medium ${
+                    activeSidebarTab === 'explore' 
+                      ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  onClick={() => setActiveSidebarTab('explore')}
+                >
+                  Explore
+                </button>
+                <button
+                  className={`flex-1 py-3 text-sm font-medium ${
+                    activeSidebarTab === 'map-settings' 
+                      ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  onClick={() => setActiveSidebarTab('map-settings')}
+                >
+                  Map
+                </button>
+                <button
+                  className={`flex-1 py-3 text-sm font-medium ${
+                    activeSidebarTab === 'pois' 
+                      ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  onClick={() => setActiveSidebarTab('pois')}
+                >
+                  POIs
+                </button>
+                <button
+                  className={`flex-1 py-3 text-sm font-medium ${
+                    activeSidebarTab === 'stats' 
+                      ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  onClick={() => setActiveSidebarTab('stats')}
+                >
+                  Stats
+                </button>
+              </div>
+              
+              {/* Sidebar Content based on active tab */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {activeSidebarTab === 'explore' && (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-800 mb-2">Search Places</h3>
+                      <Geocoder
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        mapRef={mapRef}
+                        setSuggestions={setSuggestions}
+                        suggestions={suggestions}
+                        setIsSearching={setIsSearching}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 mb-2">Posts & Locations</h3>
+                      <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                        <AnimatePresence>
+                          {filteredLocations.length > 0 ? (
+                            filteredLocations.map((location, index) => (
+                              <motion.div
+                                key={location.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ delay: index * 0.1 }}
+                                className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
+                                  activePopup === location.id
+                                    ? "bg-blue-50 border-2 border-blue-200 shadow-md"
+                                    : "bg-gray-50/80 hover:bg-gray-100 border-2 border-transparent"
+                                }`}
+                                onClick={() => handleSidebarItemClick(location.id)}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                              >
+                                <div className="flex items-start space-x-3">
+                                  <div
+                                    className={`w-3 h-3 rounded-full mt-2 ${
+                                      location.category === "nature"
+                                        ? "bg-green-500"
+                                        : location.category === "culture"
+                                        ? "bg-yellow-500"
+                                        : location.category === "shopping"
+                                        ? "bg-purple-500"
+                                        : location.category === "food"
+                                        ? "bg-red-500"
+                                        : "bg-blue-500"
+                                    }`}
+                                  />
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-gray-800">
+                                      {location.title}
+                                    </h3>
+                                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                      {location.description}
+                                    </p>
+                                    <div className="flex items-center justify-between mt-2">
+                                      <span className="text-xs text-gray-500">
+                                        By {location.postedBy}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {formatDate(location.datePosted)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            ))
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              <p>No matching posts found</p>
+                              <p className="text-sm mt-2">Try a different search term</p>
+                            </div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {activeSidebarTab === 'map-settings' && (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-800 mb-2">Map Layout</h3>
+                      <div className="grid grid-cols-1 gap-2">
+                        {Object.entries(mapLayouts).map(([key, layout]) => (
+                          <button
+                            key={key}
+                            className={`text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+                              mapLayout === key 
+                                ? 'bg-blue-100 text-blue-700 font-medium' 
+                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                            }`}
+                            onClick={() => {
+                              setMapLayout(key);
+                              // Save preference to localStorage
+                              localStorage.setItem('mapLayout', key);
+                            }}
+                          >
+                            {layout.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {isAuthenticated && (
+                      <div>
+                        <button
+                          className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+                            filterMine 
+                              ? 'bg-purple-100 text-purple-700 font-medium' 
+                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                          }`}
+                          onClick={() => setFilterMine(!filterMine)}
+                        >
+                          Show My Posts Only
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {activeSidebarTab === 'pois' && (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-800 mb-2">Points of Interest</h3>
+                      <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
+                        <span>Show POIs</span>
+                        <button
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                            showPoiLayer ? 'bg-blue-500' : 'bg-gray-300'
+                          }`}
+                          onClick={() => setShowPoiLayer(!showPoiLayer)}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                              showPoiLayer ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="font-semibold text-gray-800 mb-2">Nearby POIs</h3>
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {pois.slice(0, 10).map((poi) => (
+                          <div 
+                            key={`poi-${poi.id}`}
+                            className="p-3 bg-gray-50 rounded-lg border border-gray-200"
+                            onClick={() => {
+                              if (mapRef.current) {
+                                mapRef.current.flyTo(poi.position, 15);
+                                setActivePopup(`poi-${poi.id}`);
+                              }
+                            }}
+                          >
+                            <h4 className="font-medium text-gray-800">{poi.name}</h4>
+                            <p className="text-sm text-gray-600 capitalize">{poi.type.replace('_', ' ')}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {activeSidebarTab === 'stats' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center bg-blue-50 p-3 rounded-lg">
+                        <div className="text-xl font-bold text-blue-600">
+                          {allLocations.length}
+                        </div>
+                        <div className="text-xs text-gray-600">Total Locations</div>
+                      </div>
+                      <div className="text-center bg-green-50 p-3 rounded-lg">
+                        <div className="text-xl font-bold text-green-600">
+                          {userPosts.length}
+                        </div>
+                        <div className="text-xs text-gray-600">User Posts</div>
+                      </div>
+                      <div className="text-center bg-purple-50 p-3 rounded-lg">
+                        <div className="text-xl font-bold text-purple-600">
+                          {new Set(allLocations.map((l) => l.category)).size}
+                        </div>
+                        <div className="text-xs text-gray-600">Categories</div>
+                      </div>
+                      <div className="text-center bg-orange-50 p-3 rounded-lg">
+                        <div className="text-xl font-bold text-orange-600">
+                          24/7
+                        </div>
+                        <div className="text-xs text-gray-600">Live Updates</div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-gray-800 mb-2">User Info</h4>
+                      {isAuthenticated ? (
+                        <p className="text-sm text-gray-600">Logged in as: {user?.name}</p>
+                      ) : (
+                        <p className="text-sm text-gray-600">Not logged in</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Sidebar Toggle Button */}
         <motion.button
-          className={`absolute top-6 right-24 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300 ${
-            showPoiLayer ? 'bg-blue-500 hover:bg-blue-600' : ''
-          }`}
-          initial={{ opacity: 0, x: 20 }}
+          className="absolute top-6 left-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300"
+          initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.95 }}
-          onClick={() => setShowPoiLayer(!showPoiLayer)}
-          title="Toggle Points of Interest"
+          transition={{ delay: 0.8 }}
+          onClick={() => setShowSidebar(!showSidebar)}
         >
           <svg
-            className={`w-6 h-6 ${showPoiLayer ? 'text-white' : 'text-gray-700'}`}
+            className="w-6 h-6 text-gray-700"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -1493,144 +1562,11 @@ const MapView = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+              d="M4 6h16M4 12h16M4 18h16"
             />
           </svg>
         </motion.button>
         
-        {/* Close Directions Button - appears when routing is active */}
-        {showRouting && (
-          <motion.button
-            className="absolute top-6 right-12 z-[1000] bg-red-500 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-red-600 transition-all duration-300"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1.05 }}
-            onClick={() => {
-              setShowRouting(false);
-              setRoutingStart(null);
-              setRoutingEnd(null);
-            }}
-            title="Close Directions"
-          >
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </motion.button>
-        )}
-        
-        {/* Toggle Stats Button */}
-        <motion.button
-          className="absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 1 }}
-          onClick={() => {
-            // If routing is active, clear the route
-            if (showRouting) {
-              setShowRouting(false);
-              setRoutingStart(null);
-              setRoutingEnd(null);
-            } else {
-              // If not routing, toggle the regular stats panel
-              setShowStats(!showStats);
-            }
-          }}
-        >
-          {showRouting ? (
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          ) : (
-            <svg
-              className="w-6 h-6 text-gray-700"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-          )}
-        </motion.button>
-        <motion.button
-          className={`absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300 ${
-            showRouting ? 'bg-red-500 hover:bg-red-600' : ''
-          }`}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 1 }}
-          onClick={() => {
-            if (showRouting) {
-              // If routing is active, clear the route
-              setShowRouting(false);
-              setRoutingStart(null);
-              setRoutingEnd(null);
-            } else {
-              // If not routing, toggle the regular stats panel
-              setShowStats(!showStats);
-            }
-          }}
-        >
-          {showRouting ? (
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          ) : (
-            <svg
-              className="w-6 h-6 text-gray-700"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-          )}
-        </motion.button>
       </div>
       {/* Post Creation Form Modal */}
       <AnimatePresence>
