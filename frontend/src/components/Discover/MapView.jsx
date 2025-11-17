@@ -1133,13 +1133,37 @@ const MapView = () => {
                         }}
                       />
                     ) : null}
-                    <h3 className="font-bold text-2xl text-gray-800 mb-3">
-                      {location.title}
-                    </h3>
-                    <p className="text-gray-600 mb-4 text-base">
-                      {location.description}
-                    </p>
-                    <div className="space-y-2 text-base text-gray-500">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-bold text-2xl text-gray-800">
+                          {location.title}
+                        </h3>
+                        <p className="text-gray-600 text-base mt-1">
+                          {location.description}
+                        </p>
+                      </div>
+                      <button 
+                        className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
+                        onClick={() => {
+                          // Close popup
+                          if (mapRef.current) {
+                            mapRef.current.closePopup();
+                          }
+                          // Clear routing if it's showing directions to the current location
+                          if (showRouting) {
+                            setShowRouting(false);
+                            setRoutingStart(null);
+                            setRoutingEnd(null);
+                          }
+                        }}
+                        title={showRouting ? 'Close Direction' : 'Close'}
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="space-y-2 text-base text-gray-500 mb-4">
                       <div className="flex justify-between">
                         <span>Posted by:</span>
                         <span className="font-medium">{location.postedBy}</span>
@@ -1157,43 +1181,82 @@ const MapView = () => {
                         </span>
                       </div>
                     </div>
-                    <div className="mt-4">
-                      {isAuthenticated ? (
-                        <div className="space-y-3">
-                          <div className="flex space-x-1">
-                            <button
-                              className={`p-2 rounded-lg transition-colors duration-300 ${
-                                travelMode === 'driving' 
-                                  ? 'bg-blue-100 text-blue-600' 
-                                  : 'hover:bg-gray-200'
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTravelMode('driving');
-                              }}
-                              title="Driving directions"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                              </svg>
-                            </button>
-                            <button
-                              className={`p-2 rounded-lg transition-colors duration-300 ${
-                                travelMode === 'walking' 
-                                  ? 'bg-blue-100 text-blue-600' 
-                                  : 'hover:bg-gray-200'
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTravelMode('walking');
-                              }}
-                              title="Walking directions"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                              </svg>
-                            </button>
-                          </div>
+                    {isAuthenticated ? (
+                      <div className="flex space-x-1">
+                        <button
+                          className={`p-2 rounded-lg transition-colors duration-300 ${
+                            travelMode === 'driving' 
+                              ? 'bg-blue-100 text-blue-600' 
+                              : 'hover:bg-gray-200'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTravelMode('driving');
+                          }}
+                          title="Driving directions"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                        </button>
+                        <button
+                          className={`p-2 rounded-lg transition-colors duration-300 ${
+                            travelMode === 'walking' 
+                              ? 'bg-blue-100 text-blue-600' 
+                              : 'hover:bg-gray-200'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTravelMode('walking');
+                          }}
+                          title="Walking directions"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                          </svg>
+                        </button>
+                        <button 
+                          className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent popup from closing
+                            getDirections(location.position);
+                          }}
+                          title="Get Directions"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276a1 1 0 001.447-.894V5.618a1 1 0 00-1.447-.894L15 7m0 13v-3m0-4H9m4 0V9m0 0H9m4 0v4m0 4h.01" />
+                          </svg>
+                        </button>
+                        <button 
+                          className={`p-2 rounded-lg transition-colors duration-300 ${
+                            savedLocations.some(saved => saved.id === location.id) 
+                              ? 'bg-green-100 text-green-600' 
+                              : 'hover:bg-gray-200'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent popup from closing
+                            // Check if location is already saved
+                            const isAlreadySaved = savedLocations.some(saved => saved.id === location.id);
+                            if (!isAlreadySaved) {
+                              saveLocation(location);
+                            } else {
+                              // If already saved, we could potentially remove it
+                              // For now, just show notification that it's already saved
+                              showNotification('Location already saved!', 'info');
+                            }
+                          }}
+                          title={savedLocations.some(saved => saved.id === location.id) ? 'Saved' : 'Save'}
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <button className="w-full bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 font-medium">
+                        View Details
+                      </button>
+                    )}
                           <div className="flex items-center space-x-1">
                             <button 
                               className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
@@ -1310,13 +1373,31 @@ const MapView = () => {
             >
               <Popup className="custom-popup">
                 <div className="p-6 min-w-[400px] max-w-[500px]">
-                  <h3 className="font-bold text-2xl text-gray-800 mb-3">
-                    {poi.name}
-                  </h3>
-                  <p className="text-gray-600 mb-4 text-base">
-                    {poi.type.replace('_', ' ')}
-                  </p>
-                  <div className="space-y-2 text-base text-gray-500">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-bold text-2xl text-gray-800">
+                        {poi.name}
+                      </h3>
+                      <p className="text-gray-600 text-base mt-1">
+                        {poi.type.replace('_', ' ')}
+                      </p>
+                    </div>
+                    <button 
+                      className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
+                      onClick={() => {
+                        // Close popup
+                        if (mapRef.current) {
+                          mapRef.current.closePopup();
+                        }
+                      }}
+                      title="Close"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="space-y-2 text-base text-gray-500 mb-4">
                     <div className="flex justify-between">
                       <span>Category:</span>
                       <span className="font-medium capitalize">
@@ -1330,59 +1411,42 @@ const MapView = () => {
                       </span>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <div className="flex items-center space-x-1">
-                      <button 
-                        className={`p-2 rounded-lg transition-colors duration-300 ${
-                          savedLocations.some(saved => saved.id === `poi-${poi.id}`) 
-                            ? 'bg-green-100 text-green-600' 
-                            : 'hover:bg-gray-200'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent popup from closing
-                          
-                          // Convert POI to location format for saving
-                          const poiLocation = {
-                            id: `poi-${poi.id}`,
-                            title: poi.name,
-                            description: `${poi.type.replace('_', ' ')} at this location`,
-                            position: poi.position,
-                            postedBy: 'OpenStreetMap',
-                            category: 'poi',
-                            datePosted: new Date().toISOString(),
-                            type: 'poi'
-                          };
-                          
-                          // Check if location is already saved
-                          const isAlreadySaved = savedLocations.some(saved => saved.id === `poi-${poi.id}`);
-                          if (!isAlreadySaved) {
-                            saveLocation(poiLocation);
-                          } else {
-                            showNotification('POI already saved!', 'info');
-                          }
-                        }}
-                        title={savedLocations.some(saved => saved.id === `poi-${poi.id}`) ? 'Saved' : 'Save'}
-                      >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                        </svg>
-                      </button>
-                      <div className="flex-1"></div> {/* Spacer to push the close button to the right */}
-                      <button 
-                        className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
-                        onClick={() => {
-                          // Close popup
-                          if (mapRef.current) {
-                            mapRef.current.closePopup();
-                          }
-                        }}
-                        title="Close"
-                      >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
+                  <div className="flex space-x-1">
+                    <button 
+                      className={`p-2 rounded-lg transition-colors duration-300 ${
+                        savedLocations.some(saved => saved.id === `poi-${poi.id}`) 
+                          ? 'bg-green-100 text-green-600' 
+                          : 'hover:bg-gray-200'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent popup from closing
+                        
+                        // Convert POI to location format for saving
+                        const poiLocation = {
+                          id: `poi-${poi.id}`,
+                          title: poi.name,
+                          description: `${poi.type.replace('_', ' ')} at this location`,
+                          position: poi.position,
+                          postedBy: 'OpenStreetMap',
+                          category: 'poi',
+                          datePosted: new Date().toISOString(),
+                          type: 'poi'
+                        };
+                        
+                        // Check if location is already saved
+                        const isAlreadySaved = savedLocations.some(saved => saved.id === `poi-${poi.id}`);
+                        if (!isAlreadySaved) {
+                          saveLocation(poiLocation);
+                        } else {
+                          showNotification('POI already saved!', 'info');
+                        }
+                      }}
+                      title={savedLocations.some(saved => saved.id === `poi-${poi.id}`) ? 'Saved' : 'Save'}
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </Popup>
