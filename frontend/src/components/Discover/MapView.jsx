@@ -1116,7 +1116,7 @@ const MapView = () => {
                                 }
                               }}
                             >
-                              Close
+                              {showRouting ? 'Close Direction' : 'Close'}
                             </button>
                           </div>
                         </div>
@@ -1474,7 +1474,7 @@ const MapView = () => {
         
         {/* Toggle POI Layer Button */}
         <motion.button
-          className={`absolute top-6 right-16 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300 ${
+          className={`absolute top-6 right-24 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300 ${
             showPoiLayer ? 'bg-blue-500 hover:bg-blue-600' : ''
           }`}
           initial={{ opacity: 0, x: 20 }}
@@ -1504,7 +1504,84 @@ const MapView = () => {
           </svg>
         </motion.button>
         
-        {/* Toggle Stats Button or Clear Route Button when routing is active */}
+        {/* Close Directions Button - appears when routing is active */}
+        {showRouting && (
+          <motion.button
+            className="absolute top-6 right-12 z-[1000] bg-red-500 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-red-600 transition-all duration-300"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.05 }}
+            onClick={() => {
+              setShowRouting(false);
+              setRoutingStart(null);
+              setRoutingEnd(null);
+            }}
+            title="Close Directions"
+          >
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </motion.button>
+        )}
+        
+        {/* Toggle Stats Button */}
+        <motion.button
+          className="absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 1 }}
+          onClick={() => {
+            // If routing is active, clear the route
+            if (showRouting) {
+              setShowRouting(false);
+              setRoutingStart(null);
+              setRoutingEnd(null);
+            } else {
+              // If not routing, toggle the regular stats panel
+              setShowStats(!showStats);
+            }
+          }}
+        >
+          {showRouting ? (
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="w-6 h-6 text-gray-700"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              />
+            </svg>
+          )}
+        </motion.button>
         <motion.button
           className={`absolute top-6 right-6 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl p-3 shadow-2xl hover:bg-white transition-all duration-300 ${
             showRouting ? 'bg-red-500 hover:bg-red-600' : ''
