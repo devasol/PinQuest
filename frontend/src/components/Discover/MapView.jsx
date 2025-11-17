@@ -1196,57 +1196,7 @@ const MapView = () => {
           ))}
         </MapContainer>
         {/* Floating UI Elements */}
-        {/* Search Bar - Top Center */}
-        {/* Floating UI Elements */}
-        {/* Search Bar and Filter Controls - Top Center */}
-        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4 flex flex-col items-center space-y-4">
-          <div className="w-full flex items-center space-x-3">
-            <Geocoder
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              mapRef={mapRef}
-              setSuggestions={setSuggestions}
-              suggestions={suggestions}
-              setIsSearching={setIsSearching}
-            />
-            {isAuthenticated && (
-              <motion.button
-                className={`px-4 py-4 rounded-2xl shadow-2xl backdrop-blur-sm transition-all duration-300 flex items-center justify-center ${
-                  filterMine 
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' 
-                    : 'bg-white/90 text-gray-700 hover:bg-white'
-                }`}
-                onClick={() => setFilterMine(!filterMine)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title="Show only my posts"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </motion.button>
-            )}
-          </div>
-          {filterMine && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full bg-blue-50 border border-blue-200 rounded-xl p-3 text-center"
-            >
-              <p className="text-blue-800 font-medium">Showing only your posts</p>
-            </motion.div>
-          )}
-        </div>
+
         {/* Add Post Button - Bottom Center */}
         <motion.div
           className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[1000]"
@@ -1349,6 +1299,27 @@ const MapView = () => {
                       setIsSearching={setIsSearching}
                     />
                   </div>
+                  
+                  {isAuthenticated && (
+                    <div>
+                      <button
+                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+                          filterMine 
+                            ? 'bg-purple-100 text-purple-700 font-medium' 
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                        }`}
+                        onClick={() => setFilterMine(!filterMine)}
+                      >
+                        Show My Posts Only
+                      </button>
+                      {filterMine && (
+                        <div className="mt-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+                          Showing only your posts
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   <div>
                     <h3 className="font-semibold text-gray-800 mb-2">Posts & Locations</h3>
                     <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
@@ -1463,20 +1434,7 @@ const MapView = () => {
                     </div>
                   </div>
                   
-                  {isAuthenticated && (
-                    <div>
-                      <button
-                        className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-                          filterMine 
-                            ? 'bg-purple-100 text-purple-700 font-medium' 
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                        }`}
-                        onClick={() => setFilterMine(!filterMine)}
-                      >
-                        Show My Posts Only
-                      </button>
-                    </div>
-                  )}
+
                 </div>
               </div>
             </motion.div>
