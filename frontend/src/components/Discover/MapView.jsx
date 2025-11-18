@@ -2500,7 +2500,7 @@ const MapView = () => {
                                 {location.name || location.title}
                               </h3>
                               <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                {location.description}
+                                {location.description || ''}
                               </p>
                               <div className="flex items-center justify-between mt-2">
                                 <span className="text-xs text-gray-500">
