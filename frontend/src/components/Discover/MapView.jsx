@@ -365,6 +365,18 @@ const MapView = () => {
           token = freshToken;
         }
         
+        // Prepare a backend-compatible payload (backend expects `id` and `name`)
+        const payload = {
+          id: location.id,
+          name: location.title || location.name || location.display_name || 'Untitled location',
+          description: location.description || '',
+          position: location.position || location.lat && location.lng ? [location.lat, location.lng] : location.position || null,
+          category: location.category || 'general',
+          datePosted: location.datePosted || new Date().toISOString(),
+          postedBy: location.postedBy || '',
+          type: location.type || 'location'
+        };
+
         // Save to backend
         const response = await fetch(`${API_BASE_URL}/users/saved-locations`, {
           method: 'POST',
@@ -372,12 +384,16 @@ const MapView = () => {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(location)
+          body: JSON.stringify(payload)
         });
         
         if (response.ok) {
           const data = await response.json();
-          // Update state with the response from backend if needed
+          // Use authoritative savedLocations from backend if provided
+          if (data && data.data && Array.isArray(data.data.savedLocations)) {
+            setSavedLocations(data.data.savedLocations);
+            localStorage.setItem('savedLocations', JSON.stringify(data.data.savedLocations));
+          }
           showNotification('Location saved!', 'success');
         } else {
           // If backend fails, revert the UI change

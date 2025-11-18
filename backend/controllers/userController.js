@@ -662,7 +662,22 @@ const addSavedLocation = async (req, res) => {
   try {
     const locationData = req.body;
     
-    if (!locationData.id || !locationData.name) {
+    // Required fields validation with support for different data formats
+    let id = locationData.id;
+    let name = locationData.name || locationData.title;
+    
+    // If it's a post object, extract location info appropriately
+    if (!id && locationData._id) {
+      id = locationData._id;
+    }
+    
+    if (!name && locationData.name) {
+      name = locationData.name;
+    } else if (!name && locationData.title) {
+      name = locationData.title;
+    }
+    
+    if (!id || !name) {
       return res.status(400).json({
         status: 'fail',
         message: 'Location ID and name are required'
@@ -679,7 +694,7 @@ const addSavedLocation = async (req, res) => {
     
     // Check if location is already saved
     const isAlreadySaved = user.savedLocations.some(saved => 
-      saved.id === locationData.id
+      saved.id === id
     );
     
     if (isAlreadySaved) {
@@ -689,11 +704,22 @@ const addSavedLocation = async (req, res) => {
       });
     }
     
-    // Add to saved locations (add to the beginning of the array)
-    user.savedLocations.unshift({
-      ...locationData,
+    // Create a proper location object with only the required fields
+    const savedLocation = {
+      id: id,
+      name: name,
+      latitude: locationData.latitude || locationData.position?.[0] || null,
+      longitude: locationData.longitude || locationData.position?.[1] || null,
+      address: locationData.address || locationData.description || '',
+      placeId: locationData.placeId || locationData.id || id,
+      type: locationData.type || 'location',
+      category: locationData.category || 'general',
+      description: locationData.description || locationData.name || name,
       savedAt: new Date()
-    });
+    };
+    
+    // Add to saved locations (add to the beginning of the array)
+    user.savedLocations.unshift(savedLocation);
     
     await user.save();
     

@@ -43,15 +43,33 @@ const userSchema = new mongoose.Schema({
     }
   }],
   savedLocations: [{
-    id: String,
-    name: String,
-    latitude: Number,
-    longitude: Number,
-    address: String,
-    placeId: String,
-    type: String,
-    category: String,
-    description: String,
+    id: {
+      type: String
+    },
+    name: {
+      type: String
+    },
+    latitude: {
+      type: Number
+    },
+    longitude: {
+      type: Number
+    },
+    address: {
+      type: String
+    },
+    placeId: {
+      type: String
+    },
+    type: {
+      type: String
+    },
+    category: {
+      type: String
+    },
+    description: {
+      type: String
+    },
     savedAt: {
       type: Date,
       default: Date.now
