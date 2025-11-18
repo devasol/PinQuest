@@ -1561,17 +1561,6 @@ const MapView = () => {
                         </button>
                       )}
                     </div>
-                    )}
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-bold text-2xl text-gray-800">
-                          {location.title}
-                        </h3>
-                        <p className="text-gray-600 text-base mt-1">
-                          {location.description}
-                        </p>
-                      </div>
-                    </div>
                     <div className="space-y-2 text-base text-gray-500 mb-4">
                       <div className="flex justify-between">
                         <span>Posted by:</span>
