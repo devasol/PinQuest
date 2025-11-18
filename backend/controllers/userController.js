@@ -655,6 +655,131 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// @desc    Add location to user's saved locations
+// @route   POST /api/v1/users/saved-locations
+// @access  Private
+const addSavedLocation = async (req, res) => {
+  try {
+    const locationData = req.body;
+    
+    if (!locationData.id || !locationData.name) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Location ID and name are required'
+      });
+    }
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    // Check if location is already saved
+    const isAlreadySaved = user.savedLocations.some(saved => 
+      saved.id === locationData.id
+    );
+    
+    if (isAlreadySaved) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Location already saved'
+      });
+    }
+    
+    // Add to saved locations (add to the beginning of the array)
+    user.savedLocations.unshift({
+      ...locationData,
+      savedAt: new Date()
+    });
+    
+    await user.save();
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        user: user._id,
+        savedLocations: user.savedLocations
+      }
+    });
+  } catch (error) {
+    console.error('Error adding saved location:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Remove location from user's saved locations
+// @route   DELETE /api/v1/users/saved-locations/:locationId
+// @access  Private
+const removeSavedLocation = async (req, res) => {
+  try {
+    const { locationId } = req.params;
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    // Remove from saved locations
+    user.savedLocations = user.savedLocations.filter(location => 
+      location.id !== locationId
+    );
+    
+    await user.save();
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        user: user._id,
+        savedLocations: user.savedLocations
+      }
+    });
+  } catch (error) {
+    console.error('Error removing saved location:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get user's saved locations
+// @route   GET /api/v1/users/saved-locations
+// @access  Private
+const getSavedLocations = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('savedLocations');
+    
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        savedLocations: user.savedLocations
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching saved locations:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   getUserById,
   updateUser,
@@ -671,5 +796,8 @@ module.exports = {
   getUserFollowing,
   checkFollowingStatus,
   getUserPreferences,
-  updateUserPreferences
+  updateUserPreferences,
+  addSavedLocation,
+  removeSavedLocation,
+  getSavedLocations
 };

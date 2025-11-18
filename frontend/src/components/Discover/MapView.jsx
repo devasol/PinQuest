@@ -331,11 +331,17 @@ const MapView = () => {
   const [recentLocations, setRecentLocations] = useState([]);
   
   // Function to save a location
-  const saveLocation = (location) => {
+  const saveLocation = async (location) => {
     // Check if location is already saved
     const isAlreadySaved = savedLocations.some(saved => saved.id === location.id);
     
+    if (!isAuthenticated) {
+      showNotification('Please login to save locations', 'error');
+      return;
+    }
+    
     if (!isAlreadySaved) {
+      // First, save to local state
       const newSavedLocation = {
         ...location,
         savedAt: new Date().toISOString()
@@ -344,24 +350,107 @@ const MapView = () => {
       const updatedSavedLocations = [newSavedLocation, ...savedLocations]; // Add to the top
       setSavedLocations(updatedSavedLocations);
       
-      // Save to localStorage
+      // Update localStorage as fallback
       localStorage.setItem('savedLocations', JSON.stringify(updatedSavedLocations));
       
-      showNotification('Location saved!', 'success');
+      try {
+        // Get fresh token to ensure it's not expired
+        const currentUser = auth.currentUser;
+        let token = localStorage.getItem('token');
+        
+        if (currentUser && token) {
+          // Get a fresh token to ensure it's not expired
+          const freshToken = await currentUser.getIdToken(true); // Force refresh
+          localStorage.setItem('token', freshToken);
+          token = freshToken;
+        }
+        
+        // Save to backend
+        const response = await fetch(`${API_BASE_URL}/users/saved-locations`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(location)
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Update state with the response from backend if needed
+          showNotification('Location saved!', 'success');
+        } else {
+          // If backend fails, revert the UI change
+          const revertedSavedLocations = savedLocations;
+          setSavedLocations(revertedSavedLocations);
+          localStorage.setItem('savedLocations', JSON.stringify(revertedSavedLocations));
+          showNotification('Failed to save location. Please try again.', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving location to backend:', error);
+        // If backend fails, revert the UI change
+        const revertedSavedLocations = savedLocations;
+        setSavedLocations(revertedSavedLocations);
+        localStorage.setItem('savedLocations', JSON.stringify(revertedSavedLocations));
+        showNotification('Failed to save location. Please try again.', 'error');
+      }
     } else {
       showNotification('Location already saved!', 'info');
     }
   };
   
   // Function to remove a saved location
-  const removeSavedLocation = (locationId) => {
+  const removeSavedLocation = async (locationId) => {
+    if (!isAuthenticated) {
+      showNotification('Please login to manage saved locations', 'error');
+      return;
+    }
+    
+    // First, update local state
     const updatedSavedLocations = savedLocations.filter(location => location.id !== locationId);
     setSavedLocations(updatedSavedLocations);
     
-    // Update localStorage
+    // Update localStorage as fallback
     localStorage.setItem('savedLocations', JSON.stringify(updatedSavedLocations));
     
-    showNotification('Location removed from saved!', 'info');
+    try {
+      // Get fresh token to ensure it's not expired
+      const currentUser = auth.currentUser;
+      let token = localStorage.getItem('token');
+      
+      if (currentUser && token) {
+        // Get a fresh token to ensure it's not expired
+        const freshToken = await currentUser.getIdToken(true); // Force refresh
+        localStorage.setItem('token', freshToken);
+        token = freshToken;
+      }
+      
+      // Remove from backend
+      const response = await fetch(`${API_BASE_URL}/users/saved-locations/${locationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        showNotification('Location removed from saved!', 'info');
+      } else {
+        // If backend fails, revert the UI change
+        const revertedSavedLocations = [...savedLocations];
+        setSavedLocations(revertedSavedLocations);
+        localStorage.setItem('savedLocations', JSON.stringify(revertedSavedLocations));
+        showNotification('Failed to remove location. Please try again.', 'error');
+      }
+    } catch (error) {
+      console.error('Error removing saved location from backend:', error);
+      // If backend fails, revert the UI change
+      const revertedSavedLocations = [...savedLocations];
+      setSavedLocations(revertedSavedLocations);
+      localStorage.setItem('savedLocations', JSON.stringify(revertedSavedLocations));
+      showNotification('Failed to remove location. Please try again.', 'error');
+    }
   };
   
   // Function to add a location to recents
@@ -392,18 +481,9 @@ const MapView = () => {
     localStorage.setItem('recentLocations', JSON.stringify(updatedRecents));
   };
   
-  // Function to load saved and recent locations from localStorage on component mount
+  // Function to load saved and recent locations from localStorage and backend on component mount
   useEffect(() => {
-    const saved = localStorage.getItem('savedLocations');
     const recents = localStorage.getItem('recentLocations');
-    
-    if (saved) {
-      try {
-        setSavedLocations(JSON.parse(saved));
-      } catch (e) {
-        console.error('Error parsing saved locations:', e);
-      }
-    }
     
     if (recents) {
       try {
@@ -413,6 +493,90 @@ const MapView = () => {
       }
     }
   }, []);
+
+  // Fetch saved locations from backend when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchSavedLocations();
+    } else {
+      // If not authenticated, load from localStorage as fallback
+      const saved = localStorage.getItem('savedLocations');
+      if (saved) {
+        try {
+          setSavedLocations(JSON.parse(saved));
+        } catch (e) {
+          console.error('Error parsing saved locations:', e);
+        }
+      }
+    }
+  }, [isAuthenticated]);
+
+  const fetchSavedLocations = async () => {
+    try {
+      // Get fresh token to ensure it's not expired
+      const currentUser = auth.currentUser;
+      let token = localStorage.getItem('token');
+      
+      if (currentUser && token) {
+        // Get a fresh token to ensure it's not expired
+        const freshToken = await currentUser.getIdToken(true); // Force refresh
+        localStorage.setItem('token', freshToken);
+        token = freshToken;
+      }
+      
+      if (!token) {
+        console.error('No token available for fetching saved locations');
+        // Load from localStorage as fallback
+        const saved = localStorage.getItem('savedLocations');
+        if (saved) {
+          try {
+            setSavedLocations(JSON.parse(saved));
+          } catch (e) {
+            console.error('Error parsing saved locations:', e);
+          }
+        }
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/users/saved-locations`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSavedLocations(data.data.savedLocations);
+        
+        // Also save to localStorage as a fallback
+        localStorage.setItem('savedLocations', JSON.stringify(data.data.savedLocations));
+      } else {
+        // If backend fails, load from localStorage as fallback
+        const saved = localStorage.getItem('savedLocations');
+        if (saved) {
+          try {
+            setSavedLocations(JSON.parse(saved));
+          } catch (e) {
+            console.error('Error parsing saved locations:', e);
+          }
+        }
+        console.error('Failed to fetch saved locations from backend');
+      }
+    } catch (error) {
+      console.error('Error fetching saved locations:', error);
+      // If backend fails, load from localStorage as fallback
+      const saved = localStorage.getItem('savedLocations');
+      if (saved) {
+        try {
+          setSavedLocations(JSON.parse(saved));
+        } catch (e) {
+          console.error('Error parsing saved locations:', e);
+        }
+      }
+    }
+  };
   const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [showMapSettings, setShowMapSettings] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
@@ -1253,72 +1417,6 @@ const MapView = () => {
                             >
                               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button className="w-full bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 font-medium">
-                          View Details
-                        </button>
-                      )}
-                    </div>
-                          <div className="flex items-center space-x-1">
-                            <button 
-                              className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent popup from closing
-                                getDirections(location.position);
-                              }}
-                              title="Get Directions"
-                            >
-                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276a1 1 0 001.447-.894V5.618a1 1 0 00-1.447-.894L15 7m0 13v-3m0-4H9m4 0V9m0 0H9m4 0v4m0 4h.01" />
-                              </svg>
-                            </button>
-                            <button 
-                              className={`p-2 rounded-lg transition-colors duration-300 ${
-                                savedLocations.some(saved => saved.id === location.id) 
-                                  ? 'bg-green-100 text-green-600' 
-                                  : 'hover:bg-gray-200'
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent popup from closing
-                                // Check if location is already saved
-                                const isAlreadySaved = savedLocations.some(saved => saved.id === location.id);
-                                if (!isAlreadySaved) {
-                                  saveLocation(location);
-                                } else {
-                                  // If already saved, we could potentially remove it
-                                  // For now, just show notification that it's already saved
-                                  showNotification('Location already saved!', 'info');
-                                }
-                              }}
-                              title={savedLocations.some(saved => saved.id === location.id) ? 'Saved' : 'Save'}
-                            >
-                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                              </svg>
-                            </button>
-                            <div className="flex-1"></div> {/* Spacer to push the close button to the right */}
-                            <button 
-                              className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
-                              onClick={() => {
-                                // Close popup
-                                if (mapRef.current) {
-                                  mapRef.current.closePopup();
-                                }
-                                // Clear routing if it's showing directions to the current location
-                                if (showRouting) {
-                                  setShowRouting(false);
-                                  setRoutingStart(null);
-                                  setRoutingEnd(null);
-                                }
-                              }}
-                              title={showRouting ? 'Close Direction' : 'Close'}
-                            >
-                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
                           </div>

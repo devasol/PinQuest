@@ -169,6 +169,37 @@
 - **Description:** Remove a post from favorites
 - **Headers:** Authorization: Bearer {token}
 
+## Saved Locations
+
+### Add Saved Location
+- **POST** `/api/v1/users/saved-locations`
+- **Description:** Add a location to user's saved locations
+- **Headers:** Authorization: Bearer {token}
+- **Request Body:**
+  ```json
+  {
+    "id": "string",
+    "name": "string",
+    "latitude": 0.0,
+    "longitude": 0.0,
+    "address": "string",
+    "placeId": "string",
+    "type": "string",
+    "category": "string",
+    "description": "string"
+  }
+  ```
+
+### Remove Saved Location
+- **DELETE** `/api/v1/users/saved-locations/:locationId`
+- **Description:** Remove a location from user's saved locations
+- **Headers:** Authorization: Bearer {token}
+
+### Get User Saved Locations
+- **GET** `/api/v1/users/saved-locations`
+- **Description:** Get current user's saved locations
+- **Headers:** Authorization: Bearer {token}
+
 ### Get User Favorites
 - **GET** `/api/v1/users/favorites`
 - **Description:** Get current user's favorites

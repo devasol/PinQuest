@@ -15,7 +15,10 @@ const {
   getUserFollowing,
   checkFollowingStatus,
   getUserPreferences,
-  updateUserPreferences
+  updateUserPreferences,
+  addSavedLocation,
+  removeSavedLocation,
+  getSavedLocations
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
@@ -33,6 +36,10 @@ router.route("/:id").delete(protect, deleteUser);
 // Favorites routes
 router.route("/favorites").post(protect, addFavorite).get(protect, getFavorites);
 router.route("/favorites/:postId").delete(protect, removeFavorite).get(protect, isFavorite);
+
+// Saved locations routes
+router.route("/saved-locations").post(protect, addSavedLocation).get(protect, getSavedLocations);
+router.route("/saved-locations/:locationId").delete(protect, removeSavedLocation);
 
 // Following/follower routes
 router.route("/:id/follow").post(protect, followUser);
