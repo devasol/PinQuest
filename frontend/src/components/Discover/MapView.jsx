@@ -1432,7 +1432,7 @@ const MapView = () => {
                     setActivePopup(null);
                   }}
                 >
-                  <div className="p-6 min-w-[400px] max-w-[500px]">
+                  <div className="p-6 min-w-[400px] max-w-[500px] relative">
                     {location.image && typeof location.image === "string" ? (
                       <div className="relative">
                         <img
@@ -1517,38 +1517,50 @@ const MapView = () => {
                           </svg>
                         </button>
                       </div>
-                    ) : (
-                      <button
-                        className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Close popup
-                          if (mapRef.current) {
-                            mapRef.current.closePopup();
-                          }
-                          // Clear routing if it's showing directions to the current location
-                          if (showRouting) {
-                            setShowRouting(false);
-                            setRoutingStart(null);
-                            setRoutingEnd(null);
-                          }
-                        }}
-                        title={showRouting ? "Close Direction" : "Close"}
-                      >
-                        <svg
-                          className="w-6 h-6"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                    ) : null}
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-bold text-2xl text-gray-800">
+                          {location.title}
+                        </h3>
+                        <p className="text-gray-600 text-base mt-1">
+                          {location.description}
+                        </p>
+                      </div>
+                      {!location.image && (
+                        <button
+                          className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Close popup
+                            if (mapRef.current) {
+                              mapRef.current.closePopup();
+                            }
+                            // Clear routing if it's showing directions to the current location
+                            if (showRouting) {
+                              setShowRouting(false);
+                              setRoutingStart(null);
+                              setRoutingEnd(null);
+                            }
+                          }}
+                          title={showRouting ? "Close Direction" : "Close"}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                     )}
                     <div className="flex justify-between items-start mb-3">
                       <div>
@@ -1559,37 +1571,6 @@ const MapView = () => {
                           {location.description}
                         </p>
                       </div>
-                      <button
-                        className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Close popup
-                          if (mapRef.current) {
-                            mapRef.current.closePopup();
-                          }
-                          // Clear routing if it's showing directions to the current location
-                          if (showRouting) {
-                            setShowRouting(false);
-                            setRoutingStart(null);
-                            setRoutingEnd(null);
-                          }
-                        }}
-                        title={showRouting ? "Close Direction" : "Close"}
-                      >
-                        <svg
-                          className="w-6 h-6"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
                     </div>
                     <div className="space-y-2 text-base text-gray-500 mb-4">
                       <div className="flex justify-between">
