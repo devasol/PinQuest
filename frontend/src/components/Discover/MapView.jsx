@@ -1444,7 +1444,7 @@ const MapView = () => {
                           }}
                         />
                         <button
-                          className="absolute top-2 right-2 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
+                          className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
                           onClick={(e) => {
                             e.stopPropagation();
                             // Close popup
@@ -1486,7 +1486,7 @@ const MapView = () => {
                           }}
                         />
                         <button
-                          className="absolute top-2 right-2 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
+                          className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
                           onClick={(e) => {
                             e.stopPropagation();
                             // Close popup
@@ -1519,7 +1519,7 @@ const MapView = () => {
                       </div>
                     ) : (
                       <button
-                        className="absolute top-2 right-2 p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
+                        className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
                         onClick={(e) => {
                           e.stopPropagation();
                           // Close popup
@@ -1559,6 +1559,37 @@ const MapView = () => {
                           {location.description}
                         </p>
                       </div>
+                      <button
+                        className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Close popup
+                          if (mapRef.current) {
+                            mapRef.current.closePopup();
+                          }
+                          // Clear routing if it's showing directions to the current location
+                          if (showRouting) {
+                            setShowRouting(false);
+                            setRoutingStart(null);
+                            setRoutingEnd(null);
+                          }
+                        }}
+                        title={showRouting ? "Close Direction" : "Close"}
+                      >
+                        <svg
+                          className="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
                     </div>
                     <div className="space-y-2 text-base text-gray-500 mb-4">
                       <div className="flex justify-between">
@@ -1776,7 +1807,7 @@ const MapView = () => {
                         </p>
                       </div>
                       <button
-                        className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
+                        className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
                         onClick={() => {
                           // Close popup
                           if (mapRef.current) {
