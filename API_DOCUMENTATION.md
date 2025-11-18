@@ -186,7 +186,9 @@
     "placeId": "string",
     "type": "string",
     "category": "string",
-    "description": "string"
+    "description": "string",
+    "postedBy": "string",
+    "datePosted": "string"
   }
   ```
 
@@ -199,6 +201,30 @@
 - **GET** `/api/v1/users/saved-locations`
 - **Description:** Get current user's saved locations
 - **Headers:** Authorization: Bearer {token}
+- **Response:**
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "savedLocations": [
+        {
+          "id": "string",
+          "name": "string",
+          "latitude": 0.0,
+          "longitude": 0.0,
+          "address": "string",
+          "placeId": "string",
+          "type": "string",
+          "category": "string",
+          "description": "string",
+          "postedBy": "string",
+          "datePosted": "string",
+          "savedAt": "2025-11-18T04:24:34.123Z"
+        }
+      ]
+    }
+  }
+  ```
 
 ### Get User Favorites
 - **GET** `/api/v1/users/favorites`

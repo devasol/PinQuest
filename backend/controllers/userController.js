@@ -715,6 +715,8 @@ const addSavedLocation = async (req, res) => {
       type: locationData.type || 'location',
       category: locationData.category || 'general',
       description: locationData.description || locationData.name || name,
+      postedBy: locationData.postedBy || '',
+      datePosted: locationData.datePosted || new Date().toISOString(),
       savedAt: new Date()
     };
     

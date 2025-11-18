@@ -70,6 +70,12 @@ const userSchema = new mongoose.Schema({
     description: {
       type: String
     },
+    postedBy: {
+      type: String
+    },
+    datePosted: {
+      type: String
+    },
     savedAt: {
       type: Date,
       default: Date.now
