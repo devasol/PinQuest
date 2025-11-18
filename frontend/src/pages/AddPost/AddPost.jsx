@@ -163,7 +163,7 @@ const AddPost = () => {
       }));
       
       // Import and use the posts API service to handle the post creation
-      const { postsApi } = await import('../services/postsApi.js');
+      const { postsApi } = await import('../../services/postsApi.js');
       const result = await postsApi.createPostWithFiles(postData);
 
       if (result.status === "success") {
