@@ -5,6 +5,7 @@ import DiscoverPage from "../pages/DiscoverPage/DiscoverPage";
 import LoginPage from "../pages/LoginPage/LoginPage";
 import CategoriesPage from "../pages/CategoriesPage/CategoriesPage";
 import ProfilePage from "../pages/ProfilePage/ProfilePage";
+import AddPost from "../pages/AddPost/AddPost";
 
 const router = createBrowserRouter([
   {
@@ -30,6 +31,11 @@ const router = createBrowserRouter([
   {
     element: <CategoriesPage />,
     path: "/categories",
+    // error:</>
+  },
+  {
+    element: <AddPost />,
+    path: "/add-post",
     // error:</>
   },
   //  {
