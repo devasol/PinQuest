@@ -2497,7 +2497,7 @@ const MapView = () => {
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <h3 className="font-semibold text-gray-800">
-                                {location.title}
+                                {location.name || location.title}
                               </h3>
                               <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                                 {location.description}
