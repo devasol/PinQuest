@@ -1432,7 +1432,7 @@ const MapView = () => {
                     setActivePopup(null);
                   }}
                 >
-                  <div className="p-6 min-w-[400px] max-w-[500px]">
+                  <div className="p-6 min-w-[400px] max-w-[500px] relative">
                     {location.image && typeof location.image === "string" ? (
                       <img
                         src={location.image}
@@ -1461,36 +1461,6 @@ const MapView = () => {
                           {location.description}
                         </p>
                       </div>
-                      <button
-                        className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
-                        onClick={() => {
-                          // Close popup
-                          if (mapRef.current) {
-                            mapRef.current.closePopup();
-                          }
-                          // Clear routing if it's showing directions to the current location
-                          if (showRouting) {
-                            setShowRouting(false);
-                            setRoutingStart(null);
-                            setRoutingEnd(null);
-                          }
-                        }}
-                        title={showRouting ? "Close Direction" : "Close"}
-                      >
-                        <svg
-                          className="w-6 h-6"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
                     </div>
                     <div className="space-y-2 text-base text-gray-500 mb-4">
                       <div className="flex justify-between">
@@ -1513,7 +1483,8 @@ const MapView = () => {
                     <div className="mt-4">
                       {isAuthenticated ? (
                         <div className="space-y-3">
-                          <div className="flex space-x-1">
+                          {/* Top-right icons container */}
+                          <div className="absolute top-2 right-2 flex space-x-1">
                             <button
                               className={`p-2 rounded-lg transition-colors duration-300 ${
                                 travelMode === "driving"
@@ -1566,8 +1537,6 @@ const MapView = () => {
                                 />
                               </svg>
                             </button>
-                          </div>
-                          <div className="flex items-center space-x-1">
                             <button
                               className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
                               onClick={(e) => {
@@ -1637,6 +1606,37 @@ const MapView = () => {
                                 />
                               </svg>
                             </button>
+                            <button
+                              className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Close popup
+                                if (mapRef.current) {
+                                  mapRef.current.closePopup();
+                                }
+                                // Clear routing if it's showing directions to the current location
+                                if (showRouting) {
+                                  setShowRouting(false);
+                                  setRoutingStart(null);
+                                  setRoutingEnd(null);
+                                }
+                              }}
+                              title={showRouting ? "Close Direction" : "Close"}
+                            >
+                              <svg
+                                className="w-6 h-6"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
                           </div>
                         </div>
                       ) : (
@@ -1699,7 +1699,7 @@ const MapView = () => {
                 }}
               >
                 <Popup className="custom-popup">
-                  <div className="p-6 min-w-[400px] max-w-[500px]">
+                  <div className="p-6 min-w-[400px] max-w-[500px] relative">
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="font-bold text-2xl text-gray-800">
@@ -1709,30 +1709,6 @@ const MapView = () => {
                           {poi.type.replace("_", " ")}
                         </p>
                       </div>
-                      <button
-                        className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
-                        onClick={() => {
-                          // Close popup
-                          if (mapRef.current) {
-                            mapRef.current.closePopup();
-                          }
-                        }}
-                        title="Close"
-                      >
-                        <svg
-                          className="w-6 h-6"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
                     </div>
                     <div className="space-y-2 text-base text-gray-500 mb-4">
                       <div className="flex justify-between">
@@ -1750,64 +1726,91 @@ const MapView = () => {
                       </div>
                     </div>
                     <div className="flex space-x-1">
-                      <button
-                        className={`p-2 rounded-lg transition-colors duration-300 ${
-                          savedLocations.some(
-                            (saved) => saved.id === `poi-${poi.id}`
-                          )
-                            ? "bg-green-100 text-green-600"
-                            : "hover:bg-gray-200"
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent popup from closing
+                      {/* Top-right icons container for POI */}
+                      <div className="absolute top-2 right-2 flex space-x-1">
+                        <button
+                          className={`p-2 rounded-lg transition-colors duration-300 ${
+                            savedLocations.some(
+                              (saved) => saved.id === `poi-${poi.id}`
+                            )
+                              ? "bg-green-100 text-green-600"
+                              : "hover:bg-gray-200"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent popup from closing
 
-                          // Convert POI to location format for saving
-                          const poiLocation = {
-                            id: `poi-${poi.id}`,
-                            title: poi.name,
-                            description: `${poi.type.replace(
-                              "_",
-                              " "
-                            )} at this location`,
-                            position: poi.position,
-                            postedBy: "OpenStreetMap",
-                            category: "poi",
-                            datePosted: new Date().toISOString(),
-                            type: "poi",
-                          };
+                            // Convert POI to location format for saving
+                            const poiLocation = {
+                              id: `poi-${poi.id}`,
+                              title: poi.name,
+                              description: `${poi.type.replace(
+                                "_",
+                                " "
+                              )} at this location`,
+                              position: poi.position,
+                              postedBy: "OpenStreetMap",
+                              category: "poi",
+                              datePosted: new Date().toISOString(),
+                              type: "poi",
+                            };
 
-                          // Check if location is already saved
-                          const isAlreadySaved = savedLocations.some(
-                            (saved) => saved.id === `poi-${poi.id}`
-                          );
-                          if (!isAlreadySaved) {
-                            saveLocation(poiLocation);
-                          } else {
-                            showNotification("POI already saved!", "info");
+                            // Check if location is already saved
+                            const isAlreadySaved = savedLocations.some(
+                              (saved) => saved.id === `poi-${poi.id}`
+                            );
+                            if (!isAlreadySaved) {
+                              saveLocation(poiLocation);
+                            } else {
+                              showNotification("POI already saved!", "info");
+                            }
+                          }}
+                          title={
+                            savedLocations.some(
+                              (saved) => saved.id === `poi-${poi.id}`
+                            )
+                              ? "Saved"
+                              : "Save"
                           }
-                        }}
-                        title={
-                          savedLocations.some(
-                            (saved) => saved.id === `poi-${poi.id}`
-                          )
-                            ? "Saved"
-                            : "Save"
-                        }
-                      >
-                        <svg
-                          className="w-6 h-6"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                          />
-                        </svg>
-                      </button>
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
+                          onClick={() => {
+                            // Close popup
+                            if (mapRef.current) {
+                              mapRef.current.closePopup();
+                            }
+                          }}
+                          title="Close"
+                        >
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </Popup>
