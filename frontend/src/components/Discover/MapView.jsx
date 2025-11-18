@@ -21,6 +21,25 @@ import NotificationModal from "../NotificationModal";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 
+// Extract the base server URL from the API base URL for image paths
+const getServerBaseUrl = () => {
+  // Remove the /api/v1 part to get the base server URL
+  return API_BASE_URL.replace('/api/v1', '');
+};
+
+// Helper function to get the correct image URL
+const getImageUrl = (imageObj) => {
+  if (!imageObj) return '';
+  const serverBaseUrl = getServerBaseUrl();
+  if (typeof imageObj === 'string') {
+    return imageObj.startsWith('http') ? imageObj : `${serverBaseUrl}${imageObj}`;
+  }
+  if (imageObj.url) {
+    return imageObj.url.startsWith('http') ? imageObj.url : `${serverBaseUrl}${imageObj.url}`;
+  }
+  return '';
+};
+
 // Fix for missing marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -1436,7 +1455,7 @@ const MapView = () => {
                     {location.image && typeof location.image === "string" ? (
                       <div className="relative">
                         <img
-                          src={location.image}
+                          src={getImageUrl(location.image)}
                           alt={location.title}
                           className="w-full h-48 object-cover rounded-lg mb-4"
                           onError={(e) => {
@@ -1478,7 +1497,7 @@ const MapView = () => {
                     ) : location.image && location.image.url ? (
                       <div className="relative">
                         <img
-                          src={location.image.url}
+                          src={getImageUrl(location.image)}
                           alt={location.title}
                           className="w-full h-48 object-cover rounded-lg mb-4"
                           onError={(e) => {

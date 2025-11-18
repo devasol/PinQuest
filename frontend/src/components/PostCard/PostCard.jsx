@@ -100,6 +100,26 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
     });
   };
 
+  // Extract the base server URL from the API base URL for image paths
+  const getServerBaseUrl = () => {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+    // Remove the /api/v1 part to get the base server URL
+    return apiBaseUrl.replace('/api/v1', '');
+  };
+
+  // Helper function to get the correct image URL
+  const getImageUrl = (imageObj) => {
+    if (!imageObj) return '';
+    const serverBaseUrl = getServerBaseUrl();
+    if (typeof imageObj === 'string') {
+      return imageObj.startsWith('http') ? imageObj : `${serverBaseUrl}${imageObj}`;
+    }
+    if (imageObj.url) {
+      return imageObj.url.startsWith('http') ? imageObj.url : `${serverBaseUrl}${imageObj.url}`;
+    }
+    return '';
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6 border border-gray-200">
       {/* Post Header */}
@@ -130,14 +150,21 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
         )}
       </div>
 
-      {/* Post Image */}
-      {post.image?.url && (
+      {/* Post Images - Handle both single image and multiple images */}
+      {(post.image?.url || (post.images && post.images.length > 0)) && (
         <div className="relative">
+          {/* Display first image from multiple images or single image */}
           <img
-            src={post.image.url}
+            src={getImageUrl(post.images && post.images.length > 0 ? post.images[0] : post.image)}
             alt={post.title}
             className="w-full h-64 object-cover"
           />
+          {/* Show image count indicator if there are multiple images */}
+          {post.images && post.images.length > 1 && (
+            <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
+              {post.images.length} images
+            </div>
+          )}
         </div>
       )}
 
