@@ -157,9 +157,7 @@ export const authService = {
       throw error;
     }
   },
-
-  // Google login - this must continue to use Firebase for OAuth
-  googleLogin: async () => {
-    return firebaseAuthService.googleLogin();
-  },
 };
+
+// Export the apiRequest function so it can be imported by other modules
+export { apiRequest };
