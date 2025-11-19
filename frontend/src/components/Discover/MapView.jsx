@@ -276,6 +276,7 @@ const MapView = () => {
   const [images, setImages] = useState([]);
   const fileInputRef = useRef(null);
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null); // Initialize as null to indicate no location yet
   const [hasUserLocation, setHasUserLocation] = useState(false);
@@ -1153,6 +1154,9 @@ const MapView = () => {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
+    if (submitting) return; // prevent duplicate submits
+    setSubmitting(true);
+
     try {
       // Check if we have valid location data
       if (
@@ -1262,28 +1266,43 @@ const MapView = () => {
         body: isFormData ? postData : JSON.stringify(postData),
       });
 
-      // Check if the response is OK before trying to parse JSON
+      // If response is not ok, read text and try to extract meaningful message
       if (!response.ok) {
-        // Try to get error message from response
-        let errorMessage = `HTTP error! status: ${response.status}`;
+        let errorText = "";
         try {
-          const errorText = await response.text();
-          console.error("Server error response:", errorText);
-          // Try to parse as JSON if possible, otherwise use as text
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorMessage = errorJson.message || errorJson.error || errorMessage;
-          } catch {
-            errorMessage = errorText || errorMessage;
-          }
-        } catch (textError) {
-          console.error("Error reading error response:", textError);
+          errorText = await response.text();
+        } catch (readErr) {
+          console.error("Error reading error response text:", readErr);
         }
+
+        let parsed = null;
+  try { parsed = JSON.parse(errorText); } catch { parsed = null; }
+
+        let errorMessage = `HTTP ${response.status}`;
+        if (parsed) {
+          if (typeof parsed.message === "string") errorMessage = parsed.message;
+          else if (parsed.message && typeof parsed.message === "object") errorMessage = JSON.stringify(parsed.message);
+          else if (parsed.error) errorMessage = parsed.error;
+          else errorMessage = JSON.stringify(parsed).slice(0, 500);
+        } else if (errorText) {
+          const snippet = errorText.replace(/\s+/g, " ").trim().slice(0, 800);
+          errorMessage = snippet + (snippet.length >= 800 ? "..." : "");
+        }
+
+        console.error("Create post failed:", { status: response.status, text: errorText, parsed });
         showNotification(`Error creating post: ${errorMessage}`, "error");
         return;
       }
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        // Non-JSON success response
+        const text = await response.text().catch(() => "");
+        console.warn("Server returned non-JSON success response:", text);
+        result = { status: "success", data: null, raw: text };
+      }
 
       if (result.status === "success") {
         // Add the new post to the local state
@@ -2657,12 +2676,24 @@ const MapView = () => {
             {/* Modal Content */}
             <div className="fixed inset-0 flex items-center justify-center z-[2001] p-4">
               <motion.div
-                className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl sm:max-w-3xl max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
+                className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl sm:max-w-3xl max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
                 initial={{ scale: 0.98, opacity: 0, y: 10 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.98, opacity: 0, y: 10 }}
                 transition={{ type: "spring", damping: 20 }}
               >
+                {/* Submitting overlay */}
+                {submitting && (
+                  <div className="absolute inset-0 z-50 bg-white/70 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <svg className="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                      <div className="text-gray-700 font-medium">Creating post — please wait...</div>
+                    </div>
+                  </div>
+                )}
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-semibold text-gray-800">
@@ -2853,9 +2884,20 @@ const MapView = () => {
                       </button>
                       <button
                         type="submit"
-                        className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl hover:bg-blue-700 transition transform duration-150 hover:scale-105 active:scale-95 font-medium shadow-md"
+                        disabled={submitting}
+                        className={`flex-1 py-3 px-4 rounded-xl transition transform duration-150 hover:scale-105 active:scale-95 font-medium shadow-md ${submitting ? 'bg-blue-400 text-white cursor-wait opacity-80' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                       >
-                        Create Post
+                        {submitting ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Creating...
+                          </div>
+                        ) : (
+                          'Create Post'
+                        )}
                       </button>
                     </div>
                   </form>
