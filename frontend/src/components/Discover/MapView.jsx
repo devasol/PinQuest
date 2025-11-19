@@ -549,6 +549,9 @@ const MapView = () => {
 
   // Function to add a location to recents
   const addRecentLocation = (location) => {
+    // Only track recent locations for authenticated users
+    if (!isAuthenticated) return;
+
     // Check if location is already in recents
     const existingIndex = recentLocations.findIndex(
       (recent) => recent.id === location.id
@@ -574,38 +577,49 @@ const MapView = () => {
     setRecentLocations(updatedRecents);
 
     // Save to localStorage
-    localStorage.setItem("recentLocations", JSON.stringify(updatedRecents));
+    try {
+      localStorage.setItem("recentLocations", JSON.stringify(updatedRecents));
+    } catch (e) {
+      console.error("Failed to save recentLocations to localStorage:", e);
+    }
   };
 
-  // Function to load saved and recent locations from localStorage and backend on component mount
+  // Load recent locations only when authenticated
   useEffect(() => {
-    const recents = localStorage.getItem("recentLocations");
+    if (isAuthenticated) {
+      const recents = localStorage.getItem("recentLocations");
 
-    if (recents) {
-      try {
-        setRecentLocations(JSON.parse(recents));
-      } catch (e) {
-        console.error("Error parsing recent locations:", e);
+      if (recents) {
+        try {
+          setRecentLocations(JSON.parse(recents));
+        } catch (e) {
+          console.error("Error parsing recent locations:", e);
+        }
       }
+    } else {
+      // Clear recents for logged out users
+      setRecentLocations([]);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   // Fetch saved locations from backend when user is authenticated
   useEffect(() => {
     if (isAuthenticated) {
       fetchSavedLocations();
     } else {
-      // If not authenticated, load from localStorage as fallback
-      const saved = localStorage.getItem("savedLocations");
-      if (saved) {
-        try {
-          setSavedLocations(JSON.parse(saved));
-        } catch (e) {
-          console.error("Error parsing saved locations:", e);
-        }
-      }
+      // Clear saved locations for logged out users (do not expose other users' data)
+      setSavedLocations([]);
     }
   }, [isAuthenticated]);
+
+  // When user logs out, ensure sidebar tabs for saved/recents are closed
+  useEffect(() => {
+    if (!isAuthenticated) {
+      if (activeSidebarTab === "saved" || activeSidebarTab === "recents") {
+        setActiveSidebarTab("");
+      }
+    }
+  }, [isAuthenticated, activeSidebarTab]);
 
   const fetchSavedLocations = async () => {
     try {
