@@ -208,6 +208,7 @@ const AddPost = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden"
+          whileHover={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)' }}
         >
           {/* Header Section */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white">
