@@ -50,6 +50,63 @@ const getImageUrl = (imageObj) => {
   return "";
 };
 
+// Small carousel component for showing multiple images with next/prev buttons
+function ImageCarousel({ images = [], alt = "", className = "" }) {
+  const [index, setIndex] = React.useState(0);
+
+  if (!images || images.length === 0) return null;
+
+  const gotoPrev = (e) => {
+    e.stopPropagation();
+    setIndex((i) => (i - 1 + images.length) % images.length);
+  };
+
+  const gotoNext = (e) => {
+    e.stopPropagation();
+    setIndex((i) => (i + 1) % images.length);
+  };
+
+  const currentImage = images[index];
+
+  return (
+    <div className={`relative ${className}`} onClick={(e) => e.stopPropagation()}>
+      <div className="w-full h-48 rounded-lg mb-4 overflow-hidden">
+        <OptimizedImage
+          src={getImageUrl(currentImage)}
+          alt={alt}
+          className="w-full h-full object-cover rounded-lg"
+          priority={false}
+        />
+      </div>
+
+      {images.length > 1 && (
+        <>
+          <button
+            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white z-20"
+            onClick={gotoPrev}
+            aria-label="Previous image"
+          >
+            ‹
+          </button>
+          <button
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white z-20"
+            onClick={gotoNext}
+            aria-label="Next image"
+          >
+            ›
+          </button>
+
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-2 z-20 flex items-center gap-2 bg-black/30 px-2 py-1 rounded-full">
+            <span className="text-white text-sm">{index + 1}</span>
+            <span className="text-white text-sm">/</span>
+            <span className="text-white text-sm">{images.length}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Fix for missing marker icons (Leaflet's default markers)
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -1532,8 +1589,9 @@ const MapView = () => {
                   }}
                 >
                   <div className="p-6 min-w-[400px] max-w-[500px] relative">
-                    {(location.image && typeof location.image === "string") ||
-                    (location.image && location.image.url) ? (
+                    {location.images && location.images.length > 0 ? (
+                      <ImageCarousel images={location.images} alt={location.title} className="relative" />
+                    ) : ( (location.image && typeof location.image === "string") || (location.image && location.image.url) ) ? (
                       <div className="relative">
                         <div className="w-full h-48 rounded-lg mb-4">
                           <OptimizedImage
