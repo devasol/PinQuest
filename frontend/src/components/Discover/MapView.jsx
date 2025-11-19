@@ -1285,17 +1285,35 @@ const MapView = () => {
           console.error("Error reading error response text:", readErr);
         }
 
+        // Try to parse JSON directly
         let parsed = null;
-  try { parsed = JSON.parse(errorText); } catch { parsed = null; }
+        try {
+          parsed = JSON.parse(errorText);
+        } catch (e) {
+          parsed = null;
+        }
+
+        // If body is HTML, try to extract JSON-like substring inside it (common when servers embed JSON in HTML)
+        if (!parsed && typeof errorText === "string" && errorText.includes("<")) {
+          try {
+            const jsonMatch = errorText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              parsed = JSON.parse(jsonMatch[0]);
+            }
+          } catch {
+            // ignore
+          }
+        }
 
         let errorMessage = `HTTP ${response.status}`;
         if (parsed) {
           if (typeof parsed.message === "string") errorMessage = parsed.message;
-          else if (parsed.message && typeof parsed.message === "object") errorMessage = JSON.stringify(parsed.message);
-          else if (parsed.error) errorMessage = parsed.error;
+          else if (parsed.error && typeof parsed.error === "string") errorMessage = parsed.error;
           else errorMessage = JSON.stringify(parsed).slice(0, 500);
         } else if (errorText) {
-          const snippet = errorText.replace(/\s+/g, " ").trim().slice(0, 800);
+          // Fallback: try to strip HTML tags for readability
+          const stripped = errorText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+          const snippet = stripped.slice(0, 800);
           errorMessage = snippet + (snippet.length >= 800 ? "..." : "");
         }
 
