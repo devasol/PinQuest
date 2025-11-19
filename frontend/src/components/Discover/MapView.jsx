@@ -51,7 +51,7 @@ const getImageUrl = (imageObj) => {
 };
 
 // Small carousel component for showing multiple images with next/prev buttons
-function ImageCarousel({ images = [], alt = "", className = "" }) {
+function ImageCarousel({ images = [], alt = "", className = "", onClose = null }) {
   const [index, setIndex] = React.useState(0);
 
   if (!images || images.length === 0) return null;
@@ -70,6 +70,19 @@ function ImageCarousel({ images = [], alt = "", className = "" }) {
 
   return (
     <div className={`relative ${className}`} onClick={(e) => e.stopPropagation()}>
+      {/* Close button for the carousel (closes popup) */}
+      <button
+        className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300 z-30"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (typeof onClose === 'function') onClose(e);
+        }}
+        title="Close"
+      >
+        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
       <div className="w-full h-48 rounded-lg mb-4 overflow-hidden">
         <OptimizedImage
           src={getImageUrl(currentImage)}
@@ -1590,7 +1603,20 @@ const MapView = () => {
                 >
                   <div className="p-6 min-w-[400px] max-w-[500px] relative">
                     {location.images && location.images.length > 0 ? (
-                      <ImageCarousel images={location.images} alt={location.title} className="relative" />
+                      <ImageCarousel
+                        images={location.images}
+                        alt={location.title}
+                        className="relative"
+                        onClose={(e) => {
+                          e.stopPropagation();
+                          if (mapRef.current) mapRef.current.closePopup();
+                          if (showRouting) {
+                            setShowRouting(false);
+                            setRoutingStart(null);
+                            setRoutingEnd(null);
+                          }
+                        }}
+                      />
                     ) : ( (location.image && typeof location.image === "string") || (location.image && location.image.url) ) ? (
                       <div className="relative">
                         <div className="w-full h-48 rounded-lg mb-4">
