@@ -249,9 +249,13 @@ const AddPost = () => {
                   maxLength="100"
                 />
                 <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-400">
-                  <div className="w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center"
+                  >
                     <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
               <div className="flex justify-between items-center mt-2">
@@ -296,9 +300,13 @@ const AddPost = () => {
                   maxLength="500"
                 />
                 <div className="absolute left-4 top-4 text-emerald-400">
-                  <div className="w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center"
+                  >
                     <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
               <div className="flex justify-between items-center mt-2">
@@ -344,9 +352,13 @@ const AddPost = () => {
                   <option value="travel">Travel</option>
                 </select>
                 <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-400">
-                  <div className="w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center"
+                  >
                     <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                  </div>
+                  </motion.div>
                 </div>
                 <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
