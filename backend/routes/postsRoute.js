@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { 
-  createPost, 
-  getAllPosts, 
-  getPostById, 
-  updatePost, 
+const {
+  createPost,
+  getAllPosts,
+  getPostById,
+  updatePost,
   deletePost,
   getPostsByLocation,
   likePost,
@@ -16,16 +16,17 @@ const {
   searchPosts,
   getNearbyPosts,
   getPostsWithinArea,
-  getPostDistance
+  getPostDistance,
 } = require("../controllers/postController");
 const { protect } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
 
 // Routes
-router.route("/")
+router
+  .route("/")
   // Accept up to 10 images uploaded with field name 'images'
-  .post(protect, upload.array('images', 10), createPost)
-  .get(getAllPosts);  // Get all posts should be public
+  .post(protect, upload.array("images", 10), createPost)
+  .get(getAllPosts); // Get all posts should be public
 
 // Search route
 router.route("/search").get(searchPosts);
@@ -38,10 +39,11 @@ router.get("/nearby", getNearbyPosts);
 router.get("/within", getPostsWithinArea);
 router.get("/:id/distance", getPostDistance);
 
-router.route("/:id")
+router
+  .route("/:id")
   .get(getPostById)
   // For updates accept multiple images as well (field name 'images')
-  .patch(protect, upload.array('images', 10), updatePost)
+  .patch(protect, upload.array("images", 10), updatePost)
   .delete(protect, deletePost);
 
 // Like/unlike routes
@@ -50,6 +52,9 @@ router.route("/:id/unlike").put(protect, unlikePost);
 
 // Comment routes
 router.route("/:id/comments").post(protect, addComment).get(getComments);
-router.route("/:postId/comments/:commentId").put(protect, updateComment).delete(protect, deleteComment);
+router
+  .route("/:postId/comments/:commentId")
+  .put(protect, updateComment)
+  .delete(protect, deleteComment);
 
 module.exports = router;

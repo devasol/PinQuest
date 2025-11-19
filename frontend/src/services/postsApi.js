@@ -36,7 +36,8 @@ export const postsApi = {
         }
       }
 
-      const response = await fetch(`${API_BASE_URL}/posts`, {
+      // First attempt with the initial token
+      let response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -44,22 +45,26 @@ export const postsApi = {
         body: formData,
       });
 
-      if (!response.ok) {
-        // Check if the error is due to token expiration
-        const errorText = await response.text();
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          // If response is not JSON, create an error object
-          errorData = { message: errorText || `HTTP error! status: ${response.status}` };
+      // Check if the response is likely an HTML error page
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('text/html')) {
+        // This is likely an HTML error page from the server
+        const htmlError = await response.text();
+        if (htmlError.includes('<!DOCTYPE html') || htmlError.includes('<html')) {
+          throw new Error(`Server error occurred. The server returned an error page instead of a valid response. Error: ${htmlError.substring(0, 200)}...`);
         }
+      }
+      
+      if (!response.ok) {
+        // For non-HTML errors, try to get error data
+        const errorText = await response.text();
         
-        // If the error indicates token expiration, try once more with a fresh token
+        // Check if the error indicates token expiration
         if (response.status === 401 && 
-            (errorData?.message?.includes('token') || 
-             errorData?.message?.includes('expired') || 
-             errorData?.message?.includes('invalid'))) {
+            (errorText.includes('token') || 
+             errorText.includes('expired') || 
+             errorText.includes('invalid'))) {
               
           console.log('Token expired during file upload, attempting refresh...');
           const refreshedToken = await getFreshToken();
@@ -72,6 +77,15 @@ export const postsApi = {
               },
               body: formData,
             });
+            
+            // Check if retry response is HTML
+            const retryContentType = retryResponse.headers.get('content-type');
+            if (retryContentType && retryContentType.includes('text/html')) {
+              const retryHtmlError = await retryResponse.text();
+              if (retryHtmlError.includes('<!DOCTYPE html') || retryHtmlError.includes('<html')) {
+                throw new Error(`Server error occurred. The server returned an error page instead of a valid response. Error: ${retryHtmlError.substring(0, 200)}...`);
+              }
+            }
             
             if (!retryResponse.ok) {
               const retryErrorText = await retryResponse.text();
@@ -90,7 +104,19 @@ export const postsApi = {
           }
         }
         
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        // Check if the errorText is HTML or JSON
+        if (errorText.includes('<!DOCTYPE html') || errorText.includes('<html')) {
+          // Server returned HTML error page
+          throw new Error(`Server error occurred. Error code: ${response.status}`);
+        } else {
+          try {
+            const errorData = JSON.parse(errorText);
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+          } catch {
+            // If it's not JSON, throw the text as error message
+            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+          }
+        }
       }
 
       // Try to parse response as JSON
@@ -98,19 +124,8 @@ export const postsApi = {
       try {
         result = await response.json();
       } catch (parseError) {
-        // If JSON parsing fails, try to get text response instead
-        try {
-          const textResponse = await response.text();
-          // Try to parse as JSON if possible
-          try {
-            result = JSON.parse(textResponse);
-          } catch {
-            // If it's not JSON, return a structured error
-            throw new Error(`Invalid response from server: ${textResponse}`);
-          }
-        } catch (textError) {
-          throw new Error('Server returned invalid response. Please try again later.');
-        }
+        // If JSON parsing fails
+        throw new Error('Server returned invalid response. Please try again later.');
       }
       return result;
     } catch (error) {

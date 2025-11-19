@@ -1,20 +1,21 @@
-import React, { useState, useRef } from 'react';
-import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
-import { useNavigate } from 'react-router-dom';
-import { MapPin, X, Image as ImageIcon, Plus, Upload } from 'lucide-react';
-import Header from '../../components/Landing/Header/Header';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useRef } from "react";
+import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
+import { useNavigate } from "react-router-dom";
+import { MapPin, X, Image as ImageIcon, Plus, Upload } from "lucide-react";
+import Header from "../../components/Landing/Header/Header";
+import { useAuth } from "../../contexts/AuthContext";
 
 // API base URL - should be consistent with other components
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 
 const AddPost = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: 'general',
+    title: "",
+    description: "",
+    category: "general",
   });
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [images, setImages] = useState([]);
@@ -24,22 +25,22 @@ const AddPost = () => {
 
   // Check authentication before allowing access
   if (!isAuthenticated) {
-    navigate('/login');
+    navigate("/login");
     return null;
   }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    
+
     // Clear error for this field
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: "",
       }));
     }
   };
@@ -49,42 +50,42 @@ const AddPost = () => {
     // Check if adding these files would exceed the limit
     if (images.length + files.length > 10) {
       const remainingSlots = 10 - images.length;
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        image: `You can only upload up to 10 images. You can add ${remainingSlots} more image(s).`
+        image: `You can only upload up to 10 images. You can add ${remainingSlots} more image(s).`,
       }));
       return;
     }
 
-    files.forEach(file => {
+    files.forEach((file) => {
       validateAndAddImage(file);
     });
   };
 
   const validateAndAddImage = (file) => {
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setErrors(prev => ({
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({
         ...prev,
-        image: 'Please select a valid image file'
+        image: "Please select a valid image file",
       }));
       return false;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        image: 'File size must be less than 5MB'
+        image: "File size must be less than 5MB",
       }));
       return false;
     }
 
     // Check if we've reached the limit of 10 images
     if (images.length >= 10) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        image: 'You can only upload up to 10 images'
+        image: "You can only upload up to 10 images",
       }));
       return false;
     }
@@ -95,15 +96,15 @@ const AddPost = () => {
       const newImage = {
         id: Date.now() + Math.random(),
         file: file,
-        preview: reader.result
+        preview: reader.result,
       };
-      setImages(prev => [...prev, newImage]);
-      
+      setImages((prev) => [...prev, newImage]);
+
       // Clear error for this field
       if (errors.image) {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          image: ''
+          image: "",
         }));
       }
     };
@@ -113,7 +114,7 @@ const AddPost = () => {
   };
 
   const removeImage = (imageId) => {
-    setImages(prev => prev.filter(img => img.id !== imageId));
+    setImages((prev) => prev.filter((img) => img.id !== imageId));
   };
 
   const handleAddButtonClick = () => {
@@ -124,93 +125,130 @@ const AddPost = () => {
     // Navigate to discover page to select location on map
     // The user will click on the map to select a location, which will open the post form
     // Then we can pass the selected location back to this component or handle creation there
-    navigate('/discover');
+    navigate("/discover");
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = "Title is required";
     }
-    
+
     if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
+      newErrors.description = "Description is required";
     }
-    
+
     // Check if location is properly selected
     if (!selectedLocation || !selectedLocation.lat || !selectedLocation.lng) {
-      newErrors.location = 'Location is required. Please select a location on the map.';
+      newErrors.location =
+        "Location is required. Please select a location on the map.";
     }
-    
+
     if (formData.title.length > 100) {
-      newErrors.title = 'Title must be less than 100 characters';
+      newErrors.title = "Title must be less than 100 characters";
     }
-    
+
     if (formData.description.length > 500) {
-      newErrors.description = 'Description must be less than 500 characters';
+      newErrors.description = "Description must be less than 500 characters";
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setLoading(true);
-    
+
     try {
       // Create form data for post submission
       const postData = new FormData();
       postData.append("title", formData.title);
       postData.append("description", formData.description);
       postData.append("category", formData.category);
-      
+
       // Add all images if provided
       images.forEach((img, index) => {
         postData.append(`images`, img.file, img.file.name);
       });
-      
-      // Add location as JSON string
-      postData.append("location", JSON.stringify({
-        latitude: selectedLocation.lat,
-        longitude: selectedLocation.lng,
-      }));
-      
+
+      // Add location as JSON string - include proper parseFloat to ensure numeric values
+      postData.append(
+        "location",
+        JSON.stringify({
+          latitude: parseFloat(selectedLocation.lat),
+          longitude: parseFloat(selectedLocation.lng),
+        })
+      );
+
       // Import and use the posts API service to handle the post creation
-      const { postsApi } = await import('../../services/postsApi.js');
+      const { postsApi } = await import("../../services/postsApi.js");
       const result = await postsApi.createPostWithFiles(postData);
 
       if (result.status === "success") {
-        // Success - navigate to success page or home
-        navigate('/discover');
+        // Success - clear form and navigate to success page or home
+        setFormData({
+          title: '',
+          description: '',
+          category: 'general',
+        });
+        setSelectedLocation(null);
+        setImages([]);
+        setErrors({});
+        
+        // Remove loading state before navigation to avoid loading state on next page
+        setLoading(false);
+        navigate("/discover");
       } else {
-        throw new Error(result.message || 'Failed to create post');
+        throw new Error(result.message || "Failed to create post");
       }
     } catch (error) {
-      console.error('Error creating post:', error);
-      setErrors(prev => ({
+      console.error("Error creating post:", error);
+      console.error("Error details:", error.message, error.stack);
+      
+      // Improved error handling to detect when server returns HTML instead of JSON
+      let errorMessage = error.message || "An error occurred while creating the post";
+      
+      // Check if the error message looks like HTML (which suggests the server returned an error page)
+      if (errorMessage.includes("<!DOCTYPE html") || errorMessage.includes("<html")) {
+        errorMessage = "Server error occurred, please try again later.";
+      }
+      
+      setErrors((prev) => ({
         ...prev,
-        submit: error.message || 'An error occurred while creating the post'
+        submit: errorMessage,
       }));
-    } finally {
+      
+      // Remove loading state so user can try again
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    navigate('/discover');
+    // Clear form data and errors before navigation
+    setFormData({
+      title: '',
+      description: '',
+      category: 'general',
+    });
+    setSelectedLocation(null);
+    setImages([]);
+    setErrors({});
+    navigate("/discover");
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-red-600">
       <Header />
-      <div className="max-w-4xl mx-auto px-4 py-8 pt-24"> {/* Changed max-width for better focus on form */}
+      <div className="max-w-4xl mx-auto px-4 py-8 pt-24">
+        {" "}
+        {/* Changed max-width for better focus on form */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -224,21 +262,28 @@ const AddPost = () => {
                 <Plus className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold font-sans">Create New Post</h1>
-                <p className="text-emerald-100 font-sans">Share your discovery with the community</p>
+                <h1 className="text-2xl font-bold font-sans">
+                  Create New Post
+                </h1>
+                <p className="text-emerald-100 font-sans">
+                  Share your discovery with the community
+                </p>
               </div>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 sm:p-8">
             {/* Title Field */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1, duration: 0.4 }}
               className="mb-6"
             >
-              <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-3 font-sans">
+              <label
+                htmlFor="title"
+                className="block text-sm font-semibold text-gray-700 mb-3 font-sans"
+              >
                 Title *
               </label>
               <div className="relative">
@@ -249,9 +294,9 @@ const AddPost = () => {
                   value={formData.title}
                   onChange={handleInputChange}
                   className={`w-full px-4 py-3 pl-12 border-2 rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 ${
-                    errors.title 
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                      : 'border-emerald-200 focus:border-emerald-500'
+                    errors.title
+                      ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                      : "border-emerald-200 focus:border-emerald-500"
                   } bg-gray-50 focus:bg-white shadow-sm focus:shadow-md`}
                   placeholder="Enter a descriptive title"
                   maxLength="100"
@@ -268,7 +313,7 @@ const AddPost = () => {
               </div>
               <div className="flex justify-between items-center mt-2">
                 {errors.title && (
-                  <motion.p 
+                  <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="text-red-500 text-sm font-sans"
@@ -276,20 +321,29 @@ const AddPost = () => {
                     {errors.title}
                   </motion.p>
                 )}
-                <p className={`text-xs ml-auto font-sans ${formData.title.length > 90 ? 'text-red-500' : 'text-gray-500'}`}>
+                <p
+                  className={`text-xs ml-auto font-sans ${
+                    formData.title.length > 90
+                      ? "text-red-500"
+                      : "text-gray-500"
+                  }`}
+                >
                   {formData.title.length}/100 characters
                 </p>
               </div>
             </motion.div>
 
             {/* Description Field */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2, duration: 0.4 }}
               className="mb-6"
             >
-              <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-3 font-sans">
+              <label
+                htmlFor="description"
+                className="block text-sm font-semibold text-gray-700 mb-3 font-sans"
+              >
                 Description *
               </label>
               <div className="relative">
@@ -300,9 +354,9 @@ const AddPost = () => {
                   onChange={handleInputChange}
                   rows="5"
                   className={`w-full px-4 py-3 pl-12 border-2 rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 resize-none ${
-                    errors.description 
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                      : 'border-emerald-200 focus:border-emerald-500'
+                    errors.description
+                      ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                      : "border-emerald-200 focus:border-emerald-500"
                   } bg-gray-50 focus:bg-white shadow-sm focus:shadow-md`}
                   placeholder="Describe this location and what makes it special..."
                   maxLength="500"
@@ -319,7 +373,7 @@ const AddPost = () => {
               </div>
               <div className="flex justify-between items-center mt-2">
                 {errors.description && (
-                  <motion.p 
+                  <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="text-red-500 text-sm font-sans"
@@ -327,20 +381,29 @@ const AddPost = () => {
                     {errors.description}
                   </motion.p>
                 )}
-                <p className={`text-xs ml-auto font-sans ${formData.description.length > 450 ? 'text-red-500' : 'text-gray-500'}`}>
+                <p
+                  className={`text-xs ml-auto font-sans ${
+                    formData.description.length > 450
+                      ? "text-red-500"
+                      : "text-gray-500"
+                  }`}
+                >
                   {formData.description.length}/500 characters
                 </p>
               </div>
             </motion.div>
 
             {/* Category Field */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3, duration: 0.4 }}
               className="mb-6"
             >
-              <label htmlFor="category" className="block text-sm font-semibold text-gray-700 mb-3 font-sans">
+              <label
+                htmlFor="category"
+                className="block text-sm font-semibold text-gray-700 mb-3 font-sans"
+              >
                 Category *
               </label>
               <div className="relative">
@@ -369,15 +432,25 @@ const AddPost = () => {
                   </motion.div>
                 </div>
                 <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </div>
               </div>
             </motion.div>
 
             {/* Location Field */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4, duration: 0.4 }}
@@ -392,11 +465,11 @@ const AddPost = () => {
                     <input
                       type="text"
                       readOnly
-                      value={selectedLocation ? selectedLocation.address : ''}
+                      value={selectedLocation ? selectedLocation.address : ""}
                       className={`w-full px-4 py-3 pl-12 border-2 rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 ${
-                        errors.location 
-                          ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                          : 'border-emerald-200 focus:border-emerald-500'
+                        errors.location
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                          : "border-emerald-200 focus:border-emerald-500"
                       } bg-gray-50 focus:bg-white shadow-sm focus:shadow-md font-sans`}
                       placeholder="Select location on map"
                     />
@@ -417,7 +490,11 @@ const AddPost = () => {
                   Select Location
                 </button>
               </div>
-              {errors.location && <p className="mt-2 text-red-500 text-sm font-sans">{errors.location}</p>}
+              {errors.location && (
+                <p className="mt-2 text-red-500 text-sm font-sans">
+                  {errors.location}
+                </p>
+              )}
               {selectedLocation && (
                 <p className="mt-2 text-sm text-gray-600 font-sans">
                   Selected: {selectedLocation.lat}, {selectedLocation.lng}
@@ -426,7 +503,7 @@ const AddPost = () => {
             </motion.div>
 
             {/* Image Upload Section */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5, duration: 0.4 }}
@@ -435,10 +512,10 @@ const AddPost = () => {
               <label className="block text-sm font-semibold text-gray-700 mb-3 font-sans">
                 Images (Optional - Up to 10)
               </label>
-              
+
               {/* Upload button and progress */}
               <div className="flex flex-col sm:flex-row gap-4 items-center mb-4">
-                <div 
+                <div
                   className="flex-1 border-2 border-dashed rounded-2xl transition-all duration-300 cursor-pointer border-emerald-300 hover:border-emerald-400 hover:bg-emerald-50 flex items-center justify-center"
                   onClick={handleAddButtonClick}
                 >
@@ -453,26 +530,32 @@ const AddPost = () => {
                     >
                       <Upload className="w-8 h-8 text-emerald-600" />
                     </motion.div>
-                    <p className="text-emerald-800 font-medium font-sans">Click to upload images</p>
-                    <p className="text-sm text-emerald-600 font-sans">JPG, PNG, GIF up to 5MB each</p>
-                    <p className="text-xs text-emerald-500 font-sans mt-1">Drag & drop supported</p>
+                    <p className="text-emerald-800 font-medium font-sans">
+                      Click to upload images
+                    </p>
+                    <p className="text-sm text-emerald-600 font-sans">
+                      JPG, PNG, GIF up to 5MB each
+                    </p>
+                    <p className="text-xs text-emerald-500 font-sans mt-1">
+                      Drag & drop supported
+                    </p>
                   </motion.div>
                 </div>
-                
+
                 <button
                   type="button"
                   onClick={handleAddButtonClick}
-                    disabled={images.length >= 10}
-                    className={`px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-md font-sans ${
-                      images.length >= 10 
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                        : 'bg-emerald-600 text-white hover:bg-emerald-700 transform hover:-translate-y-0.5 hover:shadow-lg'
-                    }`}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add
-                  </button>
-                
+                  disabled={images.length >= 10}
+                  className={`px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-md font-sans ${
+                    images.length >= 10
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-emerald-600 text-white hover:bg-emerald-700 transform hover:-translate-y-0.5 hover:shadow-lg"
+                  }`}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add
+                </button>
+
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -482,9 +565,13 @@ const AddPost = () => {
                   className="hidden"
                 />
               </div>
-              
-              {errors.image && <p className="mt-2 text-red-500 text-sm font-sans">{errors.image}</p>}
-              
+
+              {errors.image && (
+                <p className="mt-2 text-red-500 text-sm font-sans">
+                  {errors.image}
+                </p>
+              )}
+
               {/* Progress bar */}
               <div className="mt-3 mb-6">
                 <div className="flex justify-between text-sm text-gray-600 font-sans mb-1">
@@ -492,7 +579,7 @@ const AddPost = () => {
                   <span>{images.length}/10</span>
                 </div>
                 <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                  <motion.div 
+                  <motion.div
                     className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
                     initial={{ width: 0 }}
                     animate={{ width: `${(images.length / 10) * 100}%` }}
@@ -503,12 +590,14 @@ const AddPost = () => {
 
               {/* Uploaded Images Preview */}
               {images.length > 0 && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-6"
                 >
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 font-sans">Your Images</h3>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 font-sans">
+                    Your Images
+                  </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {images.map((image, index) => (
                       <motion.div
@@ -520,9 +609,9 @@ const AddPost = () => {
                         className="relative group aspect-square rounded-xl overflow-hidden shadow-lg"
                       >
                         <div className="w-full h-full bg-gray-200 relative">
-                          <img 
-                            src={image.preview} 
-                            alt={`Preview ${index + 1}`} 
+                          <img
+                            src={image.preview}
+                            alt={`Preview ${index + 1}`}
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -566,7 +655,7 @@ const AddPost = () => {
             </motion.div>
 
             {/* Form Actions */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.4 }}
@@ -587,9 +676,25 @@ const AddPost = () => {
                 <span className="relative z-10 flex items-center justify-center">
                   {loading ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Creating...
                     </>
@@ -606,7 +711,7 @@ const AddPost = () => {
                   )}
                 </span>
                 {!loading && (
-                  <motion.div 
+                  <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-teal-600 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     whileHover={{ opacity: 1 }}
                     initial={false}
@@ -616,12 +721,14 @@ const AddPost = () => {
             </motion.div>
 
             {errors.submit && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl"
               >
-                <p className="text-red-700 text-sm font-sans">{errors.submit}</p>
+                <p className="text-red-700 text-sm font-sans">
+                  {errors.submit}
+                </p>
               </motion.div>
             )}
           </form>

@@ -10,22 +10,24 @@ const postSchema = new mongoose.Schema({
     required: [true, "Description input is required"],
   },
   image: {
-    url: String,      // Public URL of the image
+    url: String, // Public URL of the image
     publicId: String, // Cloudinary public ID for deletion purposes
   },
   images: [
     {
       url: String,
       publicId: String,
-    }
+    },
   ],
-  likes: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    }
-  }],
+  likes: [
+    {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+    },
+  ],
   likesCount: {
     type: Number,
     default: 0,
@@ -34,8 +36,8 @@ const postSchema = new mongoose.Schema({
     {
       user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        ref: "User",
+        required: true,
       },
       text: String,
       date: { type: Date, default: Date.now },
@@ -43,7 +45,7 @@ const postSchema = new mongoose.Schema({
   ],
   postedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: "User",
   },
   datePosted: {
     type: Date,
@@ -51,17 +53,17 @@ const postSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    default: "general"
+    default: "general",
   },
   location: {
     type: {
       type: String,
-      enum: ['Point'],
-      default: 'Point'
+      enum: ["Point"],
+      default: "Point",
     },
     coordinates: {
       type: [Number], // [longitude, latitude]
-      index: '2dsphere'
+      index: "2dsphere",
     },
     latitude: Number,
     longitude: Number,
@@ -69,12 +71,12 @@ const postSchema = new mongoose.Schema({
 });
 
 // Virtual to get likes count
-postSchema.virtual('likeCount').get(function() {
+postSchema.virtual("likeCount").get(function () {
   return this.likes.length;
 });
 
 // Middleware to update likesCount before saving
-postSchema.pre('save', function(next) {
+postSchema.pre("save", function (next) {
   this.likesCount = this.likes.length;
   next();
 });

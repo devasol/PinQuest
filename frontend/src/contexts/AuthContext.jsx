@@ -88,8 +88,24 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await authService.logout();
+      // Clear authentication data
       localStorage.removeItem('token');
       localStorage.removeItem('firebaseUser');
+      // Clear all user-specific data that might persist
+      localStorage.removeItem('savedLocations');
+      localStorage.removeItem('recentLocations');
+      localStorage.removeItem('mapLayout');
+      
+      // Clear all rating-related local storage items
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('post_') && key.endsWith('_ratings')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
@@ -97,6 +113,21 @@ export const AuthProvider = ({ children }) => {
       // Even if the API call fails, still clear local storage
       localStorage.removeItem('token');
       localStorage.removeItem('firebaseUser');
+      // Clear all user-specific data that might persist
+      localStorage.removeItem('savedLocations');
+      localStorage.removeItem('recentLocations');
+      localStorage.removeItem('mapLayout');
+      
+      // Clear all rating-related local storage items
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('post_') && key.endsWith('_ratings')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
       setUser(null);
       setIsAuthenticated(false);
     }

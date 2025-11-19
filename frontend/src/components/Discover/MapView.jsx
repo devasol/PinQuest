@@ -141,8 +141,6 @@ function Geocoder({
     setIsOpen(false);
   };
 
-  
-
   return (
     <div className="relative">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1121,21 +1119,34 @@ const MapView = () => {
   // Image helpers for multi-file upload in the map modal
   const validateAndAddImage = (file) => {
     if (!file.type.startsWith("image/")) {
-      setErrors((prev) => ({ ...prev, image: "Please select a valid image file" }));
+      setErrors((prev) => ({
+        ...prev,
+        image: "Please select a valid image file",
+      }));
       return false;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setErrors((prev) => ({ ...prev, image: "File size must be less than 5MB" }));
+      setErrors((prev) => ({
+        ...prev,
+        image: "File size must be less than 5MB",
+      }));
       return false;
     }
     if (images.length >= 10) {
-      setErrors((prev) => ({ ...prev, image: "You can only upload up to 10 images" }));
+      setErrors((prev) => ({
+        ...prev,
+        image: "You can only upload up to 10 images",
+      }));
       return false;
     }
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      const newImage = { id: Date.now() + Math.random(), file, preview: reader.result };
+      const newImage = {
+        id: Date.now() + Math.random(),
+        file,
+        preview: reader.result,
+      };
       setImages((prev) => [...prev, newImage]);
       if (errors.image) setErrors((prev) => ({ ...prev, image: "" }));
     };
@@ -1147,7 +1158,10 @@ const MapView = () => {
     const files = Array.from(e.target.files || []);
     if (images.length + files.length > 10) {
       const remaining = 10 - images.length;
-      setErrors((prev) => ({ ...prev, image: `You can only upload up to 10 images. You can add ${remaining} more.` }));
+      setErrors((prev) => ({
+        ...prev,
+        image: `You can only upload up to 10 images. You can add ${remaining} more.`,
+      }));
       return;
     }
     files.forEach((f) => validateAndAddImage(f));
@@ -1294,7 +1308,11 @@ const MapView = () => {
         }
 
         // If body is HTML, try to extract JSON-like substring inside it (common when servers embed JSON in HTML)
-        if (!parsed && typeof errorText === "string" && errorText.includes("<")) {
+        if (
+          !parsed &&
+          typeof errorText === "string" &&
+          errorText.includes("<")
+        ) {
           try {
             const jsonMatch = errorText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
@@ -1308,16 +1326,24 @@ const MapView = () => {
         let errorMessage = `HTTP ${response.status}`;
         if (parsed) {
           if (typeof parsed.message === "string") errorMessage = parsed.message;
-          else if (parsed.error && typeof parsed.error === "string") errorMessage = parsed.error;
+          else if (parsed.error && typeof parsed.error === "string")
+            errorMessage = parsed.error;
           else errorMessage = JSON.stringify(parsed).slice(0, 500);
         } else if (errorText) {
           // Fallback: try to strip HTML tags for readability
-          const stripped = errorText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+          const stripped = errorText
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
           const snippet = stripped.slice(0, 800);
           errorMessage = snippet + (snippet.length >= 800 ? "..." : "");
         }
 
-        console.error("Create post failed:", { status: response.status, text: errorText, parsed });
+        console.error("Create post failed:", {
+          status: response.status,
+          text: errorText,
+          parsed,
+        });
         showNotification(`Error creating post: ${errorMessage}`, "error");
         return;
       }
@@ -1343,7 +1369,12 @@ const MapView = () => {
           title: formData.title,
           description: formData.description,
           image: result.data.image, // This could be a string URL or an object with a url property
-          images: result.data.images && result.data.images.length > 0 ? result.data.images : (result.data.image ? [result.data.image] : []),
+          images:
+            result.data.images && result.data.images.length > 0
+              ? result.data.images
+              : result.data.image
+              ? [result.data.image]
+              : [],
           postedBy:
             result.data.postedBy && typeof result.data.postedBy === "object"
               ? result.data.postedBy.name
@@ -1380,6 +1411,9 @@ const MapView = () => {
       } else {
         showNotification("Error creating post. Please try again.", "error");
       }
+    } finally {
+      // Always clear submitting state so the UI isn't blocked by the overlay
+      setSubmitting(false);
     }
   };
 
@@ -2508,8 +2542,12 @@ const MapView = () => {
                           d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
                         />
                       </svg>
-                      <p className="mt-4 text-lg">Saved locations are private</p>
-                      <p className="text-sm mt-2">Log in to view and manage your saved locations.</p>
+                      <p className="mt-4 text-lg">
+                        Saved locations are private
+                      </p>
+                      <p className="text-sm mt-2">
+                        Log in to view and manage your saved locations.
+                      </p>
                       <div className="mt-4">
                         <button
                           onClick={() => setShowLoginModal(true)}
@@ -2662,8 +2700,12 @@ const MapView = () => {
                           d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
-                      <p className="mt-4 text-lg">Recent locations are private</p>
-                      <p className="text-sm mt-2">Log in to view your recently viewed locations.</p>
+                      <p className="mt-4 text-lg">
+                        Recent locations are private
+                      </p>
+                      <p className="text-sm mt-2">
+                        Log in to view your recently viewed locations.
+                      </p>
                       <div className="mt-4">
                         <button
                           onClick={() => setShowLoginModal(true)}
@@ -2766,11 +2808,29 @@ const MapView = () => {
                 {submitting && (
                   <div className="absolute inset-0 z-50 bg-white/70 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
-                      <svg className="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      <svg
+                        className="animate-spin h-10 w-10 text-blue-600"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        ></path>
                       </svg>
-                      <div className="text-gray-700 font-medium">Creating post — please wait...</div>
+                      <div className="text-gray-700 font-medium">
+                        Creating post — please wait...
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2863,12 +2923,18 @@ const MapView = () => {
                             type="text"
                             id="image"
                             name="image"
-                            value={typeof formData.image === "string" ? formData.image : ""}
+                            value={
+                              typeof formData.image === "string"
+                                ? formData.image
+                                : ""
+                            }
                             onChange={handleFormChange}
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none"
                             placeholder="Or paste an image URL (optional)"
                           />
-                          <p className="text-xs text-gray-500 mt-1">You can either paste a URL or upload images below.</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            You can either paste a URL or upload images below.
+                          </p>
                         </div>
 
                         {/* Upload area */}
@@ -2878,11 +2944,26 @@ const MapView = () => {
                             onClick={handleAddButtonClick}
                           >
                             <div className="text-center">
-                              <svg className="mx-auto mb-2 h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 014-4h10a4 4 0 110 8H7a4 4 0 01-4-4zM7 11V7m0 0L5 9m2-2l2 2" />
+                              <svg
+                                className="mx-auto mb-2 h-8 w-8 text-blue-500"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 15a4 4 0 014-4h10a4 4 0 110 8H7a4 4 0 01-4-4zM7 11V7m0 0L5 9m2-2l2 2"
+                                />
                               </svg>
-                              <div className="text-sm text-gray-700 font-medium">Click to add images</div>
-                              <div className="text-xs text-gray-400">JPG, PNG, GIF — up to 5MB each</div>
+                              <div className="text-sm text-gray-700 font-medium">
+                                Click to add images
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                JPG, PNG, GIF — up to 5MB each
+                              </div>
                             </div>
                           </div>
 
@@ -2891,16 +2972,31 @@ const MapView = () => {
                               type="button"
                               onClick={handleAddButtonClick}
                               disabled={images.length >= 10}
-                              className={`w-full px-3 py-2 rounded-xl text-white font-medium ${images.length >= 10 ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                              className={`w-full px-3 py-2 rounded-xl text-white font-medium ${
+                                images.length >= 10
+                                  ? "bg-gray-300 cursor-not-allowed"
+                                  : "bg-blue-600 hover:bg-blue-700"
+                              }`}
                             >
                               Add
                             </button>
                           </div>
 
-                          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageChange}
+                            className="hidden"
+                          />
                         </div>
 
-                        {errors.image && <p className="text-red-500 text-sm mt-2">{errors.image}</p>}
+                        {errors.image && (
+                          <p className="text-red-500 text-sm mt-2">
+                            {errors.image}
+                          </p>
+                        )}
 
                         <div className="mt-3 mb-3">
                           <div className="flex justify-between text-sm text-gray-600 mb-1">
@@ -2908,15 +3004,27 @@ const MapView = () => {
                             <span>{images.length}/10</span>
                           </div>
                           <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-500" style={{ width: `${(images.length / 10) * 100}%` }} />
+                            <div
+                              className="h-full bg-blue-500"
+                              style={{
+                                width: `${(images.length / 10) * 100}%`,
+                              }}
+                            />
                           </div>
                         </div>
 
                         {images.length > 0 && (
                           <div className="grid grid-cols-3 gap-3">
                             {images.map((image, idx) => (
-                              <div key={image.id} className="relative rounded-lg overflow-hidden h-24 bg-gray-100">
-                                <img src={image.preview} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                              <div
+                                key={image.id}
+                                className="relative rounded-lg overflow-hidden h-24 bg-gray-100"
+                              >
+                                <img
+                                  src={image.preview}
+                                  alt={`Preview ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
                                 <button
                                   type="button"
                                   onClick={() => removeImage(image.id)}
@@ -2965,18 +3073,38 @@ const MapView = () => {
                       <button
                         type="submit"
                         disabled={submitting}
-                        className={`flex-1 py-3 px-4 rounded-xl transition transform duration-150 hover:scale-105 active:scale-95 font-medium shadow-md ${submitting ? 'bg-blue-400 text-white cursor-wait opacity-80' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                        className={`flex-1 py-3 px-4 rounded-xl transition transform duration-150 hover:scale-105 active:scale-95 font-medium shadow-md ${
+                          submitting
+                            ? "bg-blue-400 text-white cursor-wait opacity-80"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
+                        }`}
                       >
                         {submitting ? (
                           <div className="flex items-center justify-center gap-2">
-                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            <svg
+                              className="animate-spin h-5 w-5 text-white"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                              ></path>
                             </svg>
                             Creating...
                           </div>
                         ) : (
-                          'Create Post'
+                          "Create Post"
                         )}
                       </button>
                     </div>

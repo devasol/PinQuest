@@ -1,27 +1,43 @@
-const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+// Directory where uploaded files will be stored
+const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
+
+// Ensure the uploads directory exists
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// Configure multer disk storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, UPLOADS_DIR);
+  },
+  filename: function (req, file, cb) {
+    // keep original name but prefix with timestamp to avoid collisions
+    const safeName = file.originalname.replace(/\s+/g, "_");
+    cb(null, Date.now() + "-" + safeName);
+  },
 });
 
-// Set up Cloudinary storage
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'pinquest',
-    allowed_formats: ['jpeg', 'jpg', 'png', 'gif', 'webp'],
-    transformation: [
-      { width: 800, height: 600, crop: 'limit' } // Limit image size
-    ]
+// Simple file filter to allow common image types
+function fileFilter(req, file, cb) {
+  const allowed = /jpeg|jpg|png|gif|webp/;
+  const mimetype = allowed.test(file.mimetype.toLowerCase());
+  const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+  if (mimetype && ext) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image files are allowed (jpeg, jpg, png, gif, webp)"));
   }
-});
+}
 
-// Initialize multer with Cloudinary storage
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
+  fileFilter,
+});
 
 module.exports = upload;

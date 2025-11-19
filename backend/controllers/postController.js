@@ -3,23 +3,35 @@ const {
   createLikeNotification,
   createCommentNotification,
 } = require("../utils/notificationUtils");
-const { uploadImageToCloudinary } = require("../utils/mediaUtils");
 const { emitToUser, emitToPost, emitGlobal } = require("../utils/socketUtils");
+const fs = require("fs");
+const path = require("path");
 
 const createPost = async (req, res) => {
   try {
     const { title, description, postedBy, location, category } = req.body;
 
-    // Validate required location fields
-    if (
-      !location ||
-      typeof location.latitude === "undefined" ||
-      typeof location.longitude === "undefined"
-    ) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Location with latitude and longitude is required",
-      });
+    // Parse location if it's a JSON string (FormData sends strings)
+    let parsedLocation = location;
+    if (typeof parsedLocation === "string") {
+      try {
+        parsedLocation = JSON.parse(parsedLocation);
+      } catch (e) {
+        // leave as string; validation will capture missing fields
+      }
+    }
+
+    // Check if location is provided and validate if it exists
+    if (parsedLocation) {
+      if (
+        typeof parsedLocation.latitude === "undefined" ||
+        typeof parsedLocation.longitude === "undefined"
+      ) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Location with latitude and longitude is required",
+        });
+      }
     }
 
     // Verify that the user is authenticated
@@ -46,28 +58,51 @@ const createPost = async (req, res) => {
       try {
         for (const f of req.files) {
           try {
-            // If multer-storage-cloudinary already uploaded the file, use the provided URL
+            // If file object contains a remote URL (kept for backward compat), use it
             if (f && typeof f === "object") {
-              // Common fields when using CloudinaryStorage: path, secure_url, public_id, filename, location
-              if (f.secure_url || f.url || f.path?.startsWith("http") || f.location) {
+              if (
+                f.secure_url ||
+                f.url ||
+                f.location ||
+                (f.path && String(f.path).startsWith("http"))
+              ) {
                 const url = f.secure_url || f.url || f.path || f.location;
-                const publicId = f.public_id || f.publicId || f.filename || null;
+                const publicId =
+                  f.public_id || f.publicId || f.filename || null;
                 imagesArr.push({ url, publicId });
+                continue;
+              }
+
+              // If multer wrote a local file to disk, use that local path and construct an accessible URL
+              if (f.path && !String(f.path).startsWith("http")) {
+                const filename = path.basename(f.path);
+                const url = `${req.protocol}://${req.get(
+                  "host"
+                )}/uploads/${filename}`;
+                imagesArr.push({ url, filename, localPath: f.path });
                 continue;
               }
             }
 
-            // Fallback: upload local temp file or buffer
-            const uploadResult = await uploadImageToCloudinary(f);
-            imagesArr.push({
-              url: uploadResult.secure_url,
-              publicId: uploadResult.public_id,
-            });
+            // Unsupported file object
+            return res
+              .status(400)
+              .json({
+                status: "fail",
+                message: "Unsupported file upload format",
+              });
           } catch (uploadError) {
-            console.error("Error uploading one of the images to Cloudinary:", uploadError);
-            // Return a clear JSON error so frontend doesn't receive HTML
-            const msg = uploadError && uploadError.message ? uploadError.message : String(uploadError);
-            return res.status(500).json({ status: "error", message: `Failed to upload image: ${msg}` });
+            console.error("Error processing uploaded file:", uploadError);
+            const msg =
+              uploadError && uploadError.message
+                ? uploadError.message
+                : String(uploadError);
+            return res
+              .status(500)
+              .json({
+                status: "error",
+                message: `Failed to process uploaded image: ${msg}`,
+              });
           }
         }
 
@@ -76,22 +111,17 @@ const createPost = async (req, res) => {
       } catch (err) {
         console.error("Error processing uploaded images:", err);
         const msg = err && err.message ? err.message : String(err);
-        return res.status(400).json({ status: "fail", message: `Error uploading images: ${msg}` });
-      }
-    } else if (req.file) {
-      // Fallback for single-file middleware or legacy callers
-      try {
-        const uploadResult = await uploadImageToCloudinary(req.file);
-        image = {
-          url: uploadResult.secure_url,
-          publicId: uploadResult.public_id,
-        };
-        imagesArr = image ? [image] : [];
-      } catch (uploadError) {
-        console.error("Error uploading image to Cloudinary:", uploadError);
         return res
           .status(400)
-          .json({ status: "fail", message: "Error uploading image" });
+          .json({ status: "fail", message: `Error uploading images: ${msg}` });
+      }
+    } else if (req.file) {
+      // Single-file upload handled by multer.diskStorage
+      if (req.file.path) {
+        const filename = path.basename(req.file.path);
+        const url = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+        image = { url, filename, localPath: req.file.path };
+        imagesArr = image ? [image] : [];
       }
     } else if (req.body.image) {
       // For backward compatibility - if image is provided in request body as a URL
@@ -100,23 +130,29 @@ const createPost = async (req, res) => {
 
     // Use authenticated user ID for postedBy (from middleware)
     // This ensures security by preventing users from impersonating others
-    const newPost = new Post({
+    const postFields = {
       title,
       description,
       image,
       images: imagesArr,
       postedBy: req.user._id, // Use the authenticated user ID
       category: category || "general",
-      location: {
+    };
+
+    // Add location if provided
+    if (parsedLocation) {
+      postFields.location = {
         type: "Point",
         coordinates: [
-          parseFloat(location.longitude),
-          parseFloat(location.latitude),
+          parseFloat(parsedLocation.longitude),
+          parseFloat(parsedLocation.latitude),
         ], // [longitude, latitude] for GeoJSON
-        latitude: parseFloat(location.latitude),
-        longitude: parseFloat(location.longitude),
-      },
-    });
+        latitude: parseFloat(parsedLocation.latitude),
+        longitude: parseFloat(parsedLocation.longitude),
+      };
+    }
+
+    const newPost = new Post(postFields);
 
     const savedPost = await newPost.save();
 
@@ -284,16 +320,22 @@ const updatePost = async (req, res) => {
         : [];
 
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-      // If replacing images, delete any existing Cloudinary images
+      // Delete any existing local files referenced by the post prior to replacing
       if (Array.isArray(imagesArr) && imagesArr.length > 0) {
-        const { deleteImageFromCloudinary } = require("../utils/mediaUtils");
         for (const img of imagesArr) {
-          if (img && img.publicId) {
-            try {
-              await deleteImageFromCloudinary(img.publicId);
-            } catch (e) {
-              console.error("Error deleting existing image during update", e);
+          try {
+            if (img && img.localPath) {
+              await fs.promises.unlink(img.localPath).catch(() => {});
             }
+            if (img && img.filename && !img.localPath) {
+              const p = path.join(__dirname, "..", "uploads", img.filename);
+              await fs.promises.unlink(p).catch(() => {});
+            }
+          } catch (e) {
+            console.error(
+              "Error deleting existing local image during update",
+              e
+            );
           }
         }
       }
@@ -302,14 +344,24 @@ const updatePost = async (req, res) => {
       try {
         for (const f of req.files) {
           try {
-            const uploadResult = await uploadImageToCloudinary(f);
-            imagesArr.push({
-              url: uploadResult.secure_url,
-              publicId: uploadResult.public_id,
-            });
+            if (f && f.path && !String(f.path).startsWith("http")) {
+              const filename = path.basename(f.path);
+              const url = `${req.protocol}://${req.get(
+                "host"
+              )}/uploads/${filename}`;
+              imagesArr.push({ url, filename, localPath: f.path });
+            } else if (f && (f.secure_url || f.url || f.location)) {
+              const url = f.secure_url || f.url || f.path || f.location;
+              imagesArr.push({
+                url,
+                publicId: f.public_id || f.publicId || null,
+              });
+            } else {
+              console.warn("Skipping unsupported file object during update", f);
+            }
           } catch (uploadError) {
             console.error(
-              "Error uploading one of the images to Cloudinary during update:",
+              "Error handling uploaded file during update:",
               uploadError
             );
           }
@@ -323,16 +375,18 @@ const updatePost = async (req, res) => {
       }
     } else if (req.body.image === null || req.body.image === "") {
       // If image is explicitly set to null or empty string, clear it
-      // Delete all existing Cloudinary images
+      // Delete all existing local images
       if (Array.isArray(imagesArr) && imagesArr.length > 0) {
-        const { deleteImageFromCloudinary } = require("../utils/mediaUtils");
         for (const img of imagesArr) {
-          if (img && img.publicId) {
-            try {
-              await deleteImageFromCloudinary(img.publicId);
-            } catch (e) {
-              console.error("Error deleting existing image", e);
+          try {
+            if (img && img.localPath) {
+              await fs.promises.unlink(img.localPath).catch(() => {});
+            } else if (img && img.filename) {
+              const p = path.join(__dirname, "..", "uploads", img.filename);
+              await fs.promises.unlink(p).catch(() => {});
             }
+          } catch (e) {
+            console.error("Error deleting existing local image", e);
           }
         }
       }
@@ -352,7 +406,10 @@ const updatePost = async (req, res) => {
 
     // Update location if provided
     if (location) {
-      if (!location.latitude || !location.longitude) {
+      if (
+        typeof location.latitude === "undefined" ||
+        typeof location.longitude === "undefined"
+      ) {
         return res.status(400).json({
           status: "fail",
           message: "Location with latitude and longitude is required",
@@ -425,25 +482,30 @@ const deletePost = async (req, res) => {
 
     console.log("Deleting post:", req.params.id, "by user:", req.user._id);
 
-    // If the post has images with publicIds, delete them from Cloudinary
+    // If the post has images stored locally, delete them from disk
     if (Array.isArray(post.images) && post.images.length > 0) {
-      const { deleteImageFromCloudinary } = require("../utils/mediaUtils");
       for (const img of post.images) {
-        if (img && img.publicId) {
-          try {
-            await deleteImageFromCloudinary(img.publicId);
-          } catch (e) {
-            console.error(
-              "Error deleting image from Cloudinary during post deletion",
-              e
-            );
+        try {
+          if (img && img.localPath) {
+            await fs.promises.unlink(img.localPath).catch(() => {});
+          } else if (img && img.filename) {
+            const p = path.join(__dirname, "..", "uploads", img.filename);
+            await fs.promises.unlink(p).catch(() => {});
           }
+        } catch (e) {
+          console.error("Error deleting local image during post deletion", e);
         }
       }
-    } else if (post.image && post.image.publicId) {
-      // Fallback for posts using legacy single image field
-      const { deleteImageFromCloudinary } = require("../utils/mediaUtils");
-      await deleteImageFromCloudinary(post.image.publicId);
+    } else if (post.image && post.image.localPath) {
+      // Fallback for posts using legacy single image field stored locally
+      try {
+        await fs.promises.unlink(post.image.localPath).catch(() => {});
+      } catch (e) {
+        console.error(
+          "Error deleting legacy local image during post deletion",
+          e
+        );
+      }
     }
 
     await Post.findByIdAndDelete(req.params.id);
