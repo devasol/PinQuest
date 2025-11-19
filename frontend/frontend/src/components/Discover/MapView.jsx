@@ -353,9 +353,10 @@ const MapView = () => {
       // First, save to local state
       const newSavedLocation = {
         ...location,
-        postedBy: typeof location.postedBy === 'string' 
-          ? location.postedBy 
-          : (location.postedBy?.name || location.postedBy || ""),
+        postedBy:
+          typeof location.postedBy === "string"
+            ? location.postedBy
+            : location.postedBy?.name || location.postedBy || "",
         savedAt: new Date().toISOString(),
       };
 
@@ -395,9 +396,10 @@ const MapView = () => {
               : location.position || null,
           category: location.category || "general",
           datePosted: location.datePosted || new Date().toISOString(),
-          postedBy: typeof location.postedBy === 'string' 
-            ? location.postedBy 
-            : (location.postedBy?.name || location.postedBy || ""),
+          postedBy:
+            typeof location.postedBy === "string"
+              ? location.postedBy
+              : location.postedBy?.name || location.postedBy || "",
           type: location.type || "location",
         };
 
@@ -2486,13 +2488,18 @@ const MapView = () => {
                                 {location.name || location.title}
                               </h3>
                               <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                {location.description || ''}
+                                {location.description || ""}
                               </p>
                               <div className="flex items-center justify-between mt-2">
                                 <span className="text-xs text-gray-500">
                                   {location.type === "poi"
                                     ? `From OpenStreetMap`
-                                    : `By ${typeof location.postedBy === 'object' ? location.postedBy.name || location.postedBy : location.postedBy}`}
+                                    : `By ${
+                                        typeof location.postedBy === "object"
+                                          ? location.postedBy.name ||
+                                            location.postedBy
+                                          : location.postedBy
+                                      }`}
                                 </span>
                                 <span className="text-xs text-gray-500">
                                   {new Date(
@@ -2613,7 +2620,12 @@ const MapView = () => {
                             <span className="text-xs text-gray-500">
                               {location.type === "poi"
                                 ? `From OpenStreetMap`
-                                : `By ${typeof location.postedBy === 'object' ? location.postedBy.name || location.postedBy : location.postedBy}`}
+                                : `By ${
+                                    typeof location.postedBy === "object"
+                                      ? location.postedBy.name ||
+                                        location.postedBy
+                                      : location.postedBy
+                                  }`}
                             </span>
                             <span className="text-xs text-gray-500">
                               {new Date(location.viewedAt).toLocaleDateString()}
