@@ -1,55 +1,37 @@
 // src/components/PostCard/PostCard.jsx
-import React, { useState } from "react";
-import {
-  Heart,
-  MessageCircle,
-  Share,
-  Bookmark,
-  MapPin,
-  User,
-} from "lucide-react";
+import React, { useState } from 'react';
+import { Heart, MessageCircle, Share, Bookmark, MapPin, User } from 'lucide-react';
 
 // src/components/PostCard/PostCard.jsx
-import React, { useState } from "react";
-import {
-  Heart,
-  MessageCircle,
-  Share,
-  Bookmark,
-  MapPin,
-  User,
-} from "lucide-react";
+import React, { useState } from 'react';
+import { Heart, MessageCircle, Share, Bookmark, MapPin, User } from 'lucide-react';
 
 // API base URL - should be consistent with other components
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
   const [liked, setLiked] = useState(
-    post.likes && post.likes.some((like) => like.user === currentUser?._id)
+    post.likes && post.likes.some(like => like.user === currentUser?._id)
   );
   const [likeCount, setLikeCount] = useState(post.likesCount || 0);
   const [bookmarked, setBookmarked] = useState(
-    currentUser?.favorites?.some((fav) => fav.post === post._id)
+    currentUser?.favorites?.some(fav => fav.post === post._id)
   );
 
   const handleLike = async () => {
     if (!authToken) {
-      alert("Please login to like posts");
+      alert('Please login to like posts');
       return;
     }
 
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/posts/${post._id}/${liked ? "unlike" : "like"}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
+      const response = await fetch(`${API_BASE_URL}/posts/${post._id}/${liked ? 'unlike' : 'like'}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -58,51 +40,48 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
         onLike && onLike(post._id, !liked);
       }
     } catch (error) {
-      console.error("Error toggling like:", error);
+      console.error('Error toggling like:', error);
     }
   };
 
   const handleBookmark = async () => {
     if (!authToken) {
-      alert("Please login to bookmark posts");
+      alert('Please login to bookmark posts');
       return;
     }
 
     try {
       if (bookmarked) {
         // Remove from favorites
-        const response = await fetch(
-          `${API_BASE_URL}/users/favorites/${post._id}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
+        const response = await fetch(`${API_BASE_URL}/users/favorites/${post._id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
           }
-        );
-
+        });
+        
         if (response.ok) {
           setBookmarked(false);
         }
       } else {
         // Add to favorites
         const response = await fetch(`${API_BASE_URL}/users/favorites`, {
-          method: "POST",
+          method: 'POST',
           headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ postId: post._id }),
+          body: JSON.stringify({ postId: post._id })
         });
-
+        
         if (response.ok) {
           const data = await response.json();
           setBookmarked(true);
         }
       }
     } catch (error) {
-      console.error("Error toggling bookmark:", error);
+      console.error('Error toggling bookmark:', error);
     }
   };
 
@@ -112,38 +91,13 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
-  };
-
-  // Extract the base server URL from the API base URL for image paths
-  const getServerBaseUrl = () => {
-    const apiBaseUrl =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
-    // Remove the /api/v1 part to get the base server URL
-    return apiBaseUrl.replace("/api/v1", "");
-  };
-
-  // Helper function to get the correct image URL
-  const getImageUrl = (imageObj) => {
-    if (!imageObj) return "";
-    const serverBaseUrl = getServerBaseUrl();
-    if (typeof imageObj === "string") {
-      return imageObj.startsWith("http")
-        ? imageObj
-        : `${serverBaseUrl}${imageObj}`;
-    }
-    if (imageObj.url) {
-      return imageObj.url.startsWith("http")
-        ? imageObj.url
-        : `${serverBaseUrl}${imageObj.url}`;
-    }
-    return "";
   };
 
   return (
@@ -163,15 +117,11 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
             </div>
           )}
           <div>
-            <h3 className="font-semibold text-gray-900">
-              {post.postedBy?.name || "Anonymous"}
-            </h3>
-            <p className="text-sm text-gray-500">
-              {formatDate(post.datePosted)}
-            </p>
+            <h3 className="font-semibold text-gray-900">{post.postedBy?.name || 'Anonymous'}</h3>
+            <p className="text-sm text-gray-500">{formatDate(post.datePosted)}</p>
           </div>
         </div>
-
+        
         {post.location?.latitude && post.location?.longitude && (
           <div className="flex items-center text-sm text-gray-500">
             <MapPin className="w-4 h-4 mr-1" />
@@ -180,25 +130,14 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
         )}
       </div>
 
-      {/* Post Images - Handle both single image and multiple images */}
-      {(post.image?.url || (post.images && post.images.length > 0)) && (
+      {/* Post Image */}
+      {post.image?.url && (
         <div className="relative">
-          {/* Display first image from multiple images or single image */}
           <img
-            src={getImageUrl(
-              post.images && post.images.length > 0
-                ? post.images[0]
-                : post.image
-            )}
+            src={post.image.url}
             alt={post.title}
             className="w-full h-64 object-cover"
           />
-          {/* Show image count indicator if there are multiple images */}
-          {post.images && post.images.length > 1 && (
-            <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
-              {post.images.length} images
-            </div>
-          )}
         </div>
       )}
 
@@ -206,7 +145,7 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
       <div className="p-4">
         <h2 className="text-xl font-bold text-gray-900 mb-2">{post.title}</h2>
         <p className="text-gray-700 mb-4">{post.description}</p>
-
+        
         {post.category && (
           <span className="inline-block bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full mb-3">
             {post.category}
@@ -221,13 +160,13 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
             <button
               onClick={handleLike}
               className={`flex items-center space-x-1 ${
-                liked ? "text-red-500" : "text-gray-600 hover:text-red-500"
+                liked ? 'text-red-500' : 'text-gray-600 hover:text-red-500'
               }`}
             >
-              <Heart className={`w-5 h-5 ${liked ? "fill-current" : ""}`} />
+              <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
               <span>{likeCount}</span>
             </button>
-
+            
             <button
               onClick={handleComment}
               className="flex items-center space-x-1 text-gray-600 hover:text-blue-500"
@@ -235,21 +174,17 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
               <MessageCircle className="w-5 h-5" />
               <span>{post.comments?.length || 0}</span>
             </button>
-
+            
             <button
               onClick={handleBookmark}
               className={`flex items-center space-x-1 ${
-                bookmarked
-                  ? "text-yellow-500"
-                  : "text-gray-600 hover:text-yellow-500"
+                bookmarked ? 'text-yellow-500' : 'text-gray-600 hover:text-yellow-500'
               }`}
             >
-              <Bookmark
-                className={`w-5 h-5 ${bookmarked ? "fill-current" : ""}`}
-              />
+              <Bookmark className={`w-5 h-5 ${bookmarked ? 'fill-current' : ''}`} />
             </button>
           </div>
-
+          
           <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800">
             <Share className="w-5 h-5" />
           </button>
