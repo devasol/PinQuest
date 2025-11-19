@@ -173,7 +173,7 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
       </div>
 
       {/* Post Images - Handle both single image and multiple images */}
-      {(post.image?.url || (post.images && post.images.length > 0)) && (
+      {post.image?.url || (post.images && post.images.length > 0) ? (
         <div className="relative">
           {/* Display first image from multiple images or single image */}
           <div className="w-full h-64">
@@ -193,6 +193,20 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
               {post.images.length} images
             </div>
           )}
+        </div>
+      ) : (
+        <div className="relative">
+          <div className="w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+            <div className="text-center p-4">
+              <div className="mx-auto w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p className="text-gray-500 font-medium">No Image Available</p>
+              <p className="text-gray-400 text-sm mt-1">This post doesn't have any images</p>
+            </div>
+          </div>
         </div>
       )}
 
