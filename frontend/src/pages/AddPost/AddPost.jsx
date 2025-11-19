@@ -16,7 +16,7 @@ const AddPost = () => {
     description: '',
     category: 'general',
   });
-  const [selectedLocation, setSelectedLocation] = useState(null); // eslint-disable-line no-unused-vars
+  const [selectedLocation, setSelectedLocation] = useState(null);
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -45,10 +45,20 @@ const AddPost = () => {
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      validateAndAddImage(file);
+    const files = Array.from(e.target.files);
+    // Check if adding these files would exceed the limit
+    if (images.length + files.length > 10) {
+      const remainingSlots = 10 - images.length;
+      setErrors(prev => ({
+        ...prev,
+        image: `You can only upload up to 10 images. You can add ${remainingSlots} more image(s).`
+      }));
+      return;
     }
+
+    files.forEach(file => {
+      validateAndAddImage(file);
+    });
   };
 
   const validateAndAddImage = (file) => {
@@ -112,10 +122,8 @@ const AddPost = () => {
 
   const handleLocationSelect = () => {
     // Navigate to discover page to select location on map
-    // In a real app, we'd open a modal map or integrate the map selector into this page
-    // For now, we'll just show a message about how this would work
-    alert('In the full application, this would open a map to select your location. For now, location selection is integrated in the Discover page.');
-    // We'll keep this as a placeholder for the real implementation
+    // The user will click on the map to select a location, which will open the post form
+    // Then we can pass the selected location back to this component or handle creation there
     navigate('/discover');
   };
 
@@ -200,18 +208,17 @@ const AddPost = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-100 via-red-200 to-red-300">
+    <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="max-w-7xl mx-auto px-4 py-8 pt-24"> {/* pt-24 accounts for header height */}
+      <div className="max-w-4xl mx-auto px-4 py-8 pt-24"> {/* Changed max-width for better focus on form */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-red-600 rounded-3xl shadow-2xl border border-red-700 overflow-hidden"
-          whileHover={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)' }}
+          className="bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden"
         >
           {/* Header Section */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white">
+          <div className="bg-emerald-600 p-6 text-white">
             <div className="flex items-center gap-3">
               <div className="bg-white/20 p-2 rounded-lg">
                 <Plus className="w-6 h-6" />
@@ -223,7 +230,7 @@ const AddPost = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6">
+          <form onSubmit={handleSubmit} className="p-6 sm:p-8">
             {/* Title Field */}
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
@@ -429,46 +436,69 @@ const AddPost = () => {
                 Images (Optional - Up to 10)
               </label>
               
-              {/* Image Upload Input */}
-              <div className="mb-4">
+              {/* Upload button and progress */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center mb-4">
                 <div 
-                  className="border-2 border-dashed rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer border-emerald-300 hover:border-emerald-400 hover:bg-emerald-50"
+                  className="flex-1 border-2 border-dashed rounded-2xl transition-all duration-300 cursor-pointer border-emerald-300 hover:border-emerald-400 hover:bg-emerald-50 flex items-center justify-center"
                   onClick={handleAddButtonClick}
                 >
                   <motion.div
                     whileHover={{ scale: 1.02 }}
-                    className="flex flex-col items-center justify-center p-12 bg-gradient-to-br from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 transition-all duration-300 border-2 border-dashed border-emerald-200 rounded-2xl"
+                    className="flex flex-col items-center justify-center py-6 bg-gradient-to-br from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 transition-all duration-300 border-2 border-dashed border-emerald-200 rounded-2xl w-full"
                   >
                     <motion.div
                       animate={{ y: [0, -5, 0] }}
                       transition={{ repeat: Infinity, duration: 2 }}
-                      className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center mb-4"
+                      className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center mb-3"
                     >
-                      <Upload className="w-10 h-10 text-emerald-600" />
+                      <Upload className="w-8 h-8 text-emerald-600" />
                     </motion.div>
-                    <p className="text-emerald-800 font-medium mb-1 font-sans text-lg">Click to upload images</p>
+                    <p className="text-emerald-800 font-medium font-sans">Click to upload images</p>
                     <p className="text-sm text-emerald-600 font-sans">JPG, PNG, GIF up to 5MB each</p>
-                    <p className="text-xs text-emerald-500 font-sans mt-2">Drag & drop supported</p>
-                    <div className="mt-6 w-full max-w-md h-3 bg-emerald-200 rounded-full overflow-hidden">
-                      <motion.div 
-                        className="h-full bg-gradient-to-r from-emerald-400 to-teal-400"
-                        initial={{ width: 0 }}
-                        animate={{ width: images.length > 0 ? `${(images.length / 10) * 100}%` : 0 }}
-                        transition={{ duration: 0.5 }}
-                      />
-                    </div>
+                    <p className="text-xs text-emerald-500 font-sans mt-1">Drag & drop supported</p>
                   </motion.div>
                 </div>
+                
+                <button
+                  type="button"
+                  onClick={handleAddButtonClick}
+                    disabled={images.length >= 10}
+                    className={`px-6 py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-md font-sans ${
+                      images.length >= 10 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700 transform hover:-translate-y-0.5 hover:shadow-lg'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add
+                  </button>
                 
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleImageChange}
                   accept="image/*"
+                  multiple
                   className="hidden"
                 />
-                
-                {errors.image && <p className="mt-2 text-red-500 text-sm font-sans">{errors.image}</p>}
+              </div>
+              
+              {errors.image && <p className="mt-2 text-red-500 text-sm font-sans">{errors.image}</p>}
+              
+              {/* Progress bar */}
+              <div className="mt-3 mb-6">
+                <div className="flex justify-between text-sm text-gray-600 font-sans mb-1">
+                  <span>Upload Progress</span>
+                  <span>{images.length}/10</span>
+                </div>
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <motion.div 
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(images.length / 10) * 100}%` }}
+                    transition={{ duration: 0.5 }}
+                  />
+                </div>
               </div>
 
               {/* Uploaded Images Preview */}
@@ -478,29 +508,31 @@ const AddPost = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-6"
                 >
-                  <div className="flex flex-wrap gap-6">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 font-sans">Your Images</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {images.map((image, index) => (
                       <motion.div
                         key={image.id}
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
-                        whileHover={{ y: -5, scale: 1.03 }}
-                        className="relative group w-40 h-40 flex-shrink-0"
+                        whileHover={{ y: -5, scale: 1.02 }}
+                        className="relative group aspect-square rounded-xl overflow-hidden shadow-lg"
                       >
-                        <div className="relative w-full h-full rounded-xl overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                        <div className="w-full h-full bg-gray-200 relative">
                           <img 
                             src={image.preview} 
                             alt={`Preview ${index + 1}`} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="w-full h-full object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                             <button
                               type="button"
                               onClick={() => removeImage(image.id)}
-                              className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all duration-300 transform hover:scale-110 flex items-center justify-center"
+                              className="bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition-all duration-300 transform hover:scale-110 flex items-center justify-center"
+                              aria-label={`Remove image ${index + 1}`}
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-5 h-5" />
                             </button>
                           </div>
                         </div>
@@ -508,13 +540,14 @@ const AddPost = () => {
                           type="button"
                           onClick={() => removeImage(image.id)}
                           className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all duration-300 transform hover:scale-110 shadow-lg z-10"
+                          aria-label={`Remove image ${index + 1}`}
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-3 h-3" />
                         </button>
                       </motion.div>
                     ))}
                   </div>
-                  <div className="mt-3 flex justify-between items-center">
+                  <div className="mt-4 flex justify-between items-center">
                     <p className="text-sm text-gray-600 font-sans">
                       {images.length}/10 images uploaded
                     </p>
