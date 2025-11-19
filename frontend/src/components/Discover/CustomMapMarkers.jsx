@@ -87,16 +87,18 @@ const categoryColors = {
 };
 
 // Function to get a marker based on category
+// Return Leaflet's default icon (regular pin) to keep the standard
+// marker appearance as requested.
 const getMarkerByCategory = (category = 'general') => {
-  const color = categoryColors[category] || categoryColors.general;
-  return createModernMarker({ color, size: 36, borderWidth: 2 });
+  return new L.Icon.Default();
 };
 
 // (Removed unused helper to reduce lint noise)
 
 // Specialized function for user location marker
+// Use the default Leaflet marker so user location uses the regular pin
 const createUserLocationMarker = () => {
-  return createModernMarker({ color: '#3B82F6', size: 44, borderWidth: 3 });
+  return new L.Icon.Default();
 };
 
 // Function to create a marker specifically for POIs
@@ -140,7 +142,8 @@ const createPOIMarker = (poiType) => {
 
   const color = typeColors[poiType] || "#4F46E5";  // Default to indigo
 
-  return createModernMarker({ color, size: 30, borderWidth: 2 });
+  // Use default Leaflet marker for POIs (regular pin)
+  return new L.Icon.Default();
 };
 
 export {
