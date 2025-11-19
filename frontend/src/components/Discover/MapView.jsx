@@ -1792,7 +1792,7 @@ const MapView = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2 }}
         >
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 rounded-2xl shadow-2xl text-center backdrop-blur-sm">
+          <div className="bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-lg text-center transition-colors duration-200 ease-in-out">
             <p className="font-semibold text-lg">
               {isAuthenticated
                 ? "💡 Click anywhere on the map to add a post!"
@@ -2582,7 +2582,7 @@ const MapView = () => {
           <>
             {/* Backdrop */}
             <motion.div
-              className="fixed inset-0 bg-gradient-to-br from-blue-400/40 via-purple-500/40 to-indigo-600/40 backdrop-blur-md z-[2000]"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[2000]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2592,23 +2592,24 @@ const MapView = () => {
             {/* Modal Content */}
             <div className="fixed inset-0 flex items-center justify-center z-[2001] p-4">
               <motion.div
-                className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/30 w-full max-w-md max-h-[90vh] overflow-y-auto"
-                initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                transition={{ type: "spring", damping: 25 }}
-              >
+                  className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
+                  initial={{ scale: 0.98, opacity: 0, y: 10 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.98, opacity: 0, y: 10 }}
+                  transition={{ type: "spring", damping: 20 }}
+                >
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">
-                      Create New Post
-                    </h2>
-                    <button
-                      onClick={closeForm}
-                      className="text-gray-500 hover:text-gray-700 text-2xl transition-colors duration-200 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
-                    >
-                      &times;
-                    </button>
+                        <h2 className="text-2xl font-semibold text-gray-800">
+                          Create new post
+                        </h2>
+                        <button
+                          onClick={closeForm}
+                          className="text-gray-500 hover:text-gray-700 text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors duration-150"
+                          aria-label="Close create post"
+                        >
+                          ×
+                        </button>
                   </div>
 
                   <form onSubmit={handleFormSubmit}>
@@ -2627,7 +2628,7 @@ const MapView = () => {
                           value={formData.title}
                           onChange={handleFormChange}
                           required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none"
                           placeholder="Enter a descriptive title"
                         />
                       </div>
@@ -2645,7 +2646,7 @@ const MapView = () => {
                           value={formData.category}
                           onChange={handleFormChange}
                           required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none"
                         >
                           <option value="general">General</option>
                           <option value="nature">Nature</option>
@@ -2670,7 +2671,7 @@ const MapView = () => {
                           onChange={handleFormChange}
                           required
                           rows="3"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none resize-none"
                           placeholder="Describe this location..."
                         />
                       </div>
@@ -2691,7 +2692,7 @@ const MapView = () => {
                                   : ""
                               }
                               onChange={handleFormChange}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none"
                               placeholder="Enter image URL"
                             />
                             <p className="text-xs text-gray-500 mt-1">
@@ -2710,7 +2711,7 @@ const MapView = () => {
                                   });
                                 }
                               }}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white file:text-blue-600 hover:file:bg-gray-50"
                             />
                             <p className="text-xs text-gray-500 mt-1">
                               Or upload an image file
@@ -2746,13 +2747,13 @@ const MapView = () => {
                       <button
                         type="button"
                         onClick={closeForm}
-                        className="flex-1 bg-gray-300 text-gray-800 py-3 px-4 rounded-xl hover:bg-gray-400 transition-all duration-300 font-medium"
+                        className="flex-1 bg-gray-100 text-gray-800 py-3 px-4 rounded-xl hover:bg-gray-200 transition transform duration-150 hover:scale-105 font-medium"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl"
+                        className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl hover:bg-blue-700 transition transform duration-150 hover:scale-105 active:scale-95 font-medium shadow-md"
                       >
                         Create Post
                       </button>
