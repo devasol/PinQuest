@@ -162,6 +162,31 @@ app.set('io', io);
 
 dbConnect();
 
+// Global error handler: return JSON for any unhandled errors (prevents Express HTML error page)
+app.use((err, req, res, next) => {
+  console.error('Unhandled error caught by global handler:', err);
+
+  // Multer-specific or Cloudinary upload errors may include a code or message
+  const statusCode = err && err.status ? err.status : 500;
+
+  // Prefer err.message when available, otherwise stringify useful parts
+  let message = 'Internal server error';
+  if (err && err.message) message = err.message;
+  else if (err && typeof err === 'object') {
+    try {
+      message = JSON.stringify(err).slice(0, 1000);
+    } catch (e) {
+      message = String(err);
+    }
+  }
+
+  // Provide a consistent JSON response for all errors
+  res.status(statusCode).json({
+    status: 'error',
+    message,
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, (err) => {
   return err
