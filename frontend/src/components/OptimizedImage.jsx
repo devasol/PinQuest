@@ -132,14 +132,17 @@ const OptimizedImage = ({
           />
         )}
         
-        {/* Show fallback image when there's an error */}
+        {/* Show fallback message and icon when there's an error */}
         {showFallback && (
-          <img
-            src={fallbackSrc}
-            alt="Image not available"
-            className="w-full h-full object-cover"
-            {...props}
-          />
+          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center p-4">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-3 shadow-md">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-gray-700 font-semibold text-center">Image Not Available</p>
+            <p className="text-gray-500 text-sm text-center mt-1">Failed to load image</p>
+          </div>
         )}
       </div>
     </div>
