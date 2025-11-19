@@ -613,13 +613,9 @@ const MapView = () => {
   }, [isAuthenticated]);
 
   // When user logs out, ensure sidebar tabs for saved/recents are closed
-  useEffect(() => {
-    if (!isAuthenticated) {
-      if (activeSidebarTab === "saved" || activeSidebarTab === "recents") {
-        setActiveSidebarTab("");
-      }
-    }
-  }, [isAuthenticated, activeSidebarTab]);
+  // NOTE: we no longer forcibly close the saved/recents sidebars on logout.
+  // Panels remain open so we can show a friendly login CTA inside them.
+  // Clearing of the underlying data (savedLocations/recentLocations) still happens above when not authenticated.
 
   const fetchSavedLocations = async () => {
     try {
@@ -2479,7 +2475,33 @@ const MapView = () => {
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-4">
-                  {savedLocations.length > 0 ? (
+                  {!isAuthenticated ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <svg
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                        />
+                      </svg>
+                      <p className="mt-4 text-lg">Saved locations are private</p>
+                      <p className="text-sm mt-2">Log in to view and manage your saved locations.</p>
+                      <div className="mt-4">
+                        <button
+                          onClick={() => setShowLoginModal(true)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-xl shadow-sm"
+                        >
+                          Log in
+                        </button>
+                      </div>
+                    </div>
+                  ) : savedLocations.length > 0 ? (
                     <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
                       {savedLocations.map((location, index) => (
                         <motion.div
@@ -2607,7 +2629,33 @@ const MapView = () => {
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-4">
-                  {recentLocations.length > 0 ? (
+                  {!isAuthenticated ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <svg
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="mt-4 text-lg">Recent locations are private</p>
+                      <p className="text-sm mt-2">Log in to view your recently viewed locations.</p>
+                      <div className="mt-4">
+                        <button
+                          onClick={() => setShowLoginModal(true)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-xl shadow-sm"
+                        >
+                          Log in
+                        </button>
+                      </div>
+                    </div>
+                  ) : recentLocations.length > 0 ? (
                     <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
                       {recentLocations.map((location, index) => (
                         <motion.div
