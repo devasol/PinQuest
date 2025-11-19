@@ -2657,7 +2657,7 @@ const MapView = () => {
             {/* Modal Content */}
             <div className="fixed inset-0 flex items-center justify-center z-[2001] p-4">
               <motion.div
-                className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
+                className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl sm:max-w-3xl max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
                 initial={{ scale: 0.98, opacity: 0, y: 10 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.98, opacity: 0, y: 10 }}
