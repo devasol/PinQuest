@@ -200,14 +200,14 @@ const AddPost = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-cyan-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-red-100 via-red-200 to-red-300">
       <Header />
       <div className="max-w-7xl mx-auto px-4 py-8 pt-24"> {/* pt-24 accounts for header height */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="bg-red-500 rounded-3xl shadow-2xl border border-slate-100 overflow-hidden"
+          className="bg-red-600 rounded-3xl shadow-2xl border border-red-700 overflow-hidden"
           whileHover={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)' }}
         >
           {/* Header Section */}
