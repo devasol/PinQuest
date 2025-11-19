@@ -563,7 +563,12 @@ const AddPost = () => {
                   ) : (
                     <>
                       Create Post
-                      <Plus className="ml-2 w-5 h-5" />
+                      <motion.span
+                        animate={{ x: [0, -5, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        <Plus className="ml-2 w-5 h-5" />
+                      </motion.span>
                     </>
                   )}
                 </span>
