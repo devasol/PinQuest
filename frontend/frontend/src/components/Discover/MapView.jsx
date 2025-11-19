@@ -34,29 +34,15 @@ L.Icon.Default.mergeOptions({
 
 // Custom icons for different types
 const createCustomIcon = (color = "blue") => {
-  return new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-    shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-  });
+  // Use Leaflet's default marker icon so the map shows the regular
+  // pin marker rather than a custom colored marker.
+  return new L.Icon.Default();
 };
 
 // Custom icon for user location
 const createUserLocationIcon = () => {
-  return new L.Icon({
-    iconUrl:
-      "https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-    shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-    iconSize: [30, 46],
-    iconAnchor: [15, 46],
-    popupAnchor: [0, -46],
-    shadowSize: [41, 41],
-  });
+  // Use the default Leaflet marker for user location as well
+  return new L.Icon.Default();
 };
 
 // Component to handle map click events

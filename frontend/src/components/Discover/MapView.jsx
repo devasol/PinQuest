@@ -16,6 +16,11 @@ import { useAuth } from "../../contexts/AuthContext.jsx";
 import { auth } from "../../config/firebase";
 import RoutingMachine from "./RoutingMachine";
 import NotificationModal from "../NotificationModal";
+import {
+  getMarkerByCategory,
+  createUserLocationMarker,
+  createPOIMarker,
+} from "./CustomMapMarkers";
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL =
@@ -44,7 +49,7 @@ const getImageUrl = (imageObj) => {
   return "";
 };
 
-// Fix for missing marker icons
+// Fix for missing marker icons (Leaflet's default markers)
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -54,33 +59,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl:
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
-
-// Custom icons for different types
-const createCustomIcon = (color = "blue") => {
-  return new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-    shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-  });
-};
-
-// Custom icon for user location
-const createUserLocationIcon = () => {
-  return new L.Icon({
-    iconUrl:
-      "https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-    shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-    iconSize: [30, 46],
-    iconAnchor: [15, 46],
-    popupAnchor: [0, -46],
-    shadowSize: [41, 41],
-  });
-};
 
 // Component to handle map click events
 function MapClickHandler({ onMapClick }) {
@@ -365,7 +343,7 @@ const MapView = () => {
 
   // State for Points of Interest (POIs)
   const [pois, setPois] = useState([]);
-  const [showPoiLayer, setShowPoiLayer] = useState(true); // Toggle for showing POIs
+  const [showPoiLayer, setShowPoiLayer] = useState(false); // Toggle for showing POIs (default off)
 
   // State for sidebar and its sections
   const [activeSidebarTab, setActiveSidebarTab] = useState(""); // '', explore, stats, map-settings, pois, saved, recents
@@ -749,6 +727,8 @@ const MapView = () => {
               element.tags.amenity ||
               element.tags.tourism ||
               element.tags.shop ||
+              element.tags.building ||
+              element.tags.place ||
               "poi",
             position: [element.lat, element.lon],
           };
@@ -1294,17 +1274,7 @@ const MapView = () => {
     setClickPosition(null);
   };
 
-  const getIconByCategory = (category) => {
-    const iconColors = {
-      nature: "green",
-      culture: "orange",
-      shopping: "purple",
-      food: "red",
-      event: "pink",
-      general: "blue",
-    };
-    return createCustomIcon(iconColors[category] || "blue");
-  };
+  // getMarkerByCategory is now imported from CustomMapMarkers
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -1316,49 +1286,7 @@ const MapView = () => {
     });
   };
 
-  // Helper function to get initial letter from POI type
-  const getInitialFromPoiType = (type) => {
-    if (!type) return "?";
 
-    const typeMap = {
-      restaurant: "R",
-      cafe: "C",
-      hotel: "H",
-      shop: "S",
-      park: "P",
-      museum: "M",
-      bank: "B",
-      hospital: "H",
-      pharmacy: "P",
-      school: "S",
-      university: "U",
-      library: "L",
-      church: "C",
-      fuel: "F",
-      post_office: "P",
-      police: "P",
-      fire_station: "F",
-      theatre: "T",
-      cinema: "C",
-      bar: "B",
-      pub: "P",
-      fast_food: "F",
-      supermarket: "S",
-      marketplace: "M",
-      attraction: "A",
-      tourism: "T",
-      monument: "M",
-      gallery: "G",
-      stadium: "S",
-      zoo: "Z",
-      parking: "P",
-      toilets: "W",
-      information: "i",
-      viewpoint: "V",
-    };
-
-    return typeMap[type] || type.charAt(0).toUpperCase();
-  };
 
   const flyToLocation = (position) => {
     if (mapRef.current) {
@@ -1442,7 +1370,7 @@ const MapView = () => {
               <Marker
                 key={location.id}
                 position={location.position}
-                icon={getIconByCategory(location.category)}
+                icon={getMarkerByCategory(location.category)}
                 eventHandlers={{
                   click: () => handleSidebarItemClick(location.id),
                 }}
@@ -1748,7 +1676,7 @@ const MapView = () => {
             <Marker
               key="user-location"
               position={userLocation}
-              icon={createUserLocationIcon()}
+              icon={createUserLocationMarker()}
             >
               <Popup className="custom-popup">
                 <div className="p-4">
@@ -1773,16 +1701,7 @@ const MapView = () => {
               <Marker
                 key={`poi-${poi.id}`}
                 position={poi.position}
-                icon={
-                  new L.DivIcon({
-                    className: "custom-poi-marker",
-                    html: `<div style="background-color: #4F46E5; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">${getInitialFromPoiType(
-                      poi.type
-                    )}</div>`,
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12],
-                  })
-                }
+                icon={createPOIMarker(poi.type, poi.name)}
                 eventHandlers={{
                   click: () => {
                     addRecentLocation(poi); // Add POI to recents when popup opens
