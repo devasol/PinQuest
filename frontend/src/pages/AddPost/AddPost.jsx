@@ -202,7 +202,7 @@ const AddPost = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-cyan-50 to-blue-50">
       <Header />
-      <div className="max-w-4xl mx-auto px-4 py-8 pt-24"> {/* pt-24 accounts for header height */}
+      <div className="max-w-7xl mx-auto px-4 py-8 pt-24"> {/* pt-24 accounts for header height */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -437,19 +437,19 @@ const AddPost = () => {
                 >
                   <motion.div
                     whileHover={{ scale: 1.02 }}
-                    className="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 transition-all duration-300 border-2 border-dashed border-emerald-200 rounded-2xl"
+                    className="flex flex-col items-center justify-center p-12 bg-gradient-to-br from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 transition-all duration-300 border-2 border-dashed border-emerald-200 rounded-2xl"
                   >
                     <motion.div
                       animate={{ y: [0, -5, 0] }}
                       transition={{ repeat: Infinity, duration: 2 }}
-                      className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center mb-4"
+                      className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-full flex items-center justify-center mb-4"
                     >
-                      <Upload className="w-8 h-8 text-emerald-600" />
+                      <Upload className="w-10 h-10 text-emerald-600" />
                     </motion.div>
-                    <p className="text-emerald-800 font-medium mb-1 font-sans">Click to upload images</p>
+                    <p className="text-emerald-800 font-medium mb-1 font-sans text-lg">Click to upload images</p>
                     <p className="text-sm text-emerald-600 font-sans">JPG, PNG, GIF up to 5MB each</p>
                     <p className="text-xs text-emerald-500 font-sans mt-2">Drag & drop supported</p>
-                    <div className="mt-4 w-full max-w-xs h-2 bg-emerald-200 rounded-full overflow-hidden">
+                    <div className="mt-6 w-full max-w-md h-3 bg-emerald-200 rounded-full overflow-hidden">
                       <motion.div 
                         className="h-full bg-gradient-to-r from-emerald-400 to-teal-400"
                         initial={{ width: 0 }}
@@ -478,7 +478,7 @@ const AddPost = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-6"
                 >
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-6">
                     {images.map((image, index) => (
                       <motion.div
                         key={image.id}
@@ -486,7 +486,7 @@ const AddPost = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         whileHover={{ y: -5, scale: 1.03 }}
-                        className="relative group w-32 h-32 flex-shrink-0"
+                        className="relative group w-40 h-40 flex-shrink-0"
                       >
                         <div className="relative w-full h-full rounded-xl overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                           <img 
