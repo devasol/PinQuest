@@ -1,17 +1,24 @@
 const Post = require("../models/posts");
-const { createLikeNotification, createCommentNotification } = require('../utils/notificationUtils');
-const { uploadImageToCloudinary } = require('../utils/mediaUtils');
-const { emitToUser, emitToPost, emitGlobal } = require('../utils/socketUtils');
+const {
+  createLikeNotification,
+  createCommentNotification,
+} = require("../utils/notificationUtils");
+const { uploadImageToCloudinary } = require("../utils/mediaUtils");
+const { emitToUser, emitToPost, emitGlobal } = require("../utils/socketUtils");
 
 const createPost = async (req, res) => {
   try {
     const { title, description, postedBy, location, category } = req.body;
 
     // Validate required location fields
-    if (!location || typeof location.latitude === 'undefined' || typeof location.longitude === 'undefined') {
+    if (
+      !location ||
+      typeof location.latitude === "undefined" ||
+      typeof location.longitude === "undefined"
+    ) {
       return res.status(400).json({
         status: "fail",
-        message: "Location with latitude and longitude is required"
+        message: "Location with latitude and longitude is required",
       });
     }
 
@@ -19,11 +26,16 @@ const createPost = async (req, res) => {
     if (!req.user) {
       return res.status(401).json({
         status: "fail",
-        message: "Authentication required to create a post"
+        message: "Authentication required to create a post",
       });
     }
 
-    console.log('Creating post for user:', req.user._id, 'Name:', req.user.name);
+    console.log(
+      "Creating post for user:",
+      req.user._id,
+      "Name:",
+      req.user.name
+    );
 
     // Handle image uploads (support multiple images uploaded under field 'images')
     let image = null;
@@ -34,28 +46,52 @@ const createPost = async (req, res) => {
       try {
         for (const f of req.files) {
           try {
+            // If multer-storage-cloudinary already uploaded the file, use the provided URL
+            if (f && typeof f === "object") {
+              // Common fields when using CloudinaryStorage: path, secure_url, public_id, filename, location
+              if (f.secure_url || f.url || f.path?.startsWith("http") || f.location) {
+                const url = f.secure_url || f.url || f.path || f.location;
+                const publicId = f.public_id || f.publicId || f.filename || null;
+                imagesArr.push({ url, publicId });
+                continue;
+              }
+            }
+
+            // Fallback: upload local temp file or buffer
             const uploadResult = await uploadImageToCloudinary(f);
-            imagesArr.push({ url: uploadResult.secure_url, publicId: uploadResult.public_id });
+            imagesArr.push({
+              url: uploadResult.secure_url,
+              publicId: uploadResult.public_id,
+            });
           } catch (uploadError) {
-            console.error('Error uploading one of the images to Cloudinary:', uploadError);
-            // Continue uploading remaining files but collect errors
+            console.error("Error uploading one of the images to Cloudinary:", uploadError);
+            // Return a clear JSON error so frontend doesn't receive HTML
+            const msg = uploadError && uploadError.message ? uploadError.message : String(uploadError);
+            return res.status(500).json({ status: "error", message: `Failed to upload image: ${msg}` });
           }
         }
+
         // Keep first image in `image` for backward compatibility
         if (imagesArr.length > 0) image = imagesArr[0];
       } catch (err) {
-        console.error('Error processing uploaded images:', err);
-        return res.status(400).json({ status: 'fail', message: 'Error uploading images' });
+        console.error("Error processing uploaded images:", err);
+        const msg = err && err.message ? err.message : String(err);
+        return res.status(400).json({ status: "fail", message: `Error uploading images: ${msg}` });
       }
     } else if (req.file) {
       // Fallback for single-file middleware or legacy callers
       try {
         const uploadResult = await uploadImageToCloudinary(req.file);
-        image = { url: uploadResult.secure_url, publicId: uploadResult.public_id };
+        image = {
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id,
+        };
         imagesArr = image ? [image] : [];
       } catch (uploadError) {
-        console.error('Error uploading image to Cloudinary:', uploadError);
-        return res.status(400).json({ status: 'fail', message: 'Error uploading image' });
+        console.error("Error uploading image to Cloudinary:", uploadError);
+        return res
+          .status(400)
+          .json({ status: "fail", message: "Error uploading image" });
       }
     } else if (req.body.image) {
       // For backward compatibility - if image is provided in request body as a URL
@@ -72,51 +108,61 @@ const createPost = async (req, res) => {
       postedBy: req.user._id, // Use the authenticated user ID
       category: category || "general",
       location: {
-        type: 'Point',
-        coordinates: [parseFloat(location.longitude), parseFloat(location.latitude)], // [longitude, latitude] for GeoJSON
+        type: "Point",
+        coordinates: [
+          parseFloat(location.longitude),
+          parseFloat(location.latitude),
+        ], // [longitude, latitude] for GeoJSON
         latitude: parseFloat(location.latitude),
-        longitude: parseFloat(location.longitude)
-      }
+        longitude: parseFloat(location.longitude),
+      },
     });
 
     const savedPost = await newPost.save();
-    
+
     // Populate the postedBy field before sending response to include user info
-    const populatedPost = await Post.findById(savedPost._id)
-      .populate('postedBy', 'name email avatar');
-    
-    console.log('Post created successfully:', savedPost._id, 'by user:', req.user._id);
-    
+    const populatedPost = await Post.findById(savedPost._id).populate(
+      "postedBy",
+      "name email avatar"
+    );
+
+    console.log(
+      "Post created successfully:",
+      savedPost._id,
+      "by user:",
+      req.user._id
+    );
+
     // Emit real-time event for new post
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     if (io) {
-      emitGlobal(io, 'newPost', {
+      emitGlobal(io, "newPost", {
         post: populatedPost,
-        message: 'A new post has been created'
+        message: "A new post has been created",
       });
     }
-    
+
     res.status(201).json({
       status: "success",
-      data: populatedPost
+      data: populatedPost,
     });
   } catch (error) {
     console.error("Error creating post:", error);
     console.error("Error details:", error.message, error.code, error.name);
-    
+
     // Handle specific MongoDB errors
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message);
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({
-        status: 'fail',
-        message: 'Validation error',
-        errors
+        status: "fail",
+        message: "Validation error",
+        errors,
       });
     }
-    
+
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -124,20 +170,20 @@ const createPost = async (req, res) => {
 const getAllPosts = async (req, res) => {
   try {
     const posts = await Post.find()
-      .populate('postedBy', 'name email avatar') // Populate the user data for the poster
+      .populate("postedBy", "name email avatar") // Populate the user data for the poster
       .sort({ datePosted: -1 });
     console.log(`Fetched ${posts.length} posts from database`);
     res.status(200).json({
       status: "success",
-      data: posts
+      data: posts,
     });
   } catch (error) {
     console.error("Error fetching posts:", error);
     console.error("Error details:", error.message, error.code, error.name);
-    
+
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -150,7 +196,7 @@ const getPostsByLocation = async (req, res) => {
     if (!latitude || !longitude) {
       return res.status(400).json({
         status: "fail",
-        message: "Latitude and longitude are required"
+        message: "Latitude and longitude are required",
       });
     }
 
@@ -162,45 +208,46 @@ const getPostsByLocation = async (req, res) => {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)]
+            coordinates: [parseFloat(longitude), parseFloat(latitude)],
           },
-          $maxDistance: radiusInMeters
-        }
-      }
-    })
-    .populate('postedBy', 'name email avatar'); // Populate the user data for the poster
+          $maxDistance: radiusInMeters,
+        },
+      },
+    }).populate("postedBy", "name email avatar"); // Populate the user data for the poster
 
     res.status(200).json({
       status: "success",
-      data: posts
+      data: posts,
     });
   } catch (error) {
     console.error("Error fetching posts by location:", error);
     res.status(400).json({
       status: "fail",
-      message: error.message
+      message: error.message,
     });
   }
 };
 
 const getPostById = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id)
-      .populate('postedBy', 'name email avatar'); // Populate the user data for the poster
+    const post = await Post.findById(req.params.id).populate(
+      "postedBy",
+      "name email avatar"
+    ); // Populate the user data for the poster
     if (!post) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
     res.status(200).json({
       status: "success",
-      data: post
+      data: post,
     });
   } catch (error) {
     res.status(400).json({
       status: "fail",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -214,7 +261,7 @@ const updatePost = async (req, res) => {
     if (!existingPost) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
 
@@ -222,24 +269,31 @@ const updatePost = async (req, res) => {
     if (existingPost.postedBy.toString() !== req.user._id.toString()) {
       return res.status(401).json({
         status: "fail",
-        message: "Not authorized to update this post"
+        message: "Not authorized to update this post",
       });
     }
 
-    console.log('Updating post:', req.params.id, 'by user:', req.user._id);
+    console.log("Updating post:", req.params.id, "by user:", req.user._id);
 
     // Handle image upload if present
     // Handle image(s) update
     let image = existingPost.image; // Keep existing primary image by default
-    let imagesArr = existingPost.images && existingPost.images.length ? existingPost.images.slice() : [];
+    let imagesArr =
+      existingPost.images && existingPost.images.length
+        ? existingPost.images.slice()
+        : [];
 
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
       // If replacing images, delete any existing Cloudinary images
       if (Array.isArray(imagesArr) && imagesArr.length > 0) {
-        const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+        const { deleteImageFromCloudinary } = require("../utils/mediaUtils");
         for (const img of imagesArr) {
           if (img && img.publicId) {
-            try { await deleteImageFromCloudinary(img.publicId); } catch (e) { console.error('Error deleting existing image during update', e); }
+            try {
+              await deleteImageFromCloudinary(img.publicId);
+            } catch (e) {
+              console.error("Error deleting existing image during update", e);
+            }
           }
         }
       }
@@ -249,24 +303,36 @@ const updatePost = async (req, res) => {
         for (const f of req.files) {
           try {
             const uploadResult = await uploadImageToCloudinary(f);
-            imagesArr.push({ url: uploadResult.secure_url, publicId: uploadResult.public_id });
+            imagesArr.push({
+              url: uploadResult.secure_url,
+              publicId: uploadResult.public_id,
+            });
           } catch (uploadError) {
-            console.error('Error uploading one of the images to Cloudinary during update:', uploadError);
+            console.error(
+              "Error uploading one of the images to Cloudinary during update:",
+              uploadError
+            );
           }
         }
         image = imagesArr.length > 0 ? imagesArr[0] : null;
       } catch (err) {
-        console.error('Error processing uploaded images during update:', err);
-        return res.status(400).json({ status: 'fail', message: 'Error uploading images' });
+        console.error("Error processing uploaded images during update:", err);
+        return res
+          .status(400)
+          .json({ status: "fail", message: "Error uploading images" });
       }
-    } else if (req.body.image === null || req.body.image === '') {
+    } else if (req.body.image === null || req.body.image === "") {
       // If image is explicitly set to null or empty string, clear it
       // Delete all existing Cloudinary images
       if (Array.isArray(imagesArr) && imagesArr.length > 0) {
-        const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+        const { deleteImageFromCloudinary } = require("../utils/mediaUtils");
         for (const img of imagesArr) {
           if (img && img.publicId) {
-            try { await deleteImageFromCloudinary(img.publicId); } catch (e) { console.error('Error deleting existing image', e); }
+            try {
+              await deleteImageFromCloudinary(img.publicId);
+            } catch (e) {
+              console.error("Error deleting existing image", e);
+            }
           }
         }
       }
@@ -281,7 +347,7 @@ const updatePost = async (req, res) => {
       description,
       image,
       images: imagesArr,
-      category: category || "general"
+      category: category || "general",
     };
 
     // Update location if provided
@@ -289,14 +355,17 @@ const updatePost = async (req, res) => {
       if (!location.latitude || !location.longitude) {
         return res.status(400).json({
           status: "fail",
-          message: "Location with latitude and longitude is required"
+          message: "Location with latitude and longitude is required",
         });
       }
       updateData.location = {
-        type: 'Point',
-        coordinates: [parseFloat(location.longitude), parseFloat(location.latitude)],
+        type: "Point",
+        coordinates: [
+          parseFloat(location.longitude),
+          parseFloat(location.latitude),
+        ],
         latitude: parseFloat(location.latitude),
-        longitude: parseFloat(location.longitude)
+        longitude: parseFloat(location.longitude),
       };
     }
 
@@ -305,33 +374,33 @@ const updatePost = async (req, res) => {
       updateData,
       {
         new: true,
-        runValidators: true
+        runValidators: true,
       }
-    ).populate('postedBy', 'name email avatar'); // Populate user data for response
+    ).populate("postedBy", "name email avatar"); // Populate user data for response
 
-    console.log('Post updated successfully:', updatedPost._id);
+    console.log("Post updated successfully:", updatedPost._id);
 
     res.status(200).json({
       status: "success",
-      data: updatedPost
+      data: updatedPost,
     });
   } catch (error) {
     console.error("Error updating post:", error);
     console.error("Error details:", error.message, error.code, error.name);
-    
+
     // Handle specific MongoDB errors
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message);
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({
-        status: 'fail',
-        message: 'Validation error',
-        errors
+        status: "fail",
+        message: "Validation error",
+        errors,
       });
     }
-    
+
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -342,7 +411,7 @@ const deletePost = async (req, res) => {
     if (!post) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
 
@@ -350,50 +419,57 @@ const deletePost = async (req, res) => {
     if (post.postedBy.toString() !== req.user._id.toString()) {
       return res.status(401).json({
         status: "fail",
-        message: "Not authorized to delete this post"
+        message: "Not authorized to delete this post",
       });
     }
 
-    console.log('Deleting post:', req.params.id, 'by user:', req.user._id);
+    console.log("Deleting post:", req.params.id, "by user:", req.user._id);
 
     // If the post has images with publicIds, delete them from Cloudinary
     if (Array.isArray(post.images) && post.images.length > 0) {
-      const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+      const { deleteImageFromCloudinary } = require("../utils/mediaUtils");
       for (const img of post.images) {
         if (img && img.publicId) {
-          try { await deleteImageFromCloudinary(img.publicId); } catch (e) { console.error('Error deleting image from Cloudinary during post deletion', e); }
+          try {
+            await deleteImageFromCloudinary(img.publicId);
+          } catch (e) {
+            console.error(
+              "Error deleting image from Cloudinary during post deletion",
+              e
+            );
+          }
         }
       }
     } else if (post.image && post.image.publicId) {
       // Fallback for posts using legacy single image field
-      const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+      const { deleteImageFromCloudinary } = require("../utils/mediaUtils");
       await deleteImageFromCloudinary(post.image.publicId);
     }
 
     await Post.findByIdAndDelete(req.params.id);
-    
-    console.log('Post deleted successfully:', req.params.id);
-    
+
+    console.log("Post deleted successfully:", req.params.id);
+
     // Emit real-time event for deleted post
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     if (io) {
-      emitGlobal(io, 'postDeleted', {
+      emitGlobal(io, "postDeleted", {
         postId: req.params.id,
-        message: 'A post was deleted'
+        message: "A post was deleted",
       });
     }
-    
+
     res.status(204).json({
       status: "success",
-      data: null
+      data: null,
     });
   } catch (error) {
     console.error("Error deleting post:", error);
     console.error("Error details:", error.message, error.code, error.name);
-    
+
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -403,71 +479,74 @@ const deletePost = async (req, res) => {
 // @access  Private
 const likePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id).populate('postedBy', '_id name');
-    
+    const post = await Post.findById(req.params.id).populate(
+      "postedBy",
+      "_id name"
+    );
+
     if (!post) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
 
     // Check if user already liked the post
-    const alreadyLiked = post.likes.some(like => 
-      like.user.toString() === req.user._id.toString()
+    const alreadyLiked = post.likes.some(
+      (like) => like.user.toString() === req.user._id.toString()
     );
-    
+
     if (alreadyLiked) {
       return res.status(400).json({
         status: "fail",
-        message: "Post already liked"
+        message: "Post already liked",
       });
     }
 
     // Add user to likes array
     post.likes.push({ user: req.user._id });
     post.likesCount = post.likes.length;
-    
+
     await post.save();
-    
+
     // Create notification for the post owner
     if (post.postedBy && post.postedBy._id.toString()) {
       await createLikeNotification(post._id, req.user._id, post.postedBy._id);
     }
-    
+
     // Emit real-time event for like
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     if (io) {
-      emitToPost(io, post._id, 'postLiked', {
+      emitToPost(io, post._id, "postLiked", {
         postId: post._id,
         likerId: req.user._id,
         likesCount: post.likesCount,
-        message: 'A post was liked'
+        message: "A post was liked",
       });
-      
+
       // Notify the post owner
       if (post.postedBy && post.postedBy._id.toString()) {
-        emitToUser(io, post.postedBy._id.toString(), 'postLikedByUser', {
+        emitToUser(io, post.postedBy._id.toString(), "postLikedByUser", {
           postId: post._id,
           likerId: req.user._id,
           likerName: req.user.name, // req.user.name should be available from auth middleware
-          message: `Your post "${post.title}" was liked`
+          message: `Your post "${post.title}" was liked`,
         });
       }
     }
-    
+
     res.status(200).json({
       status: "success",
       data: {
         postId: post._id,
         likes: post.likes,
-        likesCount: post.likesCount
-      }
+        likesCount: post.likesCount,
+      },
     });
   } catch (error) {
     res.status(400).json({
       status: "fail",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -478,57 +557,57 @@ const likePost = async (req, res) => {
 const unlikePost = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
-    
+
     if (!post) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
 
     // Check if user already liked the post
-    const alreadyLiked = post.likes.some(like => 
-      like.user.toString() === req.user._id.toString()
+    const alreadyLiked = post.likes.some(
+      (like) => like.user.toString() === req.user._id.toString()
     );
-    
+
     if (!alreadyLiked) {
       return res.status(400).json({
         status: "fail",
-        message: "Post has not been liked yet"
+        message: "Post has not been liked yet",
       });
     }
 
     // Remove user from likes array
-    post.likes = post.likes.filter(like => 
-      like.user.toString() !== req.user._id.toString()
+    post.likes = post.likes.filter(
+      (like) => like.user.toString() !== req.user._id.toString()
     );
     post.likesCount = post.likes.length;
-    
+
     await post.save();
-    
+
     // Emit real-time event for unlike
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     if (io) {
-      emitToPost(io, post._id, 'postUnliked', {
+      emitToPost(io, post._id, "postUnliked", {
         postId: post._id,
         unlikerId: req.user._id,
         likesCount: post.likesCount,
-        message: 'A post was unliked'
+        message: "A post was unliked",
       });
     }
-    
+
     res.status(200).json({
       status: "success",
       data: {
         postId: post._id,
         likes: post.likes,
-        likesCount: post.likesCount
-      }
+        likesCount: post.likesCount,
+      },
     });
   } catch (error) {
     res.status(400).json({
       status: "fail",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -540,67 +619,75 @@ const addComment = async (req, res) => {
   try {
     const { text } = req.body;
     const postId = req.params.id;
-    
+
     // Validate input
     if (!text) {
       return res.status(400).json({
         status: "fail",
-        message: "Comment text is required"
+        message: "Comment text is required",
       });
     }
 
-    const post = await Post.findById(postId).populate('postedBy', '_id');
+    const post = await Post.findById(postId).populate("postedBy", "_id");
     if (!post) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
 
     // Create new comment
     const newComment = {
       user: req.user._id,
-      text
+      text,
     };
 
     post.comments.unshift(newComment);
     await post.save();
 
     // Populate the user info for the returned comment
-    const populatedPost = await Post.findById(postId)
-      .populate({
-        path: 'comments.user',
-        select: 'name avatar'
-      });
-    
+    const populatedPost = await Post.findById(postId).populate({
+      path: "comments.user",
+      select: "name avatar",
+    });
+
     const addedComment = populatedPost.comments[0]; // First comment is the newly added one
 
     // Create notification for the post owner
-    if (post.postedBy && post.postedBy._id && post.postedBy._id.toString() !== req.user._id.toString()) {
-      await createCommentNotification(post._id, req.user._id, post.postedBy._id, text);
+    if (
+      post.postedBy &&
+      post.postedBy._id &&
+      post.postedBy._id.toString() !== req.user._id.toString()
+    ) {
+      await createCommentNotification(
+        post._id,
+        req.user._id,
+        post.postedBy._id,
+        text
+      );
     }
-    
+
     // Emit real-time event for new comment
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     if (io) {
-      emitToPost(io, post._id, 'newComment', {
+      emitToPost(io, post._id, "newComment", {
         postId: post._id,
         comment: addedComment,
-        message: 'A new comment was added'
+        message: "A new comment was added",
       });
     }
-    
+
     res.status(201).json({
       status: "success",
       data: {
-        comment: addedComment
-      }
+        comment: addedComment,
+      },
     });
   } catch (error) {
     console.error("Error adding comment:", error);
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -618,7 +705,7 @@ const updateComment = async (req, res) => {
     if (!text) {
       return res.status(400).json({
         status: "fail",
-        message: "Comment text is required"
+        message: "Comment text is required",
       });
     }
 
@@ -626,16 +713,18 @@ const updateComment = async (req, res) => {
     if (!post) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
 
     // Find the comment
-    const commentIndex = post.comments.findIndex(c => c._id.toString() === commentId);
+    const commentIndex = post.comments.findIndex(
+      (c) => c._id.toString() === commentId
+    );
     if (commentIndex === -1) {
       return res.status(404).json({
         status: "fail",
-        message: "Comment not found"
+        message: "Comment not found",
       });
     }
 
@@ -645,7 +734,7 @@ const updateComment = async (req, res) => {
     if (comment.user.toString() !== req.user._id.toString()) {
       return res.status(401).json({
         status: "fail",
-        message: "User not authorized to update this comment"
+        message: "User not authorized to update this comment",
       });
     }
 
@@ -655,25 +744,26 @@ const updateComment = async (req, res) => {
     await post.save();
 
     // Populate the user info for the returned comment
-    const populatedPost = await Post.findById(postId)
-      .populate({
-        path: 'comments.user',
-        select: 'name avatar'
-      });
-    
-    const updatedComment = populatedPost.comments.find(c => c._id.toString() === commentId);
+    const populatedPost = await Post.findById(postId).populate({
+      path: "comments.user",
+      select: "name avatar",
+    });
+
+    const updatedComment = populatedPost.comments.find(
+      (c) => c._id.toString() === commentId
+    );
 
     res.status(200).json({
       status: "success",
       data: {
-        comment: updatedComment
-      }
+        comment: updatedComment,
+      },
     });
   } catch (error) {
     console.error("Error updating comment:", error);
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -690,16 +780,18 @@ const deleteComment = async (req, res) => {
     if (!post) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
 
     // Find the comment
-    const commentIndex = post.comments.findIndex(c => c._id.toString() === commentId);
+    const commentIndex = post.comments.findIndex(
+      (c) => c._id.toString() === commentId
+    );
     if (commentIndex === -1) {
       return res.status(404).json({
         status: "fail",
-        message: "Comment not found"
+        message: "Comment not found",
       });
     }
 
@@ -707,12 +799,13 @@ const deleteComment = async (req, res) => {
 
     // Check if user owns the comment or is the post owner
     const isCommentOwner = comment.user.toString() === req.user._id.toString();
-    const isPostOwner = post.postedBy && post.postedBy._id.toString() === req.user._id.toString();
-    
+    const isPostOwner =
+      post.postedBy && post.postedBy._id.toString() === req.user._id.toString();
+
     if (!isCommentOwner && !isPostOwner) {
       return res.status(401).json({
         status: "fail",
-        message: "User not authorized to delete this comment"
+        message: "User not authorized to delete this comment",
       });
     }
 
@@ -722,13 +815,13 @@ const deleteComment = async (req, res) => {
 
     res.status(200).json({
       status: "success",
-      data: null
+      data: null,
     });
   } catch (error) {
     console.error("Error deleting comment:", error);
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -742,26 +835,25 @@ const getComments = async (req, res) => {
     if (!post) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
 
     // Populate user info for all comments
-    const populatedPost = await Post.findById(req.params.id)
-      .populate({
-        path: 'comments.user',
-        select: 'name avatar'
-      });
+    const populatedPost = await Post.findById(req.params.id).populate({
+      path: "comments.user",
+      select: "name avatar",
+    });
 
     res.status(200).json({
       status: "success",
-      data: populatedPost.comments
+      data: populatedPost.comments,
     });
   } catch (error) {
     console.error("Error fetching comments:", error);
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -772,40 +864,40 @@ const getComments = async (req, res) => {
 const searchPosts = async (req, res) => {
   try {
     const { q, category, limit = 10, page = 1 } = req.query;
-    
+
     // Build search query
     let query = {};
-    
+
     // Text search in title and description
     if (q) {
       query.$or = [
-        { title: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } }
+        { title: { $regex: q, $options: "i" } },
+        { description: { $regex: q, $options: "i" } },
       ];
     }
-    
+
     // Filter by category if provided
     if (category) {
-      query.category = { $regex: category, $options: 'i' };
+      query.category = { $regex: category, $options: "i" };
     }
-    
+
     // Calculate pagination
     const skip = (page - 1) * limit;
-    
+
     // Execute search with pagination
     const posts = await Post.find(query)
-      .populate('postedBy', 'name avatar')
+      .populate("postedBy", "name avatar")
       .populate({
-        path: 'comments.user',
-        select: 'name avatar'
+        path: "comments.user",
+        select: "name avatar",
       })
       .sort({ datePosted: -1 })
       .skip(skip)
       .limit(parseInt(limit));
-    
+
     // Get total count for pagination info
     const total = await Post.countDocuments(query);
-    
+
     res.status(200).json({
       status: "success",
       data: {
@@ -815,15 +907,15 @@ const searchPosts = async (req, res) => {
           totalPages: Math.ceil(total / limit),
           totalPosts: total,
           hasNext: parseInt(page) * limit < total,
-          hasPrev: parseInt(page) > 1
-        }
-      }
+          hasPrev: parseInt(page) > 1,
+        },
+      },
     });
   } catch (error) {
     console.error("Error searching posts:", error);
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -838,7 +930,7 @@ const getNearbyPosts = async (req, res) => {
     if (!latitude || !longitude) {
       return res.status(400).json({
         status: "fail",
-        message: "Latitude and longitude are required"
+        message: "Latitude and longitude are required",
       });
     }
 
@@ -850,28 +942,28 @@ const getNearbyPosts = async (req, res) => {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)]
+            coordinates: [parseFloat(longitude), parseFloat(latitude)],
           },
-          $maxDistance: radiusInMeters
-        }
-      }
+          $maxDistance: radiusInMeters,
+        },
+      },
     })
-    .populate('postedBy', 'name avatar')
-    .populate({
-      path: 'comments.user',
-      select: 'name avatar'
-    })
-    .limit(parseInt(limit));
+      .populate("postedBy", "name avatar")
+      .populate({
+        path: "comments.user",
+        select: "name avatar",
+      })
+      .limit(parseInt(limit));
 
     res.status(200).json({
       status: "success",
-      data: posts
+      data: posts,
     });
   } catch (error) {
     console.error("Error fetching nearby posts:", error);
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -886,35 +978,36 @@ const getPostsWithinArea = async (req, res) => {
     if (!minLat || !maxLat || !minLng || !maxLng) {
       return res.status(400).json({
         status: "fail",
-        message: "minLat, maxLat, minLng, and maxLng are required for area bounds"
+        message:
+          "minLat, maxLat, minLng, and maxLng are required for area bounds",
       });
     }
 
     const posts = await Post.find({
       "location.latitude": {
         $gte: parseFloat(minLat),
-        $lte: parseFloat(maxLat)
+        $lte: parseFloat(maxLat),
       },
       "location.longitude": {
         $gte: parseFloat(minLng),
-        $lte: parseFloat(maxLng)
-      }
+        $lte: parseFloat(maxLng),
+      },
     })
-    .populate('postedBy', 'name email avatar')
-    .populate({
-      path: 'comments.user',
-      select: 'name avatar'
-    });
+      .populate("postedBy", "name email avatar")
+      .populate({
+        path: "comments.user",
+        select: "name avatar",
+      });
 
     res.status(200).json({
       status: "success",
-      data: posts
+      data: posts,
     });
   } catch (error) {
     console.error("Error fetching posts within area:", error);
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -930,7 +1023,7 @@ const getPostDistance = async (req, res) => {
     if (!latitude || !longitude) {
       return res.status(400).json({
         status: "fail",
-        message: "Latitude and longitude are required"
+        message: "Latitude and longitude are required",
       });
     }
 
@@ -938,7 +1031,7 @@ const getPostDistance = async (req, res) => {
     if (!post) {
       return res.status(404).json({
         status: "fail",
-        message: "Post not found"
+        message: "Post not found",
       });
     }
 
@@ -949,28 +1042,30 @@ const getPostDistance = async (req, res) => {
     const postLng = post.location.longitude;
 
     const R = 6371; // Earth's radius in kilometers
-    const dLat = (postLat - userLat) * Math.PI / 180;
-    const dLon = (postLng - userLng) * Math.PI / 180;
-    
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(userLat * Math.PI / 180) * Math.cos(postLat * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    const dLat = ((postLat - userLat) * Math.PI) / 180;
+    const dLon = ((postLng - userLng) * Math.PI) / 180;
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((userLat * Math.PI) / 180) *
+        Math.cos((postLat * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c; // Distance in km
 
     res.status(200).json({
       status: "success",
       data: {
         distance: distance,
-        unit: "kilometers"
-      }
+        unit: "kilometers",
+      },
     });
   } catch (error) {
     console.error("Error calculating distance:", error);
     res.status(500).json({
       status: "error",
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -991,5 +1086,5 @@ module.exports = {
   searchPosts,
   getNearbyPosts,
   getPostsWithinArea,
-  getPostDistance
+  getPostDistance,
 };
