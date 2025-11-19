@@ -436,6 +436,14 @@ const AddPost = () => {
                     <p className="text-emerald-800 font-medium mb-1 font-sans">Click to upload images</p>
                     <p className="text-sm text-emerald-600 font-sans">JPG, PNG, GIF up to 5MB each</p>
                     <p className="text-xs text-emerald-500 font-sans mt-2">Drag & drop supported</p>
+                    <div className="mt-4 w-full max-w-xs h-2 bg-emerald-200 rounded-full overflow-hidden">
+                      <motion.div 
+                        className="h-full bg-gradient-to-r from-emerald-400 to-teal-400"
+                        initial={{ width: 0 }}
+                        animate={{ width: images.length > 0 ? `${(images.length / 10) * 100}%` : 0 }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    </div>
                   </motion.div>
                 </div>
                 
@@ -464,14 +472,14 @@ const AddPost = () => {
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
-                        whileHover={{ y: -5 }}
+                        whileHover={{ y: -5, scale: 1.03 }}
                         className="relative group w-32 h-32 flex-shrink-0"
                       >
-                        <div className="relative w-full h-full rounded-xl overflow-hidden shadow-md">
+                        <div className="relative w-full h-full rounded-xl overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                           <img 
                             src={image.preview} 
                             alt={`Preview ${index + 1}`} 
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                             <button
@@ -501,7 +509,7 @@ const AddPost = () => {
                       <button
                         type="button"
                         onClick={() => setImages([])}
-                        className="text-red-500 hover:text-red-700 text-sm font-sans underline"
+                        className="text-red-500 hover:text-red-700 text-sm font-sans underline transition-colors"
                       >
                         Clear all
                       </button>
