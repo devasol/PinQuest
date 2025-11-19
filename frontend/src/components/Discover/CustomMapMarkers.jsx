@@ -118,9 +118,37 @@ const getMarkerByCategory = (category = "general") => {
 // (Removed unused helper to reduce lint noise)
 
 // Specialized function for user location marker
-// Use the default Leaflet marker so user location uses the regular pin
+// Create a red circular marker for user's current location
 const createUserLocationMarker = () => {
-  return new L.Icon.Default();
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+      <defs>
+        <radialGradient id="redGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+          <stop offset="0%" stop-color="#F87171" />
+          <stop offset="100%" stop-color="#DC2626" />
+        </radialGradient>
+        <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.3" />
+        </filter>
+      </defs>
+      <g filter="url(#shadow)">
+        <!-- Outer ring -->
+        <circle cx="16" cy="16" r="15" fill="white" stroke="#DC2626" stroke-width="2"/>
+        <!-- Inner red circle -->
+        <circle cx="16" cy="16" r="12" fill="url(#redGradient)" />
+        <!-- Center dot -->
+        <circle cx="16" cy="16" r="4" fill="white" />
+      </g>
+    </svg>
+  `;
+
+  return L.divIcon({
+    className: "custom-user-location-marker",
+    html: svg,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
+  });
 };
 
 // Function to create a marker specifically for POIs
