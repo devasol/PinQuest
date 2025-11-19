@@ -141,6 +141,8 @@ function Geocoder({
     setIsOpen(false);
   };
 
+  
+
   return (
     <div className="relative">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -270,6 +272,10 @@ const MapView = () => {
     postedBy: "",
     category: "general",
   });
+  // Support multiple images when creating a post from the map modal
+  const [images, setImages] = useState([]);
+  const fileInputRef = useRef(null);
+  const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null); // Initialize as null to indicate no location yet
   const [hasUserLocation, setHasUserLocation] = useState(false);
@@ -1081,6 +1087,8 @@ const MapView = () => {
       category: "general",
       // Don't include postedBy since the backend will automatically use the authenticated user ID
     });
+    // Clear any previously selected images when opening the modal
+    setImages([]);
   };
 
   const handleFormChange = (e) => {
@@ -1097,6 +1105,49 @@ const MapView = () => {
         [name]: value,
       });
     }
+  };
+
+  // Image helpers for multi-file upload in the map modal
+  const validateAndAddImage = (file) => {
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({ ...prev, image: "Please select a valid image file" }));
+      return false;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, image: "File size must be less than 5MB" }));
+      return false;
+    }
+    if (images.length >= 10) {
+      setErrors((prev) => ({ ...prev, image: "You can only upload up to 10 images" }));
+      return false;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const newImage = { id: Date.now() + Math.random(), file, preview: reader.result };
+      setImages((prev) => [...prev, newImage]);
+      if (errors.image) setErrors((prev) => ({ ...prev, image: "" }));
+    };
+    reader.readAsDataURL(file);
+    return true;
+  };
+
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (images.length + files.length > 10) {
+      const remaining = 10 - images.length;
+      setErrors((prev) => ({ ...prev, image: `You can only upload up to 10 images. You can add ${remaining} more.` }));
+      return;
+    }
+    files.forEach((f) => validateAndAddImage(f));
+  };
+
+  const removeImage = (id) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
+  const handleAddButtonClick = () => {
+    fileInputRef.current?.click();
   };
 
   const handleFormSubmit = async (e) => {
@@ -1140,20 +1191,19 @@ const MapView = () => {
         return;
       }
 
-      // Create form data based on whether we have an image file or URL
+      // Create form data based on whether we have image files or a URL
       let postData;
       let isFormData = false;
 
-      // Check if the image is a file (for file upload) or a URL
-      if (formData.image && formData.image instanceof File) {
-        // Use FormData for file uploads
+      // If multiple images were selected in the modal, send them as 'images' fields
+      if (images && images.length > 0) {
         postData = new FormData();
         postData.append("title", formData.title);
         postData.append("description", formData.description);
         postData.append("category", formData.category);
-        postData.append("image", formData.image, formData.image.name);
-
-        // Properly format location as a nested object in FormData
+        images.forEach((img) => {
+          postData.append("images", img.file, img.file.name);
+        });
         postData.append(
           "location",
           JSON.stringify({
@@ -1161,7 +1211,21 @@ const MapView = () => {
             longitude: parseFloat(clickPosition[1]),
           })
         );
-
+        isFormData = true;
+      } else if (formData.image && formData.image instanceof File) {
+        // Single file selected via the legacy input — send as images[] for backend compatibility
+        postData = new FormData();
+        postData.append("title", formData.title);
+        postData.append("description", formData.description);
+        postData.append("category", formData.category);
+        postData.append("images", formData.image, formData.image.name);
+        postData.append(
+          "location",
+          JSON.stringify({
+            latitude: parseFloat(clickPosition[0]),
+            longitude: parseFloat(clickPosition[1]),
+          })
+        );
         isFormData = true;
       } else {
         // Use regular JSON for no file or URL string
@@ -1232,6 +1296,7 @@ const MapView = () => {
           title: formData.title,
           description: formData.description,
           image: result.data.image, // This could be a string URL or an object with a url property
+          images: result.data.images && result.data.images.length > 0 ? result.data.images : (result.data.image ? [result.data.image] : []),
           postedBy:
             result.data.postedBy && typeof result.data.postedBy === "object"
               ? result.data.postedBy.name
@@ -1252,6 +1317,7 @@ const MapView = () => {
           image: null,
           category: "general",
         });
+        setImages([]);
       } else {
         console.error("Error creating post:", result.message);
         showNotification("Error creating post: " + result.message, "error");
@@ -2677,46 +2743,81 @@ const MapView = () => {
 
                       <div className="md:col-span-2">
                         <label className="block text-gray-700 mb-2 font-medium">
-                          Image
+                          Images (optional — up to 10)
                         </label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <input
-                              type="text"
-                              id="image"
-                              name="image"
-                              value={
-                                typeof formData.image === "string"
-                                  ? formData.image
-                                  : ""
-                              }
-                              onChange={handleFormChange}
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none"
-                              placeholder="Enter image URL"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Enter a URL to an image
-                            </p>
+
+                        {/* URL input (optional) */}
+                        <div className="mb-3">
+                          <input
+                            type="text"
+                            id="image"
+                            name="image"
+                            value={typeof formData.image === "string" ? formData.image : ""}
+                            onChange={handleFormChange}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none"
+                            placeholder="Or paste an image URL (optional)"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">You can either paste a URL or upload images below.</p>
+                        </div>
+
+                        {/* Upload area */}
+                        <div className="flex items-start gap-4">
+                          <div
+                            className="flex-1 border-2 border-dashed rounded-2xl p-4 flex items-center justify-center cursor-pointer hover:border-blue-300 transition"
+                            onClick={handleAddButtonClick}
+                          >
+                            <div className="text-center">
+                              <svg className="mx-auto mb-2 h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 014-4h10a4 4 0 110 8H7a4 4 0 01-4-4zM7 11V7m0 0L5 9m2-2l2 2" />
+                              </svg>
+                              <div className="text-sm text-gray-700 font-medium">Click to add images</div>
+                              <div className="text-xs text-gray-400">JPG, PNG, GIF — up to 5MB each</div>
+                            </div>
                           </div>
-                          <div>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  setFormData({
-                                    ...formData,
-                                    image: e.target.files[0], // Store the File object directly
-                                  });
-                                }
-                              }}
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white file:text-blue-600 hover:file:bg-gray-50"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Or upload an image file
-                            </p>
+
+                          <div className="w-28">
+                            <button
+                              type="button"
+                              onClick={handleAddButtonClick}
+                              disabled={images.length >= 10}
+                              className={`w-full px-3 py-2 rounded-xl text-white font-medium ${images.length >= 10 ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                            >
+                              Add
+                            </button>
+                          </div>
+
+                          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
+                        </div>
+
+                        {errors.image && <p className="text-red-500 text-sm mt-2">{errors.image}</p>}
+
+                        <div className="mt-3 mb-3">
+                          <div className="flex justify-between text-sm text-gray-600 mb-1">
+                            <span>Selected</span>
+                            <span>{images.length}/10</span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-500" style={{ width: `${(images.length / 10) * 100}%` }} />
                           </div>
                         </div>
+
+                        {images.length > 0 && (
+                          <div className="grid grid-cols-3 gap-3">
+                            {images.map((image, idx) => (
+                              <div key={image.id} className="relative rounded-lg overflow-hidden h-24 bg-gray-100">
+                                <img src={image.preview} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => removeImage(image.id)}
+                                  className="absolute top-2 right-2 bg-white/80 p-1 rounded-full text-red-600 hover:bg-white"
+                                  aria-label={`Remove image ${idx + 1}`}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="md:col-span-2 text-sm text-gray-600 bg-blue-50 p-4 rounded-xl">
