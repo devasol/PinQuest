@@ -1287,8 +1287,6 @@ const MapView = () => {
     });
   };
 
-
-
   const flyToLocation = (position) => {
     if (mapRef.current) {
       mapRef.current.flyTo(position, 15);
@@ -1387,7 +1385,8 @@ const MapView = () => {
                   }}
                 >
                   <div className="p-6 min-w-[400px] max-w-[500px] relative">
-                    {(location.image && typeof location.image === "string") || (location.image && location.image.url) ? (
+                    {(location.image && typeof location.image === "string") ||
+                    (location.image && location.image.url) ? (
                       <div className="relative">
                         <div className="w-full h-48 rounded-lg mb-4">
                           <OptimizedImage
@@ -2592,24 +2591,24 @@ const MapView = () => {
             {/* Modal Content */}
             <div className="fixed inset-0 flex items-center justify-center z-[2001] p-4">
               <motion.div
-                  className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
-                  initial={{ scale: 0.98, opacity: 0, y: 10 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.98, opacity: 0, y: 10 }}
-                  transition={{ type: "spring", damping: 20 }}
-                >
+                className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
+                initial={{ scale: 0.98, opacity: 0, y: 10 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.98, opacity: 0, y: 10 }}
+                transition={{ type: "spring", damping: 20 }}
+              >
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-semibold text-gray-800">
-                          Create new post
-                        </h2>
-                        <button
-                          onClick={closeForm}
-                          className="text-gray-500 hover:text-gray-700 text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors duration-150"
-                          aria-label="Close create post"
-                        >
-                          ×
-                        </button>
+                    <h2 className="text-2xl font-semibold text-gray-800">
+                      Create new post
+                    </h2>
+                    <button
+                      onClick={closeForm}
+                      className="text-gray-500 hover:text-gray-700 text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors duration-150"
+                      aria-label="Close create post"
+                    >
+                      ×
+                    </button>
                   </div>
 
                   <form onSubmit={handleFormSubmit}>
