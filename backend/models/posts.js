@@ -13,6 +13,12 @@ const postSchema = new mongoose.Schema({
     url: String,      // Public URL of the image
     publicId: String, // Cloudinary public ID for deletion purposes
   },
+  images: [
+    {
+      url: String,
+      publicId: String,
+    }
+  ],
   likes: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,

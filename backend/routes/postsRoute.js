@@ -23,7 +23,8 @@ const upload = require("../middleware/uploadMiddleware");
 
 // Routes
 router.route("/")
-  .post(protect, upload.single('image'), createPost)
+  // Accept up to 10 images uploaded with field name 'images'
+  .post(protect, upload.array('images', 10), createPost)
   .get(getAllPosts);  // Get all posts should be public
 
 // Search route
@@ -39,7 +40,8 @@ router.get("/:id/distance", getPostDistance);
 
 router.route("/:id")
   .get(getPostById)
-  .patch(protect, upload.single('image'), updatePost)
+  // For updates accept multiple images as well (field name 'images')
+  .patch(protect, upload.array('images', 10), updatePost)
   .delete(protect, deletePost);
 
 // Like/unlike routes

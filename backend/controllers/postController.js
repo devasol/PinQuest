@@ -25,28 +25,41 @@ const createPost = async (req, res) => {
 
     console.log('Creating post for user:', req.user._id, 'Name:', req.user.name);
 
-    // Handle image upload if present
+    // Handle image uploads (support multiple images uploaded under field 'images')
     let image = null;
-    if (req.file) {
+    let imagesArr = [];
+
+    // If multer saved multiple files they will be in req.files
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      try {
+        for (const f of req.files) {
+          try {
+            const uploadResult = await uploadImageToCloudinary(f);
+            imagesArr.push({ url: uploadResult.secure_url, publicId: uploadResult.public_id });
+          } catch (uploadError) {
+            console.error('Error uploading one of the images to Cloudinary:', uploadError);
+            // Continue uploading remaining files but collect errors
+          }
+        }
+        // Keep first image in `image` for backward compatibility
+        if (imagesArr.length > 0) image = imagesArr[0];
+      } catch (err) {
+        console.error('Error processing uploaded images:', err);
+        return res.status(400).json({ status: 'fail', message: 'Error uploading images' });
+      }
+    } else if (req.file) {
+      // Fallback for single-file middleware or legacy callers
       try {
         const uploadResult = await uploadImageToCloudinary(req.file);
-        image = {
-          url: uploadResult.secure_url,
-          publicId: uploadResult.public_id
-        };
+        image = { url: uploadResult.secure_url, publicId: uploadResult.public_id };
+        imagesArr = image ? [image] : [];
       } catch (uploadError) {
-        console.error("Error uploading image to Cloudinary:", uploadError);
-        return res.status(400).json({
-          status: "fail",
-          message: "Error uploading image"
-        });
+        console.error('Error uploading image to Cloudinary:', uploadError);
+        return res.status(400).json({ status: 'fail', message: 'Error uploading image' });
       }
     } else if (req.body.image) {
-      // For backward compatibility - if image is provided in request body
-      image = {
-        url: req.body.image,
-        publicId: null // No public ID if it's not a Cloudinary upload
-      };
+      // For backward compatibility - if image is provided in request body as a URL
+      image = { url: req.body.image, publicId: null };
     }
 
     // Use authenticated user ID for postedBy (from middleware)
@@ -55,6 +68,7 @@ const createPost = async (req, res) => {
       title,
       description,
       image,
+      images: imagesArr,
       postedBy: req.user._id, // Use the authenticated user ID
       category: category || "general",
       location: {
@@ -215,35 +229,49 @@ const updatePost = async (req, res) => {
     console.log('Updating post:', req.params.id, 'by user:', req.user._id);
 
     // Handle image upload if present
-    let image = existingPost.image; // Keep existing image by default
-    if (req.file) {
-      try {
-        // If there's an existing image with a publicId, delete it from Cloudinary
-        if (existingPost.image && existingPost.image.publicId) {
-          const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
-          await deleteImageFromCloudinary(existingPost.image.publicId);
-        }
+    // Handle image(s) update
+    let image = existingPost.image; // Keep existing primary image by default
+    let imagesArr = existingPost.images && existingPost.images.length ? existingPost.images.slice() : [];
 
-        const uploadResult = await uploadImageToCloudinary(req.file);
-        image = {
-          url: uploadResult.secure_url,
-          publicId: uploadResult.public_id
-        };
-      } catch (uploadError) {
-        console.error("Error uploading image to Cloudinary:", uploadError);
-        return res.status(400).json({
-          status: "fail",
-          message: "Error uploading image"
-        });
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      // If replacing images, delete any existing Cloudinary images
+      if (Array.isArray(imagesArr) && imagesArr.length > 0) {
+        const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+        for (const img of imagesArr) {
+          if (img && img.publicId) {
+            try { await deleteImageFromCloudinary(img.publicId); } catch (e) { console.error('Error deleting existing image during update', e); }
+          }
+        }
+      }
+
+      imagesArr = [];
+      try {
+        for (const f of req.files) {
+          try {
+            const uploadResult = await uploadImageToCloudinary(f);
+            imagesArr.push({ url: uploadResult.secure_url, publicId: uploadResult.public_id });
+          } catch (uploadError) {
+            console.error('Error uploading one of the images to Cloudinary during update:', uploadError);
+          }
+        }
+        image = imagesArr.length > 0 ? imagesArr[0] : null;
+      } catch (err) {
+        console.error('Error processing uploaded images during update:', err);
+        return res.status(400).json({ status: 'fail', message: 'Error uploading images' });
       }
     } else if (req.body.image === null || req.body.image === '') {
       // If image is explicitly set to null or empty string, clear it
-      // If there's an existing image with a publicId, delete it from Cloudinary
-      if (existingPost.image && existingPost.image.publicId) {
+      // Delete all existing Cloudinary images
+      if (Array.isArray(imagesArr) && imagesArr.length > 0) {
         const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
-        await deleteImageFromCloudinary(existingPost.image.publicId);
+        for (const img of imagesArr) {
+          if (img && img.publicId) {
+            try { await deleteImageFromCloudinary(img.publicId); } catch (e) { console.error('Error deleting existing image', e); }
+          }
+        }
       }
       image = null;
+      imagesArr = [];
     }
 
     // Prepare the update object
@@ -252,6 +280,7 @@ const updatePost = async (req, res) => {
       title,
       description,
       image,
+      images: imagesArr,
       category: category || "general"
     };
 
@@ -327,8 +356,16 @@ const deletePost = async (req, res) => {
 
     console.log('Deleting post:', req.params.id, 'by user:', req.user._id);
 
-    // If the post has an image with a publicId, delete it from Cloudinary
-    if (post.image && post.image.publicId) {
+    // If the post has images with publicIds, delete them from Cloudinary
+    if (Array.isArray(post.images) && post.images.length > 0) {
+      const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
+      for (const img of post.images) {
+        if (img && img.publicId) {
+          try { await deleteImageFromCloudinary(img.publicId); } catch (e) { console.error('Error deleting image from Cloudinary during post deletion', e); }
+        }
+      }
+    } else if (post.image && post.image.publicId) {
+      // Fallback for posts using legacy single image field
       const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
       await deleteImageFromCloudinary(post.image.publicId);
     }
