@@ -8,17 +8,7 @@ import {
   MapPin,
   User,
 } from "lucide-react";
-
-// src/components/PostCard/PostCard.jsx
-import React, { useState } from "react";
-import {
-  Heart,
-  MessageCircle,
-  Share,
-  Bookmark,
-  MapPin,
-  User,
-} from "lucide-react";
+import OptimizedImage from "../OptimizedImage";
 
 // API base URL - should be consistent with other components
 const API_BASE_URL =
@@ -152,11 +142,13 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           {post.postedBy?.avatar ? (
-            <img
-              src={post.postedBy.avatar.url}
-              alt={post.postedBy.name}
-              className="w-10 h-10 rounded-full object-cover"
-            />
+            <div className="w-10 h-10 rounded-full overflow-hidden">
+              <OptimizedImage
+                src={post.postedBy.avatar.url}
+                alt={post.postedBy.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
           ) : (
             <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
               <User className="w-5 h-5 text-gray-600" />
@@ -184,15 +176,17 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
       {(post.image?.url || (post.images && post.images.length > 0)) && (
         <div className="relative">
           {/* Display first image from multiple images or single image */}
-          <img
-            src={getImageUrl(
-              post.images && post.images.length > 0
-                ? post.images[0]
-                : post.image
-            )}
-            alt={post.title}
-            className="w-full h-64 object-cover"
-          />
+          <div className="w-full h-64">
+            <OptimizedImage
+              src={getImageUrl(
+                post.images && post.images.length > 0
+                  ? post.images[0]
+                  : post.image
+              )}
+              alt={post.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
           {/* Show image count indicator if there are multiple images */}
           {post.images && post.images.length > 1 && (
             <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">

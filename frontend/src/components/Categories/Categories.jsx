@@ -1,43 +1,5 @@
 import React, { useState } from "react";
-
-// Image loading component - needs to be defined outside main component
-const ImageWithLoader = ({ src, alt, className, ...props }) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-
-  const handleLoad = () => {
-    setIsLoading(false);
-  };
-
-  const handleError = () => {
-    setIsLoading(false);
-    setHasError(true);
-  };
-
-  return (
-    <div className="relative w-full h-full">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-200 animate-pulse">
-          <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      )}
-      {!hasError ? (
-        <img
-          src={src}
-          alt={alt}
-          className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
-          onLoad={handleLoad}
-          onError={handleError}
-          {...props}
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-          <span className="text-gray-500 text-sm">Image not available</span>
-        </div>
-      )}
-    </div>
-  );
-};
+import OptimizedImage from '../OptimizedImage';
 
 const Categories = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -212,7 +174,7 @@ const Categories = () => {
               className="group relative bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-105 hover:shadow-2xl"
             >
               <div className="relative h-48 overflow-hidden">
-                <ImageWithLoader
+                <OptimizedImage
                   src={category.image}
                   alt={category.title}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
@@ -256,7 +218,7 @@ const Categories = () => {
                 className="group relative bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-105"
               >
                 <div className="relative h-48 overflow-hidden">
-                  <ImageWithLoader
+                  <OptimizedImage
                     src={destination.image}
                     alt={destination.name}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
