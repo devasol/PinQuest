@@ -51,7 +51,12 @@ const getImageUrl = (imageObj) => {
 };
 
 // Small carousel component for showing multiple images with next/prev buttons
-function ImageCarousel({ images = [], alt = "", className = "", onClose = null }) {
+function ImageCarousel({
+  images = [],
+  alt = "",
+  className = "",
+  onClose = null,
+}) {
   const [index, setIndex] = React.useState(0);
 
   if (!images || images.length === 0) return null;
@@ -69,18 +74,31 @@ function ImageCarousel({ images = [], alt = "", className = "", onClose = null }
   const currentImage = images[index];
 
   return (
-    <div className={`relative ${className}`} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`relative ${className}`}
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Close button for the carousel (closes popup) */}
       <button
         className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300 z-30"
         onClick={(e) => {
           e.stopPropagation();
-          if (typeof onClose === 'function') onClose(e);
+          if (typeof onClose === "function") onClose(e);
         }}
         title="Close"
       >
-        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <svg
+          className="w-5 h-5 text-gray-700"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
       </button>
       <div className="w-full h-48 rounded-lg mb-4 overflow-hidden">
@@ -1617,7 +1635,9 @@ const MapView = () => {
                           }
                         }}
                       />
-                    ) : ( (location.image && typeof location.image === "string") || (location.image && location.image.url) ) ? (
+                    ) : (location.image &&
+                        typeof location.image === "string") ||
+                      (location.image && location.image.url) ? (
                       <div className="relative">
                         <div className="w-full h-48 rounded-lg mb-4">
                           <OptimizedImage
