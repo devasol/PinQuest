@@ -923,6 +923,7 @@ const MapView = () => {
               title: post.title,
               description: post.description,
               image: post.image,
+              images: post.images && post.images.length > 0 ? post.images : post.image ? [post.image] : [],
               postedBy:
                 post.postedBy && typeof post.postedBy === "object"
                   ? post.postedBy.name
