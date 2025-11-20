@@ -9,6 +9,7 @@ const {
   getPostsByLocation,
   likePost,
   unlikePost,
+  addOrUpdateRating,
   addComment,
   updateComment,
   deleteComment,
@@ -45,6 +46,9 @@ router
   // For updates accept multiple images as well (field name 'images')
   .patch(protect, upload.array("images", 10), updatePost)
   .delete(protect, deletePost);
+
+// Ratings route - only for authenticated users
+router.route("/:id/ratings").post(protect, addOrUpdateRating);
 
 // Like/unlike routes
 router.route("/:id/like").put(protect, likePost);

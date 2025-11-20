@@ -85,24 +85,20 @@ const createPost = async (req, res) => {
             }
 
             // Unsupported file object
-            return res
-              .status(400)
-              .json({
-                status: "fail",
-                message: "Unsupported file upload format",
-              });
+            return res.status(400).json({
+              status: "fail",
+              message: "Unsupported file upload format",
+            });
           } catch (uploadError) {
             console.error("Error processing uploaded file:", uploadError);
             const msg =
               uploadError && uploadError.message
                 ? uploadError.message
                 : String(uploadError);
-            return res
-              .status(500)
-              .json({
-                status: "error",
-                message: `Failed to process uploaded image: ${msg}`,
-              });
+            return res.status(500).json({
+              status: "error",
+              message: `Failed to process uploaded image: ${msg}`,
+            });
           }
         }
 
@@ -674,12 +670,106 @@ const unlikePost = async (req, res) => {
   }
 };
 
+// @desc    Add or update a rating for a post
+// @route   POST /api/v1/posts/:id/ratings
+// @access  Private
+const addOrUpdateRating = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    // Accept several possible field names from frontend
+    const incoming = req.body || {};
+    const rawRating = incoming.rating ?? incoming.value ?? incoming.rate;
+
+    if (typeof rawRating === "undefined") {
+      return res.status(400).json({
+        status: "fail",
+        message: "Rating value is required",
+      });
+    }
+
+    const ratingValue = Number(rawRating);
+    if (isNaN(ratingValue) || ratingValue < 1 || ratingValue > 5) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Rating must be a number between 1 and 5",
+      });
+    }
+
+    // Find the post
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res
+        .status(404)
+        .json({ status: "fail", message: "Post not found" });
+    }
+
+    // Ensure user is authenticated (protect middleware should be used on route)
+    if (!req.user) {
+      return res
+        .status(401)
+        .json({ status: "fail", message: "Authentication required to rate" });
+    }
+
+    const userId = req.user._id.toString();
+
+    // Check if this user already rated the post
+    let existingIndex = -1;
+    if (Array.isArray(post.ratings)) {
+      existingIndex = post.ratings.findIndex(
+        (r) => r.user && r.user.toString() === userId
+      );
+    } else {
+      post.ratings = [];
+    }
+
+    if (existingIndex !== -1) {
+      // Update existing rating
+      post.ratings[existingIndex].rating = ratingValue;
+    } else {
+      // Add new rating
+      post.ratings.push({ user: req.user._id, rating: ratingValue });
+    }
+
+    // Recompute aggregates
+    const total = post.ratings.length;
+    const sum = post.ratings.reduce((acc, r) => acc + (r.rating || 0), 0);
+    const avg = total > 0 ? sum / total : 0;
+    post.averageRating = avg;
+    post.totalRatings = total;
+
+    await post.save();
+
+    // Emit event if needed
+    const io = req.app.get("io");
+    if (io) {
+      emitToPost(io, post._id, "ratingUpdated", {
+        postId: post._id,
+        averageRating: post.averageRating,
+        totalRatings: post.totalRatings,
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      averageRating: post.averageRating,
+      totalRatings: post.totalRatings,
+      data: post.ratings,
+    });
+  } catch (error) {
+    console.error("Error updating rating:", error);
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
 // @desc    Add a comment to a post
 // @route   POST /api/v1/posts/:id/comments
 // @access  Private
 const addComment = async (req, res) => {
   try {
-    const { text } = req.body;
+    // Accept multiple possible field names from frontend
+    const incoming = req.body || {};
+    const text =
+      incoming.text ?? incoming.content ?? incoming.comment ?? incoming.message;
     const postId = req.params.id;
 
     // Validate input
@@ -759,7 +849,8 @@ const addComment = async (req, res) => {
 // @access  Private
 const updateComment = async (req, res) => {
   try {
-    const { text } = req.body;
+    const incoming = req.body || {};
+    const text = incoming.text ?? incoming.content ?? incoming.comment;
     const postId = req.params.postId;
     const commentId = req.params.commentId;
 
@@ -1141,6 +1232,7 @@ module.exports = {
   getPostsByLocation,
   likePost,
   unlikePost,
+  addOrUpdateRating,
   addComment,
   updateComment,
   deleteComment,

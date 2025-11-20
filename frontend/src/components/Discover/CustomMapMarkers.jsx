@@ -108,11 +108,24 @@ const categoryColors = {
   user: "#F97316", // Orange
 };
 
-// Function to get a marker based on category
-// Return Leaflet's default icon (regular pin) to keep the standard
-// marker appearance as requested.
-const getMarkerByCategory = (category = "general") => {
-  return new L.Icon.Default();
+// Function to get a marker based on category and optional average rating
+// If an average rating is provided, color the pin according to the rating
+// (green for good ratings, amber/orange for mid, red for low). Falls back
+// to a category-based color when rating is not available.
+const getMarkerByCategory = (category = "general", averageRating = null) => {
+  // If a numeric averageRating is provided use it to pick a color
+  if (typeof averageRating === "number" && !isNaN(averageRating)) {
+    let color = "#EF4444"; // red default
+    if (averageRating >= 4.0) color = "#10B981"; // green
+    else if (averageRating >= 3.0) color = "#F59E0B"; // amber
+    else if (averageRating >= 2.0) color = "#F97316"; // orange
+
+    return createModernMarker({ color });
+  }
+
+  // No rating available — fall back to category color using modern marker
+  const color = categoryColors[category] || "#4F46E5";
+  return createModernMarker({ color });
 };
 
 // (Removed unused helper to reduce lint noise)

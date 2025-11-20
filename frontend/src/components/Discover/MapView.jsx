@@ -17,6 +17,7 @@ import { auth } from "../../config/firebase";
 import RoutingMachine from "./RoutingMachine";
 import NotificationModal from "../NotificationModal";
 import OptimizedImage from "../OptimizedImage";
+import RatingsAndComments from "../RatingsAndComments.jsx";
 import {
   getMarkerByCategory,
   createUserLocationMarker,
@@ -117,14 +118,14 @@ function ImageCarousel({
             onClick={gotoPrev}
             aria-label="Previous image"
           >
-            ‹
+            {"‹"}
           </button>
           <button
             className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white z-20"
             onClick={gotoNext}
             aria-label="Next image"
           >
-            ›
+            {"›"}
           </button>
 
           <div className="absolute left-1/2 -translate-x-1/2 bottom-2 z-20 flex items-center gap-2 bg-black/30 px-2 py-1 rounded-full">
@@ -929,6 +930,20 @@ const MapView = () => {
                   : post.image
                   ? [post.image]
                   : [],
+              // Ratings: prefer cached aggregate fields, otherwise compute from ratings array
+              averageRating:
+                typeof post.averageRating === "number"
+                  ? post.averageRating
+                  : Array.isArray(post.ratings) && post.ratings.length > 0
+                  ? post.ratings.reduce((acc, r) => acc + (r.rating || 0), 0) /
+                    post.ratings.length
+                  : 0,
+              totalRatings:
+                typeof post.totalRatings === "number"
+                  ? post.totalRatings
+                  : Array.isArray(post.ratings)
+                  ? post.ratings.length
+                  : 0,
               postedBy:
                 post.postedBy && typeof post.postedBy === "object"
                   ? post.postedBy.name
@@ -1610,7 +1625,11 @@ const MapView = () => {
               <Marker
                 key={location.id}
                 position={location.position}
-                icon={getMarkerByCategory(location.category)}
+                // Pass averageRating so marker color reflects rating when available
+                icon={getMarkerByCategory(
+                  location.category,
+                  location.averageRating
+                )}
                 eventHandlers={{
                   click: () => handleSidebarItemClick(location.id),
                 }}
@@ -1625,241 +1644,103 @@ const MapView = () => {
                     setActivePopup(null);
                   }}
                 >
-                  <div className="p-6 min-w-[400px] max-w-[500px] relative">
-                    {location.images && location.images.length > 0 ? (
-                      <ImageCarousel
-                        images={location.images}
-                        alt={location.title}
-                        className="relative"
-                        onClose={(e) => {
-                          e.stopPropagation();
-                          if (mapRef.current) mapRef.current.closePopup();
-                          if (showRouting) {
-                            setShowRouting(false);
-                            setRoutingStart(null);
-                            setRoutingEnd(null);
-                          }
-                        }}
-                      />
-                    ) : (location.image &&
-                        typeof location.image === "string") ||
-                      (location.image && location.image.url) ? (
-                      <div className="relative">
-                        <div className="w-full h-48 rounded-lg mb-4">
-                          <OptimizedImage
-                            src={getImageUrl(location.image)}
-                            alt={location.title}
-                            priority={activePopup === location.id} // Prioritize loading the image in the active popup
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        </div>
-                        <button
-                          className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Close popup
-                            if (mapRef.current) {
-                              mapRef.current.closePopup();
-                            }
-                            // Clear routing if it's showing directions to the current location
-                            if (showRouting) {
-                              setShowRouting(false);
-                              setRoutingStart(null);
-                              setRoutingEnd(null);
-                            }
-                          }}
-                          title={showRouting ? "Close Direction" : "Close"}
-                        >
-                          <svg
-                            className="w-6 h-6"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    ) : null}
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-bold text-2xl text-gray-800">
-                          {location.title}
-                        </h3>
-                        <p className="text-gray-600 text-base mt-1">
-                          {location.description}
-                        </p>
-                      </div>
-                      {!location.image && (
-                        <button
-                          className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Close popup
-                            if (mapRef.current) {
-                              mapRef.current.closePopup();
-                            }
-                            // Clear routing if it's showing directions to the current location
-                            if (showRouting) {
-                              setShowRouting(false);
-                              setRoutingStart(null);
-                              setRoutingEnd(null);
-                            }
-                          }}
-                          title={showRouting ? "Close Direction" : "Close"}
-                        >
-                          <svg
-                            className="w-6 h-6"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                    <div className="space-y-2 text-base text-gray-500 mb-4">
-                      <div className="flex justify-between">
-                        <span>Posted by:</span>
-                        <span className="font-medium">{location.postedBy}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Category:</span>
-                        <span className="font-medium capitalize">
-                          {location.category}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Date:</span>
-                        <span className="font-medium">
-                          {formatDate(location.datePosted)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      {isAuthenticated ? (
-                        <div className="space-y-3">
-                          <div className="flex space-x-1">
-                            <button
-                              className={`p-2 rounded-lg transition-colors duration-300 ${
-                                travelMode === "driving"
-                                  ? "bg-blue-100 text-blue-600"
-                                  : "hover:bg-gray-200"
-                              }`}
-                              onClick={(e) => {
+                  <div
+                    className="p-6 w-[90vw] max-w-[760px] relative bg-white rounded-xl shadow-xl border border-gray-100"
+                    style={{
+                      fontFamily:
+                        "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+                    }}
+                  >
+                    <div className="flex flex-col lg:flex-row gap-6">
+                      {/* Left: image / carousel */}
+                      <div className="w-full lg:w-1/2 flex-shrink-0">
+                        {location.images && location.images.length > 0 ? (
+                          <div className="rounded-lg overflow-hidden shadow-sm">
+                            <ImageCarousel
+                              images={location.images}
+                              alt={location.title}
+                              className="relative"
+                              onClose={(e) => {
                                 e.stopPropagation();
-                                setTravelMode("driving");
-                              }}
-                              title="Driving directions"
-                            >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                />
-                              </svg>
-                            </button>
-                            <button
-                              className={`p-2 rounded-lg transition-colors duration-300 ${
-                                travelMode === "walking"
-                                  ? "bg-blue-100 text-blue-600"
-                                  : "hover:bg-gray-200"
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTravelMode("walking");
-                              }}
-                              title="Walking directions"
-                            >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"
-                                />
-                              </svg>
-                            </button>
-                            <button
-                              className="p-2 rounded-lg hover:bg-gray-200 transition-colors duration-300"
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent popup from closing
-                                getDirections(location.position);
-                              }}
-                              title="Get Directions"
-                            >
-                              <svg
-                                className="w-6 h-6"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276a1 1 0 001.447-.894V5.618a1 1 0 00-1.447-.894L15 7m0 13v-3m0-4H9m4 0V9m0 0H9m4 0v4m0 4h.01"
-                                />
-                              </svg>
-                            </button>
-                            <button
-                              className={`p-2 rounded-lg transition-colors duration-300 ${
-                                savedLocations.some(
-                                  (saved) => saved.id === location.id
-                                )
-                                  ? "bg-green-100 text-green-600"
-                                  : "hover:bg-gray-200"
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent popup from closing
-                                // Check if location is already saved
-                                const isAlreadySaved = savedLocations.some(
-                                  (saved) => saved.id === location.id
-                                );
-                                if (!isAlreadySaved) {
-                                  saveLocation(location);
-                                } else {
-                                  // If already saved, we could potentially remove it
-                                  // For now, just show notification that it's already saved
-                                  showNotification(
-                                    "Location already saved!",
-                                    "info"
-                                  );
+                                if (mapRef.current) mapRef.current.closePopup();
+                                if (showRouting) {
+                                  setShowRouting(false);
+                                  setRoutingStart(null);
+                                  setRoutingEnd(null);
                                 }
                               }}
-                              title={
-                                savedLocations.some(
-                                  (saved) => saved.id === location.id
-                                )
-                                  ? "Saved"
-                                  : "Save"
-                              }
+                            />
+                          </div>
+                        ) : (location.image &&
+                            typeof location.image === "string") ||
+                          (location.image && location.image.url) ? (
+                          <div className="rounded-lg overflow-hidden shadow-sm">
+                            <div className="w-full h-56 lg:h-64 bg-gray-50">
+                              <OptimizedImage
+                                src={getImageUrl(location.image)}
+                                alt={location.title}
+                                priority={activePopup === location.id}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-56 lg:h-64 bg-gray-50 rounded-lg" />
+                        )}
+
+                        {/* small controls under image on mobile */}
+                        <div className="mt-3 flex items-center gap-2 lg:hidden">
+                          <button
+                            className="flex-1 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              getDirections(location.position);
+                            }}
+                          >
+                            Directions
+                          </button>
+                          <button
+                            className="py-2 px-3 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const isAlreadySaved = savedLocations.some(
+                                (s) => s.id === location.id
+                              );
+                              if (!isAlreadySaved) saveLocation(location);
+                            }}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Right: details */}
+                      <div className="w-full lg:w-1/2 flex flex-col">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold text-2xl text-gray-900">
+                              {location.title}
+                            </h3>
+                            <p className="text-gray-600 mt-1 text-sm">
+                              {location.description}
+                            </p>
+                          </div>
+                          <div className="hidden lg:block">
+                            <button
+                              className="p-2 rounded-full bg-white border border-gray-100 shadow-sm text-gray-600 hover:shadow-md transition-all duration-200"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (mapRef.current) mapRef.current.closePopup();
+                                if (showRouting) {
+                                  setShowRouting(false);
+                                  setRoutingStart(null);
+                                  setRoutingEnd(null);
+                                }
+                              }}
+                              title={showRouting ? "Close Direction" : "Close"}
                             >
                               <svg
-                                className="w-6 h-6"
+                                className="w-5 h-5 text-gray-600"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -1868,17 +1749,125 @@ const MapView = () => {
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth={2}
-                                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                                  d="M6 18L18 6M6 6l12 12"
                                 />
                               </svg>
                             </button>
                           </div>
                         </div>
-                      ) : (
-                        <button className="w-full bg-gray-200 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300 font-medium">
-                          View Details
-                        </button>
-                      )}
+
+                        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-2 text-sm text-gray-600">
+                          <div>
+                            <div className="font-medium text-gray-800">
+                              Posted by
+                            </div>
+                            <div className="mt-1">{location.postedBy}</div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-800">
+                              Category
+                            </div>
+                            <div className="mt-1 capitalize">
+                              {location.category}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-800">
+                              Date
+                            </div>
+                            <div className="mt-1">
+                              {formatDate(location.datePosted)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-800">
+                              Ratings
+                            </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="text-indigo-600 font-semibold">
+                                {location.averageRating &&
+                                location.totalRatings > 0
+                                  ? location.averageRating.toFixed(1)
+                                  : "—"}
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                ({location.totalRatings || 0})
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          {isAuthenticated ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTravelMode("driving");
+                                  getDirections(location.position);
+                                }}
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12l2 2 4-4"
+                                  />
+                                </svg>
+                                Get Directions
+                              </button>
+
+                              <button
+                                className="px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const isAlreadySaved = savedLocations.some(
+                                    (s) => s.id === location.id
+                                  );
+                                  if (!isAlreadySaved) saveLocation(location);
+                                  else
+                                    showNotification(
+                                      "Location already saved!",
+                                      "info"
+                                    );
+                                }}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          ) : (
+                            <button className="w-full text-sm py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200">
+                              View Details
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Ratings & Comments section inside the popup */}
+                        <div className="mt-4 border-t border-gray-100 pt-4">
+                          <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <svg
+                              className="w-5 h-5 text-yellow-500"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                            Ratings & Comments
+                          </h4>
+                          <RatingsAndComments
+                            postId={location.id}
+                            isAuthenticated={isAuthenticated}
+                            user={user}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </Popup>
@@ -1925,7 +1914,7 @@ const MapView = () => {
                 }}
               >
                 <Popup className="custom-popup">
-                  <div className="p-6 min-w-[400px] max-w-[500px]">
+                  <div className="p-6 w-[90vw] max-w-[760px]">
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="font-bold text-2xl text-gray-800">
@@ -3302,15 +3291,17 @@ const MapView = () => {
           border-radius: 16px;
           box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
           overflow: hidden;
-          max-width: 500px;
+          /* Allow popup to be responsive up to viewport width */
+          max-width: 90vw;
         }
 
         .custom-popup .leaflet-popup-content {
           margin: 0;
           padding: 0;
           width: auto !important;
-          min-width: 400px;
-          max-width: 500px;
+          /* Let inner content determine width, allow it to shrink on small viewports */
+          min-width: 0;
+          max-width: 90vw;
         }
 
         .leaflet-container {

@@ -32,6 +32,31 @@ const postSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // Ratings given by users (each user can leave one rating per post)
+  ratings: [
+    {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      rating: {
+        type: Number,
+        required: true,
+        min: 1,
+        max: 5,
+      },
+    },
+  ],
+  // Cached aggregates for convenience
+  averageRating: {
+    type: Number,
+    default: 0,
+  },
+  totalRatings: {
+    type: Number,
+    default: 0,
+  },
   comments: [
     {
       user: {
