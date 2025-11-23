@@ -79,29 +79,6 @@ function ImageCarousel({
       className={`relative ${className}`}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Close button for the carousel (closes popup) */}
-      <button
-        className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300 z-30"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (typeof onClose === "function") onClose(e);
-        }}
-        title="Close"
-      >
-        <svg
-          className="w-5 h-5 text-gray-700"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
       <div className="w-full h-48 rounded-lg mb-4 overflow-hidden">
         <OptimizedImage
           src={getImageUrl(currentImage)}
@@ -3458,7 +3435,7 @@ const MapView = () => {
       {/* Image Gallery Modal */}
       {showImageGallery && galleryImages && galleryImages.length > 0 && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[10000] p-4"
+          className="fixed inset-0 bg-gradient-to-br from-black/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-[10000] p-4"
           onClick={() => setShowImageGallery(false)}
         >
           <div 
