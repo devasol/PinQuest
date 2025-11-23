@@ -144,6 +144,7 @@ const loginUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role || 'user',
         token: generateToken(user._id),
       },
     });
@@ -208,6 +209,7 @@ const getProfile = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role || 'user',
         avatar: user.avatar,
         isVerified: user.isVerified,
         favoritesCount: user.favoritesCount,
@@ -303,6 +305,7 @@ const updateProfile = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role || 'user',
         avatar: user.avatar,
       },
     });

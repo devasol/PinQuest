@@ -8,15 +8,7 @@ const Report = require('../models/Report');
 // @access  Private (admin only)
 const getPlatformStats = async (req, res) => {
   try {
-    // Only allow admin users (you can implement admin role checking here)
-    // For now, we'll just check if the user exists
-    if (!req.user) {
-      return res.status(401).json({
-        status: 'fail',
-        message: 'Unauthorized'
-      });
-    }
-
+    // The admin middleware ensures the user is authenticated and has admin privileges
     const [
       totalUsers,
       totalPosts,

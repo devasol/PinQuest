@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
 
 const dbConnect = async () => {
   try {
@@ -12,6 +14,9 @@ const dbConnect = async () => {
     
     console.log(`Database connected successfully to: ${conn.connection.name}`);
     console.log(`Database host: ${conn.connection.host}`);
+    
+    // Create default admin user if none exists
+    await createDefaultAdmin();
     
     // Add event listeners for connection status
     mongoose.connection.on('error', (err) => {
@@ -31,6 +36,45 @@ const dbConnect = async () => {
   } catch (error) {
     console.error("Database connection failed!", error);
     process.exit(1); // Exit the process if database connection fails
+  }
+};
+
+// Function to create default admin user
+const createDefaultAdmin = async () => {
+  try {
+    // Check if a specific default admin user already exists
+    const existingDefaultAdmin = await User.findOne({ email: 'admin@pinquest.com' });
+    
+    if (!existingDefaultAdmin) {
+      // Hash the default admin password
+      const salt = await bcrypt.genSalt(12);
+      const hashedPassword = await bcrypt.hash('admin123', salt);
+      
+      // Create default admin user
+      const adminUser = new User({
+        name: 'Admin User',
+        email: 'admin@pinquest.com',
+        password: hashedPassword,
+        role: 'admin',
+        isVerified: true
+      });
+      
+      await adminUser.save();
+      console.log('Default admin user created successfully!');
+      console.log('Email: admin@pinquest.com');
+      console.log('Password: admin123');
+    } else if (existingDefaultAdmin.role !== 'admin') {
+      // If the default admin exists but doesn't have admin role, update it
+      existingDefaultAdmin.role = 'admin';
+      await existingDefaultAdmin.save();
+      console.log('Default admin user role updated successfully!');
+      console.log('Email: admin@pinquest.com');
+      console.log('Password: admin123');
+    } else {
+      console.log('Admin user already exists with admin role, skipping creation.');
+    }
+  } catch (error) {
+    console.error('Error creating default admin user:', error);
   }
 };
 

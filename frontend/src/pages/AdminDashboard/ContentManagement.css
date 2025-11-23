@@ -1,0 +1,362 @@
+.content-management {
+  padding: 0;
+}
+
+.content-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.content-management-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.content-management-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.content-management-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.content-management-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.content-management-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+}
+
+.content-management-btn-secondary {
+  background: white;
+}
+
+.content-management-btn-secondary:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.content-management-btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.content-management-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.content-management-search {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.content-management-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+}
+
+.content-management-search-input {
+  width: 100%;
+  padding: 0.5rem 1rem 0.5rem 2.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.content-management-search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.content-management-filters {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.content-management-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.content-management-table-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.content-management-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.content-management-table th {
+  background-color: #f9fafb;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  font-size: 0.875rem;
+}
+
+.content-management-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.content-management-table-row:hover {
+  background-color: #f9fafb;
+}
+
+.content-management-post-info {
+}
+
+.content-management-post-title {
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.content-management-post-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.content-management-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.content-management-actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.content-management-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+}
+
+.content-management-action-btn:hover {
+  background: #e5e7eb;
+}
+
+.content-management-action-view {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.content-management-action-view:hover {
+  background: #bfdbfe;
+}
+
+.content-management-action-edit {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.content-management-action-edit:hover {
+  background: #a7f3d0;
+}
+
+.content-management-action-delete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.content-management-action-delete:hover {
+  background: #fecaca;
+}
+
+.content-management-action-approve {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.content-management-action-approve:hover {
+  background: #a7f3d0;
+}
+
+.content-management-action-reject {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.content-management-action-reject:hover {
+  background: #fecaca;
+}
+
+.content-management-action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.content-management-empty {
+  padding: 3rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.content-management-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.content-management-pagination-btn {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.content-management-pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.content-management-pagination-btn-active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+}
+
+.content-management-pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .content-management-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .content-management-search {
+    max-width: 100%;
+  }
+  
+  .content-management-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .content-management-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .content-management-actions {
+    justify-content: center;
+  }
+  
+  .content-management-table {
+    font-size: 0.75rem;
+  }
+  
+  .content-management-table th,
+  .content-management-table td {
+    padding: 0.5rem;
+  }
+  
+  .content-management-actions-cell {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .content-management-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .content-management-action-icon {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .content-management-pagination {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-management-filters {
+    flex-direction: column;
+  }
+  
+  .content-management-title {
+    font-size: 1.25rem;
+  }
+  
+  .content-management-post-desc {
+    display: none;
+  }
+}

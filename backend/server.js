@@ -11,6 +11,7 @@ const dbConnect = require("./config/dbConfig");
 const postsRoute = require("./routes/postsRoute");
 const userRoute = require("./routes/userRoute");
 const authRoute = require("./routes/auth");
+const adminRoute = require("./routes/adminRoute");
 const categoriesRoute = require("./routes/categoriesRoute");
 const notificationsRoute = require("./routes/notificationsRoute");
 const feedRoute = require("./routes/feedRoute");
@@ -147,6 +148,9 @@ app.use("/api/v1/messages", messagesRoute);
 
 // Analytics routes
 app.use("/api/v1/analytics", analyticsRoute);
+
+// Admin routes
+app.use("/api/v1/admin", adminRoute);
 
 // Socket.io connection handling
 io.on("connection", (socket) => {

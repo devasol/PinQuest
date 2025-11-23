@@ -7,11 +7,11 @@ const {
   getUserEngagement,
   getActivityTimeline
 } = require('../controllers/analyticsController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, admin } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 // Routes for analytics
-router.route('/platform').get(protect, getPlatformStats);
+router.route('/platform').get(protect, admin, getPlatformStats);
 router.route('/user').get(protect, getUserAnalytics);
 router.route('/post/:id').get(protect, getPostAnalytics);
 router.route('/top-posts').get(protect, getTopPosts);

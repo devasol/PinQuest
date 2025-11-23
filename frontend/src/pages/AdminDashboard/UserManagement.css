@@ -1,0 +1,373 @@
+.user-management {
+  padding: 0;
+}
+
+.user-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.user-management-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.user-management-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.user-management-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.user-management-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.user-management-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+}
+
+.user-management-btn-secondary {
+  background: white;
+}
+
+.user-management-btn-secondary:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.user-management-btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.user-management-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.user-management-search {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.user-management-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+}
+
+.user-management-search-input {
+  width: 100%;
+  padding: 0.5rem 1rem 0.5rem 2.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.user-management-search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.user-management-filters {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.user-management-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.user-management-table-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.user-management-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-management-table th {
+  background-color: #f9fafb;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  font-size: 0.875rem;
+}
+
+.user-management-table td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.user-management-table-row:hover {
+  background-color: #f9fafb;
+}
+
+.user-management-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-management-user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.user-management-user-name {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.user-management-user-id {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.user-management-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.user-management-actions-cell {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.user-management-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.user-management-action-btn:hover {
+  background: #e5e7eb;
+}
+
+.user-management-action-view {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.user-management-action-view:hover {
+  background: #bfdbfe;
+}
+
+.user-management-action-edit {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.user-management-action-edit:hover {
+  background: #a7f3d0;
+}
+
+.user-management-action-delete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.user-management-action-delete:hover {
+  background: #fecaca;
+}
+
+.user-management-action-ban {
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.user-management-action-ban:hover {
+  background: #fecaca;
+}
+
+.user-management-action-unban {
+  background: #d1fae5;
+  color: #059669;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.user-management-action-unban:hover {
+  background: #a7f3d0;
+}
+
+.user-management-action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.user-management-empty {
+  padding: 3rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.user-management-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.user-management-pagination-btn {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.user-management-pagination-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.user-management-pagination-btn-active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+}
+
+.user-management-pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .user-management-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .user-management-search {
+    max-width: 100%;
+  }
+  
+  .user-management-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .user-management-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .user-management-actions {
+    justify-content: center;
+  }
+  
+  .user-management-table {
+    font-size: 0.75rem;
+  }
+  
+  .user-management-table th,
+  .user-management-table td {
+    padding: 0.5rem;
+  }
+  
+  .user-management-actions-cell {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .user-management-action-btn {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .user-management-action-icon {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .user-management-pagination {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-management-filters {
+    flex-direction: column;
+  }
+  
+  .user-management-title {
+    font-size: 1.25rem;
+  }
+}
