@@ -465,6 +465,8 @@ const MapView = () => {
     }
 
     if (!isAlreadySaved) {
+      setIsSavingLocation(true);
+      
       // First, save to local state
       const newSavedLocation = {
         ...location,
@@ -562,6 +564,8 @@ const MapView = () => {
           JSON.stringify(revertedSavedLocations)
         );
         showNotification("Failed to save location. Please try again.", "error");
+      } finally {
+        setIsSavingLocation(false);
       }
     } else {
       showNotification("Location already saved!", "info");
@@ -575,6 +579,8 @@ const MapView = () => {
       return;
     }
 
+    setIsRemovingLocation(true);
+    
     // First, update local state
     const updatedSavedLocations = savedLocations.filter(
       (location) => location.id !== locationId
@@ -636,6 +642,8 @@ const MapView = () => {
         JSON.stringify(revertedSavedLocations)
       );
       showNotification("Failed to remove location. Please try again.", "error");
+    } finally {
+      setIsRemovingLocation(false);
     }
   };
 
@@ -786,6 +794,8 @@ const MapView = () => {
   // Function to fetch nearby Points of Interest using Overpass API
   const fetchPois = async (bounds) => {
     if (!bounds || !showPoiLayer) return;
+    
+    setIsFetchingPOIs(true);
 
     try {
       // Convert bounds to bbox format for Overpass API
@@ -848,6 +858,8 @@ const MapView = () => {
       setPois(processedPois);
     } catch (error) {
       console.error("Error fetching POIs:", error);
+    } finally {
+      setIsFetchingPOIs(false);
     }
   };
 
@@ -1050,12 +1062,22 @@ const MapView = () => {
   }, []);
 
   // Function to get directions from user's current location to a post location
+  const [isGettingDirections, setIsGettingDirections] = useState(false);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [isRemovingLocation, setIsRemovingLocation] = useState(false);
+  const [isFetchingPOIs, setIsFetchingPOIs] = useState(false);
+  const [isFetchingPosts, setIsFetchingPosts] = useState(false);
+  
   const getDirections = (destinationPosition) => {
     if (!isAuthenticated) {
       showNotification("Please login to get directions", "warning");
       return;
     }
 
+    if (isGettingDirections) return; // Prevent multiple requests
+    
+    setIsGettingDirections(true);
+    
     if (navigator.geolocation) {
       // Use high accuracy to get the most precise location for directions
       navigator.geolocation.getCurrentPosition(
@@ -1101,6 +1123,8 @@ const MapView = () => {
               mapRef.current.flyTo(center, zoom);
             }
           }, 100); // Small delay to ensure proper cleanup
+          
+          setIsGettingDirections(false);
         },
         (error) => {
           console.error("Error getting user location for directions:", error);
@@ -1125,6 +1149,7 @@ const MapView = () => {
           }
 
           showNotification(errorMessage, "error");
+          setIsGettingDirections(false);
         },
         {
           enableHighAccuracy: true,
@@ -1137,6 +1162,7 @@ const MapView = () => {
         "Geolocation is not supported by this browser. Please use a different browser to get directions.",
         "error"
       );
+      setIsGettingDirections(false);
     }
   };
 
@@ -1717,16 +1743,25 @@ const MapView = () => {
                         {/* small controls under image on mobile */}
                         <div className="mt-3 flex items-center gap-2 lg:hidden">
                           <button
-                            className="flex-1 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
+                            className="flex-1 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center justify-center"
                             onClick={(e) => {
                               e.stopPropagation();
                               getDirections(location.position);
                             }}
+                            disabled={isGettingDirections}
                           >
-                            Directions
+                            {isGettingDirections ? (
+                              <span className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Getting...
+                              </span>
+                            ) : 'Directions'}
                           </button>
                           <button
-                            className="py-2 px-3 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
+                            className="py-2 px-3 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center"
                             onClick={(e) => {
                               e.stopPropagation();
                               const isAlreadySaved = savedLocations.some(
@@ -1734,8 +1769,17 @@ const MapView = () => {
                               );
                               if (!isAlreadySaved) saveLocation(location);
                             }}
+                            disabled={isSavingLocation}
                           >
-                            Save
+                            {isSavingLocation ? (
+                              <span className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Saving...
+                              </span>
+                            ) : 'Save'}
                           </button>
                         </div>
                       </div>
@@ -1827,31 +1871,44 @@ const MapView = () => {
                           {isAuthenticated ? (
                             <div className="flex items-center gap-2">
                               <button
-                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200`}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 ${isGettingDirections ? 'opacity-75 cursor-not-allowed' : ''}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setTravelMode("driving");
                                   getDirections(location.position);
                                 }}
+                                disabled={isGettingDirections}
                               >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 12l2 2 4-4"
-                                  />
-                                </svg>
-                                Get Directions
+                                {isGettingDirections ? (
+                                  <span className="flex items-center">
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Getting...
+                                  </span>
+                                ) : (
+                                  <>
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 12l2 2 4-4"
+                                      />
+                                    </svg>
+                                    Get Directions
+                                  </>
+                                )}
                               </button>
 
                               <button
-                                className="px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
+                                className="px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const isAlreadySaved = savedLocations.some(
@@ -1864,8 +1921,17 @@ const MapView = () => {
                                       "info"
                                     );
                                 }}
+                                disabled={isSavingLocation}
                               >
-                                Save
+                                {isSavingLocation ? (
+                                  <span className="flex items-center">
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Saving...
+                                  </span>
+                                ) : 'Save'}
                               </button>
                             </div>
                           ) : (
@@ -2034,20 +2100,28 @@ const MapView = () => {
                             ? "Saved"
                             : "Save"
                         }
+                        disabled={isSavingLocation}
                       >
-                        <svg
-                          className="w-6 h-6"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                          />
-                        </svg>
+                        {isSavingLocation ? (
+                          <svg className="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                            />
+                          </svg>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -2729,22 +2803,30 @@ const MapView = () => {
                                 e.stopPropagation();
                                 removeSavedLocation(location.id);
                               }}
-                              className="ml-2 text-red-500 hover:text-red-700"
+                              className={`ml-2 ${isRemovingLocation ? 'opacity-50 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}`}
                               title="Remove from saved"
+                              disabled={isRemovingLocation}
                             >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
+                              {isRemovingLocation ? (
+                                <svg className="animate-spin h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                              ) : (
+                                <svg
+                                  className="w-5 h-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              )}
                             </button>
                           </div>
                         </motion.div>
