@@ -348,6 +348,7 @@ const MapView = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [filterMine, setFilterMine] = useState(false); // New state for filtering user's posts
+  const [postsFilter, setPostsFilter] = useState("latest"); // Filter for posts: latest, top, ratings, likes
   const mapRef = useRef();
   const [routingStart, setRoutingStart] = useState(null);
   const [routingEnd, setRoutingEnd] = useState(null);
@@ -1156,7 +1157,7 @@ const MapView = () => {
   const allLocations = userPosts;
 
   // Filter posts based on search query and user's posts if applicable
-  const filteredLocations = allLocations.filter(
+  let filteredLocations = allLocations.filter(
     (location) =>
       (searchQuery === "" ||
         location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1166,6 +1167,29 @@ const MapView = () => {
         location.category.toLowerCase().includes(searchQuery.toLowerCase())) &&
       (!filterMine || location.postedBy === user?.name)
   );
+
+  // Sort filtered locations based on selected filter
+  filteredLocations = filteredLocations.sort((a, b) => {
+    switch (postsFilter) {
+      case "latest":
+        // Sort by datePosted (newest first)
+        return new Date(b.datePosted) - new Date(a.datePosted);
+      case "top":
+        // Sort by totalRatings (highest first, then by averageRating)
+        if (b.totalRatings !== a.totalRatings) {
+          return b.totalRatings - a.totalRatings;
+        }
+        return (b.averageRating || 0) - (a.averageRating || 0);
+      case "ratings":
+        // Sort by averageRating (highest first)
+        return (b.averageRating || 0) - (a.averageRating || 0);
+      case "likes":
+        // Sort by totalRatings (highest first) - assuming totalRatings represents likes/ratings
+        return (b.totalRatings || 0) - (a.totalRatings || 0);
+      default:
+        return new Date(b.datePosted) - new Date(a.datePosted); // Default to latest
+    }
+  });
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [notification, setNotification] = useState({
@@ -2290,7 +2314,7 @@ const MapView = () => {
         <AnimatePresence>
           {activeSidebarTab === "explore" && (
             <motion.div
-              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col"
+              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col overflow-x-hidden"
               initial={{ x: -320 }}
               animate={{ x: 0 }}
               exit={{ x: -320 }}
@@ -2317,8 +2341,8 @@ const MapView = () => {
                   </svg>
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
+              <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden p-4">
+                <div className="space-y-4 flex-shrink-0">
                   <div>
                     <h3 className="font-semibold text-gray-800 mb-2">
                       Search Places
@@ -2350,12 +2374,26 @@ const MapView = () => {
                       </button>
                     </div>
                   )}
+                </div>
 
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
                   <div>
-                    <h3 className="font-semibold text-gray-800 mb-2">
-                      Posts & Locations
-                    </h3>
-                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-semibold text-gray-800">
+                        Posts & Locations
+                      </h3>
+                      <select
+                        value={postsFilter}
+                        onChange={(e) => setPostsFilter(e.target.value)}
+                        className="text-sm px-3 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      >
+                        <option value="latest">Latest</option>
+                        <option value="top">Top Rated</option>
+                        <option value="ratings">By Ratings</option>
+                        <option value="likes">By Likes</option>
+                      </select>
+                    </div>
+                    <div className="space-y-4 h-full overflow-y-auto pr-2">
                       <AnimatePresence>
                         {filteredLocations.length > 0 ? (
                           filteredLocations.map((location, index) => (
@@ -3393,6 +3431,38 @@ const MapView = () => {
           text-align: center;
           font-weight: bold;
           cursor: pointer;
+        }
+        
+        /* Hide horizontal overflow */
+        .overflow-x-hidden {
+          overflow-x: hidden;
+        }
+        
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: rgba(156, 163, 175, 0.2); /* gray-400 with opacity */
+          border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: rgba(107, 114, 128, 0.5); /* gray-500 with opacity */
+          border-radius: 3px;
+          transition: background 0.3s ease;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: rgba(75, 85, 99, 0.7); /* gray-600 with opacity */
+        }
+        
+        /* For Firefox */
+        * {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(107, 114, 128, 0.5) rgba(156, 163, 175, 0.2);
         }
         
         /* Responsive adjustments */
