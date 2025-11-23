@@ -10,9 +10,11 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
   const [comments, setComments] = useState([]);
   const [averageRating, setAverageRating] = useState(0);
   const [totalRatings, setTotalRatings] = useState(0);
+  const [userRating, setUserRating] = useState(null); // Track the current user's rating
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
 
   // Fetch existing ratings and comments by getting the full post data
@@ -32,6 +34,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             setComments(parsedData.comments || []);
             setAverageRating(parsedData.averageRating || 0);
             setTotalRatings(parsedData.totalRatings || 0);
+            setUserRating(parsedData.userRating || null);
           } catch (err) {
             console.error('Error parsing stored data:', err);
           }
@@ -70,11 +73,31 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
               const ratings = post.ratings;
               const total = ratings.length;
               const average = total > 0 ? ratings.reduce((acc, r) => acc + r.rating, 0) / total : 0;
+              
+              // Check if current user has rated this post
+              let currentUserRating = null;
+              if (authState && user && post.ratings && Array.isArray(post.ratings)) {
+                const userRatingObj = post.ratings.find(r => {
+                  // Check if rating.user is an object with _id or just the ObjectId string
+                  const ratingUserId = typeof r.user === 'object' ? r.user._id : r.user;
+                  const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
+                  return ratingUserId && currentUserId && ratingUserId.toString() === currentUserId.toString();
+                });
+                
+                if (userRatingObj) {
+                  currentUserRating = userRatingObj.rating;
+                  setRating(currentUserRating); // Set the rating state to the user's existing rating
+                }
+              }
+              
               setAverageRating(average);
               setTotalRatings(total);
+              setUserRating(currentUserRating);
             } else if (post.averageRating !== undefined) {
               setAverageRating(post.averageRating);
               setTotalRatings(post.totalRatings || 0);
+              // We don't have user-specific rating data here, so we need to fetch it separately
+              // or rely on local storage
             }
 
             // Extract comments data if it exists in the post
@@ -86,7 +109,8 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             const dataToStore = {
               comments: loadedComments,
               averageRating: average || post.averageRating || 0,
-              totalRatings: totalRatings || post.totalRatings || 0
+              totalRatings: totalRatings || post.totalRatings || 0,
+              userRating: currentUserRating
             };
             localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
           } else {
@@ -94,6 +118,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             setComments([]);
             setAverageRating(0);
             setTotalRatings(0);
+            setUserRating(null);
           }
         } else {
           // If API call fails but we have stored data, continue with that
@@ -102,6 +127,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             setComments([]);
             setAverageRating(0);
             setTotalRatings(0);
+            setUserRating(null);
           }
         }
       } catch (err) {
@@ -115,16 +141,23 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             setComments(parsedData.comments || []);
             setAverageRating(parsedData.averageRating || 0);
             setTotalRatings(parsedData.totalRatings || 0);
+            setUserRating(parsedData.userRating || null);
+            // Set rating to user's previous rating if they had one
+            if (parsedData.userRating) {
+              setRating(parsedData.userRating);
+            }
           } catch (parseErr) {
             console.error('Error parsing stored data:', parseErr);
             setComments([]);
             setAverageRating(0);
             setTotalRatings(0);
+            setUserRating(null);
           }
         } else {
           setComments([]);
           setAverageRating(0);
           setTotalRatings(0);
+          setUserRating(null);
         }
       } finally {
         setLoading(false);
@@ -132,7 +165,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
     };
 
     fetchPostDetails();
-  }, [postId]);
+  }, [postId, authState, user]);
 
   const handleRatingSubmit = async () => {
     if (!authState || !user || rating <= 0) {
@@ -140,7 +173,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
       return;
     }
 
-    setSubmitting(true);
+    setRatingSubmitting(true);
     try {
       // Create headers with auth token if available
       const headers = {
@@ -191,6 +224,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
       // Update state
       setAverageRating(newAverageRating);
       setTotalRatings(newTotalRatings);
+      setUserRating(rating); // Set the user's current rating
       setError(null);
 
       // Save to local storage to persist after refresh
@@ -199,7 +233,8 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
       const dataToStore = {
         comments: currentStored.comments || comments,
         averageRating: newAverageRating,
-        totalRatings: newTotalRatings
+        totalRatings: newTotalRatings,
+        userRating: rating
       };
       localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
 
@@ -207,7 +242,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
       setError(err.message || 'Failed to submit rating');
       console.error('Error submitting rating:', err);
     } finally {
-      setSubmitting(false);
+      setRatingSubmitting(false);
     }
   };
 
@@ -218,7 +253,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
       return;
     }
 
-    setSubmitting(true);
+    setCommentSubmitting(true);
     try {
       // Create headers with auth token if available
       const headers = {
@@ -298,7 +333,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
       setError(err.message || 'Failed to submit comment');
       console.error('Error submitting comment:', err);
     } finally {
-      setSubmitting(false);
+      setCommentSubmitting(false);
     }
   };
 
@@ -356,11 +391,21 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
               <button
                 key={star}
                 type="button"
-                className={`text-2xl ${star <= (hoverRating || rating) ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400 transition-all duration-200 transform hover:scale-110`}
-                onClick={() => setRating(star)}
-                onMouseEnter={() => setHoverRating(star)}
+                className={`text-2xl ${star <= (hoverRating || rating) ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400 transition-all duration-200 transform hover:scale-110 ${
+                  userRating !== null && !ratingSubmitting ? 'cursor-default' : ''
+                }`}
+                onClick={() => {
+                  if (userRating === null || ratingSubmitting) {
+                    setRating(star);
+                  }
+                }}
+                onMouseEnter={() => {
+                  if (userRating === null || ratingSubmitting) {
+                    setHoverRating(star);
+                  }
+                }}
                 onMouseLeave={() => setHoverRating(0)}
-                disabled={!authState || submitting}
+                disabled={!authState || ratingSubmitting}
               >
                 ★
               </button>
@@ -368,14 +413,14 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
           </div>
           <button
             onClick={handleRatingSubmit}
-            disabled={rating <= 0 || submitting}
+            disabled={rating <= 0 || ratingSubmitting}
             className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 shadow-sm ${
-              rating > 0 && !submitting 
+              rating > 0 && !ratingSubmitting 
                 ? 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white shadow-yellow-200' 
                 : 'bg-gray-200 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {submitting ? (
+            {ratingSubmitting ? (
               <span className="flex items-center">
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -383,7 +428,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                 </svg>
                 Submitting...
               </span>
-            ) : 'Submit Rating'}
+            ) : userRating !== null ? `Update Rating (${userRating}★)` : 'Submit Rating'}
           </button>
         </div>
         <div className="mt-2 flex items-center">
@@ -405,6 +450,15 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             </div>
           </div>
           <span className="text-xs text-gray-500 ml-2">({totalRatings} ratings)</span>
+          
+          {userRating !== null && (
+            <span className="text-xs text-green-600 ml-2 font-medium flex items-center">
+              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              You rated: {userRating}★
+            </span>
+          )}
         </div>
       </div>
 
@@ -440,18 +494,18 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
               placeholder="Share your experience or thoughts about this place..."
               className="w-full p-2 border border-gray-300 rounded-lg mb-2 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white shadow-sm text-sm"
               rows="2"
-              disabled={!authState || submitting}
+              disabled={!authState || commentSubmitting}
             />
             <button
               type="submit"
-              disabled={!comment.trim() || submitting}
+              disabled={!comment.trim() || commentSubmitting}
               className={`w-full py-1.5 rounded-lg font-medium transition-all duration-300 text-sm ${
-                comment.trim() && !submitting 
+                comment.trim() && !commentSubmitting 
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-blue-200' 
                   : 'bg-gray-200 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {submitting ? (
+              {commentSubmitting ? (
                 <span className="flex items-center justify-center">
                   <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -482,16 +536,16 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
 
       {/* Comments Modal */}
       {showCommentsModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col border border-white/50">
+        <div className="fixed inset-0 bg-black bg-opacity-10 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200">
             {/* Modal Header */}
-            <div className="flex justify-between items-center p-4 border-b border-gray-200/70">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
               <h3 className="text-lg font-bold text-gray-800 flex items-center">
                 <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
                 Comments
-                <span className="ml-2 bg-blue-100/80 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded-full">
+                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                   {comments.length}
                 </span>
               </h3>
@@ -509,10 +563,10 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             </div>
             
             {/* Comments List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {comments.length > 0 ? (
                 comments.map((comment, index) => (
-                  <div key={index} className="bg-white/70 backdrop-blur-sm p-3 rounded-lg border border-white/60 shadow-sm">
+                  <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-semibold text-gray-800 text-sm">
                         {comment.username || comment.postedBy || 'Anonymous'}
@@ -536,7 +590,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             
             {/* Modal Footer - Only show if authenticated */}
             {authState && (
-              <div className="p-4 border-t border-gray-200/70">
+              <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   handleCommentSubmit(e);
@@ -547,26 +601,26 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Add a comment..."
-                    className="flex-1 p-2 border border-gray-300/70 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 text-sm bg-white/70 backdrop-blur-sm"
-                    disabled={submitting}
+                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-sm bg-white"
+                    disabled={commentSubmitting}
                   />
                   <button
                     type="submit"
-                    disabled={!comment.trim() || submitting}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 text-sm ${
-                      comment.trim() && !submitting 
-                        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-blue-200/50' 
+                    disabled={!comment.trim() || commentSubmitting}
+                    className={`px-4 py-3 rounded-lg font-medium transition-all duration-300 text-sm ${
+                      comment.trim() && !commentSubmitting 
+                        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-blue-200' 
                         : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                     }`}
                   >
-                    {submitting ? '...' : 'Post'}
+                    {commentSubmitting ? '...' : 'Post'}
                   </button>
                 </form>
               </div>
             )}
             
             {!authState && (
-              <div className="p-4 border-t border-gray-200/70 text-center">
+              <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl text-center">
                 <p className="text-sm text-gray-600 mb-2">
                   <span className="text-red-500">🔒</span> Login to comment
                 </p>
@@ -575,7 +629,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                     setShowCommentsModal(false);
                     window.location.href = '/login';
                   }}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-1.5 px-4 rounded-lg font-medium text-sm transition-all duration-300 shadow-md shadow-blue-200/30"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-2.5 px-6 rounded-lg font-medium text-sm transition-all duration-300 shadow-md"
                 >
                   Login to Comment
                 </button>
