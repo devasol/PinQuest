@@ -626,58 +626,52 @@ const MapView = () => {
 
   // Function to add a location to recents
   const addRecentLocation = (location) => {
-    // Only track recent locations for authenticated users
-    if (!isAuthenticated) return;
+    setRecentLocations(prevRecents => {
+      // Check if location is already in recents
+      const existingIndex = prevRecents.findIndex(
+        (recent) => recent.id === location.id
+      );
+      let updatedRecents = [...prevRecents];
 
-    // Check if location is already in recents
-    const existingIndex = recentLocations.findIndex(
-      (recent) => recent.id === location.id
-    );
-    let updatedRecents = [...recentLocations];
+      if (existingIndex !== -1) {
+        // If already exists, move to the top
+        const [existingLocation] = updatedRecents.splice(existingIndex, 1);
+        updatedRecents = [existingLocation, ...updatedRecents];
+      } else {
+        // If new, add to the top
+        const newRecentLocation = {
+          ...location,
+          viewedAt: new Date().toISOString(),
+        };
+        updatedRecents = [newRecentLocation, ...updatedRecents];
+      }
 
-    if (existingIndex !== -1) {
-      // If already exists, move to the top
-      const [existingLocation] = updatedRecents.splice(existingIndex, 1);
-      updatedRecents = [existingLocation, ...updatedRecents];
-    } else {
-      // If new, add to the top
-      const newRecentLocation = {
-        ...location,
-        viewedAt: new Date().toISOString(),
-      };
-      updatedRecents = [newRecentLocation, ...updatedRecents];
-    }
+      // Limit to 20 recent items
+      updatedRecents = updatedRecents.slice(0, 20);
 
-    // Limit to 20 recent items
-    updatedRecents = updatedRecents.slice(0, 20);
-
-    setRecentLocations(updatedRecents);
-
-    // Save to localStorage
-    try {
-      localStorage.setItem("recentLocations", JSON.stringify(updatedRecents));
-    } catch (e) {
-      console.error("Failed to save recentLocations to localStorage:", e);
-    }
+      // Save to localStorage
+      try {
+        localStorage.setItem("recentLocations", JSON.stringify(updatedRecents));
+      } catch (e) {
+        console.error("Failed to save recentLocations to localStorage:", e);
+      }
+      
+      return updatedRecents;
+    });
   };
 
-  // Load recent locations only when authenticated
+  // Load recent locations for all users from localStorage
   useEffect(() => {
-    if (isAuthenticated) {
-      const recents = localStorage.getItem("recentLocations");
+    const recents = localStorage.getItem("recentLocations");
 
-      if (recents) {
-        try {
-          setRecentLocations(JSON.parse(recents));
-        } catch (e) {
-          console.error("Error parsing recent locations:", e);
-        }
+    if (recents) {
+      try {
+        setRecentLocations(JSON.parse(recents));
+      } catch (e) {
+        console.error("Error parsing recent locations:", e);
       }
-    } else {
-      // Clear recents for logged out users
-      setRecentLocations([]);
     }
-  }, [isAuthenticated]);
+  }, []);
 
   // Fetch saved locations from backend when user is authenticated
   useEffect(() => {
@@ -2869,37 +2863,7 @@ const MapView = () => {
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-4">
-                  {!isAuthenticated ? (
-                    <div className="text-center py-12 text-gray-500">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <p className="mt-4 text-lg">
-                        Recent locations are private
-                      </p>
-                      <p className="text-sm mt-2">
-                        Log in to view your recently viewed locations.
-                      </p>
-                      <div className="mt-4">
-                        <button
-                          onClick={() => setShowLoginModal(true)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-xl shadow-sm"
-                        >
-                          Log in
-                        </button>
-                      </div>
-                    </div>
-                  ) : recentLocations.length > 0 ? (
+                  {recentLocations.length > 0 ? (
                     <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
                       {recentLocations.map((location, index) => (
                         <motion.div
@@ -2958,6 +2922,17 @@ const MapView = () => {
                       <p className="text-sm mt-2">
                         Locations you view will appear here
                       </p>
+                      {!isAuthenticated && (
+                        <div className="mt-4">
+                          <p className="text-sm text-gray-600">Log in to save and manage your locations</p>
+                          <button
+                            onClick={() => setShowLoginModal(true)}
+                            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow-sm"
+                          >
+                            Log in
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

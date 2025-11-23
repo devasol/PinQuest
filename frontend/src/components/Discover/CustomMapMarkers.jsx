@@ -11,27 +11,32 @@ const createPinMarker = (options = {}) => {
   const width = size;
   const height = size;
   
-  // Classic pin shape SVG
+  // Create consistent color variants for the entire marker
+  const baseColor = color;
+  const lightColor = lightenColor(color, 20);
+  const darkColor = darkenColor(color, 20);
+  
+  // Classic pin shape SVG - using the same color consistently throughout the pin
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
       <defs>
         <radialGradient id="pinGradient" cx="30%" cy="30%" r="70%">
-          <stop offset="0%" stop-color="${lightenColor(color, 20)}" stop-opacity="${opacity}" />
-          <stop offset="100%" stop-color="${darkenColor(color, 15)}" stop-opacity="${opacity}" />
+          <stop offset="0%" stop-color="${lightColor}" stop-opacity="${opacity}" />
+          <stop offset="100%" stop-color="${baseColor}" stop-opacity="${opacity}" />
         </radialGradient>
         <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
           <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.3" />
         </filter>
       </defs>
       <g filter="url(#shadow)">
-        <!-- Pin body (circle) -->
+        <!-- Pin body (circle) - using consistent color gradient -->
         <circle cx="${width / 2}" cy="${size * 0.35}" r="${size * 0.3}" fill="url(#pinGradient)" stroke="white" stroke-width="1.5" />
-        <!-- Pin stem -->
+        <!-- Pin stem - using consistent color -->
         <path d="M${width / 2} ${size * 0.65} L${width / 2} ${size * 0.95}" 
-              stroke="${darkenColor(color, 20)}" stroke-width="2" stroke-linecap="round" />
-        <!-- Pin bottom point -->
+              stroke="${darkColor}" stroke-width="2" stroke-linecap="round" />
+        <!-- Pin bottom point - using consistent color -->
         <path d="M${width / 2 - size * 0.1} ${size * 0.95} L${width / 2} ${size * 1.0} L${width / 2 + size * 0.1} ${size * 0.95}" 
-              fill="${darkenColor(color, 20)}" />
+              fill="${darkColor}" />
       </g>
     </svg>
   `;
@@ -101,9 +106,11 @@ const getMarkerByCategory = (category = "general", averageRating = null) => {
   // If a numeric averageRating is provided use it to pick a color
   if (typeof averageRating === "number" && !isNaN(averageRating)) {
     let color = "#EF4444"; // red default
-    if (averageRating >= 4.0) color = "#10B981"; // green
-    else if (averageRating >= 3.0) color = "#F59E0B"; // amber
-    else if (averageRating >= 2.0) color = "#F97316"; // orange
+    // Round to one decimal place to avoid floating point precision issues
+    const roundedRating = Number(averageRating.toFixed(1));
+    if (roundedRating >= 4.0) color = "#10B981"; // green
+    else if (roundedRating >= 3.0) color = "#F59E0B"; // amber
+    else if (roundedRating >= 2.0) color = "#F97316"; // orange
 
     return createPinMarker({ color });
   }

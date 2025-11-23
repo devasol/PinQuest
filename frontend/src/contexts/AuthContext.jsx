@@ -93,7 +93,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('firebaseUser');
       // Clear all user-specific data that might persist
       localStorage.removeItem('savedLocations');
-      localStorage.removeItem('recentLocations');
       localStorage.removeItem('mapLayout');
       
       // Clear all rating-related local storage items
@@ -115,7 +114,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('firebaseUser');
       // Clear all user-specific data that might persist
       localStorage.removeItem('savedLocations');
-      localStorage.removeItem('recentLocations');
       localStorage.removeItem('mapLayout');
       
       // Clear all rating-related local storage items
