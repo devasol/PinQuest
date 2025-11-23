@@ -3442,16 +3442,6 @@ const MapView = () => {
             className="relative w-full max-w-6xl max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
-            <button
-              onClick={() => setShowImageGallery(false)}
-              className="absolute top-4 right-4 z-10 bg-white/80 text-gray-800 rounded-full p-2 hover:bg-white transition-all duration-200 backdrop-blur-sm"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
             {/* Navigation arrows */}
             {galleryImages.length > 1 && (
               <>
@@ -3478,13 +3468,25 @@ const MapView = () => {
               </>
             )}
 
-            {/* Image display */}
-            <div className="flex flex-col items-center">
-              <img
-                src={getImageUrl(galleryImages[currentImageIndex])}
-                alt={`Image ${currentImageIndex + 1}`}
-                className="max-h-[70vh] max-w-full object-contain rounded-lg shadow-2xl"
-              />
+            {/* Image display container with close button */}
+            <div className="relative flex flex-col items-center">
+              <div className="relative inline-block">
+                <img
+                  src={getImageUrl(galleryImages[currentImageIndex])}
+                  alt={`Image ${currentImageIndex + 1}`}
+                  className="max-h-[70vh] max-w-full object-contain rounded-lg shadow-2xl"
+                />
+                
+                {/* Close button positioned relative to image */}
+                <button
+                  onClick={() => setShowImageGallery(false)}
+                  className="absolute -top-3 -right-3 z-30 bg-white text-gray-900 rounded-full p-2.5 hover:bg-gray-100 transition-all duration-200 shadow-xl"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
               
               {/* Image counter */}
               {galleryImages.length > 1 && (
