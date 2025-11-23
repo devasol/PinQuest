@@ -376,6 +376,11 @@ const MapView = () => {
   const [routingEnd, setRoutingEnd] = useState(null);
   const [showRouting, setShowRouting] = useState(false);
   const [travelMode, setTravelMode] = useState("driving"); // 'driving' or 'walking'
+  
+  // Image gallery state
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [galleryImages, setGalleryImages] = useState([]);
 
   // Map layout state
   const [mapLayout, setMapLayout] = useState(() => {
@@ -1688,6 +1693,25 @@ const MapView = () => {
                           </div>
                         ) : (
                           <div className="w-full h-56 lg:h-64 bg-gray-50 rounded-lg" />
+                        )}
+
+                        {/* View Images Button - Only show if there are multiple images */}
+                        {(location.images && location.images.length > 0) && (
+                          <div className="mt-3">
+                            <button
+                              onClick={() => {
+                                setGalleryImages(location.images);
+                                setCurrentImageIndex(0);
+                                setShowImageGallery(true);
+                              }}
+                              className="w-full py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
+                            >
+                              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              View {location.images.length} {location.images.length === 1 ? 'Image' : 'Images'}
+                            </button>
+                          </div>
                         )}
 
                         {/* small controls under image on mobile */}
@@ -3348,6 +3372,72 @@ const MapView = () => {
           }
         }
       `}</style>
+      
+      {/* Image Gallery Modal */}
+      {showImageGallery && galleryImages && galleryImages.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[10000] p-4"
+          onClick={() => setShowImageGallery(false)}
+        >
+          <div 
+            className="relative w-full max-w-6xl max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowImageGallery(false)}
+              className="absolute top-4 right-4 z-10 bg-white/80 text-gray-800 rounded-full p-2 hover:bg-white transition-all duration-200 backdrop-blur-sm"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Navigation arrows */}
+            {galleryImages.length > 1 && (
+              <>
+                <button
+                  onClick={() => setCurrentImageIndex((prev) => 
+                    prev === 0 ? galleryImages.length - 1 : prev - 1
+                  )}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 text-gray-800 rounded-full p-3 hover:bg-white transition-all duration-200 backdrop-blur-sm"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setCurrentImageIndex((prev) => 
+                    prev === galleryImages.length - 1 ? 0 : prev + 1
+                  )}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 text-gray-800 rounded-full p-3 hover:bg-white transition-all duration-200 backdrop-blur-sm"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
+            )}
+
+            {/* Image display */}
+            <div className="flex flex-col items-center">
+              <img
+                src={getImageUrl(galleryImages[currentImageIndex])}
+                alt={`Image ${currentImageIndex + 1}`}
+                className="max-h-[70vh] max-w-full object-contain rounded-lg shadow-2xl"
+              />
+              
+              {/* Image counter */}
+              {galleryImages.length > 1 && (
+                <div className="mt-4 text-white text-lg font-medium drop-shadow-lg">
+                  {currentImageIndex + 1} / {galleryImages.length}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Notification Modal */}
       <NotificationModal
         show={notification.show}

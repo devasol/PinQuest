@@ -391,16 +391,14 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
               <button
                 key={star}
                 type="button"
-                className={`text-2xl ${star <= (hoverRating || rating) ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400 transition-all duration-200 transform hover:scale-110 ${
-                  userRating !== null && !ratingSubmitting ? 'cursor-default' : ''
-                }`}
+                className={`text-2xl ${star <= (hoverRating || rating) ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400 transition-all duration-200 transform hover:scale-110`}
                 onClick={() => {
-                  if (userRating === null || ratingSubmitting) {
+                  if (authState && !ratingSubmitting) {
                     setRating(star);
                   }
                 }}
                 onMouseEnter={() => {
-                  if (userRating === null || ratingSubmitting) {
+                  if (authState && !ratingSubmitting) {
                     setHoverRating(star);
                   }
                 }}
@@ -456,7 +454,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
               <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              You rated: {userRating}★
+              Your rating: {userRating}★
             </span>
           )}
         </div>
@@ -638,6 +636,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

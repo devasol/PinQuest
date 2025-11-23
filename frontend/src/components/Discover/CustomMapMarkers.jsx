@@ -1,66 +1,51 @@
 import L from "leaflet";
 
-// Function to create a clean, modern SVG pin marker and return a divIcon
-const createModernMarker = (options = {}) => {
+// Function to create a classic pin SVG marker and return a divIcon
+const createPinMarker = (options = {}) => {
   const {
     color = "#4F46E5",
-    size = 36,
-    borderColor = "#FFFFFF",
-    borderWidth = 2,
+    size = 40,
     opacity = 1,
   } = options;
 
-  // Simple modern pin SVG: circular head with subtle gradient and a tapered tail
-  const headRadius = Math.floor(size * 0.42);
-  const width = Math.floor(size * 0.7);
+  const width = size;
   const height = size;
+  
+  // Classic pin shape SVG
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
       <defs>
-        <linearGradient id="g" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="${lightenColor(
-            color,
-            8
-          )}" stop-opacity="${opacity}" />
-          <stop offset="100%" stop-color="${darkenColor(
-            color,
-            12
-          )}" stop-opacity="${opacity}" />
-        </linearGradient>
-        <filter id="s" x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.22" />
+        <radialGradient id="pinGradient" cx="30%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="${lightenColor(color, 20)}" stop-opacity="${opacity}" />
+          <stop offset="100%" stop-color="${darkenColor(color, 15)}" stop-opacity="${opacity}" />
+        </radialGradient>
+        <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.3" />
         </filter>
       </defs>
-      <g filter="url(#s)">
-        <!-- tail -->
-        <path d="M ${width / 2 - width * 0.12} ${headRadius + 6} C ${
-    width / 2 - width * 0.16
-  } ${height - 8}, ${width / 2 + width * 0.16} ${height - 8}, ${
-    width / 2 + width * 0.12
-  } ${headRadius + 6} L ${width / 2} ${height - 2} Z" fill="url(#g)" />
-        <!-- head -->
-        <circle cx="${
-          width / 2
-        }" cy="${headRadius}" r="${headRadius}" fill="url(#g)" stroke="${borderColor}" stroke-width="${borderWidth}" />
-        <!-- inner glossy highlight -->
-        <ellipse cx="${width / 2 - headRadius * 0.25}" cy="${
-    headRadius - headRadius * 0.25
-  }" rx="${headRadius * 0.4}" ry="${
-    headRadius * 0.25
-  }" fill="rgba(255,255,255,0.55)" />
+      <g filter="url(#shadow)">
+        <!-- Pin body (circle) -->
+        <circle cx="${width / 2}" cy="${size * 0.35}" r="${size * 0.3}" fill="url(#pinGradient)" stroke="white" stroke-width="1.5" />
+        <!-- Pin stem -->
+        <path d="M${width / 2} ${size * 0.65} L${width / 2} ${size * 0.95}" 
+              stroke="${darkenColor(color, 20)}" stroke-width="2" stroke-linecap="round" />
+        <!-- Pin bottom point -->
+        <path d="M${width / 2 - size * 0.1} ${size * 0.95} L${width / 2} ${size * 1.0} L${width / 2 + size * 0.1} ${size * 0.95}" 
+              fill="${darkenColor(color, 20)}" />
       </g>
     </svg>
   `;
 
   const iconSize = [width, height];
-  const iconAnchor = [Math.round(width / 2), height];
+  const iconAnchor = [Math.round(width / 2), height]; // Anchor at bottom point of pin
+  const popupAnchor = [0, -Math.round(height * 0.7)]; // Position popup near the top
 
   return L.divIcon({
     className: "custom-map-marker",
     html: svg,
     iconSize,
     iconAnchor,
-    popupAnchor: [0, -Math.round(height * 0.85)],
+    popupAnchor,
   });
 };
 
@@ -120,12 +105,12 @@ const getMarkerByCategory = (category = "general", averageRating = null) => {
     else if (averageRating >= 3.0) color = "#F59E0B"; // amber
     else if (averageRating >= 2.0) color = "#F97316"; // orange
 
-    return createModernMarker({ color });
+    return createPinMarker({ color });
   }
 
-  // No rating available — fall back to category color using modern marker
+  // No rating available — fall back to category color using pin marker
   const color = categoryColors[category] || "#4F46E5";
-  return createModernMarker({ color });
+  return createPinMarker({ color });
 };
 
 // (Removed unused helper to reduce lint noise)
@@ -210,7 +195,7 @@ const createPOIMarker = (poiType) => {
 };
 
 export {
-  createModernMarker,
+  createPinMarker,
   getMarkerByCategory,
   createUserLocationMarker,
   createPOIMarker,
