@@ -10,9 +10,11 @@ const Header = ({ isDiscoverPage = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+
+
   const handleLogout = () => {
     logout(); // Clear authentication state
-    navigate('/'); // Redirect to home page after logout
+    navigate("/"); // Redirect to home page after logout
   };
 
   // Handle scroll effect
@@ -64,7 +66,7 @@ const Header = ({ isDiscoverPage = false }) => {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8 ml-8">
             {navigationItems.map((item) => {
-              const isInternalLink = item.to && item.to.startsWith('/');
+              const isInternalLink = item.to && item.to.startsWith("/");
               return isInternalLink ? (
                 <Link
                   key={item.name}
@@ -118,16 +120,18 @@ const Header = ({ isDiscoverPage = false }) => {
             {isAuthenticated ? (
               // Profile and Logout buttons for logged in users
               <div className="flex items-center space-x-2">
-                <Link 
-                  to="/profile" 
+                <Link
+                  to="/profile"
                   className="flex items-center space-x-2 p-2 text-gray-700 hover:text-blue-600 transition-colors"
                 >
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                     <User className="h-4 w-4 text-white" />
                   </div>
-                  <span className="hidden sm:block font-medium">{user?.name || 'Profile'}</span>
+                  <span className="hidden sm:block font-medium">
+                    {user?.name || "Profile"}
+                  </span>
                 </Link>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="p-2 text-gray-700 hover:text-red-600 transition-colors"
                 >
@@ -136,8 +140,8 @@ const Header = ({ isDiscoverPage = false }) => {
               </div>
             ) : (
               // Login button for unauthenticated users
-              <Link 
-                to="/login" 
+              <Link
+                to="/login"
                 className="flex items-center space-x-2 p-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
               >
                 <span className="hidden sm:block font-medium">Login</span>
@@ -181,7 +185,7 @@ const Header = ({ isDiscoverPage = false }) => {
         <div className="md:hidden bg-white border-t border-gray-200 shadow-lg">
           <div className="px-4 py-2 space-y-1">
             {navigationItems.map((item) => {
-              const isInternalLink = item.to && item.to.startsWith('/');
+              const isInternalLink = item.to && item.to.startsWith("/");
               return isInternalLink ? (
                 <Link
                   key={item.name}
