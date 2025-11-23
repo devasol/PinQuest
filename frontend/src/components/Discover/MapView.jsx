@@ -1580,7 +1580,9 @@ const MapView = () => {
         {/* Map */}
         <MapContainer
           center={userLocation || [20, 0]} // Default to world view until location is acquired
-          zoom={userLocation ? 15 : 2}
+          zoom={userLocation ? 15 : 5}
+          minZoom={3}
+          maxZoom={18}
           style={{ height: "100%", width: "100%" }}
           className="absolute inset-0"
         >
