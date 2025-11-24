@@ -534,8 +534,8 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
 
       {/* Comments Modal */}
       {showCommentsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-10 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200">
+        <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200">
             {/* Modal Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
               <h3 className="text-lg font-bold text-gray-800 flex items-center">
