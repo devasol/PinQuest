@@ -66,6 +66,33 @@ const postSchema = new mongoose.Schema({
       },
       text: String,
       date: { type: Date, default: Date.now },
+      likes: [{
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        date: { type: Date, default: Date.now }
+      }],
+      likesCount: {
+        type: Number,
+        default: 0
+      },
+      replies: [
+        {
+          user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+          },
+          text: String,
+          date: { type: Date, default: Date.now }
+        }
+      ],
+      repliesCount: {
+        type: Number,
+        default: 0
+      }
     },
   ],
   postedBy: {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
@@ -8,6 +8,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState([]);
+
   const [averageRating, setAverageRating] = useState(0);
   const [totalRatings, setTotalRatings] = useState(0);
   const [userRating, setUserRating] = useState(null); // Track the current user's rating
@@ -16,14 +17,22 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
+  // Track optimistic updates to preserve them during server refreshes
+  const [optimisticLikes, setOptimisticLikes] = useState(new Map()); // Map of commentId -> new likes count (will be removed)
+  
+
+
+
+
+
 
   // Fetch existing ratings and comments by getting the full post data
   useEffect(() => {
-    const fetchPostDetails = async () => {
+    const fetchPostDetails = async (showLoading = true) => {
       if (!postId) return;
       
       try {
-        setLoading(true);
+        if (showLoading) setLoading(true);
         
         // First, try to load from local storage as fallback data
         const localStorageKey = `post_${postId}_ratings`;
@@ -31,7 +40,22 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
         if (storedData) {
           try {
             const parsedData = JSON.parse(storedData);
-            setComments(parsedData.comments || []);
+            // Set the comments with proper formatting
+            const formattedComments = (parsedData.comments || []).map(comment => {
+              // Check if the current user has liked this comment
+              const hasUserLiked = (comment.likes || []).some(like => {
+                const likeUserId = typeof like.user === 'object' ? like.user._id : like.user;
+                const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
+                return likeUserId && currentUserId && likeUserId.toString() === currentUserId.toString();
+              }) || false;
+
+              return {
+                ...comment,
+                likes: comment.likes || [],
+                userHasLiked: hasUserLiked // Add the userHasLiked property
+              };
+            });
+            setComments(formattedComments);
             setAverageRating(parsedData.averageRating || 0);
             setTotalRatings(parsedData.totalRatings || 0);
             setUserRating(parsedData.userRating || null);
@@ -68,14 +92,17 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
           if (postData.status === 'success' && postData.data) {
             const post = postData.data;
             
+            let average = 0; // Initialize to 0 to ensure it's defined
+            let total = 0;
+            let currentUserRating = null; // Initialize here to avoid 'not defined' error
+            
             // Extract ratings data if it exists in the post
             if (post.ratings) {
               const ratings = post.ratings;
-              const total = ratings.length;
-              const average = total > 0 ? ratings.reduce((acc, r) => acc + r.rating, 0) / total : 0;
+              total = ratings.length;
+              average = total > 0 ? ratings.reduce((acc, r) => acc + r.rating, 0) / total : 0;
               
               // Check if current user has rated this post
-              let currentUserRating = null;
               if (authState && user && post.ratings && Array.isArray(post.ratings)) {
                 const userRatingObj = post.ratings.find(r => {
                   // Check if rating.user is an object with _id or just the ObjectId string
@@ -98,18 +125,85 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
               setTotalRatings(post.totalRatings || 0);
               // We don't have user-specific rating data here, so we need to fetch it separately
               // or rely on local storage
+              average = post.averageRating;
+              total = post.totalRatings || 0;
             }
 
-            // Extract comments data if it exists in the post
-            const loadedComments = post.comments || post.userComments || [];
+            // Extract comments data if it exists in the post - handle different data structures
+            let loadedComments = (post.comments || post.userComments || []).map(comment => {
+              // Check if the current user has liked this comment
+              const hasUserLiked = (comment.likes || []).some(like => {
+                const likeUserId = typeof like.user === 'object' ? like.user._id : like.user;
+                const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
+                return likeUserId && currentUserId && likeUserId.toString() === currentUserId.toString();
+              }) || false;
+
+              // Check if comment.user is an object with an _id but no name field
+              let processedUser = comment.user;
+              if (comment.user && typeof comment.user === 'object') {
+                // If user object has name fields, use it as is
+                if (comment.user.name || comment.user.displayName) {
+                  processedUser = comment.user;
+                } else if (comment.username) {
+                  // If user object exists but lacks name, but username is available, prioritize username
+                  processedUser = { name: comment.username };
+                } else if (comment.postedBy) {
+                  // Else, use postedBy
+                  processedUser = { name: comment.postedBy };
+                } else {
+                  // Otherwise, try to get a name from the user object
+                  processedUser = {
+                    name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 
+                          (comment.user._id ? `User_${comment.user._id.substring(0, 8)}` : 'Anonymous'),
+                    ...comment.user
+                  };
+                }
+              } else if (!comment.user && (comment.username || comment.postedBy)) {
+                // If no user object but username/postedBy exist, create a simple user object
+                processedUser = { name: comment.username || comment.postedBy };
+              } else if (!comment.user) {
+                // Otherwise, default to anonymous
+                processedUser = { name: 'Anonymous' };
+              }
+              
+              return {
+                ...comment,
+                _id: comment._id || comment.id,
+                text: comment.text || comment.content,
+                user: processedUser,
+                date: comment.date || comment.createdAt || comment.datePosted,
+                likes: comment.likes || [],
+                likesCount: comment.likesCount || (comment.likes && Array.isArray(comment.likes) ? comment.likes.length : 0) || 0,
+                userHasLiked: hasUserLiked // Add the userHasLiked property
+              };
+            });
+            
+            // Apply optimistic updates to the server comments
+            loadedComments = loadedComments.map(comment => {
+              const commentId = comment._id?.toString() || comment.id?.toString();
+              if (!commentId) return comment;
+              
+              let updatedComment = { ...comment };
+              
+              // Apply optimistic like updates if any
+              if (optimisticLikes.has(commentId)) {
+                const optimisticLikeDelta = optimisticLikes.get(commentId);
+                updatedComment.likesCount = (updatedComment.likesCount || 0) + optimisticLikeDelta;
+              }
+              
+              return updatedComment;
+            });
+            
             setComments(loadedComments);
             
             // Store in local storage for persistence
             const localStorageKey = `post_${postId}_ratings`;
+            
+            // Store fresh server data in localStorage (without optimistic updates to avoid duplication)
             const dataToStore = {
               comments: loadedComments,
-              averageRating: average || post.averageRating || 0,
-              totalRatings: totalRatings || post.totalRatings || 0,
+              averageRating: average,
+              totalRatings: total,
               userRating: currentUserRating
             };
             localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
@@ -160,12 +254,52 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
           setUserRating(null);
         }
       } finally {
-        setLoading(false);
+        if (showLoading) setLoading(false);
       }
     };
 
     fetchPostDetails();
-  }, [postId, authState, user]);
+
+    // Set up interval to periodically refresh comments (simulating real-time updates)
+    const refreshInterval = setInterval(() => {
+      // Only refresh if the comments modal is open to avoid unnecessary API calls
+      if (showCommentsModal) {
+        fetchPostDetails(false); // Don't show loading indicator for auto-refresh
+      }
+    }, 60000); // Refresh every 60 seconds to reduce conflicts with user interactions and give more time for server to sync
+
+    // Cleanup interval on component unmount
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [postId, authState, user, showCommentsModal]);
+
+  // Apply optimistic updates to the current comments when optimistic data changes
+  useEffect(() => {
+    if (!comments.length) return; // Skip if no comments yet
+    
+    setComments(prevComments => {
+      return prevComments.map(comment => {
+        const commentId = comment._id?.toString() || comment.id?.toString();
+        if (!commentId) return comment;
+        
+        let updatedComment = { ...comment };
+        
+        // Apply optimistic like updates if any
+        if (optimisticLikes.has(commentId)) {
+          const optimisticLikeDelta = optimisticLikes.get(commentId);
+          updatedComment.likesCount = (updatedComment.likesCount || 0) + optimisticLikeDelta;
+        }
+        
+
+        
+        // Preserve the userHasLiked property (don't change it with optimistic updates)
+        updatedComment.userHasLiked = comment.userHasLiked;
+        
+        return updatedComment;
+      });
+    });
+  }, [optimisticLikes, comments.length]); // Only run when optimistic data or initial comments change
 
   const handleRatingSubmit = async () => {
     if (!authState || !user || rating <= 0) {
@@ -290,27 +424,39 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
       if (response.ok) {
         const data = await response.json();
         
-        if (data.status === 'success') {
-          // Add the new comment to the list from response
+        if (data.status === 'success' && data.comment) {
+          // Add the new comment to the list from response - handle different data structures
           newComment = {
             ...data.comment,
-            username: user.name || user.displayName || user.email?.split('@')[0],
-            createdAt: new Date().toISOString()
+            _id: data.comment._id || data.comment.id,
+            text: data.comment.text || data.comment.content,
+            user: data.comment.user || { name: user.name || user.displayName || user.email?.split('@')[0] },
+            date: data.comment.date || data.comment.createdAt || data.comment.datePosted || new Date().toISOString(),
+            likesCount: data.comment.likesCount || (data.comment.likes && Array.isArray(data.comment.likes) ? data.comment.likes.length : 0) || 0,
+            likes: data.comment.likes || [],
+            userHasLiked: false // New comment by user hasn't been liked by the same user yet
           };
         } else {
           // If backend response format is unexpected, create locally
           newComment = {
-            content: comment.trim(),
-            username: user.name || user.displayName || user.email?.split('@')[0],
-            createdAt: new Date().toISOString()
+            _id: `new_comment_${Date.now()}`,
+            text: comment.trim(),
+            user: { name: user.name || user.displayName || user.email?.split('@')[0] },
+            date: new Date().toISOString(),
+            likesCount: 0,
+            likes: []
           };
         }
       } else {
         // If the backend API doesn't exist or failed, create locally
         newComment = {
-          content: comment.trim(),
-          username: user.name || user.displayName || user.email?.split('@')[0],
-          createdAt: new Date().toISOString()
+          _id: `new_comment_${Date.now()}`,
+          text: comment.trim(),
+          user: { name: user.name || user.displayName || user.email?.split('@')[0] },
+          date: new Date().toISOString(),
+          likesCount: 0,
+          likes: [],
+          userHasLiked: false // New comment by user hasn't been liked by the same user yet
         };
       }
 
@@ -328,12 +474,171 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
         totalRatings: currentStored.totalRatings || totalRatings
       };
       localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
+      
+      // Refresh comments to get the latest from server
+      if (showCommentsModal) {
+        refreshComments();
+      }
 
     } catch (err) {
       setError(err.message || 'Failed to submit comment');
       console.error('Error submitting comment:', err);
     } finally {
       setCommentSubmitting(false);
+    }
+  };
+
+  // Function to refresh comments from server
+  const refreshComments = async () => {
+    if (postId) {
+      try {
+        // Create headers with auth token if available
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        
+        const token = localStorage.getItem('token');
+        if (token) {
+          const trimmedToken = token.trim();
+          if (trimmedToken && trimmedToken.split('.').length === 3) {
+            headers['Authorization'] = `Bearer ${trimmedToken}`;
+          } else {
+            console.error('Invalid token format in refreshComments');
+            localStorage.removeItem('token');
+          }
+        }
+
+        // Fetch the entire post to get updated ratings and comments
+        const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
+          headers
+        });
+        
+        if (response.ok) {
+          const postData = await response.json();
+          
+          if (postData.status === 'success' && postData.data) {
+            const post = postData.data;
+            
+            let average = 0; // Initialize to 0 to ensure it's defined
+            let total = 0;
+            let currentUserRating = null; // Initialize here to avoid 'not defined' error
+            
+            // Extract ratings data if it exists in the post
+            if (post.ratings) {
+              const ratings = post.ratings;
+              total = ratings.length;
+              average = total > 0 ? ratings.reduce((acc, r) => acc + r.rating, 0) / total : 0;
+              
+              // Check if current user has rated this post
+              if (authState && user && post.ratings && Array.isArray(post.ratings)) {
+                const userRatingObj = post.ratings.find(r => {
+                  // Check if rating.user is an object with _id or just the ObjectId string
+                  const ratingUserId = typeof r.user === 'object' ? r.user._id : r.user;
+                  const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
+                  return ratingUserId && currentUserId && ratingUserId.toString() === currentUserId.toString();
+                });
+                
+                if (userRatingObj) {
+                  currentUserRating = userRatingObj.rating;
+                  setRating(currentUserRating); // Set the rating state to the user's existing rating
+                }
+              }
+              
+              setAverageRating(average);
+              setTotalRatings(total);
+              setUserRating(currentUserRating);
+            } else if (post.averageRating !== undefined) {
+              setAverageRating(post.averageRating);
+              setTotalRatings(post.totalRatings || 0);
+              // We don't have user-specific rating data here, so we need to fetch it separately
+              // or rely on local storage
+              average = post.averageRating;
+              total = post.totalRatings || 0;
+            }
+
+            // Extract comments data if it exists in the post - handle different data structures
+            let loadedComments = (post.comments || post.userComments || []).map(comment => {
+              // Check if the current user has liked this comment
+              const hasUserLiked = (comment.likes || []).some(like => {
+                const likeUserId = typeof like.user === 'object' ? like.user._id : like.user;
+                const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
+                return likeUserId && currentUserId && likeUserId.toString() === currentUserId.toString();
+              }) || false;
+
+              // Check if comment.user is an object with an _id but no name field
+              let processedUser = comment.user;
+              if (comment.user && typeof comment.user === 'object') {
+                // If user object has name fields, use it as is
+                if (comment.user.name || comment.user.displayName) {
+                  processedUser = comment.user;
+                } else if (comment.username) {
+                  // If user object exists but lacks name, but username is available, prioritize username
+                  processedUser = { name: comment.username };
+                } else if (comment.postedBy) {
+                  // Else, use postedBy
+                  processedUser = { name: comment.postedBy };
+                } else {
+                  // Otherwise, try to get a name from the user object
+                  processedUser = {
+                    name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 
+                          (comment.user._id ? `User_${comment.user._id.substring(0, 8)}` : 'Anonymous'),
+                    ...comment.user
+                  };
+                }
+              } else if (!comment.user && (comment.username || comment.postedBy)) {
+                // If no user object but username/postedBy exist, create a simple user object
+                processedUser = { name: comment.username || comment.postedBy };
+              } else if (!comment.user) {
+                // Otherwise, default to anonymous
+                processedUser = { name: 'Anonymous' };
+              }
+              
+              return {
+                ...comment,
+                _id: comment._id || comment.id,
+                text: comment.text || comment.content,
+                user: processedUser,
+                date: comment.date || comment.createdAt || comment.datePosted,
+                likes: comment.likes || [],
+                likesCount: comment.likesCount || (comment.likes && Array.isArray(comment.likes) ? comment.likes.length : 0) || 0,
+                userHasLiked: hasUserLiked // Add the userHasLiked property
+              };
+            });
+            
+            // Apply optimistic updates to the server comments
+            loadedComments = loadedComments.map(comment => {
+              const commentId = comment._id?.toString() || comment.id?.toString();
+              if (!commentId) return comment;
+              
+              let updatedComment = { ...comment };
+              
+              // Apply optimistic like updates if any
+              if (optimisticLikes.has(commentId)) {
+                const optimisticLikeDelta = optimisticLikes.get(commentId);
+                updatedComment.likesCount = (updatedComment.likesCount || 0) + optimisticLikeDelta;
+              }
+              
+              return updatedComment;
+            });
+            
+            setComments(loadedComments);
+            
+            // Store in local storage for persistence
+            const localStorageKey = `post_${postId}_ratings`;
+            
+            // Store fresh server data in localStorage (without optimistic updates to avoid duplication)
+            const dataToStore = {
+              comments: loadedComments,
+              averageRating: average,
+              totalRatings: total,
+              userRating: currentUserRating
+            };
+            localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
+          }
+        }
+      } catch (err) {
+        console.error('Error refreshing comments:', err);
+      }
     }
   };
 
@@ -490,7 +795,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Share your experience or thoughts about this place..."
-              className="w-full p-2 border border-gray-300 rounded-lg mb-2 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white shadow-sm text-sm"
+              className="w-full p-2 border-0 border-b-2 border-purple-400 bg-transparent mb-2 resize-none focus:ring-0 focus:border-purple-600 transition-all duration-300 text-sm text-gray-700 placeholder-gray-400 outline-none"
               rows="2"
               disabled={!authState || commentSubmitting}
             />
@@ -561,27 +866,113 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             </div>
             
             {/* Comments List */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6">
               {comments.length > 0 ? (
-                comments.map((comment, index) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-semibold text-gray-800 text-sm">
-                        {comment.username || comment.postedBy || 'Anonymous'}
-                      </span>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
-                        {new Date(comment.createdAt || comment.datePosted || comment.timestamp).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-gray-700 text-sm">{comment.content}</p>
-                  </div>
-                ))
+                <div className="space-y-5">
+                  {comments.map((comment, index) => {
+                    // Generate a simple avatar based on username - handle the different data structures
+                    let username = 'Anonymous';
+                    // Check various possible locations for user name in the comment object
+                    if (comment.user && typeof comment.user === 'object') {
+                      // If user is an object, check for name fields
+                      if (comment.user.name) {
+                        username = comment.user.name;
+                      } else if (comment.user.displayName) {
+                        username = comment.user.displayName;
+                      } else if (comment.user.firstName && comment.user.lastName) {
+                        username = `${comment.user.firstName} ${comment.user.lastName}`;
+                      } else if (comment.user.firstName) {
+                        username = comment.user.firstName;
+                      } else if (comment.user.lastName) {
+                        username = comment.user.lastName;
+                      } else if (comment.user.email) {
+                        username = comment.user.email.split('@')[0];
+                      } else if (comment.user.username) {
+                        username = comment.user.username;
+                      }
+                    }
+                    // If still anonymous, check if user is a string ID and if we have other name fields
+                    if (username === 'Anonymous' && comment.user && typeof comment.user === 'string') {
+                      // String user ID exists, check for other name fields
+                      if (comment.username) {
+                        username = comment.username;
+                      } else if (comment.postedBy) {
+                        username = comment.postedBy;
+                      }
+                    }
+                    // If still anonymous, try other possible name fields that might not be in user object
+                    if (username === 'Anonymous') {
+                      if (comment.username) {
+                        username = comment.username;
+                      } else if (comment.postedBy) {
+                        username = comment.postedBy;
+                      } else if (comment.user && typeof comment.user === 'object' && comment.user._id) {
+                        // As absolute last resort, if we have only an ID and no other name data, 
+                        // still keep Anonymous rather than showing the ID
+                        username = 'Anonymous';
+                      }
+                    }
+                    const initials = username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                    const colorClasses = [
+                      'bg-gradient-to-r from-blue-400 to-blue-600 text-white',
+                      'bg-gradient-to-r from-purple-400 to-purple-600 text-white', 
+                      'bg-gradient-to-r from-green-400 to-green-600 text-white',
+                      'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white',
+                      'bg-gradient-to-r from-red-400 to-red-600 text-white',
+                      'bg-gradient-to-r from-indigo-400 to-indigo-600 text-white',
+                      'bg-gradient-to-r from-pink-400 to-pink-600 text-white',
+                      'bg-gradient-to-r from-teal-400 to-teal-600 text-white',
+                    ];
+                    const bgColor = colorClasses[index % colorClasses.length];
+                    
+                    const commentId = comment._id?.toString() || comment.id?.toString() || `comment-${index}`;
+                    // Handle different like count fields from backend
+                    const currentLikes = comment.likesCount || (comment.likes && Array.isArray(comment.likes) ? comment.likes.length : 0) || 0;
+                    
+                    return (
+                      <div 
+                        key={commentId} 
+                        className="p-5 rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] hover:shadow-[0_4px_20px_-5px_rgba(0,0,0,0.1)] transition-all duration-300"
+                      >
+                        <div className="flex items-start space-x-4">
+                          {/* User Avatar */}
+                          <div className={`${bgColor} w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm shadow-sm`}>
+                            {initials}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between">
+                              <h5 className="font-semibold text-gray-800 text-base">
+                                {username}
+                              </h5>
+                              <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
+                                {new Date(comment.date || comment.createdAt || comment.datePosted || comment.timestamp || Date.now()).toLocaleDateString()}
+                              </span>
+                            </div>
+                            
+                            <div className="mt-3">
+                              <p className="text-gray-700 text-base leading-relaxed">
+                                {comment.text || comment.content}
+                              </p>
+                            </div>
+                            
+
+
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
-                <div className="text-center py-8">
-                  <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <p className="text-gray-500">No comments yet. Be the first to comment!</p>
+                <div className="text-center py-12">
+                  <div className="mx-auto bg-gradient-to-br from-blue-100 to-indigo-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-5">
+                    <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">No comments yet</h3>
+                  <p className="text-gray-600 max-w-xs mx-auto">Be the first to share your experience and thoughts about this place!</p>
                 </div>
               )}
             </div>
@@ -599,7 +990,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Add a comment..."
-                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-sm bg-white"
+                    className="flex-1 p-3 border-0 border-b-2 border-pink-400 bg-transparent focus:ring-0 focus:border-pink-600 transition-all duration-300 text-sm text-gray-700 placeholder-gray-400 outline-none"
                     disabled={commentSubmitting}
                   />
                   <button

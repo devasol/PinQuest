@@ -788,6 +788,18 @@ const addComment = async (req, res) => {
       });
     }
 
+    // Check if the user has already commented on this post
+    const existingCommentIndex = post.comments.findIndex(
+      (comment) => comment.user.toString() === req.user._id.toString()
+    );
+
+    if (existingCommentIndex !== -1) {
+      return res.status(400).json({
+        status: "fail",
+        message: "User can only leave one comment per post",
+      });
+    }
+
     // Create new comment
     const newComment = {
       user: req.user._id,
@@ -996,6 +1008,9 @@ const getComments = async (req, res) => {
     const populatedPost = await Post.findById(req.params.id).populate({
       path: "comments.user",
       select: "name avatar",
+    }).populate({
+      path: "comments.replies.user",
+      select: "name avatar",
     });
 
     res.status(200).json({
@@ -1004,6 +1019,147 @@ const getComments = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching comments:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Like a comment on a post
+// @route   POST /api/v1/posts/:postId/comments/:commentId/like
+// @access  Private
+const likeComment = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const commentId = req.params.commentId;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found",
+      });
+    }
+
+    // Find the comment index
+    const commentIndex = post.comments.findIndex(c => c._id.toString() === commentId);
+    if (commentIndex === -1) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Comment not found",
+      });
+    }
+
+    const comment = post.comments[commentIndex];
+
+    // Check if user already liked this comment
+    const userLikeIndex = comment.likes.findIndex(
+      (like) => like.user.toString() === req.user._id.toString()
+    );
+
+    if (userLikeIndex !== -1) {
+      // User has already liked, so remove the like (toggle off)
+      comment.likes.splice(userLikeIndex, 1);
+    } else {
+      // User has not liked, so add the like (toggle on)
+      comment.likes.push({ user: req.user._id });
+    }
+    
+    // Update likes count
+    comment.likesCount = comment.likes.length;
+
+    await post.save();
+
+    // Populate the updated comment with user info
+    const updatedPost = await Post.findById(postId).populate({
+      path: "comments.user",
+      select: "name avatar",
+    }).populate({
+      path: "comments.replies.user",
+      select: "name avatar",
+    });
+
+    const updatedComment = updatedPost.comments.id(commentId);
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        comment: updatedComment,
+      },
+    });
+  } catch (error) {
+    console.error("Error liking comment:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Reply to a comment on a post
+// @route   POST /api/v1/posts/:postId/comments/:commentId/reply
+// @access  Private
+const replyToComment = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const commentId = req.params.commentId;
+    const { content } = req.body;
+
+    // Validate input
+    if (!content) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Reply content is required",
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found",
+      });
+    }
+
+    // Find the comment
+    const comment = post.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Comment not found",
+      });
+    }
+
+    // Add reply to the comment
+    comment.replies.push({
+      user: req.user._id,
+      text: content,
+    });
+    comment.repliesCount = comment.replies.length;
+
+    await post.save();
+
+    // Populate the updated comment with user info
+    const updatedPost = await Post.findById(postId).populate({
+      path: "comments.user",
+      select: "name avatar",
+    }).populate({
+      path: "comments.replies.user",
+      select: "name avatar",
+    });
+
+    const updatedComment = updatedPost.comments.id(commentId);
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        comment: updatedComment,
+        reply: updatedComment.replies[updatedComment.replies.length - 1], // Return the latest reply
+      },
+    });
+  } catch (error) {
+    console.error("Error replying to comment:", error);
     res.status(500).json({
       status: "error",
       message: error.message,
@@ -1241,4 +1397,6 @@ module.exports = {
   getNearbyPosts,
   getPostsWithinArea,
   getPostDistance,
+  likeComment,
+  replyToComment,
 };

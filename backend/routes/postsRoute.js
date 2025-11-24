@@ -18,6 +18,8 @@ const {
   getNearbyPosts,
   getPostsWithinArea,
   getPostDistance,
+  likeComment,
+  replyToComment,
 } = require("../controllers/postController");
 const { protect } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
@@ -60,5 +62,9 @@ router
   .route("/:postId/comments/:commentId")
   .put(protect, updateComment)
   .delete(protect, deleteComment);
+
+// Comment like and reply routes
+router.route("/:postId/comments/:commentId/like").post(protect, likeComment);
+router.route("/:postId/comments/:commentId/reply").post(protect, replyToComment);
 
 module.exports = router;
