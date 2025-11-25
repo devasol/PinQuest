@@ -359,6 +359,9 @@ const MapView = () => {
   const [showImageGallery, setShowImageGallery] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [galleryImages, setGalleryImages] = useState([]);
+  
+  // Ref to store marker instances for programmatic popup opening
+  const markerRefs = useRef({});
 
   // Map layout state
   const [mapLayout, setMapLayout] = useState(() => {
@@ -673,6 +676,44 @@ const MapView = () => {
       }
     }
   }, []);
+
+  // Effect to open popup when activePopup changes (programmatically triggered from explore sidebar)
+  useEffect(() => {
+    if (activePopup && markerRefs.current[activePopup]) {
+      // Close any currently open popups first
+      try {
+        if (mapRef.current) {
+          mapRef.current.closePopup();
+        }
+      } catch (e) {
+        // No popup to close or error closing popup, continue anyway
+      }
+      
+      // Open the popup for the selected marker after a short delay to ensure map transition is smooth
+      setTimeout(() => {
+        const markerRef = markerRefs.current[activePopup];
+        // Different ways to access the leaflet instance depending on react-leaflet version
+        if (markerRef) {
+          try {
+            // In some versions of react-leaflet, the marker ref itself is the leaflet instance
+            if (typeof markerRef.openPopup === 'function') {
+              markerRef.openPopup();
+            } 
+            // In other versions it might be under leafletElement property
+            else if (markerRef.leafletElement && typeof markerRef.leafletElement.openPopup === 'function') {
+              markerRef.leafletElement.openPopup();
+            }
+            // Or there might be another way to access it
+            else {
+              console.log("Could not access openPopup function on marker");
+            }
+          } catch (error) {
+            console.error("Error opening popup:", error.message);
+          }
+        }
+      }, 300);
+    }
+  }, [activePopup]);
 
   // Fetch saved locations from backend when user is authenticated
   useEffect(() => {
@@ -1112,7 +1153,52 @@ const MapView = () => {
               errorMessage = "Location information is unavailable.";
               break;
             case error.TIMEOUT:
-              errorMessage = "The request to get your location timed out.";
+              // Retry with default location (or last known location if available)
+              if (userLocation) {
+                // Use last known user location if available
+                console.log("Using last known user location for directions");
+                
+                const updatedStartPosition = userLocation;
+                
+                // Clear previous routing before setting new one
+                setRoutingStart(null);
+                setRoutingEnd(null);
+                setTimeout(() => {
+                  setRoutingStart(updatedStartPosition);
+                  setRoutingEnd(destinationPosition);
+                  setShowRouting(true);
+
+                  // Close any active popup
+                  setActivePopup(null);
+
+                  // Fly to the route area
+                  if (mapRef.current) {
+                    // Calculate center point between start and end
+                    const centerLat =
+                      (updatedStartPosition[0] + destinationPosition[0]) / 2;
+                    const centerLng =
+                      (updatedStartPosition[1] + destinationPosition[1]) / 2;
+                    const center = [centerLat, centerLng];
+
+                    // Determine appropriate zoom level based on distance
+                    const distance = calculateDistance(
+                      updatedStartPosition[0],
+                      updatedStartPosition[1],
+                      destinationPosition[0],
+                      destinationPosition[1]
+                    );
+                    const zoom =
+                      distance < 1 ? 14 : distance < 5 ? 12 : distance < 20 ? 10 : 8;
+
+                    mapRef.current.flyTo(center, zoom);
+                  }
+                }, 100); // Small delay to ensure proper cleanup
+                
+                setIsGettingDirections(false);
+                return; // Exit early, we've handled the timeout by using stored location
+              } else {
+                errorMessage = "The request to get your location timed out. We couldn't get your current location, so directions can't be shown.";
+              }
               break;
             default:
               errorMessage =
@@ -1125,8 +1211,8 @@ const MapView = () => {
         },
         {
           enableHighAccuracy: true,
-          timeout: 20000, // Increased timeout for more accurate positioning
-          maximumAge: 0,
+          timeout: 30000, // Increased timeout to 30 seconds for better reliability
+          maximumAge: 30000, // Accept cached locations up to 30 seconds old
         }
       );
     } else {
@@ -1580,6 +1666,7 @@ const MapView = () => {
     if (location) {
       setActivePopup(locationId);
       flyToLocation(location.position);
+      addRecentLocation(location);  // Add to recent locations when clicked from explore
     }
   };
 
@@ -1661,6 +1748,13 @@ const MapView = () => {
                 eventHandlers={{
                   click: () => handleSidebarItemClick(location.id),
                 }}
+                ref={(markerRef) => {
+                  if (markerRef) {
+                    markerRefs.current[location.id] = markerRef;
+                  } else {
+                    delete markerRefs.current[location.id];
+                  }
+                }}
               >
                 <Popup
                   className="custom-popup"
@@ -1736,11 +1830,12 @@ const MapView = () => {
                         )}
 
                         {/* small controls under image on mobile */}
-                        <div className="mt-3 flex items-center gap-2 lg:hidden">
+                        <div className="mt-3 grid grid-cols-3 gap-2 lg:hidden">
                           <button
-                            className="flex-1 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center justify-center"
+                            className="py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center justify-center"
                             onClick={(e) => {
                               e.stopPropagation();
+                              setTravelMode("driving");
                               getDirections(location.position);
                             }}
                             disabled={isGettingDirections}
@@ -1756,7 +1851,30 @@ const MapView = () => {
                             ) : 'Directions'}
                           </button>
                           <button
-                            className="py-2 px-3 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center"
+                            className="py-2 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors duration-200 flex items-center justify-center"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTravelMode("walking");
+                              getDirections(location.position);
+                            }}
+                            disabled={isGettingDirections}
+                          >
+                            {isGettingDirections ? (
+                              <span className="flex items-center">
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Getting...
+                              </span>
+                            ) : 'Walking'}
+                          </button>
+                          <button
+                            className={`py-2 rounded-lg border border-gray-200 transition-colors duration-200 flex items-center justify-center ${
+                              savedLocations.some((s) => s.id === location.id)
+                                ? 'text-green-600 hover:bg-green-50' 
+                                : 'text-indigo-600 hover:bg-indigo-50'
+                            }`}
                             onClick={(e) => {
                               e.stopPropagation();
                               const isAlreadySaved = savedLocations.some(
@@ -1774,7 +1892,9 @@ const MapView = () => {
                                 </svg>
                                 Saving...
                               </span>
-                            ) : 'Save'}
+                            ) : (
+                              savedLocations.some((s) => s.id === location.id) ? 'Saved' : 'Save'
+                            )}
                           </button>
                         </div>
                       </div>
@@ -1864,9 +1984,9 @@ const MapView = () => {
 
                         <div className="mt-4">
                           {isAuthenticated ? (
-                            <div className="flex items-center gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                               <button
-                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 ${isGettingDirections ? 'opacity-75 cursor-not-allowed' : ''}`}
+                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 ${isGettingDirections ? 'opacity-75 cursor-not-allowed' : ''}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setTravelMode("driving");
@@ -1901,9 +2021,54 @@ const MapView = () => {
                                   </>
                                 )}
                               </button>
-
                               <button
-                                className="px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center"
+                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors duration-200 ${isGettingDirections ? 'opacity-75 cursor-not-allowed' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTravelMode("walking");
+                                  getDirections(location.position);
+                                }}
+                                disabled={isGettingDirections}
+                              >
+                                {isGettingDirections ? (
+                                  <span className="flex items-center">
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Getting...
+                                  </span>
+                                ) : (
+                                  <>
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                      />
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                      />
+                                    </svg>
+                                    Walking Directions
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 transition-colors duration-200 ${
+                                  savedLocations.some((s) => s.id === location.id)
+                                    ? 'text-green-600 hover:bg-green-50' 
+                                    : 'text-indigo-600 hover:bg-indigo-50'
+                                }`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const isAlreadySaved = savedLocations.some(
@@ -1926,7 +2091,24 @@ const MapView = () => {
                                     </svg>
                                     Saving...
                                   </span>
-                                ) : 'Save'}
+                                ) : (
+                                  <>
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                                      />
+                                    </svg>
+                                    {savedLocations.some((s) => s.id === location.id) ? 'Saved' : 'Save'}
+                                  </>
+                                )}
                               </button>
                             </div>
                           ) : (
@@ -1968,6 +2150,13 @@ const MapView = () => {
               key="user-location"
               position={userLocation}
               icon={createUserLocationMarker()}
+              ref={(markerRef) => {
+                if (markerRef) {
+                  markerRefs.current['user-location'] = markerRef;
+                } else {
+                  delete markerRefs.current['user-location'];
+                }
+              }}
             >
               <Popup className="custom-popup">
                 <div className="p-4">
@@ -1998,6 +2187,13 @@ const MapView = () => {
                     addRecentLocation(poi); // Add POI to recents when popup opens
                     setActivePopup(`poi-${poi.id}`);
                   },
+                }}
+                ref={(markerRef) => {
+                  if (markerRef) {
+                    markerRefs.current[`poi-${poi.id}`] = markerRef;
+                  } else {
+                    delete markerRefs.current[`poi-${poi.id}`];
+                  }
                 }}
               >
                 <Popup className="custom-popup">
@@ -2058,7 +2254,7 @@ const MapView = () => {
                             (saved) => saved.id === `poi-${poi.id}`
                           )
                             ? "bg-green-100 text-green-600"
-                            : "hover:bg-gray-200"
+                            : "text-indigo-600 hover:bg-indigo-50"
                         }`}
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent popup from closing
@@ -2140,6 +2336,30 @@ const MapView = () => {
             </p>
           </div>
         </motion.div>
+        
+        {/* Directions Close Button - Top Right when routing is visible */}
+        {showRouting && (
+          <motion.div
+            className="absolute top-4 right-4 z-[1000]"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <button
+              onClick={() => {
+                setShowRouting(false);
+                setRoutingStart(null);
+                setRoutingEnd(null);
+              }}
+              className="bg-white text-gray-800 px-4 py-2 rounded-xl shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2 font-medium"
+            >
+              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Close Directions
+            </button>
+          </motion.div>
+        )}
         {/* Static Icon Sidebar */}
         <div className="absolute left-0 top-0 h-full w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-3">
           <button
