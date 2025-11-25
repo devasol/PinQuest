@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Loader2, AlertTriangle } from 'lucide-react';
+import usePageTitle from '../../services/usePageTitle';
 import './AdminLogin.css';
 
 const AdminLogin = () => {
+  usePageTitle("Admin Login");
   const [formData, setFormData] = useState({
     email: '',
     password: ''

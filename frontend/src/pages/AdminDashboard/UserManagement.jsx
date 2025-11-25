@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, Edit, Trash2, Filter, Download, Eye, AlertTriangle } from 'lucide-react';
+import usePageTitle from '../../services/usePageTitle';
 import './UserManagement.css';
 
 const UserManagement = () => {
+  usePageTitle("User Management");
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');

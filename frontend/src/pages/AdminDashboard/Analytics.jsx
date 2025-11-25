@@ -12,9 +12,11 @@ import {
   DollarSign,
   Download
 } from 'lucide-react';
+import usePageTitle from '../../services/usePageTitle';
 import './Analytics.css';
 
 const Analytics = () => {
+  usePageTitle("Analytics Dashboard");
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalPosts: 0,

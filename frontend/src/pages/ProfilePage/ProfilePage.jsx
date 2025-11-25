@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { User, MapPin, Star, Bookmark, Activity, Calendar, Image } from 'lucide-react';
 import OptimizedImage from '../../components/OptimizedImage';
+import usePageTitle from '../../services/usePageTitle';
 import './ProfilePage.css';
 
 const ProfilePage = () => {
+  usePageTitle("Profile");
   const { user, isAuthenticated, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [userData, setUserData] = useState(user || {});

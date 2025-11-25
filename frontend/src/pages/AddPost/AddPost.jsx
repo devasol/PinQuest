@@ -4,12 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { MapPin, X, Image as ImageIcon, Plus, Upload } from "lucide-react";
 import Header from "../../components/Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext";
+import usePageTitle from "../../services/usePageTitle";
 
 // API base URL - should be consistent with other components
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 
 const AddPost = () => {
+  usePageTitle("Add Post");
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({

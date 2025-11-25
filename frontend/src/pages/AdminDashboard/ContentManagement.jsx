@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2, Eye, Filter, Calendar, MapPin, Tag, MessageSquare, AlertTriangle } from 'lucide-react';
+import usePageTitle from '../../services/usePageTitle';
 import './ContentManagement.css';
 
 const ContentManagement = () => {
+  usePageTitle("Content Management");
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');

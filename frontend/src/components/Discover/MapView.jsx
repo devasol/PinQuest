@@ -1772,6 +1772,13 @@ const MapView = () => {
                       fontFamily:
                         "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
                     }}
+                    onMouseDown={(e) => {
+                      // If user clicks on the background area (not a button), allow map to be draggable
+                      if (e.target === e.currentTarget) {
+                        // Allow the map to continue handling drag events
+                        e.stopPropagation();
+                      }
+                    }}
                   >
                     <div className="flex flex-col lg:flex-row gap-6">
                       {/* Left: image / carousel */}
@@ -2162,7 +2169,16 @@ const MapView = () => {
               }}
             >
               <Popup className="custom-popup">
-                <div className="p-4">
+                <div 
+                  className="p-4" 
+                  onMouseDown={(e) => {
+                    // If user clicks on the background area (not a button), allow map to be draggable
+                    if (e.target === e.currentTarget) {
+                      // Allow the map to continue handling drag events
+                      e.stopPropagation();
+                    }
+                  }}
+                >
                   <h3 className="font-bold text-xl text-gray-800 mb-2">
                     Your Location
                   </h3>
@@ -2200,7 +2216,16 @@ const MapView = () => {
                 }}
               >
                 <Popup className="custom-popup">
-                  <div className="p-6 w-[90vw] max-w-[760px]">
+                  <div 
+                    className="p-6 w-[90vw] max-w-[760px]" 
+                    onMouseDown={(e) => {
+                      // If user clicks on the background area (not a button), allow map to be draggable
+                      if (e.target === e.currentTarget) {
+                        // Allow the map to continue handling drag events
+                        e.stopPropagation();
+                      }
+                    }}
+                  >
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="font-bold text-2xl text-gray-800">
@@ -3686,6 +3711,27 @@ const MapView = () => {
         * {
           scrollbar-width: thin;
           scrollbar-color: rgba(107, 114, 128, 0.5) rgba(156, 163, 175, 0.2);
+        }
+        
+        /* Allow map dragging through popup background while preserving button functionality */
+        .custom-popup .leaflet-popup-content-wrapper {
+          pointer-events: auto;
+        }
+        
+        /* Make the popup container allow pointer events through to the map when not on interactive elements */
+        .custom-popup .leaflet-popup-content {
+          pointer-events: auto;
+        }
+        
+        /* Ensure interactive elements inside popup receive pointer events */
+        .custom-popup .leaflet-popup-content button,
+        .custom-popup .leaflet-popup-content input,
+        .custom-popup .leaflet-popup-content textarea,
+        .custom-popup .leaflet-popup-content select,
+        .custom-popup .leaflet-popup-content a,
+        .custom-popup .leaflet-popup-content img {
+          pointer-events: auto;
+          z-index: 1;
         }
         
         /* Responsive adjustments */

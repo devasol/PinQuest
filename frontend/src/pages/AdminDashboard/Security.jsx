@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Lock, Eye, EyeOff, AlertTriangle, CheckCircle, Clock, User, Settings, AlertCircle, Loader2 } from 'lucide-react';
+import usePageTitle from '../../services/usePageTitle';
 import './Security.css';
 
 const Security = () => {
+  usePageTitle("Security Settings");
   const [showPassword, setShowPassword] = useState(false);
   const [securitySettings, setSecuritySettings] = useState({
     twoFactorAuth: false,

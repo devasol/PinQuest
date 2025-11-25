@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import usePageTitle from '../../services/usePageTitle';
 import './AdminDashboard.css';
 import { 
   Users, 
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react';
 
 const AdminDashboard = () => {
+  usePageTitle("Admin Dashboard");
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalPosts: 0,
