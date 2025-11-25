@@ -1880,7 +1880,11 @@ const MapView = () => {
                               const isAlreadySaved = savedLocations.some(
                                 (s) => s.id === location.id
                               );
-                              if (!isAlreadySaved) saveLocation(location);
+                              if (!isAlreadySaved) {
+                                saveLocation(location);
+                              } else {
+                                removeSavedLocation(location.id);
+                              }
                             }}
                             disabled={isSavingLocation}
                           >
@@ -2074,12 +2078,11 @@ const MapView = () => {
                                   const isAlreadySaved = savedLocations.some(
                                     (s) => s.id === location.id
                                   );
-                                  if (!isAlreadySaved) saveLocation(location);
-                                  else
-                                    showNotification(
-                                      "Location already saved!",
-                                      "info"
-                                    );
+                                  if (!isAlreadySaved) {
+                                    saveLocation(location);
+                                  } else {
+                                    removeSavedLocation(location.id);
+                                  }
                                 }}
                                 disabled={isSavingLocation}
                               >
@@ -2281,7 +2284,7 @@ const MapView = () => {
                           if (!isAlreadySaved) {
                             saveLocation(poiLocation);
                           } else {
-                            showNotification("POI already saved!", "info");
+                            removeSavedLocation(`poi-${poi.id}`);
                           }
                         }}
                         title={
