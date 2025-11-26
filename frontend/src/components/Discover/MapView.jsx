@@ -1771,13 +1771,13 @@ const MapView = () => {
       {" "}
       {/* pt-16 accounts for header height */}
       <Header isDiscoverPage={true} />
-      {/* Full-Screen Map Container */}
-      <div className="relative w-full h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)]">
+      {/* Full-Screen Map Container - with lower z-index to ensure header stays on top */}
+      <div className="relative w-full h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] z-0">
         {" "}
         {/* 4rem = 64px which is header height */}
         {/* Loading indicator */}
         {isLoading && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[1001] flex items-center justify-center">
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-0 flex items-center justify-center">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
               <p className="text-xl font-medium text-gray-700">
@@ -2485,7 +2485,7 @@ const MapView = () => {
           </motion.div>
         )}
         {/* Static Icon Sidebar */}
-        <div className="sidebar-icon-container absolute left-0 top-0 h-full w-16 sm:w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-2 sm:space-y-3">
+        <div className="sidebar-icon-container absolute left-0 top-0 h-full w-16 sm:w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-0 flex flex-col items-center py-4 space-y-2 sm:space-y-3">
           <button
             className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === "explore"
@@ -2658,7 +2658,7 @@ const MapView = () => {
         <AnimatePresence>
           {activeSidebarTab && (
             <motion.div
-              className={`sidebar-pane absolute top-0 h-full bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col overflow-x-hidden ${activeSidebarTab ? 'is-open' : ''}`}
+              className={`sidebar-pane absolute top-0 h-full bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-0 flex flex-col overflow-x-hidden ${activeSidebarTab ? 'is-open' : ''}`}
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -3172,7 +3172,7 @@ const MapView = () => {
           <>
             {/* Backdrop */}
             <motion.div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[2000]"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3180,7 +3180,7 @@ const MapView = () => {
             />
 
             {/* Modal Content */}
-            <div className="fixed inset-0 flex items-center justify-center z-[2001] p-4">
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
               <motion.div
                 className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
                 initial={{ scale: 0.98, opacity: 0, y: 10 }}
@@ -3190,7 +3190,7 @@ const MapView = () => {
               >
                 {/* Submitting overlay */}
                 {submitting && (
-                  <div className="absolute inset-0 z-50 bg-white/70 flex items-center justify-center">
+                  <div className="absolute inset-0 z-10 bg-white/70 flex items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
                       <svg
                         className="animate-spin h-10 w-10 text-blue-600"
@@ -3505,7 +3505,7 @@ const MapView = () => {
           <>
             {/* Backdrop */}
             <motion.div
-              className="fixed inset-0 bg-gradient-to-br from-blue-400/40 via-purple-500/40 to-indigo-600/40 backdrop-blur-md z-[2000]"
+              className="fixed inset-0 bg-gradient-to-br from-blue-400/40 via-purple-500/40 to-indigo-600/40 backdrop-blur-md z-40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3513,7 +3513,7 @@ const MapView = () => {
             />
 
             {/* Modal Content */}
-            <div className="fixed inset-0 flex items-center justify-center z-[2001] p-4">
+            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
               <motion.div
                 className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/30 w-full max-w-md"
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -3576,7 +3576,7 @@ const MapView = () => {
       {/* Image Gallery Modal */}
       {showImageGallery && galleryImages && galleryImages.length > 0 && (
         <div 
-          className="fixed inset-0 bg-gradient-to-br from-black/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-[10000] p-4"
+          className="fixed inset-0 bg-gradient-to-br from-black/70 to-gray-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4"
           onClick={() => setShowImageGallery(false)}
         >
           <div 

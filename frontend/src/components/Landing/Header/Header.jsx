@@ -60,10 +60,14 @@ const Header = ({ isDiscoverPage = false }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2" onClick={() => {
-            if (isMenuOpen) setIsMenuOpen(false);
-            if (isMobileSearchOpen) setIsMobileSearchOpen(false);
-          }}>
+          <Link
+            to="/"
+            className="flex items-center space-x-2"
+            onClick={() => {
+              if (isMenuOpen) setIsMenuOpen(false);
+              if (isMobileSearchOpen) setIsMobileSearchOpen(false);
+            }}
+          >
             <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
               <MapPin className="h-6 w-6 text-white" />
             </div>
@@ -73,7 +77,7 @@ const Header = ({ isDiscoverPage = false }) => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8 ml-8">
+          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8 ml-8 z-50">
             {navigationItems.map((item) => {
               const isInternalLink = item.to && item.to.startsWith("/");
               return isInternalLink ? (
@@ -82,9 +86,9 @@ const Header = ({ isDiscoverPage = false }) => {
                   to={item.to}
                   className={({ isActive }) =>
                     `text-gray-700 font-medium transition-all duration-300 ${
-                      isActive 
-                        ? 'text-blue-600 pb-1 border-b-2 border-blue-600' 
-                        : 'hover:text-blue-600'
+                      isActive
+                        ? "text-blue-600 pb-1 border-b-2 border-blue-600"
+                        : "hover:text-blue-600"
                     }`
                   }
                   onClick={() => {
@@ -127,7 +131,7 @@ const Header = ({ isDiscoverPage = false }) => {
           {/* Right Side Actions */}
           <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Mobile Search Button */}
-            <button 
+            <button
               className="lg:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-md hover:bg-gray-100"
               onClick={() => {
                 setIsMobileSearchOpen(!isMobileSearchOpen);
@@ -149,14 +153,15 @@ const Header = ({ isDiscoverPage = false }) => {
               // Profile and Logout buttons for logged in users
               <div className="hidden md:flex items-center space-x-2">
                 <Link
-                  to={user?.role === 'admin' ? "/admin/dashboard" : "/profile"}
+                  to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
                   className="flex items-center space-x-2 p-2 text-gray-700 hover:text-blue-600 transition-colors rounded-lg hover:bg-gray-100"
                 >
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                     <User className="h-4 w-4 text-white" />
                   </div>
                   <span className="hidden sm:block font-medium max-w-[100px] truncate">
-                    {user?.name || (user?.role === 'admin' ? "Admin" : "Profile")}
+                    {user?.name ||
+                      (user?.role === "admin" ? "Admin" : "Profile")}
                   </span>
                 </Link>
                 <button
@@ -226,9 +231,9 @@ const Header = ({ isDiscoverPage = false }) => {
                   to={item.to}
                   className={({ isActive }) =>
                     `block px-3 py-3 font-medium transition-all duration-300 ${
-                      isActive 
-                        ? 'text-blue-600 bg-blue-50 rounded-lg border-l-4 border-blue-600' 
-                        : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg'
+                      isActive
+                        ? "text-blue-600 bg-blue-50 rounded-lg border-l-4 border-blue-600"
+                        : "text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                     }`
                   }
                   onClick={() => setIsMenuOpen(false)}
@@ -246,17 +251,18 @@ const Header = ({ isDiscoverPage = false }) => {
                 </a>
               );
             })}
-            
+
             {/* Auth section for mobile */}
             {isAuthenticated ? (
               <>
                 <Link
-                  to={user?.role === 'admin' ? "/admin/dashboard" : "/profile"}
+                  to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
                   className="block px-3 py-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors duration-200 flex items-center"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <User className="h-4 w-4 mr-2" />
-                  {user?.name || (user?.role === 'admin' ? "Admin Dashboard" : "Profile")}
+                  {user?.name ||
+                    (user?.role === "admin" ? "Admin Dashboard" : "Profile")}
                 </Link>
                 <button
                   onClick={() => {
