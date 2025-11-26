@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Search, Menu, X, Bell, User, MapPin } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext.jsx";
 
@@ -38,7 +38,6 @@ const Header = ({ isDiscoverPage = false }) => {
     { name: "Discover", to: "/discover" },
     { name: "Categories", to: "/categories" },
     { name: "Maps", to: "/maps" },
-    { name: "Community", href: "#community" },
   ];
 
   return (
@@ -68,13 +67,19 @@ const Header = ({ isDiscoverPage = false }) => {
             {navigationItems.map((item) => {
               const isInternalLink = item.to && item.to.startsWith("/");
               return isInternalLink ? (
-                <Link
+                <NavLink
                   key={item.name}
                   to={item.to}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 transform hover:scale-105"
+                  className={({ isActive }) =>
+                    `text-gray-700 font-medium transition-all duration-300 transform hover:scale-105 ${
+                      isActive 
+                        ? 'text-blue-600 pb-1 border-b-2 border-blue-600' 
+                        : 'hover:text-blue-600'
+                    }`
+                  }
                 >
                   {item.name}
-                </Link>
+                </NavLink>
               ) : (
                 <a
                   key={item.name}
@@ -187,14 +192,20 @@ const Header = ({ isDiscoverPage = false }) => {
             {navigationItems.map((item) => {
               const isInternalLink = item.to && item.to.startsWith("/");
               return isInternalLink ? (
-                <Link
+                <NavLink
                   key={item.name}
                   to={item.to}
-                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-all duration-300"
+                  className={({ isActive }) =>
+                    `block px-3 py-2 font-medium transition-all duration-300 ${
+                      isActive 
+                        ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600' 
+                        : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                    }`
+                  }
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
-                </Link>
+                </NavLink>
               ) : (
                 <a
                   key={item.name}
