@@ -35,6 +35,7 @@ const Header = ({ isDiscoverPage = false }) => {
   };
 
   const navigationItems = [
+    { name: "Home", to: "/" },
     { name: "Discover", to: "/discover" },
     { name: "Categories", to: "/categories" },
     { name: "Maps", to: "/maps" },

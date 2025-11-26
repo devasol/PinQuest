@@ -14,6 +14,7 @@ import {
   Share2,
   Bookmark,
   X,
+  List,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -39,7 +40,7 @@ const MapsPage = () => {
   const [mapCenter, setMapCenter] = useState({ lat: 40.7128, lng: -74.006 });
   const [zoomLevel, setZoomLevel] = useState(13);
   const [mapStyle, setMapStyle] = useState("default");
-  const [showFilters, setShowFilters] = useState(false);
+  const [showListOnMobile, setShowListOnMobile] = useState(false);
   const mapRef = useRef(null);
   const locationCardRef = useRef(null);
 
@@ -187,7 +188,7 @@ const MapsPage = () => {
     // Debounce the API call to avoid too many requests
     const timeoutId = setTimeout(fetchLocations, 500);
     return () => clearTimeout(timeoutId);
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, userLocation]);
 
   // Get user location effect
   useEffect(() => {
@@ -245,6 +246,10 @@ const MapsPage = () => {
     if (mapRef.current) {
       mapRef.current.setView([location.coordinates.lat, location.coordinates.lng], 15);
     }
+    // On mobile, if the list is open, you might want to close it to show the map
+    if (window.innerWidth < 768) {
+      setShowListOnMobile(false);
+    }
   };
 
   const handleCenterOnUser = () => {
@@ -293,6 +298,10 @@ const MapsPage = () => {
     }
   };
 
+  const toggleListOnMobile = () => {
+    setShowListOnMobile(prevState => !prevState);
+  };
+
   return (
     <>
       <Header />
@@ -306,17 +315,15 @@ const MapsPage = () => {
 
         {/* Search and Filter Section */}
         <div className="search-filter-section">
-          <div className="search-container">
-            <div className="search-input-wrapper">
-              <Search className="search-icon" size={20} />
-              <input
-                type="text"
-                placeholder="Search for places, cities, or categories..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-              />
-            </div>
+          <div className="search-input-wrapper">
+            <Search className="search-icon" size={20} />
+            <input
+              type="text"
+              placeholder="Search for places, cities, or categories..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
           </div>
 
           <div className="filters-container">
@@ -340,7 +347,14 @@ const MapsPage = () => {
           </div>
         </div>
 
-        {/* Map Section */}
+        {/* Mobile Toggle Button */}
+        <div className="mobile-toggle-container">
+          <button className="mobile-toggle-btn" onClick={toggleListOnMobile}>
+            {showListOnMobile ? <><X size={18} /> Close</> : <><List size={18} /> View List</>}
+          </button>
+        </div>
+
+        {/* Map and List Section */}
         <div className="map-section">
           {isLoading ? (
             <div className="loading-container">
@@ -349,22 +363,127 @@ const MapsPage = () => {
             </div>
           ) : (
             <>
-              {hasFallbackData && (
-                <div className="fallback-notice">
-                  <p>Displaying sample data. Connect to the internet to see real locations.</p>
+              {/* Location List - now it can be conditionally displayed on mobile */}
+              <div 
+                className={`location-list-container ${showListOnMobile ? 'is-visible-mobile' : ''}`}
+              >
+                <div className="location-list">
+                  {filteredLocations.length > 0 ? (
+                    filteredLocations.map((location) => (
+                      <div
+                        ref={
+                          location.id === selectedLocation?.id
+                            ? locationCardRef
+                            : null
+                        }
+                        className={`location-card ${mapLoaded ? "loaded" : ""} ${
+                          selectedLocation?.id === location.id ? "selected" : ""
+                        }`}
+                        key={location.id}
+                        onClick={() => handleMarkerClick(location)}
+                      >
+                        <div className="location-image">
+                          <img src={location.image || 'https://placehold.co/400x300?text=No+Image'} alt={location.name} />
+                          <div className="location-badge">
+                            <span className="category-label">
+                              {location.category}
+                            </span>
+                          </div>
+                          <div className="location-price">{location.price || '$$'}</div>
+                        </div>
+                        <div className="location-info">
+                          <div className="location-header">
+                            <h3>{location.name}</h3>
+                            <div className="location-actions">
+                              <button
+                                className="favorite-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(location.id);
+                                }}
+                                title="Add to favorites"
+                              >
+                                <Heart size={18} />
+                              </button>
+                              <button
+                                className="share-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  shareLocation(location);
+                                }}
+                                title="Share location"
+                              >
+                                <Share2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+                          <p className="location-description">
+                            {location.description}
+                          </p>
+
+                          <div className="location-tags">
+                            {(location.tags || []).slice(0, 3).map((tag) => (
+                              <span key={tag} className="tag">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+
+                          <div className="location-meta">
+                            <div className="rating">
+                              <Star
+                                className="star-icon"
+                                size={16}
+                                fill="currentColor"
+                              />
+                              <span className="rating-value">
+                                {location.rating}
+                              </span>
+                            </div>
+                            <div className="distance">
+                              <Navigation size={16} />
+                              <span>{location.distance || '1.5 km'}</span>
+                            </div>
+                          </div>
+                          <div className="location-actions-bottom">
+                            <button className="directions-btn" onClick={(e) => e.stopPropagation()}>
+                              <Navigation size={16} />
+                              <span>Get Directions</span>
+                            </button>
+                            <button className="save-btn" onClick={(e) => e.stopPropagation()}>
+                              <Bookmark size={16} />
+                              <span>Save</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="no-results">
+                      <MapPin size={48} className="no-results-icon" />
+                      <h3>No locations found</h3>
+                      <p>Try adjusting your search or filters</p>
+                    </div>
+                  )}
                 </div>
-              )}
-              {/* Map container with interactive controls */}
+              </div>
+
+              {/* Map container */}
               <div className="map-container">
+                {hasFallbackData && (
+                  <div className="fallback-notice">
+                    <p>Displaying sample data. Connect to the internet to see real locations.</p>
+                  </div>
+                )}
                 <MapContainer
                   center={[mapCenter.lat, mapCenter.lng]}
                   zoom={zoomLevel}
                   style={{ height: "100%", width: "100%" }}
                   className="rounded-xl"
                   whenCreated={(map) => {
-                    // Store reference to map instance for direct control
                     mapRef.current = map;
                   }}
+                  zoomControl={false} // We are using custom controls
                 >
                   <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -396,15 +515,12 @@ const MapsPage = () => {
                       </Popup>
                     </Marker>
                   ))}
-                  {/* User location marker */}
                   {userLocation && (
                     <Marker
                       position={[userLocation.lat, userLocation.lng]}
                       icon={L.divIcon({
                         className: 'user-location-marker-icon',
-                        html: '<div style="background-color: #4caf50; border: 3px solid white; border-radius: 50%; width: 24px; height: 24px; box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);"></div>',
-                        iconSize: [24, 24],
-                        iconAnchor: [12, 12],
+                        html: '<div></div>',
                       })}
                     />
                   )}
@@ -415,7 +531,7 @@ const MapsPage = () => {
                   <button
                     className="map-control-btn"
                     onClick={handleCenterOnUser}
-                    title="Center on current location"
+                    title="Center on my location"
                   >
                     <Locate size={18} />
                   </button>
@@ -444,102 +560,6 @@ const MapsPage = () => {
                   >
                     <Layers size={18} />
                   </button>
-                </div>
-              </div>
-
-              {/* Location List */}
-              <div className="location-list-container">
-                <div className="location-list">
-                  {filteredLocations.map((location) => (
-                    <div
-                      ref={
-                        location.id === selectedLocation?.id
-                          ? locationCardRef
-                          : null
-                      }
-                      className={`location-card ${mapLoaded ? "loaded" : ""} ${
-                        selectedLocation?.id === location.id ? "selected" : ""
-                      }`}
-                      key={location.id}
-                    >
-                      <div className="location-image">
-                        <img src={location.image || 'https://placehold.co/400x300?text=No+Image'} alt={location.name} />
-                        <div className="location-badge">
-                          <span className="category-label">
-                            {location.category}
-                          </span>
-                        </div>
-                        <div className="location-price">{location.price || '$$'}</div>
-                      </div>
-                      <div className="location-info">
-                        <div className="location-header">
-                          <h3>{location.name}</h3>
-                          <div className="location-actions">
-                            <button
-                              className="favorite-btn"
-                              onClick={() => toggleFavorite(location.id)}
-                              title="Add to favorites"
-                            >
-                              <Heart size={18} />
-                            </button>
-                            <button
-                              className="share-btn"
-                              onClick={() => shareLocation(location)}
-                              title="Share location"
-                            >
-                              <Share2 size={18} />
-                            </button>
-                          </div>
-                        </div>
-                        <p className="location-description">
-                          {location.description}
-                        </p>
-
-                        <div className="location-tags">
-                          {(location.tags || []).slice(0, 3).map((tag) => (
-                            <span key={tag} className="tag">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-
-                        <div className="location-meta">
-                          <div className="rating">
-                            <Star
-                              className="star-icon"
-                              size={16}
-                              fill="currentColor"
-                            />
-                            <span className="rating-value">
-                              {location.rating}
-                            </span>
-                          </div>
-                          <div className="distance">
-                            <Navigation size={16} />
-                            <span>{location.distance || '1.5 km'}</span>
-                          </div>
-                        </div>
-                        <div className="location-actions-bottom">
-                          <button className="directions-btn">
-                            <Navigation size={16} />
-                            <span>Get Directions</span>
-                          </button>
-                          <button className="save-btn">
-                            <Bookmark size={16} />
-                            <span>Save</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {filteredLocations.length === 0 && (
-                    <div className="no-results">
-                      <MapPin size={48} className="no-results-icon" />
-                      <h3>No locations found</h3>
-                      <p>Try adjusting your search or filters</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </>

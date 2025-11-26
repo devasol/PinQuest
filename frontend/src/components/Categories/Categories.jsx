@@ -117,30 +117,30 @@ const Categories = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header Section */}
-      <header className="pt-32 pb-8 px-4 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+      <header className="pt-24 pb-6 sm:pt-32 sm:pb-8 px-4 text-center">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-3 sm:mb-4">
           Discover Your Next Adventure by Category
         </h1>
-        <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-8">
+        <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-xl sm:max-w-2xl mx-auto mb-6 sm:mb-8">
           Choose a travel style that inspires you and explore experiences shared
           by real travelers from around the world.
         </p>
 
         {/* Search & Filter Section */}
-        <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
+        <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-8">
+          <div className="flex flex-col gap-4">
+            <div className="w-full">
               <input
                 type="text"
                 placeholder="Search destinations, experiences..."
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-2 sm:py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <select
-                className="px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
@@ -152,7 +152,7 @@ const Categories = () => {
                 ))}
               </select>
               <select
-                className="px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="flex-1 px-3 py-2 sm:px-4 sm:py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
@@ -167,13 +167,13 @@ const Categories = () => {
 
       {/* Main Category Grid */}
       <main className="max-w-7xl mx-auto px-4 pb-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-16">
           {categories.map((category) => (
             <div
               key={category.id}
-              className="group relative bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-105 hover:shadow-2xl"
+              className="group relative bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl"
             >
-              <div className="relative h-48 overflow-hidden">
+              <div className="relative h-40 sm:h-44 md:h-48 overflow-hidden">
                 <OptimizedImage
                   src={category.image}
                   alt={category.title}
@@ -182,17 +182,17 @@ const Categories = () => {
                 <div
                   className={`absolute inset-0 bg-gradient-to-t ${category.color} opacity-60`}
                 ></div>
-                <div className="absolute top-4 left-4 text-3xl bg-white bg-opacity-20 rounded-lg p-2 backdrop-blur-sm">
+                <div className="absolute top-3 left-3 text-2xl sm:text-3xl bg-white bg-opacity-20 rounded-lg p-1 sm:p-2 backdrop-blur-sm">
                   {category.icon}
                 </div>
               </div>
 
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-2">
+              <div className="p-4 sm:p-5 md:p-6">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">
                   {category.title}
                 </h3>
-                <p className="text-gray-600 mb-4">{category.description}</p>
-                <button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-300 hover:from-blue-600 hover:to-purple-700 hover:shadow-lg transform hover:-translate-y-1">
+                <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">{category.description}</p>
+                <button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 sm:py-3 px-4 sm:px-6 rounded-xl font-semibold transition-all duration-300 hover:from-blue-600 hover:to-purple-700 hover:shadow-lg transform hover:-translate-y-1">
                   Explore
                 </button>
               </div>
@@ -201,32 +201,32 @@ const Categories = () => {
         </div>
 
         {/* Trending Destinations */}
-        <section className="mb-16">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">
+        <section className="mb-12 sm:mb-16">
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 gap-4">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">
               Top Trending This Week
             </h2>
-            <button className="text-blue-600 font-semibold hover:text-blue-700 transition-colors">
+            <button className="text-blue-600 font-semibold hover:text-blue-700 transition-colors text-sm sm:text-base">
               View All →
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {trendingDestinations.map((destination) => (
               <div
                 key={destination.id}
-                className="group relative bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-105"
+                className="group relative bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer transform transition-all duration-500 hover:scale-[1.02]"
               >
-                <div className="relative h-48 overflow-hidden">
+                <div className="relative h-36 sm:h-40 md:h-48 overflow-hidden">
                   <OptimizedImage
                     src={destination.image}
                     alt={destination.name}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                  <div className="absolute bottom-4 left-4 text-white">
-                    <h3 className="text-xl font-bold">{destination.name}</h3>
-                    <p className="text-blue-200">{destination.category}</p>
+                  <div className="absolute bottom-3 left-3 text-white">
+                    <h3 className="text-base sm:text-lg md:text-xl font-bold">{destination.name}</h3>
+                    <p className="text-xs sm:text-sm md:text-base text-blue-200">{destination.category}</p>
                   </div>
                 </div>
               </div>
@@ -235,23 +235,23 @@ const Categories = () => {
         </section>
 
         {/* User Contribution CTA */}
-        <section className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">Have a place to share?</h2>
-          <p className="text-xl mb-6 opacity-90">
+        <section className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 sm:p-8 text-center text-white">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-4">Have a place to share?</h2>
+          <p className="text-base sm:text-lg md:text-xl mb-4 sm:mb-6 opacity-90">
             Pin your travel story with photos and memories!
           </p>
-          <button className="bg-white text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-300 hover:bg-gray-100 hover:shadow-lg transform hover:-translate-y-1">
+          <button className="bg-white text-blue-600 font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-xl text-base sm:text-lg transition-all duration-300 hover:bg-gray-100 hover:shadow-lg transform hover:-translate-y-1">
             Add New Pin
           </button>
-          <p className="mt-4 text-blue-100">
+          <p className="mt-4 text-sm sm:text-base text-blue-100">
             Start your own travel journey — Pin your first place on the map!
           </p>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-800 text-white py-8 text-center">
-        <p className="text-gray-400">
+      <footer className="bg-gray-800 text-white py-6 sm:py-8 text-center">
+        <p className="text-sm sm:text-base text-gray-400">
           © 2024 Travel Explorer. All rights reserved.
         </p>
       </footer>
