@@ -1772,7 +1772,7 @@ const MapView = () => {
       {/* pt-16 accounts for header height */}
       <Header isDiscoverPage={true} />
       {/* Full-Screen Map Container */}
-      <div className="relative w-full h-[calc(100vh-4rem)]">
+      <div className="relative w-full h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)]">
         {" "}
         {/* 4rem = 64px which is header height */}
         {/* Loading indicator */}
@@ -2485,9 +2485,9 @@ const MapView = () => {
           </motion.div>
         )}
         {/* Static Icon Sidebar */}
-        <div className="sidebar-icon-container absolute left-0 top-0 h-full w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-3">
+        <div className="sidebar-icon-container absolute left-0 top-0 h-full w-16 sm:w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-2 sm:space-y-3">
           <button
-            className={`p-3 rounded-xl transition-all duration-200 ${
+            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === "explore"
                 ? "bg-blue-100 text-blue-600"
                 : "text-gray-600 hover:bg-gray-200"
@@ -2500,7 +2500,7 @@ const MapView = () => {
             title="Explore"
           >
             <svg
-              className="w-6 h-6"
+              className="w-4 sm:w-6 h-4 sm:h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -2515,7 +2515,7 @@ const MapView = () => {
           </button>
 
           <button
-            className={`p-3 rounded-xl transition-all duration-200 ${
+            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === "map-settings"
                 ? "bg-blue-100 text-blue-600"
                 : "text-gray-600 hover:bg-gray-200"
@@ -2528,7 +2528,7 @@ const MapView = () => {
             title="Map Settings"
           >
             <svg
-              className="w-6 h-6"
+              className="w-4 sm:w-6 h-4 sm:h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -2543,7 +2543,7 @@ const MapView = () => {
           </button>
 
           <button
-            className={`p-3 rounded-xl transition-all duration-200 ${
+            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === "pois"
                 ? "bg-blue-100 text-blue-600"
                 : "text-gray-600 hover:bg-gray-200"
@@ -2554,7 +2554,7 @@ const MapView = () => {
             title="Points of Interest"
           >
             <svg
-              className="w-6 h-6"
+              className="w-4 sm:w-6 h-4 sm:h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -2575,7 +2575,7 @@ const MapView = () => {
           </button>
 
           <button
-            className={`p-3 rounded-xl transition-all duration-200 ${
+            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === "saved"
                 ? "bg-blue-100 text-blue-600"
                 : "text-gray-600 hover:bg-gray-200"
@@ -2586,7 +2586,7 @@ const MapView = () => {
             title="Saved Locations"
           >
             <svg
-              className="w-6 h-6"
+              className="w-4 sm:w-6 h-4 sm:h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -2601,7 +2601,7 @@ const MapView = () => {
           </button>
 
           <button
-            className={`p-3 rounded-xl transition-all duration-200 ${
+            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === "recents"
                 ? "bg-blue-100 text-blue-600"
                 : "text-gray-600 hover:bg-gray-200"
@@ -2614,7 +2614,7 @@ const MapView = () => {
             title="Recent Locations"
           >
             <svg
-              className="w-6 h-6"
+              className="w-4 sm:w-6 h-4 sm:h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -2629,7 +2629,7 @@ const MapView = () => {
           </button>
 
           <button
-            className={`p-3 rounded-xl transition-all duration-200 ${
+            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === "stats"
                 ? "bg-blue-100 text-blue-600"
                 : "text-gray-600 hover:bg-gray-200"
@@ -2640,7 +2640,7 @@ const MapView = () => {
             title="Statistics"
           >
             <svg
-              className="w-6 h-6"
+              className="w-4 sm:w-6 h-4 sm:h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -2664,16 +2664,16 @@ const MapView = () => {
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25 }}
             >
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">
+              <div className="p-3 sm:p-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-800">
                   {activeSidebarTab.replace("-", " ")}
                 </h2>
                 <button
                   onClick={() => setActiveSidebarTab("")}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-700 p-1 sm:p-2"
                 >
                   <svg
-                    className="w-6 h-6"
+                    className="w-5 sm:w-6 h-5 sm:h-6"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -2689,10 +2689,10 @@ const MapView = () => {
               </div>
               <div className="flex-1 overflow-y-auto">
                 {activeSidebarTab === "explore" && (
-                  <div className="p-4">
-                    <div className="space-y-4 flex-shrink-0">
+                  <div className="p-3 sm:p-4 flex-1 flex flex-col overflow-hidden">
+                    <div className="space-y-3 sm:space-y-4 flex-shrink-0 mb-3">
                       <div>
-                        <h3 className="font-semibold text-gray-800 mb-2">
+                        <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">
                           Search Places
                         </h3>
                         <Geocoder
@@ -2707,7 +2707,7 @@ const MapView = () => {
 
                       {isAuthenticated && (
                         <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
-                          <span>Show Only My Posts</span>
+                          <span className="text-sm">Show Only My Posts</span>
                           <button
                             className={`relative inline-flex h-6 w-11 items-center rounded-full ${
                               filterMine ? "bg-blue-500" : "bg-gray-300"
@@ -2724,16 +2724,16 @@ const MapView = () => {
                       )}
                     </div>
 
-                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden mt-4">
+                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
                       <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-semibold text-gray-800">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-gray-800 text-sm sm:text-base">
                             Posts & Locations
                           </h3>
                           <select
                             value={postsFilter}
                             onChange={(e) => setPostsFilter(e.target.value)}
-                            className="text-sm px-3 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none w-full sm:w-auto"
                           >
                             <option value="latest">Latest</option>
                             <option value="top">Top Rated</option>
@@ -2741,7 +2741,7 @@ const MapView = () => {
                             <option value="likes">By Likes</option>
                           </select>
                         </div>
-                        <div className="space-y-4 h-full overflow-y-auto pr-2">
+                        <div className="space-y-3 sm:space-y-4 h-full overflow-y-auto pr-1 sm:pr-2">
                           <AnimatePresence>
                             {filteredLocations.length > 0 ? (
                               filteredLocations.map((location, index) => (
@@ -2751,7 +2751,7 @@ const MapView = () => {
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -20 }}
                                   transition={{ delay: index * 0.1 }}
-                                  className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
+                                  className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all duration-300 ${
                                     activePopup === location.id
                                       ? "bg-blue-50 border-2 border-blue-200 shadow-md"
                                       : "bg-gray-50/80 hover:bg-gray-100 border-2 border-transparent"
@@ -2762,9 +2762,9 @@ const MapView = () => {
                                   whileHover={{ scale: 1.02 }}
                                   whileTap={{ scale: 0.98 }}
                                 >
-                                  <div className="flex items-start space-x-3">
+                                  <div className="flex items-start space-x-2 sm:space-x-3">
                                     <div
-                                      className={`w-3 h-3 rounded-full mt-2 ${
+                                      className={`w-2.5 sm:w-3 h-2.5 sm:h-3 rounded-full mt-2.5 ${
                                         location.category === "nature"
                                           ? "bg-green-500"
                                           : location.category === "culture"
@@ -2776,15 +2776,15 @@ const MapView = () => {
                                           : "bg-blue-500"
                                       }`}
                                     />
-                                    <div className="flex-1">
-                                      <h3 className="font-semibold text-gray-800">
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="font-semibold text-gray-800 text-sm sm:text-base truncate">
                                         {location.title}
                                       </h3>
-                                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                      <p className="text-xs sm:text-sm text-gray-600 mt-1 line-clamp-2">
                                         {location.description}
                                       </p>
-                                      <div className="flex items-center justify-between mt-2">
-                                        <span className="text-xs text-gray-500">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mt-2">
+                                        <span className="text-xs text-gray-500 truncate">
                                           By {location.postedBy}
                                         </span>
                                         <span className="text-xs text-gray-500">
@@ -2796,13 +2796,13 @@ const MapView = () => {
                                 </motion.div>
                               ))
                             ) : (
-                              <div className="text-center py-8">
+                              <div className="text-center py-6 sm:py-8">
                                 {filterMine && isAuthenticated ? (
                                   <div className="text-gray-500">
-                                    <p className="text-lg">
+                                    <p className="text-base sm:text-lg">
                                       You haven't posted anything yet
                                     </p>
-                                    <p className="text-sm mt-2 text-gray-400">
+                                    <p className="text-xs sm:text-sm mt-2 text-gray-400">
                                       Start by clicking anywhere on the map to
                                       create your first post!
                                     </p>
@@ -2810,7 +2810,7 @@ const MapView = () => {
                                 ) : (
                                   <div className="text-gray-500">
                                     <p>No matching posts found</p>
-                                    <p className="text-sm mt-2">
+                                    <p className="text-xs sm:text-sm mt-2">
                                       Try a different search term
                                     </p>
                                   </div>
@@ -3182,7 +3182,7 @@ const MapView = () => {
             {/* Modal Content */}
             <div className="fixed inset-0 flex items-center justify-center z-[2001] p-4">
               <motion.div
-                className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl sm:max-w-3xl max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
+                className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
                 initial={{ scale: 0.98, opacity: 0, y: 10 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.98, opacity: 0, y: 10 }}
@@ -3233,7 +3233,7 @@ const MapView = () => {
                   </div>
 
                   <form onSubmit={handleFormSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div>
                         <label
                           className="block text-gray-700 mb-2 font-medium"
@@ -3446,18 +3446,18 @@ const MapView = () => {
                       </div>
                     </div>
 
-                    <div className="mt-6 flex space-x-3">
+                    <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0">
                       <button
                         type="button"
                         onClick={closeForm}
-                        className="flex-1 bg-gray-100 text-gray-800 py-3 px-4 rounded-xl hover:bg-gray-200 transition transform duration-150 hover:scale-105 font-medium"
+                        className="flex-1 bg-gray-100 text-gray-800 py-2.5 sm:py-3 px-4 rounded-xl hover:bg-gray-200 transition transform duration-150 hover:scale-[1.02] font-medium"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={submitting}
-                        className={`flex-1 py-3 px-4 rounded-xl transition transform duration-150 hover:scale-105 active:scale-95 font-medium shadow-md ${
+                        className={`flex-1 py-2.5 sm:py-3 px-4 rounded-xl transition transform duration-150 hover:scale-[1.02] active:scale-[0.98] font-medium shadow-md ${
                           submitting
                             ? "bg-blue-400 text-white cursor-wait opacity-80"
                             : "bg-blue-600 text-white hover:bg-blue-700"

@@ -127,9 +127,11 @@
   transform: translateX(0);
 }
 
+/* Improved Responsive Design for All Devices */
 @media (max-width: 768px) {
   .sidebar-icon-container {
     width: 60px;
+    z-index: 999;
   }
 
   .sidebar-pane {
@@ -138,9 +140,104 @@
   }
 
   .custom-popup .leaflet-popup-content-wrapper {
-    max-width: 90vw;
+    max-width: 95vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 12px;
   }
+
   .custom-popup .leaflet-popup-content {
-    max-width: 90vw;
+    max-width: 95vw;
+    padding: 0.75rem;
+  }
+
+  /* Adjust the map container for mobile */
+  .map-container {
+    height: 50vh !important;
+  }
+
+  /* Make the post creation form more mobile-friendly */
+  .post-creation-modal {
+    margin: 0.5rem;
+    width: calc(100% - 1rem) !important;
+  }
+
+  /* Adjust image galleries for mobile */
+  .image-gallery-modal img {
+    max-height: 70vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar-icon-container {
+    width: 50px;
+  }
+
+  .sidebar-pane {
+    left: 50px;
+    width: calc(100% - 50px);
+  }
+  
+  /* Mobile-specific adjustments */
+  .custom-popup .leaflet-popup-content {
+    padding: 0.5rem;
+  }
+  
+  .mobile-controls {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .mobile-controls button {
+    width: 100% !important;
+    margin-bottom: 0.25rem;
+  }
+}
+
+/* Tablet Styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar-icon-container {
+    width: 70px;
+  }
+
+  .sidebar-pane {
+    width: 350px;
+    left: 70px;
+  }
+  
+  .custom-popup .leaflet-popup-content-wrapper {
+    max-width: 80vw;
+  }
+}
+
+/* Large Desktop Styles */
+@media (min-width: 1200px) {
+  .custom-popup .leaflet-popup-content {
+    min-width: 760px;
+  }
+  
+  .sidebar-pane {
+    width: 400px;
+  }
+}
+
+/* Touch-friendly adjustments */
+@media (hover: none) and (pointer: coarse) {
+  /* For touch devices */
+  button, .clickable {
+    min-height: 44px; /* Minimum touch target size */
+    min-width: 44px;
+  }
+  
+  .leaflet-popup-close-button {
+    width: 44px !important;
+    height: 44px !important;
+    line-height: 44px !important;
+  }
+  
+  .map-control-button {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
   }
 }
