@@ -1466,6 +1466,109 @@ const getPostDistance = async (req, res) => {
   }
 };
 
+// @desc    Get all posts for admin dashboard (admin only)
+// @route   GET /api/v1/admin/posts
+// @access  Private (admin only)
+const getAllPostsForAdmin = async (req, res) => {
+  try {
+    // Check if user is admin (this should be handled by admin middleware)
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Access denied. Admin privileges required.',
+      });
+    }
+
+    // Get all posts with additional information like author details
+    const posts = await Post.find()
+      .populate("postedBy", "name email role")
+      .sort({ datePosted: -1 });
+
+    res.status(200).json({
+      status: 'success',
+      data: posts,
+    });
+  } catch (error) {
+    console.error('Error fetching posts for admin:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Delete any post (admin only)
+// @route   DELETE /api/v1/admin/posts/:id
+// @access  Private (admin only)
+const deletePostByAdmin = async (req, res) => {
+  try {
+    // Check if user is admin (this should be handled by admin middleware)
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Access denied. Admin privileges required.',
+      });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Post not found',
+      });
+    }
+
+    // If the post has images stored locally, delete them from disk
+    if (Array.isArray(post.images) && post.images.length > 0) {
+      for (const img of post.images) {
+        try {
+          if (img && img.localPath) {
+            await fs.promises.unlink(img.localPath).catch(() => {});
+          } else if (img && img.filename) {
+            const p = path.join(__dirname, "..", "uploads", img.filename);
+            await fs.promises.unlink(p).catch(() => {});
+          }
+        } catch (e) {
+          console.error("Error deleting local image during post deletion", e);
+        }
+      }
+    } else if (post.image && post.image.localPath) {
+      // Fallback for posts using legacy single image field stored locally
+      try {
+        await fs.promises.unlink(post.image.localPath).catch(() => {});
+      } catch (e) {
+        console.error(
+          "Error deleting legacy local image during post deletion",
+          e
+        );
+      }
+    }
+
+    await Post.findByIdAndDelete(req.params.id);
+
+    // Emit real-time event for deleted post
+    const io = req.app.get("io");
+    if (io) {
+      emitGlobal(io, "postDeleted", {
+        postId: req.params.id,
+        message: "A post was deleted by admin",
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Post deleted successfully',
+      data: null,
+    });
+  } catch (error) {
+    console.error("Error deleting post by admin:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createPost,
   getAllPosts,
@@ -1486,4 +1589,6 @@ module.exports = {
   getPostDistance,
   likeComment,
   replyToComment,
+  getAllPostsForAdmin,
+  deletePostByAdmin,
 };

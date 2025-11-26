@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2, Eye, Filter, Calendar, MapPin, Tag, MessageSquare, AlertTriangle } from 'lucide-react';
 import usePageTitle from '../../services/usePageTitle';
+import { adminAPI } from '../../services/api';
 import './ContentManagement.css';
 
 const ContentManagement = () => {
@@ -20,48 +21,27 @@ const ContentManagement = () => {
     const fetchPosts = async () => {
       try {
         setLoading(true);
-        // Determine API URL with fallback
-        let apiUrl = import.meta.env.VITE_API_BASE_URL;
-        if (!apiUrl) {
-          apiUrl = 'http://localhost:5000/api/v1';
-        }
-        const token = localStorage.getItem('token');
-        
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-        
-        const response = await fetch(`${apiUrl}/posts`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch posts');
-        }
-
-        const data = await response.json();
+        const data = await adminAPI.getPosts();
         
         if (data.status === 'success') {
           // Format post data to match our frontend structure
-          const formattedPosts = data.data.map((post, index) => ({
+          const formattedPosts = data.data.map((post) => ({
             id: post._id,
-            title: post.title,
-            description: post.description,
+            title: post.title || 'Untitled Post',
+            description: post.description || 'No description',
             category: post.category || 'general',
             status: 'published', // All posts from the API are published unless we have a specific field
-            author: post.postedBy?.name || 'Unknown', // Use the user's name if available
-            date: post.datePosted,
+            author: post.postedBy?.name || post.postedBy?.email || 'Unknown', // Use the user's name if available
+            date: post.datePosted || new Date().toISOString(),
             views: 0, // Assuming we don't have view tracking yet in the schema
-            likes: post.likesCount || 0,
-            comments: post.comments?.length || 0
+            likes: post.likesCount || (post.likes ? post.likes.length : 0),
+            comments: Array.isArray(post.comments) ? post.comments.length : 0
           }));
           
           setPosts(formattedPosts);
           setFilteredPosts(formattedPosts);
+        } else {
+          throw new Error(data.message || 'Failed to fetch posts');
         }
       } catch (err) {
         setError(err.message);
@@ -111,26 +91,9 @@ const ContentManagement = () => {
   const handleDeletePost = async (postId) => {
     if (window.confirm('Are you sure you want to delete this post?')) {
       try {
-        const token = localStorage.getItem('token');
-        
-        if (!token) {
-          alert('No authentication token found');
-          return;
-        }
-        
-        const response = await fetch(`${apiUrl}/posts/${postId}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          setPosts(posts.filter(post => post.id !== postId));
-        } else {
-          throw new Error('Failed to delete post');
-        }
+        await adminAPI.deletePost(postId);
+        setPosts(posts.filter(post => post.id !== postId));
+        setFilteredPosts(filteredPosts.filter(post => post.id !== postId));
       } catch (err) {
         alert('Error deleting post: ' + err.message);
       }
@@ -182,6 +145,7 @@ const ContentManagement = () => {
         return;
       }
       
+      // Use the standard post update endpoint (user still needs to be the author)
       const response = await fetch(`${apiUrl}/posts/${postId}`, {
         method: 'PATCH',
         headers: {

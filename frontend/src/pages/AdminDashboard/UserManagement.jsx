@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, Edit, Trash2, Filter, Download, Eye, AlertTriangle } from 'lucide-react';
 import usePageTitle from '../../services/usePageTitle';
+import { adminAPI } from '../../services/api';
 import './UserManagement.css';
 
 const UserManagement = () => {
@@ -20,46 +21,25 @@ const UserManagement = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        // Determine API URL with fallback
-        let apiUrl = import.meta.env.VITE_API_BASE_URL;
-        if (!apiUrl) {
-          apiUrl = 'http://localhost:5000/api/v1';
-        }
-        const token = localStorage.getItem('token');
-        
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-        
-        const response = await fetch(`${apiUrl}/users`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch users');
-        }
-
-        const data = await response.json();
+        const data = await adminAPI.getUsers();
         
         if (data.status === 'success') {
           // Format user data to match our frontend structure
-          const formattedUsers = data.data.map((user, index) => ({
+          const formattedUsers = data.data.map((user) => ({
             id: user._id,
-            name: user.name,
-            email: user.email,
+            name: user.name || 'Unknown User',
+            email: user.email || 'No Email',
             role: user.role || 'user', // Default to 'user' if role is not specified
             status: user.isVerified ? 'active' : 'inactive', // Use verification status as active status
-            joinDate: user.createdAt,
+            joinDate: user.createdAt || user.datePosted || new Date().toISOString(),
             posts: user.postsCount || 0, // Assuming there's a way to get post count
-            lastActive: user.updatedAt
+            lastActive: user.updatedAt || user.createdAt || new Date().toISOString()
           }));
           
           setUsers(formattedUsers);
           setFilteredUsers(formattedUsers);
+        } else {
+          throw new Error(data.message || 'Failed to fetch users');
         }
       } catch (err) {
         setError(err.message);
@@ -108,32 +88,9 @@ const UserManagement = () => {
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        // Determine API URL with fallback
-        let apiUrl = import.meta.env.VITE_API_BASE_URL;
-        if (!apiUrl) {
-          apiUrl = 'http://localhost:5000/api/v1';
-        }
-        
-        const token = localStorage.getItem('token');
-        
-        if (!token) {
-          alert('No authentication token found');
-          return;
-        }
-        
-        const response = await fetch(`${apiUrl}/users/${userId}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          setUsers(users.filter(user => user.id !== userId));
-        } else {
-          throw new Error('Failed to delete user');
-        }
+        await adminAPI.deleteUser(userId);
+        setUsers(users.filter(user => user.id !== userId));
+        setFilteredUsers(filteredUsers.filter(user => user.id !== userId));
       } catch (err) {
         alert('Error deleting user: ' + err.message);
       }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import usePageTitle from '../../services/usePageTitle';
+import { adminAPI } from '../../services/api';
 import './AdminDashboard.css';
 import { 
   Users, 
@@ -45,38 +46,17 @@ const AdminDashboard = () => {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        // Determine API URL with fallback
-        let apiUrl = import.meta.env.VITE_API_BASE_URL;
-        if (!apiUrl) {
-          apiUrl = 'http://localhost:5000/api/v1';
-        }
-        const token = localStorage.getItem('token');
-        
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-        
-        const response = await fetch(`${apiUrl}/analytics/platform`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch statistics');
-        }
-
-        const data = await response.json();
+        const data = await adminAPI.getPlatformStats();
         
         if (data.status === 'success') {
           setStats({
-            totalUsers: data.data.totalUsers,
-            totalPosts: data.data.totalPosts,
-            totalMessages: data.data.totalMessages,
-            totalReports: data.data.totalReports
+            totalUsers: data.data.totalUsers || 0,
+            totalPosts: data.data.totalPosts || 0,
+            totalMessages: data.data.totalMessages || 0,
+            totalReports: data.data.totalReports || 0
           });
+        } else {
+          throw new Error(data.message || 'Failed to fetch statistics');
         }
       } catch (err) {
         setError(err.message);

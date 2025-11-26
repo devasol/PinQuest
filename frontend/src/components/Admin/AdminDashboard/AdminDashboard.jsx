@@ -21,24 +21,20 @@ const AdminDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Check if user is admin
+  // Load user data from localStorage
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    
-    let isAdmin = false;
-    
-    if (token && userData) {
+    if (userData) {
       try {
         const parsedUser = JSON.parse(userData);
-        isAdmin = parsedUser.role === 'admin';
         setUser(parsedUser);
       } catch (e) {
         console.error('Error parsing user data:', e);
+        // If parsing fails, redirect to login
+        navigate('/admin/login');
       }
-    }
-    
-    if (!isAdmin) {
+    } else {
+      // If no user data, redirect to admin login
       navigate('/admin/login');
     }
   }, [navigate]);

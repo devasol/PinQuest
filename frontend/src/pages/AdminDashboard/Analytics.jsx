@@ -13,6 +13,7 @@ import {
   Download
 } from 'lucide-react';
 import usePageTitle from '../../services/usePageTitle';
+import { adminAPI } from '../../services/api';
 import './Analytics.css';
 
 const Analytics = () => {
@@ -39,83 +40,55 @@ const Analytics = () => {
       try {
         setLoading(true);
         
-        // Determine API URL with fallback
-        let apiUrl = import.meta.env.VITE_API_BASE_URL;
-        if (!apiUrl) {
-          apiUrl = 'http://localhost:5000/api/v1';
-        }
-        
-        const token = localStorage.getItem('token');
-        
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-        
         // Fetch platform stats
-        const statsResponse = await fetch(`${apiUrl}/analytics/platform`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!statsResponse.ok) {
-          throw new Error('Failed to fetch platform stats');
-        }
-
-        const statsData = await statsResponse.json();
+        const statsData = await adminAPI.getPlatformStats();
         if (statsData.status === 'success') {
           setStats({
-            totalUsers: statsData.data.totalUsers,
-            totalPosts: statsData.data.totalPosts,
-            totalMessages: statsData.data.totalMessages,
-            totalReports: statsData.data.totalReports,
-            activeUsers: 0, // Need to implement active users tracking
-            revenue: 0, // Placeholder for revenue if implemented
-            growthRate: 12.5 // Placeholder for growth rate
+            totalUsers: statsData.data.totalUsers || 0,
+            totalPosts: statsData.data.totalPosts || 0,
+            totalMessages: statsData.data.totalMessages || 0,
+            totalReports: statsData.data.totalReports || 0,
+            activeUsers: statsData.data.activeUsers || 0, // Need to implement active users tracking
+            revenue: statsData.data.revenue || 0, // Placeholder for revenue if implemented
+            growthRate: statsData.data.growthRate || 0 // Placeholder for growth rate
           });
+        } else {
+          throw new Error(statsData.message || 'Failed to fetch platform stats');
         }
 
         // Fetch top posts
-        const topPostsResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/analytics/top-posts?limit=5&days=30`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (!topPostsResponse.ok) {
-          throw new Error('Failed to fetch top posts');
-        }
-
-        const topPostsData = await topPostsResponse.json();
+        const topPostsData = await adminAPI.getTopPosts({ limit: 5, days: 30 });
         if (topPostsData.status === 'success') {
-          setTopPosts(topPostsData.data);
-        }
-
-        // Placeholder for top categories - we'll create this from top posts
-        const categoryMap = {};
-        topPostsData.data.forEach(post => {
-          const category = post.title.includes('nature') ? 'Nature' : 
-                           post.title.includes('food') ? 'Food & Drinks' :
-                           post.title.includes('culture') ? 'Culture' :
-                           post.title.includes('shop') ? 'Shopping' : 'General';
+          setTopPosts(topPostsData.data || []);
           
-          if (!categoryMap[category]) {
-            categoryMap[category] = 0;
+          // Create top categories from top posts
+          const categoryMap = {};
+          if (topPostsData.data && Array.isArray(topPostsData.data)) {
+            topPostsData.data.forEach(post => {
+              const category = post.category || post.title.includes('nature') ? 'Nature' : 
+                               post.title.includes('food') ? 'Food & Drinks' :
+                               post.title.includes('culture') ? 'Culture' :
+                               post.title.includes('shop') ? 'Shopping' : 'General';
+              
+              if (!categoryMap[category]) {
+                categoryMap[category] = 0;
+              }
+              categoryMap[category]++;
+            });
+
+            const categoryData = Object.entries(categoryMap).map(([name, count]) => ({
+              name,
+              posts: count,
+              percentage: Math.floor((count / topPostsData.data.length) * 100)
+            }));
+
+            setTopCategories(categoryData);
+          } else {
+            setTopCategories([]);
           }
-          categoryMap[category]++;
-        });
-
-        const categoryData = Object.entries(categoryMap).map(([name, count], index) => ({
-          name,
-          posts: count,
-          percentage: Math.floor((count / topPostsData.data.length) * 100)
-        }));
-
-        setTopCategories(categoryData);
+        } else {
+          throw new Error(topPostsData.message || 'Failed to fetch top posts');
+        }
       } catch (err) {
         setError(err.message);
         console.error('Error fetching analytics:', err);
@@ -356,12 +329,12 @@ const Analytics = () => {
                   </div>
                   <div className="analytics-activity-content">
                     <div className="analytics-activity-info">
-                      <p className="analytics-activity-text">{post.title}</p>
-                      <span className="analytics-activity-time">by {post.author}</span>
+                      <p className="analytics-activity-text">{post.title || 'Untitled Post'}</p>
+                      <span className="analytics-activity-time">by {post.author || 'Unknown'}</span>
                     </div>
                     <div className="analytics-activity-meta">
-                      <span className="analytics-activity-posts">Engagement: {post.engagement}</span>
-                      <span className="analytics-activity-likes">Likes: {post.likes}</span>
+                      <span className="analytics-activity-posts">Engagement: {post.engagement || 0}</span>
+                      <span className="analytics-activity-likes">Likes: {post.likes || 0}</span>
                     </div>
                   </div>
                 </div>

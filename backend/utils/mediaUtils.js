@@ -1,5 +1,16 @@
 const cloudinary = require('cloudinary').v2;
 
+// Configure Cloudinary with environment variables if they exist
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+} else {
+  console.warn('Cloudinary environment variables are not set. Image uploads may not work properly.');
+}
+
 // Function to delete image from Cloudinary
 const deleteImageFromCloudinary = async (publicId) => {
   if (!publicId) return;

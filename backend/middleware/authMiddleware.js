@@ -127,7 +127,15 @@ const protect = async (req, res, next) => {
             return next();
             
           } catch (firebaseError) {
-            logger.error('Firebase token verification failed:', firebaseError.message);
+            // Only log Firebase errors if they're specific Firebase-related issues
+            // If it's a general token verification error, it might be a regular JWT, so don't log as error
+            if (firebaseError.code && 
+                (firebaseError.code.startsWith('auth/') || 
+                 firebaseError.message.includes('ID token'))) {
+              logger.debug('Firebase token verification failed - may be regular JWT token:', firebaseError.message);
+            } else {
+              logger.error('Firebase token verification failed:', firebaseError.message);
+            }
             
             // Check if it's a specific JWT error from Firebase
             if (firebaseError.code === 'auth/id-token-expired' || firebaseError.code === 'auth/argument-error') {

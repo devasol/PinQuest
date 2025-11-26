@@ -3,7 +3,7 @@ const {
   getUserById, 
   updateUser, 
   getUserPosts, 
-  deleteUser, 
+  deleteOwnAccount,
   getAllUsers,
   addFavorite,
   removeFavorite,
@@ -44,7 +44,7 @@ router.route("/preferences").get(protect, getUserPreferences).put(protect, updat
 router.route("/:id")
   .get(getUserById)
   .put(protect, upload.single('avatar'), updateUser)
-  .delete(protect, deleteUser);
+  .delete(protect, deleteOwnAccount);
 
 router.route("/:id/follow").post(protect, followUser);
 router.route("/:id/unfollow").delete(protect, unfollowUser);

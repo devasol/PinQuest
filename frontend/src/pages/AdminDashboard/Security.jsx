@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Lock, Eye, EyeOff, AlertTriangle, CheckCircle, Clock, User, Settings, AlertCircle, Loader2 } from 'lucide-react';
 import usePageTitle from '../../services/usePageTitle';
+import { adminAPI } from '../../services/api';
 import './Security.css';
 
 const Security = () => {
@@ -30,42 +31,23 @@ const Security = () => {
   useEffect(() => {
     const fetchActivity = async () => {
       try {
-        // Determine API URL with fallback
-        let apiUrl = import.meta.env.VITE_API_BASE_URL;
-        if (!apiUrl) {
-          apiUrl = 'http://localhost:5000/api/v1';
-        }
-        const token = localStorage.getItem('token');
+        const data = await adminAPI.getActivityTimeline({ days: 7 });
         
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-        
-        const response = await fetch(`${apiUrl}/analytics/activity-timeline?days=7`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch activity');
-        }
-
-        const data = await response.json();
-        
-        if (data.status === 'success') {
+        if (data.status === 'success' && Array.isArray(data.data)) {
           // Format the activity data to match our frontend structure
           const formattedActivity = data.data.map((activity, index) => ({
-            id: activity._id || index,
-            action: activity.action || 'Unknown activity',
-            time: activity.date || new Date().toISOString(),
-            ip: activity.ip || 'N/A',
-            location: activity.location || 'N/A'
+            id: activity.id || activity._id || index,
+            action: activity.action || activity.title || 'Unknown activity',
+            time: activity.date || activity.datePosted || new Date().toISOString(),
+            ip: activity.ip || activity.metadata?.ip || 'N/A',
+            location: activity.location || activity.metadata?.location || 'N/A'
           }));
           
           setRecentActivity(formattedActivity);
+        } else if (data.status === 'success') {
+          setRecentActivity([]);
+        } else {
+          throw new Error(data.message || 'Failed to fetch activity');
         }
       } catch (err) {
         setError(err.message);
@@ -104,48 +86,15 @@ const Security = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setPasswordError('No authentication token found');
-        setPasswordLoading(false);
-        return;
-      }
-
-      // Determine API URL with fallback
-      let apiUrl = import.meta.env.VITE_API_BASE_URL;
-      if (!apiUrl) {
-        apiUrl = 'http://localhost:5000/api/v1';
-      }
-      
-      // For admin password change, we'd typically use a different endpoint
-      // This assumes there's an admin endpoint to change user passwords
-      const response = await fetch(`${apiUrl}/auth/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword
-        })
+      await adminAPI.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      alert('Password updated successfully!');
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
       });
-
-      const data = await response.json();
-
-      if (response.ok && data.status === 'success') {
-        alert('Password updated successfully!');
-        setPasswordForm({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-      } else {
-        setPasswordError(data.message || 'Failed to update password');
-      }
     } catch (err) {
-      setPasswordError('Network error. Please try again.');
+      setPasswordError(err.message || 'Network error. Please try again.');
       console.error('Password change error:', err);
     } finally {
       setPasswordLoading(false);

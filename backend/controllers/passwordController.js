@@ -181,8 +181,59 @@ const updatePassword = async (req, res) => {
   }
 };
 
+// @desc    Admin update any user's password
+// @route   PUT /api/v1/admin/users/:userId/password
+// @access  Private (admin only)
+const adminUpdateUserPassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const { userId } = req.params;
+
+    if (!newPassword) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide a new password'
+      });
+    }
+
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Access denied. Admin privileges required.'
+      });
+    }
+
+    // Find the user to update
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+
+    // Update the user's password
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'User password updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating user password by admin:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   forgotPassword,
   resetPassword,
-  updatePassword
+  updatePassword,
+  adminUpdateUserPassword
 };

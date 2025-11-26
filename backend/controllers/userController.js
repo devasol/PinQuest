@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Post = require("../models/posts");
 const { createFollowNotification } = require("../utils/notificationUtils");
+const { deleteImageFromCloudinary } = require("../utils/mediaUtils");
 const fs = require("fs");
 const path = require("path");
 
@@ -549,12 +550,20 @@ const updateUser = async (req, res) => {
   }
 };
 
-// @desc    Delete user
-// @route   DELETE /api/v1/users/:id
+// @desc    Delete own user account
+// @route   DELETE /api/v1/users/:id (only own account)
 // @access  Private
-const deleteUser = async (req, res) => {
+const deleteOwnAccount = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    // Ensure user can only delete their own account
+    if (req.params.id !== req.user._id.toString()) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You can only delete your own account",
+      });
+    }
+
+    const user = await User.findByIdAndDelete(req.user._id);
 
     if (!user) {
       return res.status(404).json({
@@ -566,7 +575,7 @@ const deleteUser = async (req, res) => {
     // Delete user's avatar if it exists
     if (user.avatar && user.avatar.publicId) {
       try {
-        await cloudinary.uploader.destroy(user.avatar.publicId);
+        await deleteImageFromCloudinary(user.avatar.publicId);
       } catch (delErr) {
         console.error("Error deleting user avatar:", delErr);
       }
@@ -577,9 +586,54 @@ const deleteUser = async (req, res) => {
       data: null,
     });
   } catch (error) {
-    console.error("Error deleting user:", error);
+    console.error("Error deleting user account:", error);
     res.status(500).json({
       status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Delete any user (admin only)
+// @route   DELETE /api/v1/users/:id (admin only)
+// @access  Private admin
+const deleteUserByAdmin = async (req, res) => {
+  try {
+    // Check if the requesting user is an admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Access denied. Admin privileges required.',
+      });
+    }
+
+    const user = await User.findByIdAndDelete(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found',
+      });
+    }
+
+    // Delete user's avatar if it exists
+    if (user.avatar && user.avatar.publicId) {
+      try {
+        await deleteImageFromCloudinary(user.avatar.publicId);
+      } catch (delErr) {
+        console.error('Error deleting user avatar:', delErr);
+      }
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'User deleted successfully',
+      data: null,
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({
+      status: 'error',
       message: error.message,
     });
   }
@@ -928,7 +982,8 @@ module.exports = {
   getUserById,
   updateUser,
   getUserPosts,
-  deleteUser,
+  deleteOwnAccount,
+  deleteUserByAdmin,
   getAllUsers,
   addFavorite,
   removeFavorite,
