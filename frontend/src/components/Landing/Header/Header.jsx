@@ -73,7 +73,7 @@ const Header = ({ isDiscoverPage = false }) => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
+          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8 ml-8">
             {navigationItems.map((item) => {
               const isInternalLink = item.to && item.to.startsWith("/");
               return isInternalLink ? (

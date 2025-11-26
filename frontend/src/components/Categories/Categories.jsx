@@ -248,13 +248,6 @@ const Categories = () => {
           </p>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white py-6 sm:py-8 text-center">
-        <p className="text-sm sm:text-base text-gray-400">
-          © 2024 Travel Explorer. All rights reserved.
-        </p>
-      </footer>
     </div>
   );
 };
