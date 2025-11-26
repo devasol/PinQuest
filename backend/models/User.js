@@ -144,15 +144,7 @@ const userSchema = new mongoose.Schema({
   },
   isVerified: {
     type: Boolean,
-    default: false
-  },
-  verificationCode: {
-    type: String,
-    select: false
-  },
-  verificationCodeExpires: {
-    type: Date,
-    select: false
+    default: true
   },
   role: {
     type: String,

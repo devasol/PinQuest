@@ -1,0 +1,481 @@
+import React, { useState, useEffect, useRef } from "react";
+import {
+  MapPin,
+  Search,
+  Filter,
+  Star,
+  Heart,
+  Navigation,
+  Layers,
+  Compass,
+  Plus,
+  Minus,
+  Locate,
+  Share2,
+  Bookmark,
+  X,
+} from "lucide-react";
+import Header from "../../components/Landing/Header/Header";
+import "./MapsPage.css";
+
+const MapsPage = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [mapCenter, setMapCenter] = useState({ lat: 40.7128, lng: -74.006 });
+  const [zoomLevel, setZoomLevel] = useState(13);
+  const [mapStyle, setMapStyle] = useState("default");
+  const [showFilters, setShowFilters] = useState(false);
+  const mapRef = useRef(null);
+  const locationCardRef = useRef(null);
+
+  // Mock data for locations
+  const locations = [
+    {
+      id: 1,
+      name: "Central Park",
+      category: "nature",
+      rating: 4.8,
+      description: "Beautiful green space in the heart of the city",
+      coordinates: { lat: 40.7812, lng: -73.9665 },
+      image:
+        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+      distance: "0.5 km",
+      price: "$$",
+      tags: ["park", "green space", "family-friendly"],
+    },
+    {
+      id: 2,
+      name: "Downtown Mall",
+      category: "shopping",
+      rating: 4.5,
+      description: "Premium shopping destination with various stores",
+      coordinates: { lat: 40.7589, lng: -73.9851 },
+      image:
+        "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+      distance: "1.2 km",
+      price: "$$$",
+      tags: ["shopping", "mall", "retail"],
+    },
+    {
+      id: 3,
+      name: "City Museum",
+      category: "culture",
+      rating: 4.7,
+      description: "Historical artifacts and contemporary art",
+      coordinates: { lat: 40.7614, lng: -73.9776 },
+      image:
+        "https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+      distance: "0.8 km",
+      price: "$$",
+      tags: ["museum", "art", "culture", "education"],
+    },
+    {
+      id: 4,
+      name: "Sunset Beach",
+      category: "nature",
+      rating: 4.9,
+      description: "Perfect spot for sunset viewing",
+      coordinates: { lat: 40.7505, lng: -73.9934 },
+      image:
+        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+      distance: "2.1 km",
+      price: "$",
+      tags: ["beach", "sunset", "scenic"],
+    },
+    {
+      id: 5,
+      name: "Gourmet Restaurant",
+      category: "food",
+      rating: 4.6,
+      description: "Fine dining with local specialties",
+      coordinates: { lat: 40.7505, lng: -73.9857 },
+      image:
+        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+      distance: "1.5 km",
+      price: "$$$$",
+      tags: ["restaurant", "fine dining", "gourmet"],
+    },
+    {
+      id: 6,
+      name: "Jazz Club",
+      category: "event",
+      rating: 4.4,
+      description: "Live jazz performances every evening",
+      coordinates: { lat: 40.7614, lng: -73.9934 },
+      image:
+        "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+      distance: "0.9 km",
+      price: "$$",
+      tags: ["music", "jazz", "nightlife", "entertainment"],
+    },
+  ];
+
+  const categories = [
+    { id: "all", name: "All", icon: MapPin },
+    { id: "nature", name: "Nature", icon: MapPin },
+    { id: "culture", name: "Culture", icon: MapPin },
+    { id: "shopping", name: "Shopping", icon: MapPin },
+    { id: "food", name: "Food & Drinks", icon: MapPin },
+    { id: "event", name: "Events", icon: MapPin },
+  ];
+
+  useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+      setMapLoaded(true);
+    }, 1500);
+
+    // Get user location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const userPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setUserLocation(userPos);
+          setMapCenter(userPos); // Center map on user location
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          setUserLocation({ lat: 40.7128, lng: -74.006 }); // Default to NYC
+        }
+      );
+    } else {
+      setUserLocation({ lat: 40.7128, lng: -74.006 }); // Default to NYC
+    }
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    // Add scroll to selected location card
+    if (selectedLocation && locationCardRef.current) {
+      locationCardRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [selectedLocation]);
+
+  const filteredLocations = locations.filter((location) => {
+    const matchesCategory =
+      selectedCategory === "all" || location.category === selectedCategory;
+    const matchesSearch =
+      location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      location.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      location.tags.some((tag) =>
+        tag.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    return matchesCategory && matchesSearch;
+  });
+
+  const handleMarkerClick = (location) => {
+    setSelectedLocation(location);
+    setMapCenter(location.coordinates);
+    setZoomLevel(15); // Zoom in when clicking a marker
+  };
+
+  const handleCenterOnUser = () => {
+    if (userLocation) {
+      setMapCenter(userLocation);
+      setZoomLevel(13);
+      setSelectedLocation(null);
+    }
+  };
+
+  const handleZoomIn = () => {
+    setZoomLevel((prev) => Math.min(prev + 1, 18));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel((prev) => Math.max(prev - 1, 10));
+  };
+
+  const toggleFavorite = (locationId) => {
+    // In a real app, this would update the backend
+    console.log(`Toggled favorite for location ${locationId}`);
+  };
+
+  const shareLocation = (location) => {
+    if (navigator.share) {
+      navigator.share({
+        title: location.name,
+        text: `${location.name} - ${location.description}`,
+        url: window.location.href,
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(
+        `${location.name} - ${location.description}`
+      );
+      alert("Location link copied to clipboard!");
+    }
+  };
+
+  return (
+    <>
+      <Header />
+      <div className="maps-page">
+        <div className="maps-header">
+          <div className="header-content">
+            <h1 className="maps-title">Explore the World</h1>
+            <p className="maps-subtitle">Discover amazing places around you</p>
+          </div>
+        </div>
+
+        {/* Search and Filter Section */}
+        <div className="search-filter-section">
+          <div className="search-container">
+            <div className="search-input-wrapper">
+              <Search className="search-icon" size={20} />
+              <input
+                type="text"
+                placeholder="Search for places, cities, or categories..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+            </div>
+          </div>
+
+          <div className="filters-container">
+            <div className="category-filters">
+              {categories.map((category) => {
+                const IconComponent = category.icon;
+                return (
+                  <button
+                    key={category.id}
+                    className={`category-filter ${
+                      selectedCategory === category.id ? "active" : ""
+                    }`}
+                    onClick={() => setSelectedCategory(category.id)}
+                  >
+                    <IconComponent size={16} />
+                    <span>{category.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Map Section */}
+        <div className="map-section">
+          {isLoading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Loading map...</p>
+            </div>
+          ) : (
+            <>
+              {/* Map container with interactive controls */}
+              <div className="map-container">
+                <div className="map-placeholder">
+                  <div className="map-overlay"></div>
+
+                  {/* Map controls */}
+                  <div className="map-controls">
+                    <button
+                      className="map-control-btn"
+                      onClick={handleCenterOnUser}
+                      title="Center on current location"
+                    >
+                      <Locate size={18} />
+                    </button>
+                    <button
+                      className="map-control-btn"
+                      onClick={handleZoomIn}
+                      title="Zoom in"
+                    >
+                      <Plus size={18} />
+                    </button>
+                    <button
+                      className="map-control-btn"
+                      onClick={handleZoomOut}
+                      title="Zoom out"
+                    >
+                      <Minus size={18} />
+                    </button>
+                    <button
+                      className="map-control-btn"
+                      onClick={() =>
+                        setMapStyle((prev) =>
+                          prev === "default" ? "satellite" : "default"
+                        )
+                      }
+                      title="Toggle map style"
+                    >
+                      <Layers size={18} />
+                    </button>
+                  </div>
+
+                  {/* Map markers */}
+                  <div className="map-locations">
+                    {filteredLocations.map((location, index) => (
+                      <div
+                        key={location.id}
+                        className={`location-marker ${
+                          selectedLocation?.id === location.id ? "selected" : ""
+                        }`}
+                        style={{
+                          top: `${30 + index * 15}%`,
+                          left: `${20 + index * 20}%`,
+                          animationDelay: `${index * 0.1}s`,
+                        }}
+                        onClick={() => handleMarkerClick(location)}
+                        title={location.name}
+                      >
+                        <div className="marker-content">
+                          <MapPin
+                            className={`marker-icon ${
+                              selectedLocation?.id === location.id
+                                ? "selected"
+                                : ""
+                            }`}
+                            size={24}
+                          />
+                        </div>
+                        {selectedLocation?.id === location.id && (
+                          <div className="marker-popup">
+                            <h4>{location.name}</h4>
+                            <div className="popup-rating">
+                              <Star
+                                size={14}
+                                fill="currentColor"
+                                className="star-icon"
+                              />
+                              <span>{location.rating}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* User location marker */}
+                  {userLocation && (
+                    <div
+                      className="user-location-marker"
+                      style={{
+                        top: "50%",
+                        left: "50%",
+                      }}
+                    >
+                      <div className="user-marker-content">
+                        <div className="user-marker-dot"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Location List */}
+              <div className="location-list-container">
+                <div className="location-list">
+                  {filteredLocations.map((location) => (
+                    <div
+                      ref={
+                        location.id === selectedLocation?.id
+                          ? locationCardRef
+                          : null
+                      }
+                      className={`location-card ${mapLoaded ? "loaded" : ""} ${
+                        selectedLocation?.id === location.id ? "selected" : ""
+                      }`}
+                      key={location.id}
+                    >
+                      <div className="location-image">
+                        <img src={location.image} alt={location.name} />
+                        <div className="location-badge">
+                          <span className="category-label">
+                            {location.category}
+                          </span>
+                        </div>
+                        <div className="location-price">{location.price}</div>
+                      </div>
+                      <div className="location-info">
+                        <div className="location-header">
+                          <h3>{location.name}</h3>
+                          <div className="location-actions">
+                            <button
+                              className="favorite-btn"
+                              onClick={() => toggleFavorite(location.id)}
+                              title="Add to favorites"
+                            >
+                              <Heart size={18} />
+                            </button>
+                            <button
+                              className="share-btn"
+                              onClick={() => shareLocation(location)}
+                              title="Share location"
+                            >
+                              <Share2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="location-description">
+                          {location.description}
+                        </p>
+
+                        <div className="location-tags">
+                          {location.tags.slice(0, 3).map((tag) => (
+                            <span key={tag} className="tag">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+
+                        <div className="location-meta">
+                          <div className="rating">
+                            <Star
+                              className="star-icon"
+                              size={16}
+                              fill="currentColor"
+                            />
+                            <span className="rating-value">
+                              {location.rating}
+                            </span>
+                          </div>
+                          <div className="distance">
+                            <Navigation size={16} />
+                            <span>{location.distance}</span>
+                          </div>
+                        </div>
+                        <div className="location-actions-bottom">
+                          <button className="directions-btn">
+                            <Navigation size={16} />
+                            <span>Get Directions</span>
+                          </button>
+                          <button className="save-btn">
+                            <Bookmark size={16} />
+                            <span>Save</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {filteredLocations.length === 0 && (
+                    <div className="no-results">
+                      <MapPin size={48} className="no-results-icon" />
+                      <h3>No locations found</h3>
+                      <p>Try adjusting your search or filters</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default MapsPage;

@@ -4,10 +4,16 @@ const nodemailer = require('nodemailer');
  * Create a reusable transporter object using the default SMTP transport
  */
 const createTransporter = () => {
+  // Check if required email environment variables are set
+  if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+    console.error('SMTP configuration missing. Please set SMTP_EMAIL and SMTP_PASSWORD in environment variables.');
+    return null;
+  }
+
   const transporter = nodemailer.createTransporter({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: false, // true for 465, false for other ports
+    secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
     auth: {
       user: process.env.SMTP_EMAIL,
       pass: process.env.SMTP_PASSWORD,
@@ -26,6 +32,12 @@ const createTransporter = () => {
 const sendVerificationEmail = async (email, verificationCode) => {
   try {
     const transporter = createTransporter();
+    
+    // Check if transporter is properly configured
+    if (!transporter) {
+      console.error('Email transporter not configured. Missing SMTP credentials.');
+      return false;
+    }
 
     // Verify transporter configuration
     await transporter.verify();
@@ -72,6 +84,12 @@ const sendVerificationEmail = async (email, verificationCode) => {
 const sendVerificationReminderEmail = async (email, verificationCode) => {
   try {
     const transporter = createTransporter();
+    
+    // Check if transporter is properly configured
+    if (!transporter) {
+      console.error('Email transporter not configured. Missing SMTP credentials.');
+      return false;
+    }
 
     // Verify transporter configuration
     await transporter.verify();

@@ -5,7 +5,6 @@ const logger = require("../utils/logger");
 const fs = require("fs");
 const path = require("path");
 const crypto = require('crypto');
-const { sendVerificationEmail } = require("../utils/email");
 const generateTokenUtil = require("../utils/generateToken"); // Changed variable name to avoid conflicts
 
 const generateToken = (id) => {
@@ -20,7 +19,7 @@ const generateToken = (id) => {
 // @access  Public
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, requireVerification } = req.body;
+    const { name, email, password } = req.body;
 
     // Validation
     if (!name || !email || !password) {
@@ -42,87 +41,37 @@ const registerUser = async (req, res) => {
       });
     }
 
-    if (requireVerification) {
-      // Generate verification code and expiry time for email verification
-      const verificationCode = crypto.randomInt(100000, 999999).toString();
-      const verificationCodeExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    // Create new user without verification (verification is now disabled)
+    const user = await User.create({
+      name,
+      email,
+      password,
+      isVerified: true, // User is immediately verified
+    });
 
-      // Create new user with verification fields
-      const user = await User.create({
-        name,
-        email,
-        password,
-        verificationCode,
-        verificationCodeExpires,
-        isVerified: false,
+    if (user) {
+      logger.info("User successfully registered", {
+        userId: user._id,
+        name: user.name,
+        email: user.email,
       });
 
-      if (user) {
-        logger.info("User successfully registered with verification required", {
-          userId: user._id,
+      res.status(201).json({
+        status: "success",
+        message: 'User created successfully',
+        data: {
+          _id: user._id,
           name: user.name,
           email: user.email,
-        });
-
-        // Send verification email
-        const emailSent = await sendVerificationEmail(email, verificationCode);
-        if (!emailSent) {
-          logger.warn("Verification email could not be sent", {
-            userId: user._id,
-            email: user.email,
-          });
-          return res.status(500).json({
-            status: 'error',
-            message: 'User created but verification email could not be sent. Please try again later.',
-          });
-        }
-
-        res.status(201).json({
-          status: "success",
-          message: 'User created successfully. Please check your email for the verification code.',
-          data: {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-          },
-        });
-      } else {
-        logger.error("Failed to create user", { name, email });
-        res.status(400).json({
-          status: "fail",
-          message: "Invalid user data",
-        });
-      }
+          token: generateToken(user._id),
+        },
+      });
     } else {
-      // Create new user without verification (backward compatibility)
-      const user = await User.create({
-        name,
-        email,
-        password,
+      logger.error("Failed to create user", { name, email });
+      res.status(400).json({
+        status: "fail",
+        message: "Invalid user data",
       });
-
-      if (user) {
-        logger.info("User successfully registered", {
-          userId: user._id,
-          name: user.name,
-          email: user.email,
-        });
-        res.status(201).json({
-          status: "success",
-          data: {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            token: generateToken(user._id),
-          },
-        });
-      } else {
-        logger.error("Failed to create user", { name, email });
-        res.status(400).json({
-          status: "fail",
-          message: "Invalid user data",
-        });
-      }
     }
   } catch (error) {
     logger.error("Error registering user", {
@@ -175,13 +124,7 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Check if email verification is required and user is not verified
-    if (process.env.REQUIRE_EMAIL_VERIFICATION === 'true' && !user.isVerified) {
-      return res.status(401).json({
-        status: "fail",
-        message: "Please verify your email address before logging in",
-      });
-    }
+    // Email verification is no longer required
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {

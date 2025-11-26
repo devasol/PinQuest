@@ -37,7 +37,7 @@ const Header = ({ isDiscoverPage = false }) => {
   const navigationItems = [
     { name: "Discover", to: "/discover" },
     { name: "Categories", to: "/categories" },
-    { name: "Maps", href: "#maps" },
+    { name: "Maps", to: "/maps" },
     { name: "Community", href: "#community" },
   ];
 
@@ -71,7 +71,7 @@ const Header = ({ isDiscoverPage = false }) => {
                 <Link
                   key={item.name}
                   to={item.to}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
+                  className="text-gray-700 hover:text-blue-600 font-medium transition-all duration-300 transform hover:scale-105"
                 >
                   {item.name}
                 </Link>
@@ -190,7 +190,7 @@ const Header = ({ isDiscoverPage = false }) => {
                 <Link
                   key={item.name}
                   to={item.to}
-                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors duration-200"
+                  className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-all duration-300"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
