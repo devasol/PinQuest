@@ -42,12 +42,13 @@ export const AuthProvider = ({ children }) => {
       if (data.success) {
         // Store token and user data
         localStorage.setItem('token', data.token);
-        // Store user info in a simpler format
+        // Store user info in a simpler format, including role
         const userInfo = {
           _id: data.user._id,
           email: data.user.email,
           name: data.user.name,
-          isVerified: data.user.isVerified
+          isVerified: data.user.isVerified,
+          role: data.user.role // Include role for admin detection
         };
         localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
         setUser(userInfo);
@@ -67,12 +68,13 @@ export const AuthProvider = ({ children }) => {
       if (data.success) {
         // Store token and user data
         localStorage.setItem('token', data.token);
-        // Store user info in a simpler format
+        // Store user info in a simpler format, including role
         const userInfo = {
           _id: data.user._id,
           email: data.user.email,
           name: data.user.name,
-          isVerified: data.user.isVerified
+          isVerified: data.user.isVerified,
+          role: data.user.role // Include role for admin detection
         };
         localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
         setUser(userInfo);
@@ -162,7 +164,8 @@ export const AuthProvider = ({ children }) => {
           _id: data.user._id,
           email: data.user.email,
           name: data.user.name,
-          isVerified: data.user.isVerified
+          isVerified: data.user.isVerified,
+          role: data.user.role // Include role for admin detection
         };
         localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
         setUser(userInfo);

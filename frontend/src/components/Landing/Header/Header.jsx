@@ -121,14 +121,14 @@ const Header = ({ isDiscoverPage = false }) => {
               // Profile and Logout buttons for logged in users
               <div className="flex items-center space-x-2">
                 <Link
-                  to="/profile"
+                  to={user?.role === 'admin' ? "/admin/dashboard" : "/profile"}
                   className="flex items-center space-x-2 p-2 text-gray-700 hover:text-blue-600 transition-colors"
                 >
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                     <User className="h-4 w-4 text-white" />
                   </div>
                   <span className="hidden sm:block font-medium">
-                    {user?.name || "Profile"}
+                    {user?.name || (user?.role === 'admin' ? "Admin Dashboard" : "Profile")}
                   </span>
                 </Link>
                 <button
@@ -206,6 +206,13 @@ const Header = ({ isDiscoverPage = false }) => {
                 </a>
               );
             })}
+            <Link
+              to={isAuthenticated && user?.role === 'admin' ? "/admin/dashboard" : "/profile"}
+              className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors duration-200"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              {isAuthenticated && user?.role === 'admin' ? "Admin Dashboard" : "Profile"}
+            </Link>
           </div>
         </div>
       )}

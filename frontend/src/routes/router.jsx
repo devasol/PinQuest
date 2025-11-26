@@ -38,6 +38,11 @@ const router = createBrowserRouter([
     // error:</>
   },
   {
+    element: <ProfilePage />,
+    path: "/dashboard",
+    // error:</>
+  },
+  {
     element: <CategoriesPage />,
     path: "/categories",
     // error:</>

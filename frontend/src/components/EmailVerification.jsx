@@ -81,9 +81,9 @@ const EmailVerification = () => {
         
         toast.success('Email verified successfully! Redirecting...');
         
-        // Redirect to dashboard or home
+        // Redirect to home page or profile
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/');
         }, 1500);
       } else {
         toast.error(result.error || 'Invalid verification code');
