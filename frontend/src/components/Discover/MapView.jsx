@@ -322,6 +322,8 @@ const useDraggable = (initialPosition = { x: 0, y: 0 }) => {
   return { position, isDragging, handleMouseDown, handleTouchStart };
 };
 
+import "./MapView.css";
+
 const MapView = () => {
   const { isAuthenticated, user } = useAuth();
   const [activePopup, setActivePopup] = useState(null);
@@ -2483,7 +2485,7 @@ const MapView = () => {
           </motion.div>
         )}
         {/* Static Icon Sidebar */}
-        <div className="absolute left-0 top-0 h-full w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-3">
+        <div className="sidebar-icon-container absolute left-0 top-0 h-full w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-3">
           <button
             className={`p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === "explore"
@@ -2654,16 +2656,18 @@ const MapView = () => {
         </div>
         {/* Window Panes - appear when icons are clicked */}
         <AnimatePresence>
-          {activeSidebarTab === "explore" && (
+          {activeSidebarTab && (
             <motion.div
-              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col overflow-x-hidden"
-              initial={{ x: -320 }}
+              className={`sidebar-pane absolute top-0 h-full bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col overflow-x-hidden ${activeSidebarTab ? 'is-open' : ''}`}
+              initial={{ x: "-100%" }}
               animate={{ x: 0 }}
-              exit={{ x: -320 }}
+              exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25 }}
             >
               <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">Explore</h2>
+                <h2 className="text-xl font-bold text-gray-800">
+                  {activeSidebarTab.replace("-", " ")}
+                </h2>
                 <button
                   onClick={() => setActiveSidebarTab("")}
                   className="text-gray-500 hover:text-gray-700"
@@ -2683,453 +2687,426 @@ const MapView = () => {
                   </svg>
                 </button>
               </div>
-              <div className="flex flex-col h-full overflow-y-auto overflow-x-hidden p-4">
-                <div className="space-y-4 flex-shrink-0">
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-2">
-                      Search Places
-                    </h3>
-                    <Geocoder
-                      searchQuery={searchQuery}
-                      setSearchQuery={setSearchQuery}
-                      mapRef={mapRef}
-                      setSuggestions={setSuggestions}
-                      suggestions={suggestions}
-                      setIsSearching={setIsSearching}
-                    />
-                  </div>
-
-                  {isAuthenticated && (
-                    <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
-                      <span>Show Only My Posts</span>
-                      <button
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full ${
-                          filterMine ? "bg-blue-500" : "bg-gray-300"
-                        }`}
-                        onClick={() => setFilterMine(!filterMine)}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                            filterMine ? "translate-x-6" : "translate-x-1"
-                          }`}
+              <div className="flex-1 overflow-y-auto">
+                {activeSidebarTab === "explore" && (
+                  <div className="p-4">
+                    <div className="space-y-4 flex-shrink-0">
+                      <div>
+                        <h3 className="font-semibold text-gray-800 mb-2">
+                          Search Places
+                        </h3>
+                        <Geocoder
+                          searchQuery={searchQuery}
+                          setSearchQuery={setSearchQuery}
+                          mapRef={mapRef}
+                          setSuggestions={setSuggestions}
+                          suggestions={suggestions}
+                          setIsSearching={setIsSearching}
                         />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                      </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-semibold text-gray-800">
-                        Posts & Locations
-                      </h3>
-                      <select
-                        value={postsFilter}
-                        onChange={(e) => setPostsFilter(e.target.value)}
-                        className="text-sm px-3 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      >
-                        <option value="latest">Latest</option>
-                        <option value="top">Top Rated</option>
-                        <option value="ratings">By Ratings</option>
-                        <option value="likes">By Likes</option>
-                      </select>
+                      {isAuthenticated && (
+                        <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
+                          <span>Show Only My Posts</span>
+                          <button
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                              filterMine ? "bg-blue-500" : "bg-gray-300"
+                            }`}
+                            onClick={() => setFilterMine(!filterMine)}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                                filterMine ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-4 h-full overflow-y-auto pr-2">
-                      <AnimatePresence>
-                        {filteredLocations.length > 0 ? (
-                          filteredLocations.map((location, index) => (
+
+                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden mt-4">
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-semibold text-gray-800">
+                            Posts & Locations
+                          </h3>
+                          <select
+                            value={postsFilter}
+                            onChange={(e) => setPostsFilter(e.target.value)}
+                            className="text-sm px-3 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          >
+                            <option value="latest">Latest</option>
+                            <option value="top">Top Rated</option>
+                            <option value="ratings">By Ratings</option>
+                            <option value="likes">By Likes</option>
+                          </select>
+                        </div>
+                        <div className="space-y-4 h-full overflow-y-auto pr-2">
+                          <AnimatePresence>
+                            {filteredLocations.length > 0 ? (
+                              filteredLocations.map((location, index) => (
+                                <motion.div
+                                  key={location.id}
+                                  initial={{ opacity: 0, y: 20 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -20 }}
+                                  transition={{ delay: index * 0.1 }}
+                                  className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
+                                    activePopup === location.id
+                                      ? "bg-blue-50 border-2 border-blue-200 shadow-md"
+                                      : "bg-gray-50/80 hover:bg-gray-100 border-2 border-transparent"
+                                  }`}
+                                  onClick={() =>
+                                    handleSidebarItemClick(location.id)
+                                  }
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                >
+                                  <div className="flex items-start space-x-3">
+                                    <div
+                                      className={`w-3 h-3 rounded-full mt-2 ${
+                                        location.category === "nature"
+                                          ? "bg-green-500"
+                                          : location.category === "culture"
+                                          ? "bg-yellow-500"
+                                          : location.category === "shopping"
+                                          ? "bg-purple-500"
+                                          : location.category === "food"
+                                          ? "bg-red-500"
+                                          : "bg-blue-500"
+                                      }`}
+                                    />
+                                    <div className="flex-1">
+                                      <h3 className="font-semibold text-gray-800">
+                                        {location.title}
+                                      </h3>
+                                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                        {location.description}
+                                      </p>
+                                      <div className="flex items-center justify-between mt-2">
+                                        <span className="text-xs text-gray-500">
+                                          By {location.postedBy}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {formatDate(location.datePosted)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              ))
+                            ) : (
+                              <div className="text-center py-8">
+                                {filterMine && isAuthenticated ? (
+                                  <div className="text-gray-500">
+                                    <p className="text-lg">
+                                      You haven't posted anything yet
+                                    </p>
+                                    <p className="text-sm mt-2 text-gray-400">
+                                      Start by clicking anywhere on the map to
+                                      create your first post!
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="text-gray-500">
+                                    <p>No matching posts found</p>
+                                    <p className="text-sm mt-2">
+                                      Try a different search term
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {activeSidebarTab === "map-settings" && (
+                  <div className="p-4">
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-800 mb-2">
+                          Map Layout
+                        </h3>
+                        <div className="grid grid-cols-1 gap-2">
+                          {Object.entries(mapLayouts).map(([key, layout]) => (
+                            <button
+                              key={key}
+                              className={`text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
+                                mapLayout === key
+                                  ? "bg-blue-100 text-blue-700 font-medium"
+                                  : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                              }`}
+                              onClick={() => {
+                                setMapLayout(key);
+                                // Save preference to localStorage
+                                localStorage.setItem("mapLayout", key);
+                              }}
+                            >
+                              {layout.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {activeSidebarTab === "pois" && (
+                  <div className="p-4">
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
+                          <span>Show POIs</span>
+                          <button
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                              showPoiLayer ? "bg-blue-500" : "bg-gray-300"
+                            }`}
+                            onClick={() => setShowPoiLayer(!showPoiLayer)}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                                showPoiLayer ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="font-semibold text-gray-800 mb-2">
+                          Nearby POIs
+                        </h3>
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {pois.slice(0, 20).map((poi) => (
+                            <div
+                              key={`poi-${poi.id}`}
+                              className="p-3 bg-gray-50 rounded-lg border border-gray-200"
+                              onClick={() => {
+                                if (mapRef.current) {
+                                  mapRef.current.flyTo(poi.position, 15);
+                                  setActivePopup(`poi-${poi.id}`);
+                                }
+                              }}
+                            >
+                              <h4 className="font-medium text-gray-800">
+                                {poi.name}
+                              </h4>
+                              <p className="text-sm text-gray-600 capitalize">
+                                {poi.type.replace("_", " ")}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {activeSidebarTab === "stats" && (
+                  <div className="p-4">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center bg-blue-50 p-3 rounded-lg">
+                          <div className="text-xl font-bold text-blue-600">
+                            {allLocations.length}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            Total Locations
+                          </div>
+                        </div>
+                        <div className="text-center bg-green-50 p-3 rounded-lg">
+                          <div className="text-xl font-bold text-green-600">
+                            {userPosts.length}
+                          </div>
+                          <div className="text-xs text-gray-600">User Posts</div>
+                        </div>
+                        <div className="text-center bg-purple-50 p-3 rounded-lg">
+                          <div className="text-xl font-bold text-purple-600">
+                            {new Set(allLocations.map((l) => l.category)).size}
+                          </div>
+                          <div className="text-xs text-gray-600">Categories</div>
+                        </div>
+                        <div className="text-center bg-orange-50 p-3 rounded-lg">
+                          <div className="text-xl font-bold text-orange-600">
+                            24/7
+                          </div>
+                          <div className="text-xs text-gray-600">Live Updates</div>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-gray-800 mb-2">
+                          User Info
+                        </h4>
+                        {isAuthenticated ? (
+                          <p className="text-sm text-gray-600">
+                            Logged in as: {user?.name}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-600">Not logged in</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {activeSidebarTab === "saved" && (
+                  <div className="p-4">
+                    <div className="space-y-4">
+                      {!isAuthenticated ? (
+                        <div className="text-center py-12 text-gray-500">
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                            />
+                          </svg>
+                          <p className="mt-4 text-lg">
+                            Saved locations are private
+                          </p>
+                          <p className="text-sm mt-2">
+                            Log in to view and manage your saved locations.
+                          </p>
+                          <div className="mt-4">
+                            <button
+                              onClick={() => setShowLoginModal(true)}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-xl shadow-sm"
+                            >
+                              Log in
+                            </button>
+                          </div>
+                        </div>
+                      ) : savedLocations.length > 0 ? (
+                        <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
+                          {savedLocations.map((location, index) => (
                             <motion.div
                               key={location.id}
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -20 }}
                               transition={{ delay: index * 0.1 }}
-                              className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
-                                activePopup === location.id
-                                  ? "bg-blue-50 border-2 border-blue-200 shadow-md"
-                                  : "bg-gray-50/80 hover:bg-gray-100 border-2 border-transparent"
-                              }`}
-                              onClick={() =>
-                                handleSidebarItemClick(location.id)
-                              }
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
+                              className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
+                              onClick={() => {
+                                if (mapRef.current) {
+                                  mapRef.current.flyTo(location.position, 15);
+                                  setActivePopup(location.id);
+                                }
+                              }}
                             >
-                              <div className="flex items-start space-x-3">
-                                <div
-                                  className={`w-3 h-3 rounded-full mt-2 ${
-                                    location.category === "nature"
-                                      ? "bg-green-500"
-                                      : location.category === "culture"
-                                      ? "bg-yellow-500"
-                                      : location.category === "shopping"
-                                      ? "bg-purple-500"
-                                      : location.category === "food"
-                                      ? "bg-red-500"
-                                      : "bg-blue-500"
-                                  }`}
-                                />
+                              <div className="flex justify-between items-start">
                                 <div className="flex-1">
                                   <h3 className="font-semibold text-gray-800">
-                                    {location.title}
+                                    {location.name || location.title}
                                   </h3>
                                   <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                    {location.description}
+                                    {location.description || ""}
                                   </p>
                                   <div className="flex items-center justify-between mt-2">
                                     <span className="text-xs text-gray-500">
-                                      By {location.postedBy}
+                                      {location.type === "poi"
+                                        ? `From OpenStreetMap`
+                                        : `By ${
+                                            typeof location.postedBy === "object"
+                                              ? location.postedBy.name ||
+                                                location.postedBy
+                                              : location.postedBy
+                                          }`}
                                     </span>
                                     <span className="text-xs text-gray-500">
-                                      {formatDate(location.datePosted)}
+                                      {new Date(
+                                        location.savedAt
+                                      ).toLocaleDateString()}
                                     </span>
                                   </div>
                                 </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeSavedLocation(location.id);
+                                  }}
+                                  className={`ml-2 ${isRemovingLocation ? 'opacity-50 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}`}
+                                  title="Remove from saved"
+                                  disabled={isRemovingLocation}
+                                >
+                                  {isRemovingLocation ? (
+                                    <svg className="animate-spin h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                  ) : (
+                                    <svg
+                                      className="w-5 h-5"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                      />
+                                    </svg>
+                                  )}
+                                </button>
                               </div>
                             </motion.div>
-                          ))
-                        ) : (
-                          <div className="text-center py-8">
-                            {filterMine && isAuthenticated ? (
-                              <div className="text-gray-500">
-                                <p className="text-lg">
-                                  You haven't posted anything yet
-                                </p>
-                                <p className="text-sm mt-2 text-gray-400">
-                                  Start by clicking anywhere on the map to
-                                  create your first post!
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="text-gray-500">
-                                <p>No matching posts found</p>
-                                <p className="text-sm mt-2">
-                                  Try a different search term
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <AnimatePresence>
-          {activeSidebarTab === "map-settings" && (
-            <motion.div
-              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col"
-              initial={{ x: -320 }}
-              animate={{ x: 0 }}
-              exit={{ x: -320 }}
-              transition={{ type: "spring", damping: 25 }}
-            >
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">
-                  Map Settings
-                </h2>
-                <button
-                  onClick={() => setActiveSidebarTab("")}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-2">
-                      Map Layout
-                    </h3>
-                    <div className="grid grid-cols-1 gap-2">
-                      {Object.entries(mapLayouts).map(([key, layout]) => (
-                        <button
-                          key={key}
-                          className={`text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-                            mapLayout === key
-                              ? "bg-blue-100 text-blue-700 font-medium"
-                              : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                          }`}
-                          onClick={() => {
-                            setMapLayout(key);
-                            // Save preference to localStorage
-                            localStorage.setItem("mapLayout", key);
-                          }}
-                        >
-                          {layout.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <AnimatePresence>
-          {activeSidebarTab === "pois" && (
-            <motion.div
-              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col"
-              initial={{ x: -320 }}
-              animate={{ x: 0 }}
-              exit={{ x: -320 }}
-              transition={{ type: "spring", damping: 25 }}
-            >
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">
-                  Points of Interest
-                </h2>
-                <button
-                  onClick={() => setActiveSidebarTab("")}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
-                      <span>Show POIs</span>
-                      <button
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full ${
-                          showPoiLayer ? "bg-blue-500" : "bg-gray-300"
-                        }`}
-                        onClick={() => setShowPoiLayer(!showPoiLayer)}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                            showPoiLayer ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-2">
-                      Nearby POIs
-                    </h3>
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {pois.slice(0, 20).map((poi) => (
-                        <div
-                          key={`poi-${poi.id}`}
-                          className="p-3 bg-gray-50 rounded-lg border border-gray-200"
-                          onClick={() => {
-                            if (mapRef.current) {
-                              mapRef.current.flyTo(poi.position, 15);
-                              setActivePopup(`poi-${poi.id}`);
-                            }
-                          }}
-                        >
-                          <h4 className="font-medium text-gray-800">
-                            {poi.name}
-                          </h4>
-                          <p className="text-sm text-gray-600 capitalize">
-                            {poi.type.replace("_", " ")}
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-gray-500">
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                            />
+                          </svg>
+                          <p className="mt-4 text-lg">No saved locations yet</p>
+                          <p className="text-sm mt-2">
+                            Locations you save will appear here
                           </p>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <AnimatePresence>
-          {activeSidebarTab === "stats" && (
-            <motion.div
-              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col"
-              initial={{ x: -320 }}
-              animate={{ x: 0 }}
-              exit={{ x: -320 }}
-              transition={{ type: "spring", damping: 25 }}
-            >
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">Statistics</h2>
-                <button
-                  onClick={() => setActiveSidebarTab("")}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center bg-blue-50 p-3 rounded-lg">
-                      <div className="text-xl font-bold text-blue-600">
-                        {allLocations.length}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        Total Locations
-                      </div>
-                    </div>
-                    <div className="text-center bg-green-50 p-3 rounded-lg">
-                      <div className="text-xl font-bold text-green-600">
-                        {userPosts.length}
-                      </div>
-                      <div className="text-xs text-gray-600">User Posts</div>
-                    </div>
-                    <div className="text-center bg-purple-50 p-3 rounded-lg">
-                      <div className="text-xl font-bold text-purple-600">
-                        {new Set(allLocations.map((l) => l.category)).size}
-                      </div>
-                      <div className="text-xs text-gray-600">Categories</div>
-                    </div>
-                    <div className="text-center bg-orange-50 p-3 rounded-lg">
-                      <div className="text-xl font-bold text-orange-600">
-                        24/7
-                      </div>
-                      <div className="text-xs text-gray-600">Live Updates</div>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-gray-800 mb-2">
-                      User Info
-                    </h4>
-                    {isAuthenticated ? (
-                      <p className="text-sm text-gray-600">
-                        Logged in as: {user?.name}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-gray-600">Not logged in</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <AnimatePresence>
-          {activeSidebarTab === "saved" && (
-            <motion.div
-              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col"
-              initial={{ x: -320 }}
-              animate={{ x: 0 }}
-              exit={{ x: -320 }}
-              transition={{ type: "spring", damping: 25 }}
-            >
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">
-                  Saved Locations
-                </h2>
-                <button
-                  onClick={() => setActiveSidebarTab("")}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  {!isAuthenticated ? (
-                    <div className="text-center py-12 text-gray-500">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                        />
-                      </svg>
-                      <p className="mt-4 text-lg">
-                        Saved locations are private
-                      </p>
-                      <p className="text-sm mt-2">
-                        Log in to view and manage your saved locations.
-                      </p>
-                      <div className="mt-4">
-                        <button
-                          onClick={() => setShowLoginModal(true)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-xl shadow-sm"
-                        >
-                          Log in
-                        </button>
-                      </div>
-                    </div>
-                  ) : savedLocations.length > 0 ? (
-                    <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
-                      {savedLocations.map((location, index) => (
-                        <motion.div
-                          key={location.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
-                          onClick={() => {
-                            if (mapRef.current) {
-                              mapRef.current.flyTo(location.position, 15);
-                              setActivePopup(location.id);
-                            }
-                          }}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
+                )}
+                {activeSidebarTab === "recents" && (
+                  <div className="p-4">
+                    <div className="space-y-4">
+                      {recentLocations.length > 0 ? (
+                        <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
+                          {recentLocations.map((location, index) => (
+                            <motion.div
+                              key={location.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
+                              onClick={() => {
+                                if (mapRef.current) {
+                                  mapRef.current.flyTo(location.position, 15);
+                                  setActivePopup(location.id);
+                                }
+                              }}
+                            >
                               <h3 className="font-semibold text-gray-800">
-                                {location.name || location.title}
+                                {location.title}
                               </h3>
                               <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                {location.description || ""}
+                                {location.description}
                               </p>
                               <div className="flex items-center justify-between mt-2">
                                 <span className="text-xs text-gray-500">
@@ -3143,179 +3120,47 @@ const MapView = () => {
                                       }`}
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                  {new Date(
-                                    location.savedAt
-                                  ).toLocaleDateString()}
+                                  {new Date(location.viewedAt).toLocaleDateString()}
                                 </span>
                               </div>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeSavedLocation(location.id);
-                              }}
-                              className={`ml-2 ${isRemovingLocation ? 'opacity-50 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}`}
-                              title="Remove from saved"
-                              disabled={isRemovingLocation}
-                            >
-                              {isRemovingLocation ? (
-                                <svg className="animate-spin h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                              ) : (
-                                <svg
-                                  className="w-5 h-5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                              )}
-                            </button>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-gray-500">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                        />
-                      </svg>
-                      <p className="mt-4 text-lg">No saved locations yet</p>
-                      <p className="text-sm mt-2">
-                        Locations you save will appear here
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <AnimatePresence>
-          {activeSidebarTab === "recents" && (
-            <motion.div
-              className="absolute left-20 top-0 h-full w-80 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col"
-              initial={{ x: -320 }}
-              animate={{ x: 0 }}
-              exit={{ x: -320 }}
-              transition={{ type: "spring", damping: 25 }}
-            >
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">
-                  Recent Locations
-                </h2>
-                <button
-                  onClick={() => setActiveSidebarTab("")}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  {recentLocations.length > 0 ? (
-                    <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
-                      {recentLocations.map((location, index) => (
-                        <motion.div
-                          key={location.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
-                          onClick={() => {
-                            if (mapRef.current) {
-                              mapRef.current.flyTo(location.position, 15);
-                              setActivePopup(location.id);
-                            }
-                          }}
-                        >
-                          <h3 className="font-semibold text-gray-800">
-                            {location.title}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                            {location.description}
-                          </p>
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-xs text-gray-500">
-                              {location.type === "poi"
-                                ? `From OpenStreetMap`
-                                : `By ${
-                                    typeof location.postedBy === "object"
-                                      ? location.postedBy.name ||
-                                        location.postedBy
-                                      : location.postedBy
-                                  }`}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(location.viewedAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-gray-500">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <p className="mt-4 text-lg">No recent locations</p>
-                      <p className="text-sm mt-2">
-                        Locations you view will appear here
-                      </p>
-                      {!isAuthenticated && (
-                        <div className="mt-4">
-                          <p className="text-sm text-gray-600">Log in to save and manage your locations</p>
-                          <button
-                            onClick={() => setShowLoginModal(true)}
-                            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow-sm"
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-gray-500">
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            Log in
-                          </button>
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <p className="mt-4 text-lg">No recent locations</p>
+                          <p className="text-sm mt-2">
+                            Locations you view will appear here
+                          </p>
+                          {!isAuthenticated && (
+                            <div className="mt-4">
+                              <p className="text-sm text-gray-600">Log in to save and manage your locations</p>
+                              <button
+                                onClick={() => setShowLoginModal(true)}
+                                className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-xl shadow-sm"
+                              >
+                                Log in
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -3726,119 +3571,7 @@ const MapView = () => {
         )}
       </AnimatePresence>
       {/* Custom CSS */}
-      <style>{`
-        .custom-popup .leaflet-popup-content-wrapper {
-          border-radius: 16px;
-          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-          overflow: hidden;
-          /* Allow popup to be responsive up to viewport width */
-          max-width: 90vw;
-        }
 
-        .custom-popup .leaflet-popup-content {
-          margin: 0;
-          padding: 0;
-          width: auto !important;
-          /* Let inner content determine width, allow it to shrink on small viewports */
-          min-width: 0;
-          max-width: 90vw;
-        }
-
-        .leaflet-container {
-          font-family: "Inter", sans-serif;
-        }
-
-        .leaflet-popup-tip {
-          box-shadow: none;
-        }
-
-        .leaflet-popup-close-button {
-          display: none;
-        }
-
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        /* Ensure the map controls are above the floating UI */
-        .leaflet-control-container {
-          z-index: 999;
-        }
-
-        /* Custom POI marker styles */
-        .custom-poi-marker {
-          text-align: center;
-          font-weight: bold;
-          cursor: pointer;
-        }
-        
-        /* Hide horizontal overflow */
-        .overflow-x-hidden {
-          overflow-x: hidden;
-        }
-        
-        /* Custom scrollbar styling */
-        ::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: rgba(156, 163, 175, 0.2); /* gray-400 with opacity */
-          border-radius: 3px;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: rgba(107, 114, 128, 0.5); /* gray-500 with opacity */
-          border-radius: 3px;
-          transition: background 0.3s ease;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: rgba(75, 85, 99, 0.7); /* gray-600 with opacity */
-        }
-        
-        /* For Firefox */
-        * {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(107, 114, 128, 0.5) rgba(156, 163, 175, 0.2);
-        }
-        
-        /* Allow map dragging through popup background while preserving button functionality */
-        .custom-popup .leaflet-popup-content-wrapper {
-          pointer-events: auto;
-        }
-        
-        /* Make the popup container allow pointer events through to the map when not on interactive elements */
-        .custom-popup .leaflet-popup-content {
-          pointer-events: auto;
-        }
-        
-        /* Ensure interactive elements inside popup receive pointer events */
-        .custom-popup .leaflet-popup-content button,
-        .custom-popup .leaflet-popup-content input,
-        .custom-popup .leaflet-popup-content textarea,
-        .custom-popup .leaflet-popup-content select,
-        .custom-popup .leaflet-popup-content a,
-        .custom-popup .leaflet-popup-content img {
-          pointer-events: auto;
-          z-index: 1;
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-          .custom-popup .leaflet-popup-content-wrapper {
-            max-width: 350px;
-          }
-          .custom-popup .leaflet-popup-content {
-            min-width: 300px;
-            max-width: 350px;
-          }
-        }
-      `}</style>
       
       {/* Image Gallery Modal */}
       {showImageGallery && galleryImages && galleryImages.length > 0 && (
