@@ -18,6 +18,7 @@ const feedRoute = require("./routes/feedRoute");
 const reportsRoute = require("./routes/reportsRoute");
 const messagesRoute = require("./routes/messagesRoute");
 const analyticsRoute = require("./routes/analyticsRoute");
+const mapsRoute = require("./routes/mapsRoute");
 require("./config/passport");
 
 const app = express();
@@ -148,6 +149,9 @@ app.use("/api/v1/messages", messagesRoute);
 
 // Analytics routes
 app.use("/api/v1/analytics", analyticsRoute);
+
+// Maps routes
+app.use("/api/v1/maps", mapsRoute);
 
 // Admin routes
 app.use("/api/v1/admin", adminRoute);

@@ -1,0 +1,17 @@
+/* MapComponent specific styles */
+.popup-content h3 {
+  margin: 0 0 5px 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.popup-content p {
+  margin: 0 0 5px 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.popup-rating {
+  font-weight: bold;
+  color: #ffc107;
+}
