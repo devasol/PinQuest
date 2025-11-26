@@ -1,5 +1,6 @@
 .user-management {
   padding: 0;
+  min-width: 320px; /* Prevent layout issues on small screens */
 }
 
 .user-management-header {
@@ -16,11 +17,16 @@
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-management-actions {
   display: flex;
   gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .user-management-btn {
@@ -36,6 +42,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .user-management-btn-primary {
@@ -105,6 +112,7 @@
 .user-management-filters {
   display: flex;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .user-management-select {
@@ -114,6 +122,7 @@
   background: white;
   color: #374151;
   font-size: 0.875rem;
+  min-width: 140px;
 }
 
 .user-management-table-container {
@@ -122,11 +131,13 @@
   overflow: hidden;
   border: 1px solid #e5e7eb;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  overflow-x: auto; /* Enable horizontal scrolling on small screens */
 }
 
 .user-management-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 800px; /* Prevent table from becoming too narrow */
 }
 
 .user-management-table th {
@@ -137,6 +148,7 @@
   color: #374151;
   border-bottom: 2px solid #e5e7eb;
   font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 .user-management-table td {
@@ -144,6 +156,7 @@
   border-bottom: 1px solid #f3f4f6;
   color: #374151;
   font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 .user-management-table-row:hover {
@@ -172,11 +185,17 @@
 .user-management-user-name {
   font-weight: 500;
   color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-management-user-id {
   font-size: 0.75rem;
   color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-management-badge {
@@ -185,11 +204,12 @@
   font-size: 0.75rem;
   font-weight: 500;
   text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .user-management-actions-cell {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.25rem; /* Reduce gap for mobile */
 }
 
 .user-management-action-btn {
@@ -204,6 +224,7 @@
   color: #374151;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
 .user-management-action-btn:hover {
@@ -277,6 +298,8 @@
   align-items: center;
   gap: 0.5rem;
   margin-top: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.25rem; /* Reduce gap on mobile */
 }
 
 .user-management-pagination-btn {
@@ -288,6 +311,7 @@
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.2s;
+  min-width: 40px; /* Ensure buttons are touch-friendly */
 }
 
 .user-management-pagination-btn:hover:not(:disabled) {
@@ -307,6 +331,17 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1200px) {
+  .user-management-search {
+    max-width: 300px;
+  }
+  
+  .user-management-table th,
+  .user-management-table td {
+    padding: 0.75rem 1rem;
+  }
+}
+
 @media (max-width: 1024px) {
   .user-management-controls {
     flex-direction: column;
@@ -317,9 +352,13 @@
     max-width: 100%;
   }
   
+  .user-management-filters {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
   .user-management-table {
-    display: block;
-    overflow-x: auto;
+    font-size: 0.85rem;
   }
 }
 
@@ -327,14 +366,37 @@
   .user-management-header {
     flex-direction: column;
     align-items: stretch;
+    align-content: center;
   }
   
   .user-management-actions {
     justify-content: center;
+    width: 100%;
+  }
+  
+  .user-management-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .user-management-search {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .user-management-filters {
+    width: 100%;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .user-management-select {
+    min-width: 120px;
   }
   
   .user-management-table {
     font-size: 0.75rem;
+    min-width: 600px; /* Reduce min width on tablet */
   }
   
   .user-management-table th,
@@ -343,8 +405,80 @@
   }
   
   .user-management-actions-cell {
-    flex-direction: column;
+    flex-direction: row;
     gap: 0.25rem;
+  }
+  
+  .user-management-action-btn {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .user-management-action-icon {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .user-management-user-name {
+    max-width: 100px;
+    font-size: 0.75rem;
+  }
+  
+  .user-management-user-id {
+    max-width: 80px;
+    font-size: 0.65rem;
+  }
+  
+  .user-management-badge {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.65rem;
+  }
+  
+  .user-management-pagination {
+    justify-content: center;
+  }
+  
+  .user-management-pagination-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    min-width: 36px;
+  }
+}
+
+@media (max-width: 576px) {
+  .user-management-filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  
+  .user-management-select {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .user-management-table {
+    font-size: 0.7rem;
+    min-width: 500px; /* Further reduce min width on mobile */
+  }
+  
+  .user-management-table th,
+  .user-management-table td {
+    padding: 0.4rem;
+  }
+  
+  .user-management-user-name {
+    max-width: 70px;
+    font-size: 0.7rem;
+  }
+  
+  .user-management-user-id {
+    max-width: 60px;
+    font-size: 0.6rem;
+  }
+  
+  .user-management-actions-cell {
+    gap: 0.15rem; /* Even smaller gap on small mobile */
   }
   
   .user-management-action-btn {
@@ -353,21 +487,145 @@
   }
   
   .user-management-action-icon {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
   }
   
-  .user-management-pagination {
-    flex-wrap: wrap;
+  .user-management-badge {
+    padding: 0.1rem 0.3rem;
+    font-size: 0.6rem;
+  }
+  
+  .user-management-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  .user-management-btn-icon {
+    width: 14px;
+    height: 14px;
   }
 }
 
 @media (max-width: 480px) {
-  .user-management-filters {
-    flex-direction: column;
-  }
-  
   .user-management-title {
     font-size: 1.25rem;
+  }
+  
+  .user-management-header {
+    gap: 1rem;
+  }
+  
+  .user-management-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  
+  .user-management-btn {
+    width: 100%; /* Full width buttons on very small screens */
+  }
+  
+  .user-management-table {
+    font-size: 0.65rem;
+    min-width: 400px; /* Minimum width to ensure readability */
+  }
+  
+  .user-management-table th,
+  .user-management-table td {
+    padding: 0.3rem;
+  }
+  
+  .user-management-table th {
+    font-size: 0.7rem;
+  }
+  
+  .user-management-user-name {
+    max-width: 60px;
+    font-size: 0.65rem;
+  }
+  
+  .user-management-user-id {
+    max-width: 50px;
+    font-size: 0.55rem;
+  }
+  
+  .user-management-user-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 0.6rem;
+  }
+  
+  .user-management-actions-cell {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .user-management-action-btn {
+    width: 22px;
+    height: 22px;
+  }
+  
+  .user-management-action-icon {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .user-management-badge {
+    padding: 0.08rem 0.2rem;
+    font-size: 0.55rem;
+  }
+  
+  .user-management-pagination-btn {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+    min-width: 32px;
+  }
+  
+  .user-management-empty {
+    padding: 2rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) and (max-width: 768px) {
+  .user-management-table {
+    font-size: 0.6rem;
+    min-width: 350px;
+  }
+  
+  .user-management-table th,
+  .user-management-table td {
+    padding: 0.25rem;
+  }
+  
+  .user-management-user-name {
+    max-width: 50px;
+  }
+  
+  .user-management-user-id {
+    max-width: 40px;
+  }
+  
+  .user-management-actions-cell {
+    gap: 0.1rem;
+  }
+  
+  .user-management-action-btn {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .user-management-action-icon {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .user-management-table-row {
+    transition: none; /* Disable hover transitions on touch devices */
   }
 }

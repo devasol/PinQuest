@@ -2446,8 +2446,9 @@ const MapView = () => {
         </MapContainer>
         {/* Floating UI Elements */}
         {/* Add Post Button - Bottom Center */}
+        {!showPostForm && !activePopup && (
         <motion.div
-          className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[1000]"
+          className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2 }}
@@ -2460,6 +2461,7 @@ const MapView = () => {
             </p>
           </div>
         </motion.div>
+        )}
         
         {/* Directions Close Button - Top Right when routing is visible */}
         {showRouting && (
@@ -3182,7 +3184,7 @@ const MapView = () => {
             {/* Modal Content */}
             <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
               <motion.div
-                className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-in-out"
+                className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-[95vw] max-h-[40vh] sm:max-h-[50vh] overflow-hidden transition-transform duration-300 ease-in-out"
                 initial={{ scale: 0.98, opacity: 0, y: 10 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.98, opacity: 0, y: 10 }}
@@ -3218,9 +3220,14 @@ const MapView = () => {
                     </div>
                   </div>
                 )}
-                <div className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-semibold text-gray-800">
+                
+                {/* Fixed header with close button - always visible */}
+                <div className="p-4 flex-shrink-0 border-b border-gray-200 bg-white z-10 relative">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+                      <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" />
+                      </svg>
                       Create new post
                     </h2>
                     <button
@@ -3231,9 +3238,12 @@ const MapView = () => {
                       ×
                     </button>
                   </div>
-
-                  <form onSubmit={handleFormSubmit}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                </div>
+                
+                {/* Scrollable form area */}
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar max-h-[calc(40vh-8rem)] sm:max-h-[calc(50vh-8rem)]">
+                    <form onSubmit={handleFormSubmit}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div>
                         <label
                           className="block text-gray-700 mb-2 font-medium"

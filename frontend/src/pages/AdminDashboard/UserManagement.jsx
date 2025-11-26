@@ -255,21 +255,23 @@ const UserManagement = () => {
                 <td>{new Date(user.lastActive).toLocaleDateString()}</td>
                 <td>
                   <div className="user-management-actions-cell">
-                    <button className="user-management-action-btn user-management-action-view">
+                    <button className="user-management-action-btn user-management-action-view" aria-label="View user">
                       <Eye className="user-management-action-icon" />
                     </button>
-                    <button className="user-management-action-btn user-management-action-edit">
+                    <button className="user-management-action-btn user-management-action-edit" aria-label="Edit user">
                       <Edit className="user-management-action-icon" />
                     </button>
                     <button 
                       className="user-management-action-btn user-management-action-delete"
                       onClick={() => handleDeleteUser(user.id)}
+                      aria-label="Delete user"
                     >
                       <Trash2 className="user-management-action-icon" />
                     </button>
                     <button 
                       className={`user-management-action-btn ${user.status === 'banned' ? 'user-management-action-unban' : 'user-management-action-ban'}`}
                       onClick={() => handleBanUser(user.id)}
+                      aria-label={user.status === 'banned' ? "Unban user" : "Ban user"}
                     >
                       {user.status === 'banned' ? 'Unban' : 'Ban'}
                     </button>
@@ -294,6 +296,7 @@ const UserManagement = () => {
             className="user-management-pagination-btn"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
+            aria-label="Previous page"
           >
             Previous
           </button>
@@ -303,6 +306,7 @@ const UserManagement = () => {
               key={page}
               className={`user-management-pagination-btn ${currentPage === page ? 'user-management-pagination-btn-active' : ''}`}
               onClick={() => handlePageChange(page)}
+              aria-label={`Page ${page}`}
             >
               {page}
             </button>
@@ -312,6 +316,7 @@ const UserManagement = () => {
             className="user-management-pagination-btn"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
+            aria-label="Next page"
           >
             Next
           </button>

@@ -110,6 +110,7 @@ const AdminDashboard = () => {
                   <Link 
                     to={item.path} 
                     className={`admin-sidebar-menu-link ${isActive ? 'active' : ''}`}
+                    onClick={() => window.innerWidth <= 768 && setSidebarOpen(false)} // Close sidebar on mobile when clicking a link
                   >
                     <Icon className="admin-sidebar-menu-icon" />
                     <span className="admin-sidebar-menu-label">{item.label}</span>
@@ -131,6 +132,12 @@ const AdminDashboard = () => {
         </div>
       </aside>
 
+      {/* Mobile Sidebar Overlay */}
+      <div 
+        className={`admin-sidebar-overlay ${sidebarOpen ? 'admin-sidebar-overlay-visible' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      ></div>
+
       {/* Main Content */}
       <main className="admin-main">
         {/* Header */}
@@ -138,6 +145,7 @@ const AdminDashboard = () => {
           <button 
             className="admin-menu-toggle"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? "Close menu" : "Open menu"}
           >
             {sidebarOpen ? <X className="admin-menu-icon" /> : <Menu className="admin-menu-icon" />}
           </button>
@@ -158,7 +166,7 @@ const AdminDashboard = () => {
                 <span className="admin-user-name">{user.name || user.email || 'Admin User'}</span>
                 <span className="admin-user-role">{user.role || 'Administrator'}</span>
               </div>
-              <button className="admin-notifications-btn">
+              <button className="admin-notifications-btn" aria-label="Notifications">
                 <Bell className="admin-notifications-icon" />
                 <span className="admin-notifications-badge">3</span>
               </button>
