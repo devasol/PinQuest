@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/api.jsx';
+import { directAuthApi } from '../services/authApi';
 
 const AuthContext = createContext();
 
@@ -85,6 +86,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const signupWithVerification = async (userData) => {
+    try {
+      const data = await directAuthApi.signupWithVerification(userData);
+      if (data.success) {
+        // Store email for verification in localStorage
+        localStorage.setItem('verificationEmail', userData.email);
+        return { success: true, data, email: userData.email };
+      } else {
+        return { success: false, error: data.error };
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   const logout = async () => {
     try {
       await authService.logout();
@@ -162,6 +178,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     signup,
+    signupWithVerification,
     logout,
     googleLogin: handleGoogleLogin,
   };

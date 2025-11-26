@@ -14,6 +14,7 @@ import ContentManagement from "../pages/AdminDashboard/ContentManagement";
 import Security from "../pages/AdminDashboard/Security";
 import Analytics from "../pages/AdminDashboard/Analytics";
 import AdminProtectedRoute from "../components/Admin/AdminProtectedRoute";
+import EmailVerification from "../components/EmailVerification";
 
 const router = createBrowserRouter([
   {
@@ -44,6 +45,11 @@ const router = createBrowserRouter([
   {
     element: <AddPost />,
     path: "/add-post",
+    // error:</>
+  },
+  {
+    element: <EmailVerification />,
+    path: "/verify-email",
     // error:</>
   },
   // Admin routes

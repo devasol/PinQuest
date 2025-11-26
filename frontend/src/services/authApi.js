@@ -78,6 +78,32 @@ export const directAuthApi = {
     }
   },
 
+  // Direct signup with verification
+  signupWithVerification: async (userData) => {
+    try {
+      const response = await apiRequest('/auth/register-with-verification', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+        skipAuth: true,
+      });
+
+      if (response.status === 'success' && response.data) {
+        return {
+          success: true,
+          user: response.data,
+          message: response.message
+        };
+      } else {
+        throw new Error(response.message || 'Signup failed');
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
   // Direct login with backend
   login: async (email, password) => {
     try {
@@ -95,6 +121,57 @@ export const directAuthApi = {
         };
       } else {
         throw new Error(response.message || 'Login failed');
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  // Verify email with code
+  verifyEmail: async (email, code) => {
+    try {
+      const response = await apiRequest('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ email, code }),
+        skipAuth: true,
+      });
+
+      if (response.status === 'success' && response.data) {
+        return {
+          success: true,
+          user: response.data,
+          token: response.data.token
+        };
+      } else {
+        throw new Error(response.message || 'Email verification failed');
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  // Resend verification code
+  resendVerification: async (email) => {
+    try {
+      const response = await apiRequest('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+        skipAuth: true,
+      });
+
+      if (response.status === 'success') {
+        return {
+          success: true,
+          message: response.message
+        };
+      } else {
+        throw new Error(response.message || 'Failed to resend verification code');
       }
     } catch (error) {
       return {

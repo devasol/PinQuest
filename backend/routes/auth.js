@@ -2,12 +2,16 @@ const express = require('express');
 const passport = require('passport');
 const { registerUser, loginUser, logoutUser, getProfile, updateProfile, firebaseAuthLogin } = require('../controllers/authController');
 const { forgotPassword, resetPassword, updatePassword } = require('../controllers/passwordController');
+const { registerUserWithVerification, verifyEmail, resendVerificationCode } = require('../controllers/verificationController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 const router = express.Router();
 
 router.route('/register').post(registerUser);
+router.route('/register-with-verification').post(registerUserWithVerification);
 router.route('/login').post(loginUser);
+router.route('/verify-email').post(verifyEmail);
+router.route('/resend-verification').post(resendVerificationCode);
 router.route('/logout').post(logoutUser);
 router.route('/profile').get(protect, getProfile).put(protect, upload.single('avatar'), updateProfile);
 router.route('/forgot-password').post(forgotPassword);

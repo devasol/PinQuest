@@ -1,391 +1,170 @@
-# PinQuest API Documentation
+# Email Verification API Documentation
 
-## Authentication
+## Overview
+This document describes the email verification functionality implemented in the PinQuest platform. The system sends a verification code to the user's email and requires them to enter the code to verify their account before they can fully access the platform.
 
-### Register User
-- **POST** `/api/v1/auth/register`
-- **Description:** Register a new user
-- **Request Body:**
+## New API Endpoints
+
+### 1. Register with Verification
+- **Endpoint**: `POST /api/v1/auth/register-with-verification`
+- **Description**: Registers a new user and sends a verification code to their email
+- **Request Body**:
   ```json
   {
-    "name": "string",
-    "email": "string",
-    "password": "string"
+    "name": "string (required)",
+    "email": "string (required, must be valid email)",
+    "password": "string (required, min 6 characters)"
   }
   ```
-- **Response:** User object with token
-
-### Login User  
-- **POST** `/api/v1/auth/login`
-- **Description:** Authenticate user and return token
-- **Request Body:**
-  ```json
-  {
-    "email": "string",
-    "password": "string"
-  }
-  ```
-- **Response:** User object with token
-
-### Get User Profile
-- **GET** `/api/v1/auth/profile`
-- **Description:** Get current user profile
-- **Headers:** Authorization: Bearer {token}
-- **Response:** User object
-
-### Update User Profile
-- **PUT** `/api/v1/auth/profile`
-- **Description:** Update current user profile
-- **Headers:** Authorization: Bearer {token}
-- **Request Body:** 
-  ```json
-  {
-    "name": "string",
-    "email": "string"
-  }
-  ```
-- **File Upload:** avatar (multipart/form-data)
-
-## Posts
-
-### Get All Posts
-- **GET** `/api/v1/posts`
-- **Description:** Get all posts
-- **Response:** Array of post objects
-
-### Create Post
-- **POST** `/api/v1/posts`
-- **Description:** Create a new post
-- **Headers:** Authorization: Bearer {token}
-- **Request Body:**
-  ```json
-  {
-    "title": "string",
-    "description": "string",
-    "category": "string",
-    "location": {
-      "latitude": "number",
-      "longitude": "number"
-    }
-  }
-  ```
-- **File Upload:** image (multipart/form-data)
-
-### Get Post by ID
-- **GET** `/api/v1/posts/:id`
-- **Description:** Get a specific post
-- **Response:** Post object
-
-### Update Post
-- **PATCH** `/api/v1/posts/:id`
-- **Description:** Update a post
-- **Headers:** Authorization: Bearer {token}
-- **Request Body:** Same as create
-- **File Upload:** image (multipart/form-data)
-
-### Delete Post
-- **DELETE** `/api/v1/posts/:id`
-- **Description:** Delete a post
-- **Headers:** Authorization: Bearer {token}
-
-### Like Post
-- **PUT** `/api/v1/posts/:id/like`
-- **Description:** Like a post
-- **Headers:** Authorization: Bearer {token}
-- **Response:** Updated likes information
-
-### Unlike Post
-- **PUT** `/api/v1/posts/:id/unlike`
-- **Description:** Unlike a post
-- **Headers:** Authorization: Bearer {token}
-- **Response:** Updated likes information
-
-### Add Comment
-- **POST** `/api/v1/posts/:id/comments`
-- **Description:** Add a comment to a post
-- **Headers:** Authorization: Bearer {token}
-- **Request Body:**
-  ```json
-  {
-    "text": "string"
-  }
-  ```
-
-### Get Post Comments
-- **GET** `/api/v1/posts/:id/comments`
-- **Description:** Get all comments for a post
-- **Response:** Array of comment objects
-
-## Users
-
-### Get All Users
-- **GET** `/api/v1/users`
-- **Description:** Get all users
-- **Response:** Array of user objects
-
-### Get User by ID
-- **GET** `/api/v1/users/:id`
-- **Description:** Get user by ID
-- **Response:** User object
-
-### Get User Posts
-- **GET** `/api/v1/users/:id/posts`
-- **Description:** Get all posts by a user
-- **Response:** Array of post objects
-
-### Follow User
-- **POST** `/api/v1/users/:id/follow`
-- **Description:** Follow a user
-- **Headers:** Authorization: Bearer {token}
-
-### Unfollow User
-- **DELETE** `/api/v1/users/:id/unfollow`
-- **Description:** Unfollow a user
-- **Headers:** Authorization: Bearer {token}
-
-### Get User Followers
-- **GET** `/api/v1/users/:id/followers`
-- **Description:** Get a user's followers
-- **Response:** Array of follower objects
-
-### Get User Following
-- **GET** `/api/v1/users/:id/following`
-- **Description:** Get users the user is following
-- **Response:** Array of following objects
-
-### Add Favorite
-- **POST** `/api/v1/users/favorites`
-- **Description:** Add a post to favorites
-- **Headers:** Authorization: Bearer {token}
-- **Request Body:**
-  ```json
-  {
-    "postId": "string"
-  }
-  ```
-
-### Remove Favorite
-- **DELETE** `/api/v1/users/favorites/:postId`
-- **Description:** Remove a post from favorites
-- **Headers:** Authorization: Bearer {token}
-
-## Saved Locations
-
-### Add Saved Location
-- **POST** `/api/v1/users/saved-locations`
-- **Description:** Add a location to user's saved locations
-- **Headers:** Authorization: Bearer {token}
-- **Request Body:**
-  ```json
-  {
-    "id": "string",
-    "name": "string",
-    "latitude": 0.0,
-    "longitude": 0.0,
-    "address": "string",
-    "placeId": "string",
-    "type": "string",
-    "category": "string",
-    "description": "string",
-    "postedBy": "string",
-    "datePosted": "string"
-  }
-  ```
-
-### Remove Saved Location
-- **DELETE** `/api/v1/users/saved-locations/:locationId`
-- **Description:** Remove a location from user's saved locations
-- **Headers:** Authorization: Bearer {token}
-
-### Get User Saved Locations
-- **GET** `/api/v1/users/saved-locations`
-- **Description:** Get current user's saved locations
-- **Headers:** Authorization: Bearer {token}
-- **Response:**
+- **Response (Success)**:
   ```json
   {
     "status": "success",
+    "message": "User created successfully. Please check your email for the verification code.",
     "data": {
-      "savedLocations": [
-        {
-          "id": "string",
-          "name": "string",
-          "latitude": 0.0,
-          "longitude": 0.0,
-          "address": "string",
-          "placeId": "string",
-          "type": "string",
-          "category": "string",
-          "description": "string",
-          "postedBy": "string",
-          "datePosted": "string",
-          "savedAt": "2025-11-18T04:24:34.123Z"
-        }
-      ]
+      "_id": "user_id",
+      "name": "user_name",
+      "email": "user_email"
     }
   }
   ```
-
-### Get User Favorites
-- **GET** `/api/v1/users/favorites`
-- **Description:** Get current user's favorites
-- **Headers:** Authorization: Bearer {token}
-
-## Categories
-
-### Get All Categories
-- **GET** `/api/v1/categories`
-- **Description:** Get all post categories
-- **Response:** Array of category strings
-
-### Get Popular Categories
-- **GET** `/api/v1/categories/popular`
-- **Description:** Get popular categories with post counts
-- **Response:** Array of category objects with counts
-
-### Get Posts by Category
-- **GET** `/api/v1/categories/:category`
-- **Description:** Get posts in a specific category
-- **Response:** Array of post objects
-
-## Notifications
-
-### Get User Notifications
-- **GET** `/api/v1/notifications`
-- **Description:** Get user notifications
-- **Headers:** Authorization: Bearer {token}
-- **Query Parameters:**
-  - `page`: Page number (default: 1)
-  - `limit`: Items per page (default: 10)
-  - `read`: Filter by read status (all|read|unread)
-
-### Get Unread Count
-- **GET** `/api/v1/notifications/unread-count`
-- **Description:** Get count of unread notifications
-- **Headers:** Authorization: Bearer {token}
-
-### Mark All as Read
-- **PUT** `/api/v1/notifications/read-all`
-- **Description:** Mark all notifications as read
-- **Headers:** Authorization: Bearer {token}
-
-### Mark Notification as Read
-- **PUT** `/api/v1/notifications/:id`
-- **Description:** Mark specific notification as read
-- **Headers:** Authorization: Bearer {token}
-
-## Feed
-
-### Get Activity Feed
-- **GET** `/api/v1/feed`
-- **Description:** Get posts from followed users
-- **Headers:** Authorization: Bearer {token}
-- **Query Parameters:**
-  - `page`: Page number (default: 1)
-  - `limit`: Items per page (default: 10)
-
-### Get Personal Activity
-- **GET** `/api/v1/feed/personal`
-- **Description:** Get user's own posts and liked posts
-- **Headers:** Authorization: Bearer {token}
-
-### Get Trending Posts
-- **GET** `/api/v1/feed/trending`
-- **Description:** Get trending posts
-- **Query Parameters:**
-  - `limit`: Number of posts (default: 10)
-  - `days`: Consider posts from last N days (default: 7)
-
-## Messages
-
-### Send Message
-- **POST** `/api/v1/messages`
-- **Description:** Send a message to another user
-- **Headers:** Authorization: Bearer {token}
-- **Request Body:**
+- **Response (Error)**:
   ```json
   {
-    "recipientId": "string",
-    "content": "string"
+    "status": "fail/error",
+    "message": "Error message"
   }
   ```
 
-### Get Conversations
-- **GET** `/api/v1/messages/conversations`
-- **Description:** Get user's conversations
-- **Headers:** Authorization: Bearer {token}
-
-### Get Conversation Messages
-- **GET** `/api/v1/messages/conversation/:userId`
-- **Description:** Get messages in a conversation with a user
-- **Headers:** Authorization: Bearer {token}
-
-## Search
-
-### Search Posts
-- **GET** `/api/v1/posts/search`
-- **Description:** Search posts by text and category
-- **Query Parameters:**
-  - `q`: Search query text
-  - `category`: Filter by category
-  - `page`: Page number (default: 1)
-  - `limit`: Items per page (default: 10)
-
-## Geolocation
-
-### Get Posts by Location
-- **GET** `/api/v1/posts/by-location`
-- **Description:** Get posts near a specific location
-- **Query Parameters:**
-  - `latitude`: Latitude coordinate
-  - `longitude`: Longitude coordinate
-  - `radius`: Search radius in km (default: 50)
-
-### Get Nearby Posts
-- **GET** `/api/v1/posts/nearby`
-- **Description:** Get posts within a radius of location
-- **Query Parameters:**
-  - `latitude`: Latitude coordinate
-  - `longitude`: Longitude coordinate
-  - `radius`: Search radius in km (default: 10)
-  - `limit`: Max results (default: 20)
-
-## Reports
-
-### Create Report
-- **POST** `/api/v1/reports`
-- **Description:** Report a post
-- **Headers:** Authorization: Bearer {token}
-- **Request Body:**
+### 2. Verify Email
+- **Endpoint**: `POST /api/v1/auth/verify-email`
+- **Description**: Verifies the user's email using the code sent to their email
+- **Request Body**:
   ```json
   {
-    "postId": "string",
-    "reason": "string",
-    "description": "string"
+    "email": "string (required)",
+    "code": "string (required, 6-digit verification code)"
+  }
+  ```
+- **Response (Success)**:
+  ```json
+  {
+    "status": "success",
+    "message": "Email verified successfully",
+    "data": {
+      "_id": "user_id",
+      "name": "user_name",
+      "email": "user_email",
+      "token": "JWT_token"
+    }
+  }
+  ```
+- **Response (Error)**:
+  ```json
+  {
+    "status": "fail",
+    "message": "Invalid or expired verification code / Error message"
   }
   ```
 
-### Get User Reports
-- **GET** `/api/v1/reports/my-reports`
-- **Description:** Get reports created by user
-- **Headers:** Authorization: Bearer {token}
+### 3. Resend Verification Code
+- **Endpoint**: `POST /api/v1/auth/resend-verification`
+- **Description**: Sends a new verification code to the user's email
+- **Request Body**:
+  ```json
+  {
+    "email": "string (required)"
+  }
+  ```
+- **Response (Success)**:
+  ```json
+  {
+    "status": "success",
+    "message": "Verification code resent successfully. Please check your email."
+  }
+  ```
+- **Response (Error)**:
+  ```json
+  {
+    "status": "fail/error",
+    "message": "Error message"
+  }
+  ```
 
-## Analytics
+## Updated API Endpoints
 
-### Get Platform Stats
-- **GET** `/api/v1/analytics/platform`
-- **Description:** Get platform-wide statistics
-- **Headers:** Authorization: Bearer {token}
+### 1. Register
+- **Endpoint**: `POST /api/v1/auth/register`
+- **Description**: Updated to support optional verification requirement
+- **Request Body**:
+  ```json
+  {
+    "name": "string (required)",
+    "email": "string (required)",
+    "password": "string (required)",
+    "requireVerification": "boolean (optional, defaults to false)"
+  }
+  ```
 
-### Get User Analytics
-- **GET** `/api/v1/analytics/user`
-- **Description:** Get current user's analytics
-- **Headers:** Authorization: Bearer {token}
+### 2. Login
+- **Endpoint**: `POST /api/v1/auth/login`
+- **Description**: Updated to check if email verification is required
+- **Changes**: If `REQUIRE_EMAIL_VERIFICATION` environment variable is set to `true`, users with unverified emails will be denied access
 
-### Get Top Posts
-- **GET** `/api/v1/analytics/top-posts`
-- **Description:** Get top performing posts
-- **Headers:** Authorization: Bearer {token}
-- **Query Parameters:**
-  - `limit`: Number of posts (default: 10)
-  - `days`: Consider posts from last N days (default: 30)
+## Environment Variables
+
+The following environment variables need to be configured for email verification to work:
+
+```env
+# Email Configuration
+SMTP_HOST=smtp.gmail.com                    # SMTP server host
+SMTP_PORT=587                              # SMTP server port
+SMTP_EMAIL=your_email@gmail.com            # Email address to send from
+SMTP_PASSWORD=your_app_password_here       # App password for the email
+SMTP_FROM_EMAIL=your_email@gmail.com       # Display email address
+REQUIRE_EMAIL_VERIFICATION=true            # Whether email verification is required (true/false)
+```
+
+## Database Changes
+
+The User model has been updated with the following new fields:
+- `verificationCode` (String): The current verification code
+- `verificationCodeExpires` (Date): When the verification code expires
+- `isVerified` (Boolean): Whether the email is verified (already existed but now enforced)
+
+## Frontend Integration
+
+### Components Added
+- `EmailVerification.jsx`: Component for entering the 6-digit verification code
+
+### Routes Added
+- `/verify-email`: Route for the email verification component
+
+### Auth Context Changes
+- Added `signupWithVerification` function to handle registration with verification
+
+## Email Templates
+
+The system sends professional HTML emails with:
+- 6-digit verification code prominently displayed
+- 10-minute expiration notice
+- Responsive design
+- Branding elements
+
+## Verification Flow
+
+1. User registers via `/register-with-verification` or `/register` with `requireVerification: true`
+2. System creates user account with unverified status
+3. System generates 6-digit code with 10-minute expiration
+4. System sends verification email to user
+5. User enters code on verification page
+6. System verifies code and updates user to verified status
+7. System generates JWT token and returns to user
+8. User can now access the full platform
+
+## Security Features
+
+- Verification codes expire after 10 minutes
+- Codes are stored encrypted in the database
+- Only one active verification code per user at a time
+- Email verification can be required or optional based on environment settings
