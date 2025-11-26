@@ -1,4 +1,5 @@
 const Post = require("../models/posts");
+const Activity = require("../models/Activity");
 const {
   createLikeNotification,
   createCommentNotification,
@@ -151,6 +152,28 @@ const createPost = async (req, res) => {
     const newPost = new Post(postFields);
 
     const savedPost = await newPost.save();
+
+    // Log activity
+    try {
+      const activity = new Activity({
+        userId: req.user._id,
+        action: 'created post',
+        targetType: 'post',
+        targetId: savedPost._id,
+        targetTitle: savedPost.title,
+        metadata: {
+          title: savedPost.title,
+          description: savedPost.description,
+          category: savedPost.category
+        },
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+      await activity.save();
+    } catch (activityError) {
+      console.error('Error saving activity:', activityError);
+      // Don't fail the main request if activity logging fails
+    }
 
     // Populate the postedBy field before sending response to include user info
     const populatedPost = await Post.findById(savedPost._id).populate(
@@ -567,6 +590,27 @@ const likePost = async (req, res) => {
 
     await post.save();
 
+    // Log activity
+    try {
+      const activity = new Activity({
+        userId: req.user._id,
+        action: 'liked post',
+        targetType: 'post',
+        targetId: post._id,
+        targetTitle: post.title,
+        metadata: {
+          postTitle: post.title,
+          postDescription: post.description
+        },
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+      await activity.save();
+    } catch (activityError) {
+      console.error('Error saving activity:', activityError);
+      // Don't fail the main request if activity logging fails
+    }
+
     // Create notification for the post owner
     if (post.postedBy && post.postedBy._id.toString()) {
       await createLikeNotification(post._id, req.user._id, post.postedBy._id);
@@ -642,6 +686,27 @@ const unlikePost = async (req, res) => {
     post.likesCount = post.likes.length;
 
     await post.save();
+
+    // Log activity
+    try {
+      const activity = new Activity({
+        userId: req.user._id,
+        action: 'unliked post',
+        targetType: 'post',
+        targetId: post._id,
+        targetTitle: post.title,
+        metadata: {
+          postTitle: post.title,
+          postDescription: post.description
+        },
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+      await activity.save();
+    } catch (activityError) {
+      console.error('Error saving activity:', activityError);
+      // Don't fail the main request if activity logging fails
+    }
 
     // Emit real-time event for unlike
     const io = req.app.get("io");
@@ -808,6 +873,28 @@ const addComment = async (req, res) => {
 
     post.comments.unshift(newComment);
     await post.save();
+
+    // Log activity
+    try {
+      const activity = new Activity({
+        userId: req.user._id,
+        action: 'commented on post',
+        targetType: 'comment',
+        targetId: addedComment._id || newComment._id, // This is tricky - we don't have the comment ID yet
+        targetTitle: text.substring(0, 50) + (text.length > 50 ? '...' : ''), // First 50 chars of comment
+        metadata: {
+          commentText: text,
+          postId: post._id,
+          postTitle: post.title
+        },
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+      await activity.save();
+    } catch (activityError) {
+      console.error('Error saving activity:', activityError);
+      // Don't fail the main request if activity logging fails
+    }
 
     // Populate the user info for the returned comment
     const populatedPost = await Post.findById(postId).populate({

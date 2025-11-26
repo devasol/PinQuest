@@ -629,53 +629,107 @@ const MapView = () => {
   };
 
   // Function to add a location to recents
-  const addRecentLocation = (location) => {
-    setRecentLocations(prevRecents => {
-      // Check if location is already in recents
-      const existingIndex = prevRecents.findIndex(
-        (recent) => recent.id === location.id
-      );
-      let updatedRecents = [...prevRecents];
+  const addRecentLocation = async (location) => {
+    try {
+      // First, update the local state immediately for UI responsiveness
+      setRecentLocations(prevRecents => {
+        // Check if location is already in recents
+        const existingIndex = prevRecents.findIndex(
+          (recent) => recent.id === location.id
+        );
+        let updatedRecents = [...prevRecents];
 
-      if (existingIndex !== -1) {
-        // If already exists, move to the top
-        const [existingLocation] = updatedRecents.splice(existingIndex, 1);
-        updatedRecents = [existingLocation, ...updatedRecents];
-      } else {
-        // If new, add to the top
-        const newRecentLocation = {
-          ...location,
-          viewedAt: new Date().toISOString(),
-        };
-        updatedRecents = [newRecentLocation, ...updatedRecents];
+        if (existingIndex !== -1) {
+          // If already exists, move to the top
+          const [existingLocation] = updatedRecents.splice(existingIndex, 1);
+          updatedRecents = [existingLocation, ...updatedRecents];
+        } else {
+          // If new, add to the top
+          const newRecentLocation = {
+            ...location,
+            viewedAt: new Date().toISOString(),
+          };
+          updatedRecents = [newRecentLocation, ...updatedRecents];
+        }
+
+        // Limit to 20 recent items
+        updatedRecents = updatedRecents.slice(0, 20);
+        
+        // When not authenticated, also save to localStorage (for non-authenticated users)
+        if (!isAuthenticated) {
+          try {
+            localStorage.setItem("recentLocations", JSON.stringify(updatedRecents));
+          } catch (e) {
+            console.error("Failed to save recentLocations to localStorage:", e);
+          }
+        }
+        
+        return updatedRecents;
+      });
+
+      // Then, save to the backend if user is authenticated
+      if (isAuthenticated) {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/users/recent-locations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(location)
+        });
+
+        if (!response.ok) {
+          console.error('Failed to save recent location to backend:', await response.text());
+          // The local state update still happened, so UI remains responsive
+        }
       }
-
-      // Limit to 20 recent items
-      updatedRecents = updatedRecents.slice(0, 20);
-
-      // Save to localStorage
-      try {
-        localStorage.setItem("recentLocations", JSON.stringify(updatedRecents));
-      } catch (e) {
-        console.error("Failed to save recentLocations to localStorage:", e);
-      }
-      
-      return updatedRecents;
-    });
+    } catch (error) {
+      console.error('Error adding recent location:', error);
+    }
   };
 
-  // Load recent locations for all users from localStorage
+  // Load recent locations from backend API when user is authenticated
   useEffect(() => {
-    const recents = localStorage.getItem("recentLocations");
+    const fetchRecentLocations = async () => {
+      if (isAuthenticated) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/users/recent-locations`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
 
-    if (recents) {
-      try {
-        setRecentLocations(JSON.parse(recents));
-      } catch (e) {
-        console.error("Error parsing recent locations:", e);
+          if (response.ok) {
+            const data = await response.json();
+            setRecentLocations(data.data.recentLocations || []);
+          } else {
+            console.error('Failed to fetch recent locations:', response.status);
+            setRecentLocations([]);
+          }
+        } catch (error) {
+          console.error('Error fetching recent locations:', error);
+          setRecentLocations([]);
+        }
+      } else {
+        // When not authenticated, load from localStorage (device-specific behavior)
+        const recents = localStorage.getItem("recentLocations");
+        if (recents) {
+          try {
+            setRecentLocations(JSON.parse(recents));
+          } catch (e) {
+            console.error("Error parsing recent locations:", e);
+            setRecentLocations([]);
+          }
+        } else {
+          setRecentLocations([]);
+        }
       }
-    }
-  }, []);
+    };
+
+    fetchRecentLocations();
+  }, [isAuthenticated]);
 
   // Effect to open popup when activePopup changes (programmatically triggered from explore sidebar)
   useEffect(() => {
@@ -725,10 +779,50 @@ const MapView = () => {
     }
   }, [isAuthenticated]);
 
-  // When user logs out, ensure sidebar tabs for saved/recents are closed
-  // NOTE: we no longer forcibly close the saved/recents sidebars on logout.
-  // Panels remain open so we can show a friendly login CTA inside them.
-  // Clearing of the underlying data (savedLocations/recentLocations) still happens above when not authenticated.
+  // When user logs out, clear recent locations from local state and load device-specific ones from localStorage
+  useEffect(() => {
+    const loadRecentLocations = async () => {
+      if (!isAuthenticated) {
+        // When not authenticated, load from localStorage (device-specific behavior)
+        const recents = localStorage.getItem("recentLocations");
+        if (recents) {
+          try {
+            setRecentLocations(JSON.parse(recents));
+          } catch (e) {
+            console.error("Error parsing recent locations:", e);
+            setRecentLocations([]);
+          }
+        } else {
+          setRecentLocations([]);
+        }
+      } else {
+        // When authenticated, load from backend
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/users/recent-locations`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setRecentLocations(data.data.recentLocations || []);
+          } else {
+            console.error('Failed to fetch recent locations:', response.status);
+            setRecentLocations([]);
+          }
+        } catch (error) {
+          console.error('Error fetching recent locations:', error);
+          setRecentLocations([]);
+        }
+      }
+    };
+
+    loadRecentLocations();
+  }, [isAuthenticated]);
+
+
 
   const fetchSavedLocations = async () => {
     try {

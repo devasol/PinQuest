@@ -18,7 +18,10 @@ const {
   updateUserPreferences,
   addSavedLocation,
   removeSavedLocation,
-  getSavedLocations
+  getSavedLocations,
+  addRecentLocation,
+  removeRecentLocation,
+  getRecentLocations
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
@@ -31,6 +34,8 @@ router.route("/").get(getAllUsers);
 router.route("/:id/posts").get(getUserPosts);
 router.route("/saved-locations").post(protect, addSavedLocation).get(protect, getSavedLocations);
 router.route("/saved-locations/:locationId").delete(protect, removeSavedLocation);
+router.route("/recent-locations").post(protect, addRecentLocation).get(protect, getRecentLocations);
+router.route("/recent-locations/:locationId").delete(protect, removeRecentLocation);
 router.route("/favorites").post(protect, addFavorite).get(protect, getFavorites);
 router.route("/favorites/:postId").delete(protect, removeFavorite).get(protect, isFavorite);
 router.route("/preferences").get(protect, getUserPreferences).put(protect, updateUserPreferences);

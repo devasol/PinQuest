@@ -81,6 +81,32 @@ const userSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  recentLocations: [{
+    id: {
+      type: String
+    },
+    title: {
+      type: String
+    },
+    description: {
+      type: String
+    },
+    position: {
+      latitude: Number,
+      longitude: Number
+    },
+    type: {
+      type: String
+    },
+    postedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    viewedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   following: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,

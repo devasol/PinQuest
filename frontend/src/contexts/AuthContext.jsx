@@ -110,6 +110,8 @@ export const AuthProvider = ({ children }) => {
       // Clear all user-specific data that might persist
       localStorage.removeItem('savedLocations');
       localStorage.removeItem('mapLayout');
+      // Note: We no longer clear recentLocations here as they should persist for device-specific usage
+      // when not authenticated, but we'll clear them in the MapView component when the user logs out
       
       // Clear all rating-related local storage items
       const keysToRemove = [];
@@ -131,6 +133,8 @@ export const AuthProvider = ({ children }) => {
       // Clear all user-specific data that might persist
       localStorage.removeItem('savedLocations');
       localStorage.removeItem('mapLayout');
+      // Note: We no longer clear recentLocations here as they should persist for device-specific usage
+      // when not authenticated, but we'll clear them in the MapView component when the user logs out
       
       // Clear all rating-related local storage items
       const keysToRemove = [];

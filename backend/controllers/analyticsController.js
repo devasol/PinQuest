@@ -2,6 +2,7 @@ const Post = require('../models/posts');
 const User = require('../models/User');
 const Message = require('../models/Message');
 const Report = require('../models/Report');
+const Activity = require('../models/Activity');
 
 // @desc    Get platform statistics
 // @route   GET /api/v1/analytics/platform
@@ -247,7 +248,23 @@ const getActivityTimeline = async (req, res) => {
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - parseInt(days));
 
-    // Get user's activity in the last X days
+    // Get user's activity from the Activity log
+    const userActivities = await Activity.find({ 
+      userId: req.user._id,
+      date: { $gte: daysAgo }
+    }).sort({ date: -1 }).limit(100); // Limit to prevent huge responses
+
+    // Format activities from the Activity model
+    const formattedActivities = userActivities.map(activity => ({
+      type: activity.targetType,
+      title: activity.targetTitle,
+      date: activity.date,
+      action: activity.action,
+      metadata: activity.metadata,
+      id: activity._id
+    }));
+
+    // Also get activities from the old method (for compatibility)
     const [
       userPosts,
       userComments,
@@ -269,49 +286,71 @@ const getActivityTimeline = async (req, res) => {
       }).select('title datePosted')
     ]);
 
-    // Format activities
-    const activities = [];
-
-    // Add posts
+    // Add posts that might not be in the activity log
     userPosts.forEach(post => {
-      activities.push({
-        type: 'post',
-        title: post.title,
-        date: post.datePosted,
-        action: 'created post'
-      });
+      // Only add if not already in activity log
+      const exists = formattedActivities.some(a => 
+        a.type === 'post' && 
+        a.metadata && 
+        a.metadata.postId === post._id.toString()
+      );
+      if (!exists) {
+        formattedActivities.push({
+          type: 'post',
+          title: post.title,
+          date: post.datePosted,
+          action: 'created post'
+        });
+      }
     });
 
-    // Add comments
+    // Add comments that might not be in the activity log
     userComments.forEach(post => {
       post.comments.forEach(comment => {
         if (comment.user.toString() === req.user._id.toString() && comment.date >= daysAgo) {
-          activities.push({
-            type: 'comment',
-            title: post.title,
-            date: comment.date,
-            action: 'commented on post'
-          });
+          // Only add if not already in activity log
+          const exists = formattedActivities.some(a => 
+            a.type === 'comment' && 
+            a.metadata && 
+            a.metadata.postId === post._id.toString() &&
+            new Date(a.date).getTime() === new Date(comment.date).getTime()
+          );
+          if (!exists) {
+            formattedActivities.push({
+              type: 'comment',
+              title: post.title,
+              date: comment.date,
+              action: 'commented on post'
+            });
+          }
         }
       });
     });
 
-    // Add likes
+    // Add likes that might not be in the activity log
     userLikes.forEach(post => {
-      activities.push({
-        type: 'like',
-        title: post.title,
-        date: post.datePosted, // Using post date as like date since we don't store specific like date
-        action: 'liked post'
-      });
+      // Only add if not already in activity log
+      const exists = formattedActivities.some(a => 
+        a.type === 'like' && 
+        a.metadata && 
+        a.metadata.postId === post._id.toString()
+      );
+      if (!exists) {
+        formattedActivities.push({
+          type: 'like',
+          title: post.title,
+          date: post.datePosted, // Using post date as like date since we don't store specific like date
+          action: 'liked post'
+        });
+      }
     });
 
     // Sort by date (newest first)
-    activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+    formattedActivities.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     res.status(200).json({
       status: 'success',
-      data: activities
+      data: formattedActivities
     });
   } catch (error) {
     console.error('Error fetching activity timeline:', error);

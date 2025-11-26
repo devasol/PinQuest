@@ -359,7 +359,7 @@ const ProfilePage = () => {
             { id: 'profile', label: 'Profile', icon: User },
             { id: 'saved', label: 'Saved Locations', icon: Bookmark },
             { id: 'posts', label: 'My Posts', icon: MapPin },
-            { id: 'activities', label: 'Activities', icon: Activity },
+            ...(isAuthenticated ? [{ id: 'activities', label: 'Activities', icon: Activity }] : []),
           ].map((tab) => (
             <button
               key={tab.id}
@@ -760,7 +760,7 @@ const ProfilePage = () => {
         )}
 
         {/* Activities Tab */}
-        {activeTab === 'activities' && (
+        {activeTab === 'activities' && isAuthenticated && (
           <div className="bg-white rounded-2xl shadow-lg p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Activity Feed</h2>
             
@@ -790,6 +790,19 @@ const ProfilePage = () => {
                 })}
               </div>
             )}
+          </div>
+        )}
+        {activeTab === 'activities' && !isAuthenticated && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 text-center py-12">
+            <Activity className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Login Required</h3>
+            <p className="text-gray-600 mb-4">Please log in to view your activity feed.</p>
+            <button 
+              onClick={() => window.location.href = '/login'}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Login
+            </button>
           </div>
         )}
       </div>

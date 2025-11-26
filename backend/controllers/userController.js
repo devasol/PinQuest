@@ -52,20 +52,28 @@ const addFavorite = async (req, res) => {
       });
     }
 
-    // Check if post is already in favorites
-    const isAlreadyFavorited = user.favorites.some(
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found",
+      });
+    }
+
+    // Check if post is already favorited
+    const alreadyFavorited = user.favorites.some(
       (fav) => fav.post.toString() === postId
     );
 
-    if (isAlreadyFavorited) {
+    if (alreadyFavorited) {
       return res.status(400).json({
         status: "fail",
-        message: "Post already in favorites",
+        message: "Post already favorited",
       });
     }
 
     // Add to favorites
-    user.favorites.push({ post: postId });
+    user.favorites.unshift({ post: postId });
     await user.save();
 
     res.status(200).json({
@@ -99,11 +107,20 @@ const removeFavorite = async (req, res) => {
       });
     }
 
-    // Remove from favorites
-    user.favorites = user.favorites.filter(
-      (fav) => fav.post.toString() !== postId
+    // Check if post is favorited
+    const favoriteIndex = user.favorites.findIndex(
+      (fav) => fav.post.toString() === postId
     );
 
+    if (favoriteIndex === -1) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Post is not favorited",
+      });
+    }
+
+    // Remove from favorites
+    user.favorites.splice(favoriteIndex, 1);
     await user.save();
 
     res.status(200).json({
@@ -122,7 +139,7 @@ const removeFavorite = async (req, res) => {
   }
 };
 
-// @desc    Get user's favorite posts
+// @desc    Get user's favorites
 // @route   GET /api/v1/users/favorites
 // @access  Private
 const getFavorites = async (req, res) => {
@@ -131,7 +148,7 @@ const getFavorites = async (req, res) => {
       path: "favorites.post",
       populate: {
         path: "postedBy",
-        select: "name avatar",
+        select: "name email avatar",
       },
     });
 
@@ -144,7 +161,9 @@ const getFavorites = async (req, res) => {
 
     res.status(200).json({
       status: "success",
-      data: user.favorites,
+      data: {
+        favorites: user.favorites,
+      },
     });
   } catch (error) {
     console.error("Error fetching favorites:", error);
@@ -155,7 +174,7 @@ const getFavorites = async (req, res) => {
   }
 };
 
-// @desc    Check if a post is favorited by user
+// @desc    Check if post is favorited
 // @route   GET /api/v1/users/favorites/:postId
 // @access  Private
 const isFavorite = async (req, res) => {
@@ -178,7 +197,6 @@ const isFavorite = async (req, res) => {
       status: "success",
       data: {
         isFavorited,
-        postId,
       },
     });
   } catch (error) {
@@ -195,58 +213,59 @@ const isFavorite = async (req, res) => {
 // @access  Private
 const followUser = async (req, res) => {
   try {
-    const { id: targetUserId } = req.params;
-    const currentUserId = req.user._id;
+    const { id: followId } = req.params;
 
     // Don't allow user to follow themselves
-    if (targetUserId === currentUserId.toString()) {
+    if (followId === req.user._id.toString()) {
       return res.status(400).json({
         status: "fail",
         message: "You cannot follow yourself",
       });
     }
 
-    // Get both users
-    const currentUser = await User.findById(currentUserId);
-    const targetUser = await User.findById(targetUserId);
-
-    if (!currentUser || !targetUser) {
+    const userToFollow = await User.findById(followId);
+    if (!userToFollow) {
       return res.status(404).json({
         status: "fail",
-        message: "User not found",
+        message: "User to follow not found",
+      });
+    }
+
+    const currentUser = await User.findById(req.user._id);
+    if (!currentUser) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Current user not found",
       });
     }
 
     // Check if already following
-    const isAlreadyFollowing = currentUser.following.some(
-      (following) => following.user.toString() === targetUserId
+    const alreadyFollowing = currentUser.following.some(
+      (follow) => follow.user.toString() === followId
     );
 
-    if (isAlreadyFollowing) {
+    if (alreadyFollowing) {
       return res.status(400).json({
         status: "fail",
-        message: "Already following this user",
+        message: "Already following user",
       });
     }
 
-    // Add to current user's following
-    currentUser.following.push({ user: targetUserId });
-
-    // Add to target user's followers
-    targetUser.followers.push({ user: currentUserId });
-
-    // Save both users
+    // Add to current user's following list
+    currentUser.following.unshift({ user: followId });
     await currentUser.save();
-    await targetUser.save();
 
-    // Create notification for the followed user
-    await createFollowNotification(currentUserId, targetUserId);
+    // Add to user to follow's followers list
+    userToFollow.followers.unshift({ user: req.user._id });
+    await userToFollow.save();
+
+    // Create follow notification
+    await createFollowNotification(userToFollow._id, req.user._id);
 
     res.status(200).json({
       status: "success",
       data: {
         following: currentUser.following,
-        followers: targetUser.followers,
       },
     });
   } catch (error) {
@@ -263,51 +282,48 @@ const followUser = async (req, res) => {
 // @access  Private
 const unfollowUser = async (req, res) => {
   try {
-    const { id: targetUserId } = req.params;
-    const currentUserId = req.user._id;
+    const { id: unfollowId } = req.params;
 
-    // Get both users
-    const currentUser = await User.findById(currentUserId);
-    const targetUser = await User.findById(targetUserId);
-
-    if (!currentUser || !targetUser) {
+    const currentUser = await User.findById(req.user._id);
+    if (!currentUser) {
       return res.status(404).json({
         status: "fail",
-        message: "User not found",
+        message: "Current user not found",
       });
     }
 
     // Check if following
-    const isFollowing = currentUser.following.some(
-      (following) => following.user.toString() === targetUserId
+    const followIndex = currentUser.following.findIndex(
+      (follow) => follow.user.toString() === unfollowId
     );
 
-    if (!isFollowing) {
+    if (followIndex === -1) {
       return res.status(400).json({
         status: "fail",
-        message: "Not following this user",
+        message: "Not following user",
       });
     }
 
-    // Remove from current user's following
-    currentUser.following = currentUser.following.filter(
-      (following) => following.user.toString() !== targetUserId
-    );
-
-    // Remove from target user's followers
-    targetUser.followers = targetUser.followers.filter(
-      (follower) => follower.user.toString() !== currentUserId
-    );
-
-    // Save both users
+    // Remove from current user's following list
+    currentUser.following.splice(followIndex, 1);
     await currentUser.save();
-    await targetUser.save();
+
+    // Remove from user to unfollow's followers list
+    const userToUnfollow = await User.findById(unfollowId);
+    if (userToUnfollow) {
+      const followerIndex = userToUnfollow.followers.findIndex(
+        (follower) => follower.user.toString() === req.user._id.toString()
+      );
+      if (followerIndex !== -1) {
+        userToUnfollow.followers.splice(followerIndex, 1);
+        await userToUnfollow.save();
+      }
+    }
 
     res.status(200).json({
       status: "success",
       data: {
         following: currentUser.following,
-        followers: targetUser.followers,
       },
     });
   } catch (error) {
@@ -324,11 +340,9 @@ const unfollowUser = async (req, res) => {
 // @access  Public
 const getUserFollowers = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const user = await User.findById(id).populate({
+    const user = await User.findById(req.params.id).populate({
       path: "followers.user",
-      select: "name avatar",
+      select: "name email avatar",
     });
 
     if (!user) {
@@ -342,7 +356,6 @@ const getUserFollowers = async (req, res) => {
       status: "success",
       data: {
         followers: user.followers,
-        count: user.followersCount,
       },
     });
   } catch (error) {
@@ -354,16 +367,14 @@ const getUserFollowers = async (req, res) => {
   }
 };
 
-// @desc    Get users that user is following
+// @desc    Get user's following
 // @route   GET /api/v1/users/:id/following
 // @access  Public
 const getUserFollowing = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const user = await User.findById(id).populate({
+    const user = await User.findById(req.params.id).populate({
       path: "following.user",
-      select: "name avatar",
+      select: "name email avatar",
     });
 
     if (!user) {
@@ -377,7 +388,6 @@ const getUserFollowing = async (req, res) => {
       status: "success",
       data: {
         following: user.following,
-        count: user.followingCount,
       },
     });
   } catch (error) {
@@ -389,31 +399,29 @@ const getUserFollowing = async (req, res) => {
   }
 };
 
-// @desc    Check if current user follows target user
+// @desc    Check if current user is following another user
 // @route   GET /api/v1/users/:id/is-following
 // @access  Private
 const checkFollowingStatus = async (req, res) => {
   try {
     const { id: targetUserId } = req.params;
-    const currentUserId = req.user._id;
 
-    const currentUser = await User.findById(currentUserId);
+    const currentUser = await User.findById(req.user._id);
     if (!currentUser) {
       return res.status(404).json({
         status: "fail",
-        message: "User not found",
+        message: "Current user not found",
       });
     }
 
     const isFollowing = currentUser.following.some(
-      (following) => following.user.toString() === targetUserId
+      (follow) => follow.user.toString() === targetUserId
     );
 
     res.status(200).json({
       status: "success",
       data: {
         isFollowing,
-        targetUserId,
       },
     });
   } catch (error) {
@@ -425,13 +433,12 @@ const checkFollowingStatus = async (req, res) => {
   }
 };
 
-// @desc    Get user preferences
+// @desc    Get user's preferences
 // @route   GET /api/v1/users/preferences
 // @access  Private
 const getUserPreferences = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("preferences");
-
     if (!user) {
       return res.status(404).json({
         status: "fail",
@@ -441,7 +448,9 @@ const getUserPreferences = async (req, res) => {
 
     res.status(200).json({
       status: "success",
-      data: user.preferences,
+      data: {
+        preferences: user.preferences,
+      },
     });
   } catch (error) {
     console.error("Error fetching user preferences:", error);
@@ -452,15 +461,14 @@ const getUserPreferences = async (req, res) => {
   }
 };
 
-// @desc    Update user preferences
+// @desc    Update user's preferences
 // @route   PUT /api/v1/users/preferences
 // @access  Private
 const updateUserPreferences = async (req, res) => {
   try {
-    const { theme, notifications, emailNotifications } = req.body;
+    const { preferences } = req.body;
 
     const user = await User.findById(req.user._id);
-
     if (!user) {
       return res.status(404).json({
         status: "fail",
@@ -468,30 +476,15 @@ const updateUserPreferences = async (req, res) => {
       });
     }
 
-    // Update only the fields that are provided
-    if (theme !== undefined) {
-      if (!["light", "dark", "system"].includes(theme)) {
-        return res.status(400).json({
-          status: "fail",
-          message: "Invalid theme. Must be light, dark, or system",
-        });
-      }
-      user.preferences.theme = theme;
-    }
-
-    if (notifications !== undefined) {
-      user.preferences.notifications = notifications;
-    }
-
-    if (emailNotifications !== undefined) {
-      user.preferences.emailNotifications = emailNotifications;
-    }
-
+    // Update preferences
+    user.preferences = { ...user.preferences, ...preferences };
     await user.save();
 
     res.status(200).json({
       status: "success",
-      data: user.preferences,
+      data: {
+        preferences: user.preferences,
+      },
     });
   } catch (error) {
     console.error("Error updating user preferences:", error);
@@ -502,73 +495,46 @@ const updateUserPreferences = async (req, res) => {
   }
 };
 
-// @desc    Update user profile
+// @desc    Update user
 // @route   PUT /api/v1/users/:id
 // @access  Private
 const updateUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const updates = {};
+    const allowedUpdates = [
+      "name",
+      "email",
+      "bio",
+      "location",
+      "preferences",
+    ]; // Allowed fields
+
+    // Filter out invalid updates
+    Object.keys(req.body).forEach((key) => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+
+    // Handle avatar update if present
+    if (req.file) {
+      updates.avatar = {
+        url: req.file.path,
+        publicId: req.file.filename,
+      };
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
+
     if (!user) {
       return res.status(404).json({
         status: "fail",
         message: "User not found",
       });
     }
-
-    // Handle avatar upload if present (local storage)
-    if (req.file) {
-      try {
-        // Delete existing local avatar file if present
-        if (user.avatar && user.avatar.localPath) {
-          await fs.promises.unlink(user.avatar.localPath).catch(() => {});
-        } else if (user.avatar && user.avatar.filename) {
-          const p = path.join(__dirname, "..", "uploads", user.avatar.filename);
-          await fs.promises.unlink(p).catch(() => {});
-        }
-
-        if (req.file.path) {
-          const filename = path.basename(req.file.path);
-          const url = `${req.protocol}://${req.get(
-            "host"
-          )}/uploads/${filename}`;
-          user.avatar = { url, filename, localPath: req.file.path };
-        }
-      } catch (uploadError) {
-        console.error("Error handling avatar upload:", uploadError);
-        return res
-          .status(400)
-          .json({ status: "fail", message: "Error uploading avatar" });
-      }
-    }
-
-    // Update other user fields (excluding avatar from req.body)
-    const allowedUpdates = ["name", "email"];
-    const updates = Object.keys(req.body).filter((key) => key !== "avatar"); // Exclude avatar from req.body since it's handled separately
-
-    const isValidUpdate = updates.every((update) =>
-      allowedUpdates.includes(update)
-    );
-
-    if (!isValidUpdate) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Invalid updates",
-      });
-    }
-
-    // Check if email is being updated and already exists for another user
-    if (req.body.email && req.body.email !== user.email) {
-      const emailExists = await User.findOne({ email: req.body.email });
-      if (emailExists) {
-        return res.status(400).json({
-          status: "fail",
-          message: "Email already in use",
-        });
-      }
-    }
-
-    updates.forEach((update) => (user[update] = req.body[update]));
-    await user.save();
 
     res.status(200).json({
       status: "success",
@@ -583,44 +549,13 @@ const updateUser = async (req, res) => {
   }
 };
 
-// @desc    Get user's posts
-// @route   GET /api/v1/users/:id/posts
-// @access  Public
-const getUserPosts = async (req, res) => {
-  try {
-    // Check if user exists
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({
-        status: "fail",
-        message: "User not found",
-      });
-    }
-
-    // Get posts by this user
-    const posts = await Post.find({ postedBy: req.params.id }).sort({
-      datePosted: -1,
-    });
-
-    res.status(200).json({
-      status: "success",
-      data: posts,
-    });
-  } catch (error) {
-    console.error("Error fetching user posts:", error);
-    res.status(500).json({
-      status: "error",
-      message: error.message,
-    });
-  }
-};
-
-// @desc    Delete user account
+// @desc    Delete user
 // @route   DELETE /api/v1/users/:id
 // @access  Private
 const deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
+
     if (!user) {
       return res.status(404).json({
         status: "fail",
@@ -628,10 +563,16 @@ const deleteUser = async (req, res) => {
       });
     }
 
-    // Optionally delete all posts by this user as well
-    await Post.deleteMany({ postedBy: req.params.id });
+    // Delete user's avatar if it exists
+    if (user.avatar && user.avatar.publicId) {
+      try {
+        await cloudinary.uploader.destroy(user.avatar.publicId);
+      } catch (delErr) {
+        console.error("Error deleting user avatar:", delErr);
+      }
+    }
 
-    res.status(204).json({
+    res.status(200).json({
       status: "success",
       data: null,
     });
@@ -649,13 +590,35 @@ const deleteUser = async (req, res) => {
 // @access  Public
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    const users = await User.find().select("-password");
     res.status(200).json({
       status: "success",
       data: users,
     });
   } catch (error) {
-    console.error("Error fetching users:", error);
+    console.error("Error fetching all users:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Get user's posts
+// @route   GET /api/v1/users/:id/posts
+// @access  Public
+const getUserPosts = async (req, res) => {
+  try {
+    const posts = await Post.find({ postedBy: req.params.id })
+      .populate("postedBy", "name email avatar")
+      .sort({ datePosted: -1 });
+
+    res.status(200).json({
+      status: "success",
+      data: posts,
+    });
+  } catch (error) {
+    console.error("Error fetching user posts:", error);
     res.status(500).json({
       status: "error",
       message: error.message,
@@ -791,7 +754,6 @@ const removeSavedLocation = async (req, res) => {
 const getSavedLocations = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("savedLocations");
-
     if (!user) {
       return res.status(404).json({
         status: "fail",
@@ -807,6 +769,154 @@ const getSavedLocations = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching saved locations:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Add location to user's recent locations
+// @route   POST /api/v1/users/recent-locations
+// @access  Private
+const addRecentLocation = async (req, res) => {
+  try {
+    const locationData = req.body;
+
+    // Required fields validation
+    let id = locationData.id;
+    let title = locationData.title || locationData.name;
+
+    if (!id && locationData._id) {
+      id = locationData._id;
+    }
+
+    if (!title && locationData.name) {
+      title = locationData.name;
+    } else if (!title && locationData.title) {
+      title = locationData.title;
+    }
+
+    if (!id || !title) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Location ID and title are required",
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
+    }
+
+    // Check if location is already in recent locations
+    let existingIndex = user.recentLocations.findIndex((recent) => recent.id === id);
+
+    if (existingIndex !== -1) {
+      // If already exists, move to the top by removing it first
+      user.recentLocations.splice(existingIndex, 1);
+    }
+
+    // Create the recent location object
+    const recentLocation = {
+      id: id,
+      title: title,
+      description: locationData.description || "",
+      position: {
+        latitude: locationData.latitude || locationData.position?.latitude || locationData.position?.[0] || null,
+        longitude: locationData.longitude || locationData.position?.longitude || locationData.position?.[1] || null
+      },
+      type: locationData.type || "location",
+      postedBy: locationData.postedBy || null,
+      viewedAt: new Date(),
+    };
+
+    // Add to recent locations (at the beginning of the array)
+    user.recentLocations.unshift(recentLocation);
+
+    // Limit to 20 recent locations to prevent the array from growing too large
+    user.recentLocations = user.recentLocations.slice(0, 20);
+
+    await user.save();
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        user: user._id,
+        recentLocations: user.recentLocations,
+      },
+    });
+  } catch (error) {
+    console.error("Error adding recent location:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Remove location from user's recent locations
+// @route   DELETE /api/v1/users/recent-locations/:locationId
+// @access  Private
+const removeRecentLocation = async (req, res) => {
+  try {
+    const { locationId } = req.params;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
+    }
+
+    // Remove from recent locations
+    user.recentLocations = user.recentLocations.filter(
+      (location) => location.id !== locationId
+    );
+
+    await user.save();
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        user: user._id,
+        recentLocations: user.recentLocations,
+      },
+    });
+  } catch (error) {
+    console.error("Error removing recent location:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Get user's recent locations
+// @route   GET /api/v1/users/recent-locations
+// @access  Private
+const getRecentLocations = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("recentLocations");
+    if (!user) {
+      return res.status(404).json({
+        status: "fail",
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        recentLocations: user.recentLocations,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching recent locations:", error);
     res.status(500).json({
       status: "error",
       message: error.message,
@@ -834,4 +944,7 @@ module.exports = {
   addSavedLocation,
   removeSavedLocation,
   getSavedLocations,
+  addRecentLocation,
+  removeRecentLocation,
+  getRecentLocations,
 };
