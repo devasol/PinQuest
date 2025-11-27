@@ -14,6 +14,7 @@ import UserManagement from "../pages/AdminDashboard/UserManagement";
 import ContentManagement from "../pages/AdminDashboard/ContentManagement";
 import Security from "../pages/AdminDashboard/Security";
 import Analytics from "../pages/AdminDashboard/Analytics";
+import AdminNotificationsRoute from "../pages/AdminDashboard/AdminNotificationsRoute";
 import AdminProtectedRoute from "../components/Admin/AdminProtectedRoute";
 import EmailVerification from "../components/EmailVerification";
 
@@ -91,12 +92,20 @@ const router = createBrowserRouter([
             element: <UserManagement />
           },
           {
+            path: "users",
+            element: <UserManagement />
+          },
+          {
             path: "posts",
             element: <ContentManagement />
           },
           {
             path: "security",
             element: <Security />
+          },
+          {
+            path: "notifications",
+            element: <AdminNotificationsRoute />
           },
           {
             path: "settings",

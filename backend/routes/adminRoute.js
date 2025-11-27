@@ -1,6 +1,7 @@
 const express = require('express');
 const User = require('../models/User');
 const Post = require('../models/posts');
+const Notification = require('../models/Notification');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
@@ -815,6 +816,184 @@ const promoteUserToAdmin = async (req, res) => {
   }
 };
 
+// @desc    Get all admin notifications (admin only)
+// @route   GET /api/v1/admin/notifications
+// @access  Private (admin only)
+const getAdminNotifications = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, type, read = 'all' } = req.query;
+    
+    // Get admin user IDs to build query
+    const adminUsers = await User.find({ role: 'admin' }).select('_id');
+    const adminIds = adminUsers.map(user => user._id);
+    
+    // Build query for admin notifications only
+    let query = {
+      recipient: { $in: adminIds }
+    };
+    
+    if (type) {
+      query.type = type;
+    }
+    
+    if (read === 'read') {
+      query.read = true;
+    } else if (read === 'unread') {
+      query.read = false;
+    }
+    
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+    
+    const notifications = await Notification.find(query)
+      .populate('sender', 'name avatar')
+      .populate('post', 'title')
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Notification.countDocuments(query);
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        notifications,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalNotifications: total,
+          hasNext: parseInt(page) * limit < total,
+          hasPrev: parseInt(page) > 1
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching admin notifications:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Create admin notification (for system events)
+// @route   POST /api/v1/admin/notifications
+// @access  Private (admin only)
+const createAdminNotification = async (req, res) => {
+  try {
+    const { type, message, post, comment } = req.body;
+    
+    // Validate required fields
+    if (!type || !message) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Type and message are required'
+      });
+    }
+    
+    // Validate notification type
+    const validTypes = ['report', 'new_user', 'moderation', 'system_alert', 'admin_notification'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: `Invalid notification type. Must be one of: ${validTypes.join(', ')}`
+      });
+    }
+    
+    // Get all admin users to send the notification to
+    const adminUsers = await User.find({ role: 'admin' }).select('_id');
+    
+    if (adminUsers.length === 0) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No admin users found'
+      });
+    }
+    
+    // Create notification for each admin
+    const createdNotifications = [];
+    for (const admin of adminUsers) {
+      const notification = new Notification({
+        recipient: admin._id,
+        sender: req.user._id,
+        type,
+        message,
+        post: post || undefined,
+        comment: comment || undefined
+      });
+      
+      await notification.save();
+      createdNotifications.push(notification);
+    }
+    
+    res.status(201).json({
+      status: 'success',
+      message: 'Admin notifications created successfully',
+      data: createdNotifications
+    });
+  } catch (error) {
+    console.error('Error creating admin notification:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get admin notifications count (admin only)
+// @route   GET /api/v1/admin/notifications/count
+// @access  Private (admin only)
+const getAdminNotificationCount = async (req, res) => {
+  try {
+    // Get admin user IDs
+    const adminUsers = await User.find({ role: 'admin' }).select('_id');
+    const adminIds = adminUsers.map(user => user._id);
+    
+    const count = await Notification.countDocuments({
+      recipient: { $in: adminIds },
+      read: false
+    });
+    
+    res.status(200).json({
+      status: 'success',
+      data: { count }
+    });
+  } catch (error) {
+    console.error('Error fetching admin notifications count:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Mark all admin notifications as read
+// @route   PUT /api/v1/admin/notifications/read-all
+// @access  Private (admin only)
+const markAllAdminNotificationsAsRead = async (req, res) => {
+  try {
+    // Get admin user IDs
+    const adminUsers = await User.find({ role: 'admin' }).select('_id');
+    const adminIds = adminUsers.map(user => user._id);
+    
+    await Notification.updateMany(
+      { recipient: { $in: adminIds }, read: false },
+      { read: true }
+    );
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'All admin notifications marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking all admin notifications as read:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 router.route('/init').post(initAdmin);
 router.route('/create').post(protect, admin, createAdmin);
 router.route('/users').get(protect, admin, getAllUsers);
@@ -844,5 +1023,14 @@ router.route('/users')
   .post(protect, admin, createUser);
 router.route('/promote-user')
   .post(protect, promoteUserToAdmin);
+
+// Admin notifications routes
+router.route('/notifications')
+  .get(protect, admin, getAdminNotifications)
+  .post(protect, admin, createAdminNotification);
+router.route('/notifications/count')
+  .get(protect, admin, getAdminNotificationCount);
+router.route('/notifications/read-all')
+  .put(protect, admin, markAllAdminNotificationsAsRead);
 
 module.exports = router;

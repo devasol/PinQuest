@@ -788,6 +788,32 @@
   }
 }
 
+/* Content Details Modal Content */
+.content-management-modal-content {
+  padding: 1.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.content-management-detail-item {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.content-management-detail-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.content-management-detail-description {
+  margin-top: 0.25rem;
+  line-height: 1.4;
+  color: #4b5563;
+  white-space: pre-wrap;
+}
+
 /* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
   .content-management-table-row {

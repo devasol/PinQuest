@@ -10,9 +10,9 @@ import {
   X, 
   BarChart3,
   Shield,
-  Bell,
   User
 } from 'lucide-react';
+import NotificationBell from '../../NotificationBell/NotificationBell';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -172,10 +172,7 @@ const AdminDashboard = () => {
                 <span className="admin-user-name">{user.name || user.email || 'Admin User'}</span>
                 <span className="admin-user-role">{user.role || 'Administrator'}</span>
               </div>
-              <button className="admin-notifications-btn" aria-label="Notifications">
-                <Bell className="admin-notifications-icon" />
-                <span className="admin-notifications-badge">3</span>
-              </button>
+              <NotificationBell userId={user._id || user.id} authToken={localStorage.getItem('token')} />
             </div>
           </div>
         </header>

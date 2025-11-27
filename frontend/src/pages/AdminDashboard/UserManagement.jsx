@@ -236,6 +236,14 @@ const UserManagement = () => {
     });
   };
 
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  
+  const handleViewUser = (user) => {
+    setSelectedUser(user);
+    setShowUserDetailsModal(true);
+  };
+
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
@@ -430,7 +438,7 @@ const UserManagement = () => {
                 <td>{new Date(user.lastActive).toLocaleDateString()}</td>
                 <td>
                   <div className="user-management-actions-cell">
-                    <button className="user-management-action-btn user-management-action-view" aria-label="View user">
+                    <button className="user-management-action-btn user-management-action-view" onClick={() => handleViewUser(user)} aria-label="View user">
                       <Eye className="user-management-action-icon" />
                     </button>
                     <button className="user-management-action-btn user-management-action-edit" onClick={() => handleEditUser(user)} aria-label="Edit user">
@@ -632,6 +640,60 @@ const UserManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {showUserDetailsModal && selectedUser && (
+        <div className="user-management-modal-overlay" onClick={() => setShowUserDetailsModal(false)}>
+          <div className="user-management-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="user-management-modal-header">
+              <h3>User Details</h3>
+              <button className="user-management-modal-close" onClick={() => setShowUserDetailsModal(false)}>
+                &times;
+              </button>
+            </div>
+            <div className="user-management-modal-content">
+              <div className="user-management-detail-item">
+                <strong>ID:</strong> {selectedUser.id}
+              </div>
+              <div className="user-management-detail-item">
+                <strong>Name:</strong> {selectedUser.name}
+              </div>
+              <div className="user-management-detail-item">
+                <strong>Email:</strong> {selectedUser.email}
+              </div>
+              <div className="user-management-detail-item">
+                <strong>Role:</strong> 
+                <span className={`user-management-badge ${getRoleColor(selectedUser.role)}`}>
+                  {selectedUser.role}
+                </span>
+              </div>
+              <div className="user-management-detail-item">
+                <strong>Status:</strong> 
+                <span className={`user-management-badge ${getStatusColor(selectedUser.status)}`}>
+                  {selectedUser.status}
+                </span>
+              </div>
+              <div className="user-management-detail-item">
+                <strong>Posts Count:</strong> {selectedUser.posts}
+              </div>
+              <div className="user-management-detail-item">
+                <strong>Join Date:</strong> {new Date(selectedUser.joinDate).toLocaleDateString()}
+              </div>
+              <div className="user-management-detail-item">
+                <strong>Last Active:</strong> {new Date(selectedUser.lastActive).toLocaleDateString()}
+              </div>
+            </div>
+            <div className="user-management-modal-actions">
+              <button 
+                className="user-management-btn user-management-btn-secondary" 
+                onClick={() => setShowUserDetailsModal(false)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

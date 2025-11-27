@@ -103,6 +103,18 @@ export const adminAPI = {
     method: 'PUT',
     body: JSON.stringify({ currentPassword, newPassword })
   }),
+  
+  // Admin notifications
+  getAdminNotifications: (params = {}) => {
+    const queryParams = new URLSearchParams(params);
+    return apiCall(`/admin/notifications?${queryParams}`, { method: 'GET' });
+  },
+  createAdminNotification: (notificationData) => apiCall('/admin/notifications', {
+    method: 'POST',
+    body: JSON.stringify(notificationData)
+  }),
+  getAdminNotificationCount: () => apiCall('/admin/notifications/count', { method: 'GET' }),
+  markAllAdminNotificationsAsRead: () => apiCall('/admin/notifications/read-all', { method: 'PUT' }),
 };
 
 export default apiCall;

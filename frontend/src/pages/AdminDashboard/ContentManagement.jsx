@@ -17,6 +17,8 @@ const ContentManagement = () => {
   const [error, setError] = useState(null);
   const [showEditPostModal, setShowEditPostModal] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [showPostDetailsModal, setShowPostDetailsModal] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
   const [editingPost, setEditingPost] = useState({
     id: '',
     title: '',
@@ -150,6 +152,11 @@ const ContentManagement = () => {
     } catch (err) {
       alert('Error rejecting post: ' + err.message);
     }
+  };
+
+  const handleViewPost = (post) => {
+    setSelectedPost(post);
+    setShowPostDetailsModal(true);
   };
 
   const handleUpdatePost = async (postId, updatedPost) => {
@@ -457,7 +464,7 @@ const ContentManagement = () => {
                 <td>{formatDate(post.date)}</td>
                 <td>
                   <div className="content-management-actions-cell">
-                    <button className="content-management-action-btn content-management-action-view" onClick={() => window.open(`/discover/${post.id}`, '_blank')}>
+                    <button className="content-management-action-btn content-management-action-view" onClick={() => handleViewPost(post)}>
                       <Eye className="content-management-action-icon" />
                     </button>
                     <button className="content-management-action-btn content-management-action-edit" onClick={() => handleEditPost(post)}>
@@ -591,6 +598,66 @@ const ContentManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Post Details Modal */}
+      {showPostDetailsModal && selectedPost && (
+        <div className="content-management-modal-overlay" onClick={() => setShowPostDetailsModal(false)}>
+          <div className="content-management-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="content-management-modal-header">
+              <h3>Post Details</h3>
+              <button className="content-management-modal-close" onClick={() => setShowPostDetailsModal(false)}>
+                &times;
+              </button>
+            </div>
+            <div className="content-management-modal-content">
+              <div className="content-management-detail-item">
+                <strong>ID:</strong> {selectedPost.id}
+              </div>
+              <div className="content-management-detail-item">
+                <strong>Title:</strong> {selectedPost.title}
+              </div>
+              <div className="content-management-detail-item">
+                <strong>Description:</strong> <div className="content-management-detail-description">{selectedPost.description}</div>
+              </div>
+              <div className="content-management-detail-item">
+                <strong>Author:</strong> {selectedPost.author}
+              </div>
+              <div className="content-management-detail-item">
+                <strong>Category:</strong> 
+                <span className={`content-management-badge ${getCategoryColor(selectedPost.category)}`}>
+                  {selectedPost.category}
+                </span>
+              </div>
+              <div className="content-management-detail-item">
+                <strong>Status:</strong> 
+                <span className={`content-management-badge ${getStatusColor(selectedPost.status)}`}>
+                  {selectedPost.status}
+                </span>
+              </div>
+              <div className="content-management-detail-item">
+                <strong>Views:</strong> {selectedPost.views}
+              </div>
+              <div className="content-management-detail-item">
+                <strong>Likes:</strong> {selectedPost.likes}
+              </div>
+              <div className="content-management-detail-item">
+                <strong>Comments:</strong> {selectedPost.comments}
+              </div>
+              <div className="content-management-detail-item">
+                <strong>Date Posted:</strong> {formatDate(selectedPost.date)}
+              </div>
+            </div>
+            <div className="content-management-modal-actions">
+              <button 
+                className="content-management-btn content-management-btn-secondary" 
+                onClick={() => setShowPostDetailsModal(false)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

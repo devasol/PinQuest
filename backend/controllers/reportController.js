@@ -49,6 +49,27 @@ const createReport = async (req, res) => {
 
     await report.save();
 
+    // Create notification for admins about the new report
+    try {
+      const adminUsers = await User.find({ role: 'admin' }).select('_id');
+      const postDetails = await Post.findById(postId).select('title');
+      
+      for (const admin of adminUsers) {
+        const notification = new Notification({
+          recipient: admin._id,
+          sender: req.user._id,
+          type: 'report',
+          post: postId,
+          message: `New report received: "${reason}" for post "${postDetails?.title || 'Untitled'}"`
+        });
+        
+        await notification.save();
+      }
+    } catch (notificationError) {
+      console.error('Error creating admin notification for new report:', notificationError);
+      // Don't fail the request if notification fails
+    }
+
     res.status(201).json({
       status: 'success',
       data: report

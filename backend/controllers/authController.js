@@ -56,6 +56,26 @@ const registerUser = async (req, res) => {
         email: user.email,
       });
 
+      // Create notification for admins about the new user registration
+      try {
+        const Notification = require('../models/Notification');
+        const adminUsers = await User.find({ role: 'admin' }).select('_id');
+        
+        for (const admin of adminUsers) {
+          const notification = new Notification({
+            recipient: admin._id,
+            sender: user._id,
+            type: 'new_user',
+            message: `New user registered: ${user.name} (${user.email})`
+          });
+          
+          await notification.save();
+        }
+      } catch (notificationError) {
+        logger.error('Error creating admin notification for new user:', notificationError);
+        // Don't fail the registration if notification fails
+      }
+
       res.status(201).json({
         status: "success",
         message: 'User created successfully',

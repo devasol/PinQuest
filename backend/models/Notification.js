@@ -20,7 +20,12 @@ const notificationSchema = new mongoose.Schema({
       'follow',
       'mention',
       'reply',
-      'post_update'
+      'post_update',
+      'report',
+      'new_user',
+      'moderation',
+      'system_alert',
+      'admin_notification'
     ]
   },
   post: {
