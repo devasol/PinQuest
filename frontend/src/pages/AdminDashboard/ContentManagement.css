@@ -1,16 +1,17 @@
 .content-management {
-  padding: 0 0 0 5rem; /* Match admin dashboard left spacing */
+  padding: 1.5rem;
   min-width: 320px; /* Prevent layout issues on small screens */
   min-height: calc(100vh - 110px); /* Ensure proper height */
   background-color: #f8fafc; /* Match admin dashboard background */
+  display: flex;
+  flex-direction: column;
 }
 
 .content-management-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   margin-bottom: 1.5rem;
-  flex-wrap: wrap;
   gap: 1rem;
 }
 
@@ -28,6 +29,7 @@
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  width: 100%;
   justify-content: flex-end;
 }
 
@@ -74,17 +76,17 @@
 
 .content-management-controls {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   margin-bottom: 1.5rem;
-  flex-wrap: wrap;
   gap: 1rem;
 }
 
 .content-management-search {
   position: relative;
-  flex: 1;
+  width: 100%;
   max-width: 400px;
+  margin-bottom: 0.5rem;
 }
 
 .content-management-search-icon {
@@ -115,6 +117,8 @@
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .content-management-select {
@@ -125,6 +129,14 @@
   color: #374151;
   font-size: 0.875rem;
   min-width: 140px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.content-management-select:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .content-management-table-container {
@@ -331,15 +343,6 @@
 }
 
 @media (max-width: 1024px) {
-  .content-management-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .content-management-search {
-    max-width: 100%;
-  }
-  
   .content-management-filters {
     width: 100%;
     justify-content: space-between;
@@ -351,25 +354,9 @@
 }
 
 @media (max-width: 768px) {
-  .content-management-header {
-    flex-direction: column;
-    align-items: stretch;
-    align-content: center;
-  }
-  
   .content-management-actions {
     justify-content: center;
     width: 100%;
-  }
-  
-  .content-management-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .content-management-search {
-    width: 100%;
-    max-width: 100%;
   }
   
   .content-management-filters {

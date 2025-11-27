@@ -113,9 +113,8 @@ const AdminDashboard = () => {
                     onClick={() => {
                       if (window.innerWidth <= 768) {
                         setSidebarOpen(false); // Close sidebar on mobile when clicking a link
-                      } else if (!sidebarOpen) {
-                        setSidebarOpen(true); // Expand sidebar on desktop if it's collapsed when clicking a link
                       }
+                      // Don't change sidebar state on desktop when clicking a link - preserve current state
                     }}
                   >
                     <Icon className="admin-sidebar-menu-icon" />
@@ -164,15 +163,21 @@ const AdminDashboard = () => {
                location.pathname.includes('/analytics') ? 'Analytics Dashboard' :
                'Dashboard'}
             </h1>
-            <div className="admin-header-user">
-              <div className="admin-user-avatar">
-                <User className="admin-user-icon" />
+            <div className="admin-header-actions">
+              <Link to="/" className="admin-home-button">
+                <Home className="admin-home-icon" />
+                <span>Home</span>
+              </Link>
+              <div className="admin-header-user">
+                <div className="admin-user-avatar">
+                  <User className="admin-user-icon" />
+                </div>
+                <div className="admin-user-info">
+                  <span className="admin-user-name">{user.name || user.email || 'Admin User'}</span>
+                  <span className="admin-user-role">{user.role || 'Administrator'}</span>
+                </div>
+                <NotificationBell userId={user._id || user.id} authToken={localStorage.getItem('token')} />
               </div>
-              <div className="admin-user-info">
-                <span className="admin-user-name">{user.name || user.email || 'Admin User'}</span>
-                <span className="admin-user-role">{user.role || 'Administrator'}</span>
-              </div>
-              <NotificationBell userId={user._id || user.id} authToken={localStorage.getItem('token')} />
             </div>
           </div>
         </header>

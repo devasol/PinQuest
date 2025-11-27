@@ -281,6 +281,7 @@
   justify-content: space-between;
   align-items: center;
   margin-left: 1rem;
+  min-width: 0; /* Allow flex item to shrink */
 }
 
 .admin-header-title {
@@ -410,6 +411,28 @@
   .admin-sidebar-closed ~ .admin-main {
     width: calc(100% - 80px);
   }
+  
+  .admin-header-title {
+    font-size: 1.3rem;
+  }
+  
+  .admin-header {
+    padding: 1rem 1.25rem 1rem 4.25rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  .admin-header-user {
+    gap: 0.5rem;
+  }
+  
+  .admin-user-info {
+    display: none;
+  }
+  
+  .admin-header-title {
+    font-size: 1.25rem;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -426,11 +449,11 @@
   }
   
   .admin-header-title {
-    font-size: 1.375rem;
+    font-size: 1.25rem;
   }
   
   .admin-header {
-    padding: 1rem 1.5rem 1rem 4.5rem;
+    padding: 0.875rem 1.25rem 0.875rem 4rem;
   }
 }
 
@@ -485,6 +508,12 @@
     width: 36px;
     height: 36px;
   }
+  
+  .admin-header-actions {
+    order: 3;
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 576px) {
@@ -521,6 +550,10 @@
     width: 18px;
     height: 18px;
   }
+  
+  .admin-header-actions {
+    justify-content: center;
+  }
 }
 
 @media (max-width: 480px) {
@@ -547,6 +580,16 @@
   
   .admin-dashboard-content {
     padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+  }
+  
+  .admin-header-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .admin-home-button {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
   }
   
   .admin-menu-toggle {
@@ -594,6 +637,100 @@
   opacity: 1;
 }
 
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .admin-header {
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .admin-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    width: 100%;
+    margin-left: 0.5rem;
+  }
+  
+  .admin-header-title {
+    font-size: 1.25rem;
+    align-self: stretch;
+  }
+  
+  .admin-header-actions {
+    width: 100%;
+    justify-content: space-between;
+    order: 3; /* Put actions at the bottom */
+  }
+  
+  .admin-header-user {
+    padding-left: 0;
+    border-left: none;
+    padding-right: 0;
+    border-right: 1px solid #e5e7eb;
+    margin-right: 0.5rem;
+  }
+  
+  .admin-home-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  .admin-dashboard-content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-header {
+    padding: 0.5rem;
+  }
+  
+  .admin-header-title {
+    font-size: 1.1rem;
+  }
+  
+  .admin-menu-toggle {
+    width: 36px;
+    height: 36px;
+    padding: 0.25rem;
+  }
+  
+  .admin-header-actions {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  
+  .admin-home-button {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    min-height: 32px;
+  }
+  
+  .admin-user-info {
+    display: none; /* Hide user info on very small screens */
+  }
+  
+  .admin-user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .admin-user-icon {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .admin-header-content {
+    gap: 0.5rem;
+  }
+  
+  .admin-dashboard-content {
+    padding: 0.75rem;
+  }
+}
+
 /* Landscape mobile */
 @media (max-height: 500px) and (orientation: landscape) {
   .admin-header {
@@ -607,4 +744,48 @@
   .admin-dashboard-content {
     padding: 0.75rem;
   }
+}
+
+/* Home Button */
+.admin-home-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-home-button:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.admin-home-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.admin-header-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-left: 1rem;
+  border-left: 1px solid #e5e7eb;
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto; /* Push to the right */
+  flex-shrink: 0; /* Prevent shrinking */
 }
