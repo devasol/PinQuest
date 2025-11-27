@@ -1398,12 +1398,20 @@ const MapView = () => {
 
   const handleMapClick = (e) => {
     if (!isAuthenticated) {
+      // Close any open forms/sidebars before showing login modal
+      setShowPostForm(false);
+      setClickPosition(null);
+      setActiveSidebarTab("");
+      setShowImageGallery(false);
       setShowLoginModal(true);
       return;
     }
 
-    setClickPosition([e.latlng.lat, e.latlng.lng]);
-    setShowPostForm(true);
+    // Close any other modals before opening the post form
+    setShowLoginModal(false);
+    setShowImageGallery(false);
+    const position = [e.latlng.lat, e.latlng.lng];
+    openPostForm(position);
 
     // Pre-populate the form with user's name from auth context
     setFormData({
@@ -1737,6 +1745,21 @@ const MapView = () => {
   const closeForm = () => {
     setShowPostForm(false);
     setClickPosition(null);
+    // Also close any open sidebars when the form closes
+    setActiveSidebarTab("");
+    // Close any other modals that might interfere
+    setShowLoginModal(false);
+    setShowImageGallery(false); // Close image gallery if open
+  };
+
+  const openPostForm = (position) => {
+    setShowPostForm(true);
+    setClickPosition(position);
+    // Close any open sidebars when the form opens
+    setActiveSidebarTab("");
+    // Also close any other modals that might interfere
+    setShowLoginModal(false);
+    setShowImageGallery(false); // Close image gallery if open
   };
 
   // getMarkerByCategory is now imported from CustomMapMarkers
@@ -1760,6 +1783,14 @@ const MapView = () => {
   const handleSidebarItemClick = (locationId) => {
     const location = allLocations.find((loc) => loc.id === locationId);
     if (location) {
+      // Close any post creation form that might be open
+      setShowPostForm(false);
+      setClickPosition(null);
+      // Close login modal if it's open
+      setShowLoginModal(false);
+      // Close image gallery if it's open
+      setShowImageGallery(false);
+      
       setActivePopup(locationId);
       flyToLocation(location.position);
       addRecentLocation(location);  // Add to recent locations when clicked from explore
@@ -1771,12 +1802,12 @@ const MapView = () => {
       {" "}
       {/* pt-16 accounts for header height */}
       <Header isDiscoverPage={true} />
-      {/* Full-Screen Map Container - with lower z-index to ensure header stays on top */}
+      {/* Full-Screen Map Container - with lower z-index to ensure header and sidebars stay on top */}
       <div className="relative w-full h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] z-0">
         {" "}
         {/* 4rem = 64px which is header height */}
-        {/* Loading indicator */}
-        {isLoading && (
+        {/* Loading indicator - only show when not showing post form */}
+        {isLoading && !showPostForm && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-0 flex items-center justify-center">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
@@ -2296,9 +2327,17 @@ const MapView = () => {
               <Marker
                 key={`poi-${poi.id}`}
                 position={poi.position}
-                icon={createPOIMarker(poi.type, poi.name)}
+                icon={createPOIMarker(poi.type)}
                 eventHandlers={{
                   click: () => {
+                    // Close any post creation form that might be open
+                    setShowPostForm(false);
+                    setClickPosition(null);
+                    // Close login modal if it's open
+                    setShowLoginModal(false);
+                    // Close image gallery if it's open
+                    setShowImageGallery(false);
+                    
                     addRecentLocation(poi); // Add POI to recents when popup opens
                     setActivePopup(`poi-${poi.id}`);
                   },
@@ -2487,7 +2526,7 @@ const MapView = () => {
           </motion.div>
         )}
         {/* Static Icon Sidebar */}
-        <div className="sidebar-icon-container absolute left-0 top-0 h-full w-16 sm:w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-0 flex flex-col items-center py-4 space-y-2 sm:space-y-3">
+        <div className="sidebar-icon-container absolute left-0 top-0 h-full w-16 sm:w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-2 sm:space-y-3">
           <button
             className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
               activeSidebarTab === "explore"
@@ -2660,7 +2699,7 @@ const MapView = () => {
         <AnimatePresence>
           {activeSidebarTab && (
             <motion.div
-              className={`sidebar-pane absolute top-0 h-full bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-0 flex flex-col overflow-x-hidden ${activeSidebarTab ? 'is-open' : ''}`}
+              className={`sidebar-pane absolute top-0 h-full bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col overflow-x-hidden ${activeSidebarTab ? 'is-open' : ''}`}
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -3174,7 +3213,7 @@ const MapView = () => {
           <>
             {/* Backdrop */}
             <motion.div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[600]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3182,20 +3221,21 @@ const MapView = () => {
             />
 
             {/* Modal Content */}
-            <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="fixed inset-0 flex items-center justify-center z-[601] p-4">
               <motion.div
-                className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-[95vw] max-h-[40vh] sm:max-h-[50vh] overflow-hidden transition-transform duration-300 ease-in-out"
-                initial={{ scale: 0.98, opacity: 0, y: 10 }}
+                className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col transition-transform duration-300 ease-in-out"
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.98, opacity: 0, y: 10 }}
-                transition={{ type: "spring", damping: 20 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
               >
                 {/* Submitting overlay */}
                 {submitting && (
-                  <div className="absolute inset-0 z-10 bg-white/70 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-3">
+                  <div className="absolute inset-0 z-[700] bg-white/80 backdrop-blur-sm flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4 p-8">
                       <svg
-                        className="animate-spin h-10 w-10 text-blue-600"
+                        className="animate-spin h-12 w-12 text-blue-600"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
@@ -3214,25 +3254,37 @@ const MapView = () => {
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                         ></path>
                       </svg>
-                      <div className="text-gray-700 font-medium">
+                      <div className="text-gray-700 font-medium text-lg text-center">
                         Creating post — please wait...
+                      </div>
+                      <div className="text-gray-500 text-sm text-center">
+                        Your post is being saved to the map
                       </div>
                     </div>
                   </div>
                 )}
                 
                 {/* Fixed header with close button - always visible */}
-                <div className="p-4 flex-shrink-0 border-b border-gray-200 bg-white z-10 relative">
+                <div className="p-4 flex-shrink-0 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 z-[650]">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-                      <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5" />
-                      </svg>
-                      Create new post
-                    </h2>
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-800">
+                          Create New Post
+                        </h2>
+                        <p className="text-sm text-gray-600">
+                          Share a location with the community
+                        </p>
+                      </div>
+                    </div>
                     <button
                       onClick={closeForm}
-                      className="text-gray-500 hover:text-gray-700 text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors duration-150"
+                      className="text-gray-500 hover:text-gray-700 text-2xl w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors duration-200"
                       aria-label="Close create post"
                     >
                       ×
@@ -3241,12 +3293,12 @@ const MapView = () => {
                 </div>
                 
                 {/* Scrollable form area */}
-                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar max-h-[calc(40vh-8rem)] sm:max-h-[calc(50vh-8rem)]">
-                    <form onSubmit={handleFormSubmit}>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                      <div>
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+                  <form onSubmit={handleFormSubmit} className="space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="sm:col-span-2">
                         <label
-                          className="block text-gray-700 mb-2 font-medium"
+                          className="block text-gray-700 mb-2 font-semibold"
                           htmlFor="title"
                         >
                           Title *
@@ -3258,14 +3310,14 @@ const MapView = () => {
                           value={formData.title}
                           onChange={handleFormChange}
                           required
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 outline-none shadow-sm"
                           placeholder="Enter a descriptive title"
                         />
                       </div>
 
                       <div>
                         <label
-                          className="block text-gray-700 mb-2 font-medium"
+                          className="block text-gray-700 mb-2 font-semibold"
                           htmlFor="category"
                         >
                           Category *
@@ -3276,7 +3328,7 @@ const MapView = () => {
                           value={formData.category}
                           onChange={handleFormChange}
                           required
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 outline-none shadow-sm"
                         >
                           <option value="general">General</option>
                           <option value="nature">Nature</option>
@@ -3287,9 +3339,9 @@ const MapView = () => {
                         </select>
                       </div>
 
-                      <div className="md:col-span-2">
+                      <div className="sm:col-span-2">
                         <label
-                          className="block text-gray-700 mb-2 font-medium"
+                          className="block text-gray-700 mb-2 font-semibold"
                           htmlFor="description"
                         >
                           Description *
@@ -3300,19 +3352,19 @@ const MapView = () => {
                           value={formData.description}
                           onChange={handleFormChange}
                           required
-                          rows="3"
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none resize-none"
-                          placeholder="Describe this location..."
+                          rows="4"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 outline-none resize-y shadow-sm"
+                          placeholder="Describe this location, what makes it special, or any helpful details..."
                         />
                       </div>
 
-                      <div className="md:col-span-2">
-                        <label className="block text-gray-700 mb-2 font-medium">
+                      <div className="sm:col-span-2">
+                        <label className="block text-gray-700 mb-2 font-semibold">
                           Images (optional — up to 10)
                         </label>
 
                         {/* URL input (optional) */}
-                        <div className="mb-3">
+                        <div className="mb-4">
                           <input
                             type="text"
                             id="image"
@@ -3323,7 +3375,7 @@ const MapView = () => {
                                 : ""
                             }
                             onChange={handleFormChange}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition duration-150 ease-in-out outline-none"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 outline-none shadow-sm"
                             placeholder="Or paste an image URL (optional)"
                           />
                           <p className="text-xs text-gray-500 mt-1">
@@ -3332,145 +3384,155 @@ const MapView = () => {
                         </div>
 
                         {/* Upload area */}
-                        <div className="flex items-start gap-4">
+                        <div className="space-y-4">
                           <div
-                            className="flex-1 border-2 border-dashed rounded-2xl p-4 flex items-center justify-center cursor-pointer hover:border-blue-300 transition"
+                            className="border-2 border-dashed border-gray-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors duration-200"
                             onClick={handleAddButtonClick}
                           >
+                            <svg
+                              className="mx-auto h-10 w-10 text-blue-500 mb-3"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 15a4 4 0 014-4h10a4 4 0 110 8H7a4 4 0 01-4-4zM7 11V7m0 0L5 9m2-2l2 2"
+                              />
+                            </svg>
                             <div className="text-center">
-                              <svg
-                                className="mx-auto mb-2 h-8 w-8 text-blue-500"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M3 15a4 4 0 014-4h10a4 4 0 110 8H7a4 4 0 01-4-4zM7 11V7m0 0L5 9m2-2l2 2"
-                                />
-                              </svg>
-                              <div className="text-sm text-gray-700 font-medium">
+                              <div className="text-sm text-gray-700 font-medium mb-1">
                                 Click to add images
                               </div>
-                              <div className="text-xs text-gray-400">
+                              <div className="text-xs text-gray-500">
                                 JPG, PNG, GIF — up to 5MB each
                               </div>
                             </div>
                           </div>
 
-                          <div className="w-28">
+                          <div className="flex flex-wrap gap-3">
                             <button
                               type="button"
                               onClick={handleAddButtonClick}
                               disabled={images.length >= 10}
-                              className={`w-full px-3 py-2 rounded-xl text-white font-medium ${
+                              className={`px-4 py-2.5 rounded-xl text-white font-medium shadow-sm ${
                                 images.length >= 10
-                                  ? "bg-gray-300 cursor-not-allowed"
+                                  ? "bg-gray-400 cursor-not-allowed"
                                   : "bg-blue-600 hover:bg-blue-700"
                               }`}
                             >
-                              Add
+                              {images.length > 0 ? `Add More (${10 - images.length} left)` : "Add Images"}
                             </button>
-                          </div>
-
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={handleImageChange}
-                            className="hidden"
-                          />
-                        </div>
-
-                        {errors.image && (
-                          <p className="text-red-500 text-sm mt-2">
-                            {errors.image}
-                          </p>
-                        )}
-
-                        <div className="mt-3 mb-3">
-                          <div className="flex justify-between text-sm text-gray-600 mb-1">
-                            <span>Selected</span>
-                            <span>{images.length}/10</span>
-                          </div>
-                          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-500"
-                              style={{
-                                width: `${(images.length / 10) * 100}%`,
-                              }}
+                            
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={handleImageChange}
+                              className="hidden"
                             />
                           </div>
-                        </div>
 
-                        {images.length > 0 && (
-                          <div className="grid grid-cols-3 gap-3">
-                            {images.map((image, idx) => (
-                              <div
-                                key={image.id}
-                                className="relative rounded-lg overflow-hidden h-24 bg-gray-100"
-                              >
-                                <img
-                                  src={image.preview}
-                                  alt={`Preview ${idx + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => removeImage(image.id)}
-                                  className="absolute top-2 right-2 bg-white/80 p-1 rounded-full text-red-600 hover:bg-white"
-                                  aria-label={`Remove image ${idx + 1}`}
-                                >
-                                  ×
-                                </button>
+                          {errors.image && (
+                            <p className="text-red-500 text-sm mt-2">
+                              {errors.image}
+                            </p>
+                          )}
+
+                          {images.length > 0 && (
+                            <div className="mt-4">
+                              <div className="flex justify-between text-sm text-gray-600 mb-3">
+                                <span>Selected Images ({images.length}/10)</span>
                               </div>
-                            ))}
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                {images.map((image, idx) => (
+                                  <div
+                                    key={image.id}
+                                    className="relative rounded-xl overflow-hidden h-24 bg-gray-100 border border-gray-200"
+                                  >
+                                    <img
+                                      src={image.preview}
+                                      alt={`Preview ${idx + 1}`}
+                                      className="w-full h-full object-cover"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeImage(image.id)}
+                                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600 transition-colors duration-200"
+                                      aria-label={`Remove image ${idx + 1}`}
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm text-blue-800 font-medium">
+                                ℹ️ Auto-Associated Account
+                              </p>
+                              <p className="text-sm text-blue-700 mt-1">
+                                Your post will be automatically associated with your account. No need to enter your name.
+                              </p>
+                            </div>
                           </div>
-                        )}
+                        </div>
                       </div>
 
-                      <div className="md:col-span-2 text-sm text-gray-600 bg-blue-50 p-4 rounded-xl">
-                        <p>
-                          ℹ️ Your post will be automatically associated with
-                          your account. No need to enter your name.
-                        </p>
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <div className="bg-blue-50 p-4 rounded-xl">
-                          <p className="text-sm text-blue-800 font-medium">
-                            📍 Selected Location
-                          </p>
-                          <p className="text-sm text-blue-600 mt-1">
-                            {clickPosition
-                              ? `Latitude: ${clickPosition[0].toFixed(
-                                  6
-                                )}, Longitude: ${clickPosition[1].toFixed(6)}`
-                              : "No location selected"}
-                          </p>
+                      <div className="sm:col-span-2">
+                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg className="w-5 h-5 text-green-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0L6.94 17.25a1.998 1.998 0 010-2.827l3.646-3.647a1.999 1.999 0 012.828 0L17.657 16.657zM19.07 8.93l-1.414-1.414a1.999 1.999 0 00-2.828 0L10.586 11.75a1.999 1.999 0 000 2.828l3.646 3.647a1.999 1.999 0 002.828 0L19.07 13.93a1.999 1.999 0 000-2.828z" />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm text-green-800 font-medium">
+                                📍 Selected Location
+                              </p>
+                              <p className="text-sm text-green-700 mt-1">
+                                {clickPosition
+                                  ? `Latitude: ${clickPosition[0].toFixed(6)}, Longitude: ${clickPosition[1].toFixed(6)}`
+                                  : "No location selected - click on the map to select a location"}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0">
+                    <div className="pt-4 sm:pt-6 flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0">
                       <button
                         type="button"
                         onClick={closeForm}
-                        className="flex-1 bg-gray-100 text-gray-800 py-2.5 sm:py-3 px-4 rounded-xl hover:bg-gray-200 transition transform duration-150 hover:scale-[1.02] font-medium"
+                        className="flex-1 bg-gray-100 text-gray-800 py-3 px-6 rounded-xl hover:bg-gray-200 transition-all duration-200 font-medium shadow-sm"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={submitting}
-                        className={`flex-1 py-2.5 sm:py-3 px-4 rounded-xl transition transform duration-150 hover:scale-[1.02] active:scale-[0.98] font-medium shadow-md ${
+                        className={`flex-1 py-3 px-6 rounded-xl transition-all duration-200 font-medium shadow-md ${
                           submitting
-                            ? "bg-blue-400 text-white cursor-wait opacity-80"
-                            : "bg-blue-600 text-white hover:bg-blue-700"
+                            ? "bg-blue-400 text-white cursor-wait"
+                            : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transform hover:-translate-y-0.5"
                         }`}
                       >
                         {submitting ? (
@@ -3498,7 +3560,7 @@ const MapView = () => {
                             Creating...
                           </div>
                         ) : (
-                          "Create Post"
+                          "Publish Post"
                         )}
                       </button>
                     </div>

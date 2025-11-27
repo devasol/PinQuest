@@ -219,8 +219,8 @@ const createPOIMarker = (poiType) => {
 
   const color = typeColors[poiType] || "#4F46E5"; // Default to indigo
 
-  // Use default Leaflet marker for POIs (regular pin)
-  return new L.Icon.Default();
+  // Use the custom pin marker for POIs to ensure consistent popup positioning
+  return createPinMarker({ color, size: 32 });
 };
 
 export {

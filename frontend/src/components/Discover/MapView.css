@@ -103,20 +103,25 @@
   transition: all 0.25s ease !important;
 }
 
-/* Enhanced Marker Animations */
+/* Enhanced Marker Animations - Static Markers */
 .leaflet-marker-icon {
-  transition: transform 0.2s ease, filter 0.3s ease !important;
+  transition: none !important;
 }
 
 .leaflet-marker-icon:hover {
-  transform: scale(1.1) !important;
-  filter: brightness(1.1) drop-shadow(0 0 8px rgba(79, 70, 229, 0.4)) !important;
+  transform: none !important;
+  transition: none !important;
+  filter: none !important;
 }
 
-/* Smooth hover effects for markers */
+/* Static marker styles - no hover effects */
+.marker {
+  transition: none;
+}
+
 .marker:hover {
-  transform: scale(1.1);
-  transition: transform 0.2s ease;
+  transform: none;
+  transition: none;
 }
 
 /* Enhanced tile loading */
