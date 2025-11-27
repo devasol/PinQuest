@@ -216,7 +216,9 @@ const AdminDashboard = () => {
 
         {/* Quick Actions */}
         <div className="admin-card admin-quick-actions">
-          <h3 className="admin-card-title">Quick Actions</h3>
+          <div className="admin-card-header">
+            <h3 className="admin-card-title">Quick Actions</h3>
+          </div>
           <div className="admin-quick-actions-grid">
             <a href="/admin/users" className="admin-quick-action-btn">
               <Users className="admin-quick-action-icon" />

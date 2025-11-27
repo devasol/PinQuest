@@ -1,6 +1,8 @@
 .analytics-page {
-  padding: 0;
+  padding: 0 0 0 5rem; /* Match admin dashboard left spacing */
   min-width: 320px; /* Prevent layout issues on small screens */
+  min-height: calc(100vh - 110px); /* Ensure proper height */
+  background-color: #f8fafc; /* Match admin dashboard background */
 }
 
 .analytics-header {
@@ -10,11 +12,12 @@
   margin-bottom: 2rem;
   flex-wrap: wrap;
   gap: 1rem;
+  padding-top: 1.25rem; /* Match admin dashboard header spacing */
 }
 
 .analytics-title {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.75rem;
+  font-weight: 700;
   color: #1f2937;
   margin: 0;
   overflow: hidden;
@@ -402,6 +405,72 @@
   }
 }
 
+@media (max-width: 768px) {
+  .analytics-page {
+    padding: 0 0 0 2.5rem; /* Adjust for mobile */
+  }
+  
+  .analytics-header {
+    flex-direction: column;
+    align-items: stretch;
+    align-content: center;
+  }
+  
+  .analytics-actions {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  .analytics-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+  }
+  
+  .analytics-stat-card {
+    padding: 1rem;
+  }
+  
+  .analytics-stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .analytics-chart-container {
+    height: 140px;
+  }
+  
+  .analytics-card {
+    padding: 1.25rem;
+  }
+  
+  .analytics-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .analytics-activity-text {
+    white-space: normal;
+  }
+  
+  .analytics-activity-time {
+    white-space: normal;
+  }
+  
+  .analytics-select {
+    min-width: 120px;
+  }
+  
+  .analytics-category-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .analytics-category-progress {
+    width: 100%;
+  }
+}
+
 @media (max-width: 1024px) {
   .analytics-grid {
     grid-template-columns: 1fr;
@@ -484,6 +553,10 @@
 }
 
 @media (max-width: 576px) {
+  .analytics-page {
+    padding: 0 0 0 2rem; /* Adjust for smaller mobile */
+  }
+  
   .analytics-stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 0.75rem;
@@ -572,6 +645,10 @@
 }
 
 @media (max-width: 480px) {
+  .analytics-page {
+    padding: 0 0.5rem 0 1.5rem; /* Adjust for smallest mobile */
+  }
+  
   .analytics-stats-grid {
     grid-template-columns: 1fr;
   }

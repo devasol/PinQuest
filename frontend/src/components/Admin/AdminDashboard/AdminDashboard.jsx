@@ -93,7 +93,7 @@ const AdminDashboard = () => {
       <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : 'admin-sidebar-closed'}`}>
         <div className="admin-sidebar-header">
           <div className="admin-sidebar-logo">
-            <div className="admin-logo-icon">
+            <div className="admin-logo-icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
               <Shield className="admin-logo-icon-svg" />
             </div>
             <span className="admin-logo-text">Admin Panel</span>
@@ -110,7 +110,13 @@ const AdminDashboard = () => {
                   <Link 
                     to={item.path} 
                     className={`admin-sidebar-menu-link ${isActive ? 'active' : ''}`}
-                    onClick={() => window.innerWidth <= 768 && setSidebarOpen(false)} // Close sidebar on mobile when clicking a link
+                    onClick={() => {
+                      if (window.innerWidth <= 768) {
+                        setSidebarOpen(false); // Close sidebar on mobile when clicking a link
+                      } else if (!sidebarOpen) {
+                        setSidebarOpen(true); // Expand sidebar on desktop if it's collapsed when clicking a link
+                      }
+                    }}
                   >
                     <Icon className="admin-sidebar-menu-icon" />
                     <span className="admin-sidebar-menu-label">{item.label}</span>

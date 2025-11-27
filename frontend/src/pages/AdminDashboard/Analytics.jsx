@@ -334,7 +334,7 @@ const Analytics = () => {
                     </div>
                     <div className="analytics-activity-meta">
                       <span className="analytics-activity-posts">Engagement: {post.engagement || 0}</span>
-                      <span className="analytics-activity-likes">Likes: {post.likes || 0}</span>
+                      <span className="analytics-activity-likes">Likes: {post.likesCount || 0}</span>
                     </div>
                   </div>
                 </div>

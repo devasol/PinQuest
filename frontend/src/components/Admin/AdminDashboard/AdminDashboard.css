@@ -24,6 +24,28 @@
   width: 80px;
 }
 
+/* Ensure the main content never overlaps with the sidebar */
+.admin-main {
+  flex: 1;
+  margin-left: 260px;
+  transition: all 0.3s ease;
+  min-width: 0; /* Allow flex item to shrink below content size */
+  width: calc(100% - 260px); /* Calculate width based on sidebar */
+  position: relative; /* Ensure proper stacking context */
+  z-index: 40; /* Ensure content appears above sidebar */
+}
+
+.admin-sidebar-closed ~ .admin-main {
+  margin-left: 80px;
+  width: calc(100% - 80px); /* Calculate width based on collapsed sidebar */
+}
+
+/* When sidebar is completely closed (hidden on mobile) */
+.admin-sidebar:not(.admin-sidebar-open) ~ .admin-main {
+  width: 100%; /* Take full width when sidebar is hidden */
+  margin-left: 0;
+}
+
 .admin-sidebar-header {
   padding: 1.5rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -61,6 +83,34 @@
 .admin-sidebar-closed .admin-sidebar-menu-label,
 .admin-sidebar-closed .admin-sidebar-footer {
   display: none;
+}
+
+/* Add hover effect for collapsed sidebar to indicate it's clickable */
+.admin-sidebar-closed:hover {
+  background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%); /* Slightly different hover state */
+  cursor: pointer;
+}
+
+.admin-logo-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.admin-sidebar-closed .admin-logo-icon:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); /* Hover effect when collapsed */
+  cursor: pointer;
+}
+
+.admin-logo-icon-svg {
+  width: 18px;
+  height: 18px;
+  color: white;
 }
 
 .admin-sidebar-nav {
@@ -143,9 +193,12 @@
 .admin-main {
   flex: 1;
   margin-left: 260px;
-  transition: margin-left 0.3s ease;
+  transition: all 0.3s ease;
   min-width: 0; /* Allow flex item to shrink below content size */
   width: calc(100% - 260px); /* Calculate width based on sidebar */
+  position: relative; /* Ensure proper stacking context */
+  z-index: 40; /* Ensure content appears above sidebar */
+  min-height: 100vh; /* Ensure full height */
 }
 
 .admin-sidebar-closed ~ .admin-main {
@@ -157,6 +210,32 @@
 .admin-sidebar:not(.admin-sidebar-open) ~ .admin-main {
   width: 100%; /* Take full width when sidebar is hidden */
   margin-left: 0;
+}
+
+/* Ensure header has proper z-index to stay on top */
+.admin-header {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Additional safeguard to ensure no content is covered by sidebar */
+.admin-dashboard-content {
+  padding: 1.5rem;
+  min-height: calc(100vh - 110px);
+  position: relative;
+  z-index: 1;
+}
+
+/* Make sure any absolute positioned elements inside content don't overlap sidebar */
+.admin-dashboard-content * {
+  z-index: auto;
 }
 
 /* Header Styles */
@@ -300,8 +379,22 @@
 
 /* Dashboard Content */
 .admin-dashboard-content {
-  padding: 1.5rem;
+  padding: 1.5rem 1.5rem 1.5rem 4.5rem; /* Add more left padding for visual breathing space */
   min-height: calc(100vh - 110px);
+  position: relative; /* Ensure content renders in the right context */
+}
+
+/* Header Styles */
+.admin-header {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem 1.5rem 1.25rem 5rem; /* Add more left padding and increased vertical padding */
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 /* Responsive Design */
@@ -334,6 +427,10 @@
   
   .admin-header-title {
     font-size: 1.375rem;
+  }
+  
+  .admin-header {
+    padding: 1rem 1.5rem 1rem 4.5rem;
   }
 }
 
@@ -372,7 +469,11 @@
   }
   
   .admin-dashboard-content {
-    padding: 1rem;
+    padding: 1rem 1rem 1rem 2.5rem;
+  }
+  
+  .admin-header {
+    padding: 0.75rem 1rem 0.75rem 2.5rem; /* Reduced padding for mobile */
   }
   
   .admin-notifications-btn {
@@ -396,7 +497,7 @@
   }
   
   .admin-header {
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 1rem 0.75rem 2.5rem; /* Reduced padding for mobile */
   }
   
   .admin-header-content {
@@ -408,7 +509,7 @@
   }
   
   .admin-dashboard-content {
-    padding: 1rem;
+    padding: 1rem 1rem 1rem 2.5rem;
   }
   
   .admin-user-avatar {
@@ -432,7 +533,7 @@
   }
   
   .admin-header {
-    padding: 0.5rem;
+    padding: 0.5rem 1rem 0.5rem 2rem; /* Reduced padding for small mobile */
   }
   
   .admin-header-content {
@@ -445,7 +546,7 @@
   }
   
   .admin-dashboard-content {
-    padding: 0.5rem;
+    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
   }
   
   .admin-menu-toggle {

@@ -1,10 +1,13 @@
 .admin-dashboard-page {
-  padding: 0;
-  min-width: 320px; /* Prevent layout issues on small screens */
+  padding: 1.5rem;
+  min-width: 320px;
+  background-color: #f8fafc;
+  min-height: calc(100vh - 110px); /* Adjust based on header height */
 }
 
 .admin-dashboard-header {
   margin-bottom: 2rem;
+  padding: 0 0.5rem;
 }
 
 .admin-dashboard-title {
@@ -37,13 +40,16 @@
   padding: 1.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border: 1px solid #e5e7eb;
-  transition: transform 0.2s, box-shadow 0.2s;
-  min-width: 0; /* Prevent overflow issues */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 .admin-stat-icon-container {
@@ -65,6 +71,10 @@
 }
 
 .admin-stat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .admin-stat-title {
@@ -111,7 +121,15 @@
   padding: 1.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border: 1px solid #e5e7eb;
-  min-width: 0; /* Prevent overflow issues */
+  min-width: 0;
+  transition: box-shadow 0.3s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-card:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
 }
 
 .admin-card-header {
@@ -144,11 +162,15 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .admin-card-action-btn:hover {
   background-color: #f3f4f6;
   border-color: #d1d5db;
+  transform: translateY(-1px);
 }
 
 /* Activity List */
@@ -156,6 +178,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  flex: 1;
 }
 
 .admin-activity-item {
@@ -165,12 +188,13 @@
   padding: 0.75rem;
   border-radius: 8px;
   background-color: #f9fafb;
-  transition: background-color 0.2s;
-  min-width: 0; /* Prevent overflow issues */
+  transition: all 0.2s;
+  min-width: 0;
 }
 
 .admin-activity-item:hover {
   background-color: #f3f4f6;
+  transform: translateX(4px);
 }
 
 .admin-activity-icon {
@@ -193,7 +217,7 @@
 
 .admin-activity-content {
   flex: 1;
-  min-width: 0; /* Allow flex item to shrink */
+  min-width: 0;
 }
 
 .admin-activity-text {
@@ -219,6 +243,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  flex: 1;
 }
 
 .admin-alert-item {
@@ -228,7 +253,7 @@
   padding: 0.75rem;
   border-radius: 8px;
   border-left: 4px solid;
-  min-width: 0; /* Prevent overflow issues */
+  min-width: 0;
 }
 
 .admin-alert-info {
@@ -255,7 +280,7 @@
 
 .admin-alert-content {
   flex: 1;
-  min-width: 0; /* Allow flex item to shrink */
+  min-width: 0;
 }
 
 .admin-alert-text {
@@ -277,10 +302,16 @@
 }
 
 /* Quick Actions */
+.admin-quick-actions {
+  display: flex;
+  flex-direction: column;
+}
+
 .admin-quick-actions-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
+  flex: 1;
 }
 
 .admin-quick-action-btn {
@@ -293,15 +324,19 @@
   border-radius: 8px;
   background: white;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
+  text-decoration: none;
   min-height: 100px;
+  flex: 1;
+  min-width: 0;
 }
 
 .admin-quick-action-btn:hover {
   background-color: #f3f4f6;
   border-color: #d1d5db;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .admin-quick-action-icon {
@@ -330,11 +365,22 @@
   color: #374151;
   font-size: 0.875rem;
   min-width: 140px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.admin-card-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .admin-chart-placeholder {
   text-align: center;
   padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .admin-chart-placeholder-text {
@@ -352,6 +398,7 @@
   background-color: #f9fafb;
   border-radius: 8px;
   overflow: hidden;
+  width: 100%;
 }
 
 .admin-chart-bars {
@@ -360,6 +407,8 @@
   gap: 0.5rem;
   height: 100%;
   width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .admin-chart-bar {
@@ -379,6 +428,11 @@
   
   .admin-stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+  
+  .admin-dashboard-grid {
+    gap: 1.25rem;
   }
 }
 
@@ -403,8 +457,12 @@
 }
 
 @media (max-width: 768px) {
+  .admin-dashboard-page {
+    padding: 1rem;
+  }
+  
   .admin-stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: 1fr;
     gap: 1rem;
   }
   
@@ -437,11 +495,18 @@
   .admin-chart-placeholder-graph {
     height: 120px;
   }
+  
+  .admin-dashboard-header {
+    margin-bottom: 1.5rem;
+  }
 }
 
 @media (max-width: 576px) {
+  .admin-dashboard-page {
+    padding: 0.75rem;
+  }
+  
   .admin-stats-grid {
-    grid-template-columns: 1fr;
     gap: 1rem;
   }
   
@@ -480,11 +545,15 @@
     height: 20px;
     margin-bottom: 0.25rem;
   }
+  
+  .admin-stat-card {
+    min-width: 0;
+  }
 }
 
 @media (max-width: 480px) {
   .admin-dashboard-header {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
   }
   
   .admin-dashboard-title {
@@ -496,11 +565,11 @@
   }
   
   .admin-card {
-    padding: 0.75rem;
+    padding: 0.875rem;
   }
   
   .admin-stat-card {
-    padding: 1rem;
+    padding: 0.875rem;
   }
   
   .admin-stat-title {
@@ -540,8 +609,8 @@
   }
   
   .admin-quick-action-btn {
-    padding: 0.5rem;
-    min-height: 70px;
+    padding: 0.625rem;
+    min-height: 75px;
   }
   
   .admin-quick-action-icon {
@@ -560,12 +629,12 @@
   }
   
   .admin-chart-placeholder-graph {
-    height: 80px;
+    height: 90px;
     padding: 0.5rem;
   }
   
   .admin-chart-bar {
-    width: 12px;
+    width: 16px;
   }
 }
 
@@ -593,17 +662,61 @@
   }
   
   .admin-chart-placeholder-graph {
-    height: 60px;
+    height: 70px;
+  }
+  
+  .admin-activity-text {
+    font-size: 0.8rem;
   }
 }
 
 /* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
-  .admin-stat-card {
-    transform: none; /* Disable hover effects on touch devices */
+  .admin-stat-card,
+  .admin-card,
+  .admin-quick-action-btn,
+  .admin-activity-item,
+  .admin-card-action-btn {
+    transform: none;
+    transition: box-shadow 0.2s ease;
   }
   
-  .admin-quick-action-btn {
-    transform: none; /* Disable hover effects on touch devices */
+  .admin-stat-card:hover,
+  .admin-card:hover,
+  .admin-quick-action-btn:hover,
+  .admin-activity-item:hover,
+  .admin-card-action-btn:hover {
+    transform: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   }
+}
+
+/* Scrollbar styling for better UX */
+.admin-activity-list,
+.admin-alerts-list {
+  overflow-y: auto;
+  max-height: 300px;
+  padding-right: 0.25rem;
+}
+
+.admin-activity-list::-webkit-scrollbar,
+.admin-alerts-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-activity-list::-webkit-scrollbar-track,
+.admin-alerts-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.admin-activity-list::-webkit-scrollbar-thumb,
+.admin-alerts-list::-webkit-scrollbar-thumb {
+  background: #c7d2e0;
+  border-radius: 3px;
+}
+
+.admin-activity-list::-webkit-scrollbar-thumb:hover,
+.admin-alerts-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

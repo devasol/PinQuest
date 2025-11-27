@@ -16,10 +16,22 @@ const getPlatformStats = async (req, res) => {
       totalMessages,
       totalReports
     ] = await Promise.all([
-      User.countDocuments(),
-      Post.countDocuments(),
-      Message.countDocuments(),
-      Report.countDocuments()
+      User.countDocuments().catch(err => {
+        console.error('Error counting users:', err);
+        return 0;
+      }),
+      Post.countDocuments().catch(err => {
+        console.error('Error counting posts:', err);
+        return 0;
+      }),
+      Message.countDocuments().catch(err => {
+        console.error('Error counting messages:', err);
+        return 0;
+      }),
+      Report.countDocuments().catch(err => {
+        console.error('Error counting reports:', err);
+        return 0;
+      })
     ]);
 
     const stats = {
@@ -38,7 +50,7 @@ const getPlatformStats = async (req, res) => {
     console.error('Error fetching platform stats:', error);
     res.status(500).json({
       status: 'error',
-      message: error.message
+      message: error.message || 'Failed to fetch platform stats'
     });
   }
 };
@@ -138,30 +150,50 @@ const getTopPosts = async (req, res) => {
   try {
     const { limit = 10, days = 30 } = req.query;
 
+    // Validate query parameters
+    if (isNaN(parseInt(limit)) || parseInt(limit) <= 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Limit must be a positive number'
+      });
+    }
+
+    if (isNaN(parseInt(days)) || parseInt(days) <= 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Days must be a positive number'
+      });
+    }
+
     // Calculate date for X days ago
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - parseInt(days));
 
     // Get top posts based on engagement (likes + comments)
+    // First, fetch posts and sort by likesCount (descending), then by comments count (descending)
     const topPosts = await Post.find({ 
       datePosted: { $gte: daysAgo }
     })
     .populate('postedBy', 'name avatar')
     .sort({ 
-      likesCount: -1, 
-      'comments.1': -1 
-    }) // Sort by likes count and comments
+      likesCount: -1 
+    }) // Sort by likes count descending first
     .limit(parseInt(limit));
 
-    const formattedPosts = topPosts.map(post => ({
-      _id: post._id,
-      title: post.title,
-      author: post.postedBy.name,
-      likesCount: post.likesCount,
-      commentsCount: post.comments.length,
-      engagement: post.likesCount + post.comments.length,
-      datePosted: post.datePosted
-    }));
+    // Format the results and calculate engagement
+    const formattedPosts = topPosts.map(post => {
+      const commentsCount = (post.comments && Array.isArray(post.comments)) ? post.comments.length : 0;
+      return {
+        _id: post._id,
+        title: post.title,
+        author: post.postedBy ? post.postedBy.name : 'Unknown',
+        category: post.category || 'General',
+        likesCount: post.likesCount || 0,
+        commentsCount: commentsCount,
+        engagement: (post.likesCount || 0) + commentsCount,
+        datePosted: post.datePosted
+      };
+    });
 
     res.status(200).json({
       status: 'success',
@@ -171,7 +203,7 @@ const getTopPosts = async (req, res) => {
     console.error('Error fetching top posts:', error);
     res.status(500).json({
       status: 'error',
-      message: error.message
+      message: error.message || 'Failed to fetch top posts'
     });
   }
 };
