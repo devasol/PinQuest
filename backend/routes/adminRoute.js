@@ -994,6 +994,208 @@ const markAllAdminNotificationsAsRead = async (req, res) => {
   }
 };
 
+// @desc    Get admin security settings (admin only)
+// @route   GET /api/v1/admin/security-settings
+// @access  Private (admin only)
+const getSecuritySettings = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+
+    // Return security settings
+    const securitySettings = {
+      twoFactorAuth: user.twoFactorAuth || false,
+      loginNotifications: user.loginNotifications !== undefined ? user.loginNotifications : true,
+      suspiciousActivity: user.suspiciousActivity !== undefined ? user.suspiciousActivity : true,
+      autoLogout: user.autoLogout || 30,
+      passwordExpiry: user.passwordExpiry || 90
+    };
+
+    res.status(200).json({
+      status: 'success',
+      data: securitySettings
+    });
+  } catch (error) {
+    console.error('Error fetching security settings:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Update admin security settings (admin only)
+// @route   PUT /api/v1/admin/security-settings
+// @access  Private (admin only)
+const updateSecuritySettings = async (req, res) => {
+  try {
+    const { twoFactorAuth, loginNotifications, suspiciousActivity, autoLogout, passwordExpiry } = req.body;
+
+    // Validate input
+    if (twoFactorAuth !== undefined && typeof twoFactorAuth !== 'boolean') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'twoFactorAuth must be a boolean'
+      });
+    }
+
+    if (loginNotifications !== undefined && typeof loginNotifications !== 'boolean') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'loginNotifications must be a boolean'
+      });
+    }
+
+    if (suspiciousActivity !== undefined && typeof suspiciousActivity !== 'boolean') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'suspiciousActivity must be a boolean'
+      });
+    }
+
+    if (autoLogout !== undefined && (typeof autoLogout !== 'number' || autoLogout < 0)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'autoLogout must be a positive number or 0'
+      });
+    }
+
+    if (passwordExpiry !== undefined && (typeof passwordExpiry !== 'number' || passwordExpiry < 0)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'passwordExpiry must be a positive number or 0'
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+
+    // Update security settings
+    if (twoFactorAuth !== undefined) user.twoFactorAuth = twoFactorAuth;
+    if (loginNotifications !== undefined) user.loginNotifications = loginNotifications;
+    if (suspiciousActivity !== undefined) user.suspiciousActivity = suspiciousActivity;
+    if (autoLogout !== undefined) user.autoLogout = autoLogout;
+    if (passwordExpiry !== undefined) user.passwordExpiry = passwordExpiry;
+
+    await user.save();
+
+    // Log the security settings update
+    const ActivityLog = require('../models/ActivityLog');
+    await ActivityLog.create({
+      userId: req.user._id,
+      action: 'security_settings_update',
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      metadata: {
+        updatedFields: {
+          twoFactorAuth,
+          loginNotifications,
+          suspiciousActivity,
+          autoLogout,
+          passwordExpiry
+        }
+      },
+      success: true
+    });
+
+    // Return updated security settings
+    const updatedSettings = {
+      twoFactorAuth: user.twoFactorAuth,
+      loginNotifications: user.loginNotifications,
+      suspiciousActivity: user.suspiciousActivity,
+      autoLogout: user.autoLogout,
+      passwordExpiry: user.passwordExpiry
+    };
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Security settings updated successfully',
+      data: updatedSettings
+    });
+  } catch (error) {
+    console.error('Error updating security settings:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get admin activity log (admin only)
+// @route   GET /api/v1/admin/activity-log
+// @access  Private (admin only)
+const getActivityLog = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, type, dateFrom, dateTo } = req.query;
+
+    // Build query for admin activity
+    let query = { userId: req.user._id }; // For the current admin user
+    
+    // Add type filter if provided
+    if (type) {
+      query.action = type;
+    }
+    
+    // Add date range filter if provided
+    if (dateFrom || dateTo) {
+      query.timestamp = {};
+      if (dateFrom) query.timestamp.$gte = new Date(dateFrom);
+      if (dateTo) query.timestamp.$lte = new Date(dateTo);
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    const ActivityLog = require('../models/ActivityLog');
+
+    const activities = await ActivityLog.find(query)
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await ActivityLog.countDocuments(query);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        activities: activities.map(activity => ({
+          id: activity._id,
+          action: activity.action,
+          ip: activity.ip,
+          location: activity.location,
+          time: activity.timestamp,
+          metadata: activity.metadata
+        })),
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalActivities: total,
+          hasNext: parseInt(page) * limit < total,
+          hasPrev: parseInt(page) > 1
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching activity log:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 router.route('/init').post(initAdmin);
 router.route('/create').post(protect, admin, createAdmin);
 router.route('/users').get(protect, admin, getAllUsers);
@@ -1032,5 +1234,12 @@ router.route('/notifications/count')
   .get(protect, admin, getAdminNotificationCount);
 router.route('/notifications/read-all')
   .put(protect, admin, markAllAdminNotificationsAsRead);
+  
+// Security settings routes
+router.route('/security-settings')
+  .get(protect, admin, getSecuritySettings)
+  .put(protect, admin, updateSecuritySettings);
+router.route('/activity-log')
+  .get(protect, admin, getActivityLog);
 
 module.exports = router;

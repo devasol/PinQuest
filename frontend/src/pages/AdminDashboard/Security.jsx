@@ -14,6 +14,7 @@ const Security = () => {
     autoLogout: 30,
     passwordExpiry: 90
   });
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -26,38 +27,48 @@ const Security = () => {
   const [error, setError] = useState(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState(null);
+  const [activityLoading, setActivityLoading] = useState(false);
 
-  // Fetch recent activity from backend
+  // Fetch security settings and recent activity from backend
   useEffect(() => {
-    const fetchActivity = async () => {
+    const fetchData = async () => {
       try {
-        const data = await adminAPI.getActivityTimeline({ days: 7 });
-        
-        if (data.status === 'success' && Array.isArray(data.data)) {
+        // Fetch security settings
+        const settingsData = await adminAPI.getSecuritySettings();
+        if (settingsData.status === 'success') {
+          setSecuritySettings(prev => ({
+            ...prev,
+            ...settingsData.data
+          }));
+        }
+
+        // Fetch recent activity
+        const activityData = await adminAPI.getActivityLog({ limit: 10 });
+        if (activityData.status === 'success' && Array.isArray(activityData.data.activities)) {
           // Format the activity data to match our frontend structure
-          const formattedActivity = data.data.map((activity, index) => ({
+          const formattedActivity = activityData.data.activities.map((activity, index) => ({
             id: activity.id || activity._id || index,
             action: activity.action || activity.title || 'Unknown activity',
-            time: activity.date || activity.datePosted || new Date().toISOString(),
+            time: activity.time || activity.timestamp || activity.date || activity.datePosted || new Date().toISOString(),
             ip: activity.ip || activity.metadata?.ip || 'N/A',
             location: activity.location || activity.metadata?.location || 'N/A'
           }));
           
           setRecentActivity(formattedActivity);
-        } else if (data.status === 'success') {
+        } else if (activityData.status === 'success') {
           setRecentActivity([]);
         } else {
-          throw new Error(data.message || 'Failed to fetch activity');
+          throw new Error(activityData.message || 'Failed to fetch activity');
         }
       } catch (err) {
         setError(err.message);
-        console.error('Error fetching activity:', err);
+        console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchActivity();
+    fetchData();
   }, []);
 
   const handlePasswordChange = (e) => {
@@ -102,19 +113,26 @@ const Security = () => {
   };
 
   const handleSecuritySettingChange = async (setting) => {
+    setSettingsLoading(true);
     const currentValue = securitySettings[setting];
     const newValue = !currentValue;
     
-    // Update the setting immediately in the UI
+    // Update the setting immediately in the UI for responsiveness
     setSecuritySettings(prev => ({
       ...prev,
       [setting]: newValue
     }));
 
     try {
-      // In a real implementation, you would make an API call to update the setting
-      // Example: await updateSecuritySetting(setting, newValue);
-      console.log(`Updated ${setting} to ${newValue}`);
+      // Make API call to update the setting
+      const result = await adminAPI.updateSecuritySetting(setting, newValue);
+      
+      if (result.status === 'success') {
+        // The setting is already updated in the UI, so just show success
+        console.log(`Updated ${setting} to ${newValue} successfully`);
+      } else {
+        throw new Error(result.message || 'Failed to update setting');
+      }
     } catch (err) {
       // If the API call fails, revert the change
       setSecuritySettings(prev => ({
@@ -122,28 +140,77 @@ const Security = () => {
         [setting]: currentValue
       }));
       alert('Failed to update setting: ' + err.message);
+      console.error('Error updating security setting:', err);
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
   const handleAutoLogoutChange = async (value) => {
+    setSettingsLoading(true);
     const newValue = parseInt(value);
+    const previousValue = securitySettings.autoLogout;
     
+    // Update the setting immediately in the UI for responsiveness
     setSecuritySettings(prev => ({
       ...prev,
       autoLogout: newValue
     }));
 
     try {
-      // In a real implementation, you would make an API call to update the setting
-      // Example: await updateSecuritySetting('autoLogout', newValue);
-      console.log(`Updated autoLogout to ${newValue}`);
+      // Make API call to update the setting
+      const result = await adminAPI.updateSecuritySetting('autoLogout', newValue);
+      
+      if (result.status === 'success') {
+        // The setting is already updated in the UI, so just show success
+        console.log(`Updated autoLogout to ${newValue} successfully`);
+      } else {
+        throw new Error(result.message || 'Failed to update auto logout setting');
+      }
     } catch (err) {
       // If the API call fails, revert the change
       setSecuritySettings(prev => ({
         ...prev,
-        autoLogout: securitySettings.autoLogout
+        autoLogout: previousValue
       }));
       alert('Failed to update auto logout setting: ' + err.message);
+      console.error('Error updating auto logout setting:', err);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handlePasswordExpiryChange = async (value) => {
+    setSettingsLoading(true);
+    const newValue = parseInt(value);
+    const previousValue = securitySettings.passwordExpiry;
+    
+    // Update the setting immediately in the UI for responsiveness
+    setSecuritySettings(prev => ({
+      ...prev,
+      passwordExpiry: newValue
+    }));
+
+    try {
+      // Make API call to update the setting
+      const result = await adminAPI.updateSecuritySetting('passwordExpiry', newValue);
+      
+      if (result.status === 'success') {
+        // The setting is already updated in the UI, so just show success
+        console.log(`Updated passwordExpiry to ${newValue} successfully`);
+      } else {
+        throw new Error(result.message || 'Failed to update password expiry setting');
+      }
+    } catch (err) {
+      // If the API call fails, revert the change
+      setSecuritySettings(prev => ({
+        ...prev,
+        passwordExpiry: previousValue
+      }));
+      alert('Failed to update password expiry setting: ' + err.message);
+      console.error('Error updating password expiry setting:', err);
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -237,7 +304,7 @@ const Security = () => {
               </div>
             )}
 
-            <button type="submit" className="security-btn security-btn-primary" disabled={passwordLoading}>
+            <button type="submit" className="security-btn security-btn-primary" disabled={passwordLoading || settingsLoading}>
               {passwordLoading ? (
                 <>
                   <Loader2 className="security-btn-icon animate-spin" />
@@ -273,6 +340,7 @@ const Security = () => {
                   type="checkbox"
                   checked={securitySettings.twoFactorAuth}
                   onChange={() => handleSecuritySettingChange('twoFactorAuth')}
+                  disabled={settingsLoading}
                 />
                 <span className="security-slider"></span>
               </label>
@@ -288,6 +356,7 @@ const Security = () => {
                   type="checkbox"
                   checked={securitySettings.loginNotifications}
                   onChange={() => handleSecuritySettingChange('loginNotifications')}
+                  disabled={settingsLoading}
                 />
                 <span className="security-slider"></span>
               </label>
@@ -303,6 +372,7 @@ const Security = () => {
                   type="checkbox"
                   checked={securitySettings.suspiciousActivity}
                   onChange={() => handleSecuritySettingChange('suspiciousActivity')}
+                  disabled={settingsLoading}
                 />
                 <span className="security-slider"></span>
               </label>
@@ -317,6 +387,7 @@ const Security = () => {
                 className="security-select"
                 value={securitySettings.autoLogout}
                 onChange={(e) => handleAutoLogoutChange(e.target.value)}
+                disabled={settingsLoading}
               >
                 <option value={15}>15 minutes</option>
                 <option value={30}>30 minutes</option>
@@ -333,7 +404,8 @@ const Security = () => {
               <select 
                 className="security-select"
                 value={securitySettings.passwordExpiry}
-                onChange={(e) => setSecuritySettings(prev => ({...prev, passwordExpiry: parseInt(e.target.value)}))}
+                onChange={(e) => handlePasswordExpiryChange(e.target.value)}
+                disabled={settingsLoading}
               >
                 <option value={30}>30 days</option>
                 <option value={60}>60 days</option>
@@ -352,7 +424,7 @@ const Security = () => {
             </div>
             <div>
               <h3 className="security-card-title">Recent Activity</h3>
-              <p className="security-card-description">Your recent login activity</p>
+              <p className="security-card-description">Your recent account activity</p>
             </div>
           </div>
           

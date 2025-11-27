@@ -104,6 +104,21 @@ export const adminAPI = {
     body: JSON.stringify({ currentPassword, newPassword })
   }),
   
+  // Security settings
+  getSecuritySettings: () => apiCall('/admin/security-settings', { method: 'GET' }),
+  updateSecuritySetting: (setting, value) => {
+    const settings = {};
+    settings[setting] = value;
+    return apiCall('/admin/security-settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings)
+    });
+  },
+  getActivityLog: (params = {}) => {
+    const queryParams = new URLSearchParams(params);
+    return apiCall(`/admin/activity-log?${queryParams}`, { method: 'GET' });
+  },
+  
   // Admin notifications
   getAdminNotifications: (params = {}) => {
     const queryParams = new URLSearchParams(params);
