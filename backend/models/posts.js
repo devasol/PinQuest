@@ -120,6 +120,11 @@ const postSchema = new mongoose.Schema({
     latitude: Number,
     longitude: Number,
   },
+  status: {
+    type: String,
+    enum: ['pending', 'published', 'rejected'],
+    default: 'published' // Default to published for backward compatibility
+  },
 });
 
 // Virtual to get likes count

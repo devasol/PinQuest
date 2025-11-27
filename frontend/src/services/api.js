@@ -49,14 +49,28 @@ export const adminAPI = {
   getUsers: () => apiCall('/admin/users', { method: 'GET' }),
   getUserById: (id) => apiCall(`/admin/users/${id}`, { method: 'GET' }),
   deleteUser: (id) => apiCall(`/admin/users/${id}`, { method: 'DELETE' }),
+  createUser: (userData) => apiCall('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(userData)
+  }),
   updateUserRole: (userId, role) => apiCall(`/admin/users/${userId}/role`, {
     method: 'PUT',
     body: JSON.stringify({ role })
+  }),
+  updateUserBanStatus: (userId, ban) => apiCall(`/admin/users/${userId}/ban`, {
+    method: 'PUT',
+    body: JSON.stringify({ ban })
   }),
   
   // Post management
   getPosts: () => apiCall('/admin/posts', { method: 'GET' }),
   deletePost: (id) => apiCall(`/admin/posts/${id}`, { method: 'DELETE' }),
+  updatePost: (id, postData) => apiCall(`/admin/posts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(postData)
+  }),
+  approvePost: (id) => apiCall(`/admin/posts/${id}/approve`, { method: 'PUT' }),
+  rejectPost: (id) => apiCall(`/admin/posts/${id}/reject`, { method: 'PUT' }),
   
   // Admin verification
   verifyAdmin: () => apiCall('/admin/verify', { method: 'GET' }),

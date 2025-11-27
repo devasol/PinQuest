@@ -146,6 +146,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isBanned: {
+    type: Boolean,
+    default: false
+  },
   role: {
     type: String,
     enum: ['user', 'admin', 'moderator'],

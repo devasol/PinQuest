@@ -15,6 +15,14 @@ const ContentManagement = () => {
   const [postsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showEditPostModal, setShowEditPostModal] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [editingPost, setEditingPost] = useState({
+    id: '',
+    title: '',
+    description: '',
+    category: 'general'
+  });
 
   // Fetch posts from backend
   useEffect(() => {
@@ -30,7 +38,7 @@ const ContentManagement = () => {
             title: post.title || 'Untitled Post',
             description: post.description || 'No description',
             category: post.category || 'general',
-            status: 'published', // All posts from the API are published unless we have a specific field
+            status: post.status || 'published', // Use the post's actual status from the backend
             author: post.postedBy?.name || post.postedBy?.email || 'Unknown', // Use the user's name if available
             date: post.datePosted || new Date().toISOString(),
             views: 0, // Assuming we don't have view tracking yet in the schema
@@ -102,13 +110,20 @@ const ContentManagement = () => {
 
   const handleApprovePost = async (postId) => {
     try {
-      // For now, we'll just update the local state
-      // In a real implementation, you'd call an API endpoint to approve the post
+      await adminAPI.approvePost(postId);
+      
+      // Update the post in local state
       setPosts(posts.map(post => 
         post.id === postId 
           ? { ...post, status: 'published' }
           : post
       ));
+      setFilteredPosts(filteredPosts.map(post => 
+        post.id === postId 
+          ? { ...post, status: 'published' }
+          : post
+      ));
+      
       alert('Post approved successfully!');
     } catch (err) {
       alert('Error approving post: ' + err.message);
@@ -117,13 +132,20 @@ const ContentManagement = () => {
 
   const handleRejectPost = async (postId) => {
     try {
-      // For now, we'll just update the local state
-      // In a real implementation, you'd call an API endpoint to reject the post
+      await adminAPI.rejectPost(postId);
+      
+      // Update the post in local state
       setPosts(posts.map(post => 
         post.id === postId 
           ? { ...post, status: 'rejected' }
           : post
       ));
+      setFilteredPosts(filteredPosts.map(post => 
+        post.id === postId 
+          ? { ...post, status: 'rejected' }
+          : post
+      ));
+      
       alert('Post rejected successfully!');
     } catch (err) {
       alert('Error rejecting post: ' + err.message);
@@ -132,43 +154,68 @@ const ContentManagement = () => {
 
   const handleUpdatePost = async (postId, updatedPost) => {
     try {
-      // Determine API URL with fallback
-      let apiUrl = import.meta.env.VITE_API_BASE_URL;
-      if (!apiUrl) {
-        apiUrl = 'http://localhost:5000/api/v1';
-      }
+      // Use the admin API to update the post
+      await adminAPI.updatePost(postId, updatedPost);
       
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        alert('No authentication token found');
-        return;
-      }
-      
-      // Use the standard post update endpoint (user still needs to be the author)
-      const response = await fetch(`${apiUrl}/posts/${postId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updatedPost)
-      });
-
-      if (response.ok) {
-        const updatedData = await response.json();
-        // Update the post in the local state
-        setPosts(posts.map(post => 
-          post.id === postId 
-            ? { ...updatedData.data, id: postId }
-            : post
-        ));
-      } else {
-        throw new Error('Failed to update post');
-      }
+      // Update the post in the local state
+      setPosts(posts.map(post => 
+        post.id === postId 
+          ? { ...post, ...updatedPost }
+          : post
+      ));
+      setFilteredPosts(filteredPosts.map(post => 
+        post.id === postId 
+          ? { ...post, ...updatedPost }
+          : post
+      ));
     } catch (err) {
       alert('Error updating post: ' + err.message);
     }
+  };
+
+  const handleEditPost = (post) => {
+    setEditingPost({
+      id: post.id,
+      title: post.title,
+      description: post.description,
+      category: post.category
+    });
+    setShowEditPostModal(true);
+  };
+
+  const handleEditPostSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await adminAPI.updatePost(editingPost.id, {
+        title: editingPost.title,
+        description: editingPost.description,
+        category: editingPost.category
+      });
+      
+      // Update the posts in state
+      setPosts(posts.map(post => 
+        post.id === editingPost.id 
+          ? { ...post, title: editingPost.title, description: editingPost.description, category: editingPost.category }
+          : post
+      ));
+      setFilteredPosts(filteredPosts.map(post => 
+        post.id === editingPost.id 
+          ? { ...post, title: editingPost.title, description: editingPost.description, category: editingPost.category }
+          : post
+      ));
+      
+      setShowEditPostModal(false);
+      alert('Post updated successfully!');
+    } catch (err) {
+      alert('Error updating post: ' + err.message);
+    }
+  };
+
+  const handleEditPostChange = (e) => {
+    setEditingPost({
+      ...editingPost,
+      [e.target.name]: e.target.value
+    });
   };
 
   const getStatusColor = (status) => {
@@ -234,7 +281,7 @@ const ContentManagement = () => {
             <Plus className="content-management-btn-icon" />
             Add Post
           </a>
-          <button className="content-management-btn content-management-btn-secondary">
+          <button className="content-management-btn content-management-btn-secondary" onClick={() => setShowFilterPanel(!showFilterPanel)}>
             <Filter className="content-management-btn-icon" />
             Filter
           </button>
@@ -282,6 +329,92 @@ const ContentManagement = () => {
         </div>
       </div>
 
+      {/* Advanced Filter Panel */}
+      {showFilterPanel && (
+        <div className="content-management-advanced-filter">
+          <div className="content-management-advanced-filter-content">
+            <h4>Advanced Filters</h4>
+            <div className="content-management-advanced-filter-fields">
+              <div className="content-management-advanced-filter-field">
+                <label>Keyword Search</label>
+                <input
+                  type="text"
+                  placeholder="Search in title, description, or author..."
+                  className="content-management-form-input"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="content-management-advanced-filter-field">
+                <label>Category</label>
+                <select 
+                  className="content-management-form-select" 
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                >
+                  <option value="all">All Categories</option>
+                  <option value="nature">Nature</option>
+                  <option value="food">Food & Drinks</option>
+                  <option value="culture">Culture</option>
+                  <option value="shopping">Shopping</option>
+                  <option value="event">Event</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
+              <div className="content-management-advanced-filter-field">
+                <label>Status</label>
+                <select 
+                  className="content-management-form-select" 
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                >
+                  <option value="all">All Status</option>
+                  <option value="published">Published</option>
+                  <option value="pending">Pending</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div className="content-management-advanced-filter-field">
+                <label>Date Range</label>
+                <div className="content-management-date-range">
+                  <input
+                    type="date"
+                    placeholder="Start date"
+                    className="content-management-form-input"
+                    onChange={(e) => console.log("Start date:", e.target.value)} // Placeholder for functionality
+                  />
+                  <span className="content-management-date-separator">to</span>
+                  <input
+                    type="date"
+                    placeholder="End date"
+                    className="content-management-form-input"
+                    onChange={(e) => console.log("End date:", e.target.value)} // Placeholder for functionality
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="content-management-advanced-filter-actions">
+              <button 
+                className="content-management-btn content-management-btn-secondary"
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedCategory('all');
+                  setSelectedStatus('all');
+                }}
+              >
+                Clear Filters
+              </button>
+              <button 
+                className="content-management-btn content-management-btn-primary"
+                onClick={() => setShowFilterPanel(false)}
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Posts Table */}
       <div className="content-management-table-container">
         <table className="content-management-table">
@@ -324,10 +457,10 @@ const ContentManagement = () => {
                 <td>{formatDate(post.date)}</td>
                 <td>
                   <div className="content-management-actions-cell">
-                    <a href={`/discover/${post.id}`} target="_blank" className="content-management-action-btn content-management-action-view">
+                    <button className="content-management-action-btn content-management-action-view" onClick={() => window.open(`/discover/${post.id}`, '_blank')}>
                       <Eye className="content-management-action-icon" />
-                    </a>
-                    <button className="content-management-action-btn content-management-action-edit">
+                    </button>
+                    <button className="content-management-action-btn content-management-action-edit" onClick={() => handleEditPost(post)}>
                       <Edit className="content-management-action-icon" />
                     </button>
                     <button 
@@ -394,6 +527,71 @@ const ContentManagement = () => {
           >
             Next
           </button>
+        </div>
+      )}
+
+      {/* Edit Post Modal */}
+      {showEditPostModal && (
+        <div className="content-management-modal-overlay" onClick={() => setShowEditPostModal(false)}>
+          <div className="content-management-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="content-management-modal-header">
+              <h3>Edit Post</h3>
+              <button className="content-management-modal-close" onClick={() => setShowEditPostModal(false)}>
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleEditPostSubmit} className="content-management-modal-form">
+              <div className="content-management-form-group">
+                <label htmlFor="edit-title">Title</label>
+                <input
+                  type="text"
+                  id="edit-title"
+                  name="title"
+                  value={editingPost.title}
+                  onChange={handleEditPostChange}
+                  required
+                  className="content-management-form-input"
+                />
+              </div>
+              <div className="content-management-form-group">
+                <label htmlFor="edit-description">Description</label>
+                <textarea
+                  id="edit-description"
+                  name="description"
+                  value={editingPost.description}
+                  onChange={handleEditPostChange}
+                  required
+                  className="content-management-form-textarea"
+                  rows="4"
+                />
+              </div>
+              <div className="content-management-form-group">
+                <label htmlFor="edit-category">Category</label>
+                <select
+                  id="edit-category"
+                  name="category"
+                  value={editingPost.category}
+                  onChange={handleEditPostChange}
+                  className="content-management-form-select"
+                >
+                  <option value="nature">Nature</option>
+                  <option value="food">Food & Drinks</option>
+                  <option value="culture">Culture</option>
+                  <option value="shopping">Shopping</option>
+                  <option value="event">Event</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
+              <div className="content-management-modal-actions">
+                <button type="button" className="content-management-btn content-management-btn-secondary" onClick={() => setShowEditPostModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="content-management-btn content-management-btn-primary">
+                  Update Post
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

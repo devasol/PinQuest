@@ -125,6 +125,64 @@ const createAdmin = async (req, res) => {
   }
 };
 
+// @desc    Create regular user (admin only)
+// @route   POST /api/v1/admin/users
+// @access  Private (admin only)
+const createUser = async (req, res) => {
+  try {
+    const { name, email, password, role = 'user' } = req.body;
+
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide name, email, and password'
+      });
+    }
+
+    if (!['user', 'admin', 'moderator'].includes(role)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid role specified. Must be user, admin, or moderator'
+      });
+    }
+
+    // Check if user with this email already exists
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'User already exists with this email'
+      });
+    }
+
+    // Create user with specified role (default to 'user')
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role
+    });
+
+    res.status(201).json({
+      status: 'success',
+      message: 'User created successfully',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 // @desc    Get all users (admin only)
 // @route   GET /api/v1/admin/users
 // @access  Private (admin only)
@@ -260,6 +318,121 @@ const getAllPosts = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: error.message
+    });
+  }
+};
+
+// @desc    Update any post (admin only)
+// @route   PUT /api/v1/admin/posts/:id
+// @access  Private (admin only)
+const updatePost = async (req, res) => {
+  try {
+    const Post = require('../models/posts'); // Import Post model inside the function
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Post not found',
+      });
+    }
+
+    // Update the post with provided data
+    const allowedUpdates = ['title', 'description', 'category'];
+    const updates = Object.keys(req.body);
+
+    // Validate that all updates are allowed
+    const isValidOperation = updates.every(update => allowedUpdates.includes(update));
+    if (!isValidOperation) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid updates provided'
+      });
+    }
+
+    // Update the post fields
+    updates.forEach(update => {
+      post[update] = req.body[update];
+    });
+
+    await post.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Post updated successfully',
+      data: post
+    });
+  } catch (error) {
+    console.error("Error updating post:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Approve a pending post (admin only)
+// @route   PUT /api/v1/admin/posts/:id/approve
+// @access  Private (admin only)
+const approvePost = async (req, res) => {
+  try {
+    const Post = require('../models/posts'); // Import Post model inside the function
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Post not found',
+      });
+    }
+
+    // Update post status to published
+    post.status = 'published';
+    await post.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Post approved successfully',
+      data: post
+    });
+  } catch (error) {
+    console.error("Error approving post:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Reject a pending post (admin only)
+// @route   PUT /api/v1/admin/posts/:id/reject
+// @access  Private (admin only)
+const rejectPost = async (req, res) => {
+  try {
+    const Post = require('../models/posts'); // Import Post model inside the function
+
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Post not found',
+      });
+    }
+
+    // Update post status to rejected
+    post.status = 'rejected';
+    await post.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Post rejected successfully',
+      data: post
+    });
+  } catch (error) {
+    console.error("Error rejecting post:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -536,6 +709,56 @@ const updateUserRole = async (req, res) => {
   }
 };
 
+// @desc    Ban/Unban user (admin only)
+// @route   PUT /api/v1/admin/users/:userId/ban
+// @access  Private (admin only)
+const banUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { ban } = req.body; // true to ban, false to unban
+
+    // Check if the current user is an admin (already verified by middleware)
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Access denied. Admin privileges required.',
+      });
+    }
+
+    const User = require('../models/User');
+
+    // Find the user to update
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+
+    // Update the user's ban status
+    user.isBanned = !!ban; // ban = true means isBanned should be true
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: ban ? 'User banned successfully' : 'User unbanned successfully',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isBanned: user.isBanned
+      }
+    });
+  } catch (error) {
+    console.error('Error updating user ban status:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 // @desc    TEMPORARY: Promote any user to admin (for development only)
 // @route   POST /api/v1/admin/promote-user
 // @access  Private (requires special DEV_ADMIN_KEY)
@@ -603,13 +826,22 @@ router.route('/users/:userId/password')
 router.route('/verify').get(protect, admin, verifyAdmin);
 router.route('/posts').get(protect, admin, getAllPosts);
 router.route('/posts/:id')
+  .put(protect, admin, updatePost)
   .delete(protect, admin, deletePost);
+router.route('/posts/:id/approve')
+  .put(protect, admin, approvePost);
+router.route('/posts/:id/reject')
+  .put(protect, admin, rejectPost);
 router.route('/reports').get(protect, admin, getAllReports);
 router.route('/reports/:id')
   .get(protect, admin, getReportById)
   .put(protect, admin, updateReport);
 router.route('/users/:userId/role')
   .put(protect, admin, updateUserRole);
+router.route('/users/:userId/ban')
+  .put(protect, admin, banUser);
+router.route('/users')
+  .post(protect, admin, createUser);
 router.route('/promote-user')
   .post(protect, promoteUserToAdmin);
 

@@ -15,6 +15,20 @@ const UserManagement = () => {
   const [usersPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'user'
+  });
+  const [editingUser, setEditingUser] = useState({
+    id: '',
+    name: '',
+    email: '',
+    role: 'user'
+  });
 
   // Fetch users from backend
   useEffect(() => {
@@ -30,7 +44,7 @@ const UserManagement = () => {
             name: user.name || 'Unknown User',
             email: user.email || 'No Email',
             role: user.role || 'user', // Default to 'user' if role is not specified
-            status: user.isVerified ? 'active' : 'inactive', // Use verification status as active status
+            status: user.isBanned ? 'banned' : 'active', // Use ban status to determine active/banned
             joinDate: user.createdAt || user.datePosted || new Date().toISOString(),
             posts: user.postsCount || 0, // Assuming there's a way to get post count
             lastActive: user.updatedAt || user.createdAt || new Date().toISOString()
@@ -85,6 +99,143 @@ const UserManagement = () => {
     setCurrentPage(pageNumber);
   };
 
+  const handleAddUser = () => {
+    setShowAddUserModal(true);
+  };
+
+
+
+  const handleAddUserChange = (e) => {
+    setNewUser({
+      ...newUser,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleCreateRegularUser = async (e) => {
+    e.preventDefault();
+    try {
+      // Use the admin API to create a user with the specified role
+      await adminAPI.createUser(newUser);
+      
+      // Reset form and close modal
+      setNewUser({ name: '', email: '', password: '', role: 'user' });
+      setShowAddUserModal(false);
+      
+      // Refresh user list
+      const data = await adminAPI.getUsers();
+      if (data.status === 'success') {
+        const formattedUsers = data.data.map((user) => ({
+          id: user._id,
+          name: user.name || 'Unknown User',
+          email: user.email || 'No Email',
+          role: user.role || 'user',
+          status: user.isBanned ? 'banned' : 'active',
+          joinDate: user.createdAt || user.datePosted || new Date().toISOString(),
+          posts: user.postsCount || 0,
+          lastActive: user.updatedAt || user.createdAt || new Date().toISOString()
+        }));
+        setUsers(formattedUsers);
+        setFilteredUsers(formattedUsers);
+      }
+      
+      alert('User created successfully!');
+    } catch (err) {
+      alert('Error creating user: ' + err.message);
+    }
+  };
+
+  const handleExportUsers = () => {
+    // Convert users data to CSV format
+    const csvContent = convertUsersToCSV(filteredUsers);
+    
+    // Create a download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `users-export-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const convertUsersToCSV = (users) => {
+    if (users.length === 0) return '';
+    
+    // Define CSV headers
+    const headers = ['ID', 'Name', 'Email', 'Role', 'Status', 'Join Date', 'Last Active', 'Posts Count'];
+    const csvHeaders = headers.join(',');
+    
+    // Convert each user to a CSV row
+    const csvRows = users.map(user => {
+      const row = [
+        `"${user.id}"`, 
+        `"${user.name.replace(/"/g, '""')}"`, 
+        `"${user.email.replace(/"/g, '""')}"`, 
+        `"${user.role}"`, 
+        `"${user.status}"`, 
+        `"${new Date(user.joinDate).toLocaleDateString()}"`, 
+        `"${new Date(user.lastActive).toLocaleDateString()}"`, 
+        `"${user.posts}"`
+      ];
+      return row.join(',');
+    });
+    
+    // Combine headers and rows
+    return [csvHeaders, ...csvRows].join('\n');
+  };
+
+  const handleEditUser = (user) => {
+    setEditingUser({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    });
+    setShowEditUserModal(true);
+  };
+
+  const handleEditUserSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // Update the user's role using the admin API
+      await adminAPI.updateUserRole(editingUser.id, editingUser.role);
+      
+      // Reset form and close modal
+      setShowEditUserModal(false);
+      
+      // Refresh user list
+      const data = await adminAPI.getUsers();
+      if (data.status === 'success') {
+        const formattedUsers = data.data.map((user) => ({
+          id: user._id,
+          name: user.name || 'Unknown User',
+          email: user.email || 'No Email',
+          role: user.role || 'user',
+          status: user.isBanned ? 'banned' : 'active',
+          joinDate: user.createdAt || user.datePosted || new Date().toISOString(),
+          posts: user.postsCount || 0,
+          lastActive: user.updatedAt || user.createdAt || new Date().toISOString()
+        }));
+        setUsers(formattedUsers);
+        setFilteredUsers(formattedUsers);
+      }
+      
+      alert('User updated successfully!');
+    } catch (err) {
+      alert('Error updating user: ' + err.message);
+    }
+  };
+
+  const handleEditUserChange = (e) => {
+    setEditingUser({
+      ...editingUser,
+      [e.target.name]: e.target.value
+    });
+  };
+
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
@@ -99,9 +250,33 @@ const UserManagement = () => {
 
   const handleBanUser = async (userId) => {
     try {
-      // For now, we'll use a placeholder API call
-      // In a real implementation, you'd have an endpoint to ban/unban users
-      alert('This would ban/unban the user in a real implementation');
+      // Find the user to get current status
+      const user = users.find(u => u.id === userId);
+      if (!user) {
+        alert('User not found');
+        return;
+      }
+      
+      // Determine new ban status based on current status
+      const shouldBan = user.status !== 'banned';
+      
+      // Call the API to update user ban status
+      await adminAPI.updateUserBanStatus(userId, shouldBan);
+      
+      // Update local state to reflect the change
+      setUsers(users.map(user => 
+        user.id === userId 
+          ? { ...user, status: shouldBan ? 'banned' : 'active' }
+          : user
+      ));
+      
+      setFilteredUsers(filteredUsers.map(user => 
+        user.id === userId 
+          ? { ...user, status: shouldBan ? 'banned' : 'active' }
+          : user
+      ));
+      
+      alert(`User ${shouldBan ? 'banned' : 'unbanned'} successfully!`);
     } catch (err) {
       alert('Error updating user status: ' + err.message);
     }
@@ -160,11 +335,11 @@ const UserManagement = () => {
       <div className="user-management-header">
         <h2 className="user-management-title">User Management</h2>
         <div className="user-management-actions">
-          <button className="user-management-btn user-management-btn-primary">
+          <button className="user-management-btn user-management-btn-primary" onClick={handleAddUser}>
             <UserPlus className="user-management-btn-icon" />
             Add User
           </button>
-          <button className="user-management-btn user-management-btn-secondary">
+          <button className="user-management-btn user-management-btn-secondary" onClick={handleExportUsers}>
             <Download className="user-management-btn-icon" />
             Export
           </button>
@@ -258,7 +433,7 @@ const UserManagement = () => {
                     <button className="user-management-action-btn user-management-action-view" aria-label="View user">
                       <Eye className="user-management-action-icon" />
                     </button>
-                    <button className="user-management-action-btn user-management-action-edit" aria-label="Edit user">
+                    <button className="user-management-action-btn user-management-action-edit" onClick={() => handleEditUser(user)} aria-label="Edit user">
                       <Edit className="user-management-action-icon" />
                     </button>
                     <button 
@@ -320,6 +495,144 @@ const UserManagement = () => {
           >
             Next
           </button>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {showAddUserModal && (
+        <div className="user-management-modal-overlay" onClick={() => setShowAddUserModal(false)}>
+          <div className="user-management-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="user-management-modal-header">
+              <h3>Add New User</h3>
+              <button className="user-management-modal-close" onClick={() => setShowAddUserModal(false)}>
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleCreateRegularUser} className="user-management-modal-form">
+              <div className="user-management-form-group">
+                <label htmlFor="name">Name</label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={newUser.name}
+                  onChange={handleAddUserChange}
+                  required
+                  className="user-management-form-input"
+                />
+              </div>
+              <div className="user-management-form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={newUser.email}
+                  onChange={handleAddUserChange}
+                  required
+                  className="user-management-form-input"
+                />
+              </div>
+              <div className="user-management-form-group">
+                <label htmlFor="password">Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={newUser.password}
+                  onChange={handleAddUserChange}
+                  required
+                  className="user-management-form-input"
+                />
+              </div>
+              <div className="user-management-form-group">
+                <label htmlFor="role">Role</label>
+                <select
+                  id="role"
+                  name="role"
+                  value={newUser.role}
+                  onChange={handleAddUserChange}
+                  className="user-management-form-select"
+                >
+                  <option value="user">User</option>
+                  <option value="moderator">Moderator</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="user-management-modal-actions">
+                <button type="button" className="user-management-btn user-management-btn-secondary" onClick={() => setShowAddUserModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="user-management-btn user-management-btn-primary">
+                  Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditUserModal && (
+        <div className="user-management-modal-overlay" onClick={() => setShowEditUserModal(false)}>
+          <div className="user-management-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="user-management-modal-header">
+              <h3>Edit User</h3>
+              <button className="user-management-modal-close" onClick={() => setShowEditUserModal(false)}>
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleEditUserSubmit} className="user-management-modal-form">
+              <div className="user-management-form-group">
+                <label htmlFor="edit-name">Name</label>
+                <input
+                  type="text"
+                  id="edit-name"
+                  name="name"
+                  value={editingUser.name}
+                  onChange={handleEditUserChange}
+                  required
+                  className="user-management-form-input"
+                  disabled
+                />
+              </div>
+              <div className="user-management-form-group">
+                <label htmlFor="edit-email">Email</label>
+                <input
+                  type="email"
+                  id="edit-email"
+                  name="email"
+                  value={editingUser.email}
+                  onChange={handleEditUserChange}
+                  required
+                  className="user-management-form-input"
+                  disabled
+                />
+              </div>
+              <div className="user-management-form-group">
+                <label htmlFor="edit-role">Role</label>
+                <select
+                  id="edit-role"
+                  name="role"
+                  value={editingUser.role}
+                  onChange={handleEditUserChange}
+                  className="user-management-form-select"
+                >
+                  <option value="user">User</option>
+                  <option value="moderator">Moderator</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="user-management-modal-actions">
+                <button type="button" className="user-management-btn user-management-btn-secondary" onClick={() => setShowEditUserModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="user-management-btn user-management-btn-primary">
+                  Update User
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
