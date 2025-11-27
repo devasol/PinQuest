@@ -117,8 +117,6 @@ const postSchema = new mongoose.Schema({
       type: [Number], // [longitude, latitude]
       index: "2dsphere",
     },
-    latitude: Number,
-    longitude: Number,
   },
   status: {
     type: String,

@@ -23,16 +23,25 @@ const MapComponent = ({
 
   // Update map view when center or zoom changes
   useEffect(() => {
-    if (mapRef.current && center) {
+    if (mapRef.current && center && center.lat && center.lng) {
       const map = mapRef.current;
       map.setView([center.lat, center.lng], zoom);
     }
   }, [center, zoom]);
 
+  // Filter locations to only include those with valid coordinates
+  const validLocations = locations.filter(location => 
+    location.coordinates && 
+    typeof location.coordinates.lat === 'number' && 
+    typeof location.coordinates.lng === 'number' &&
+    !isNaN(location.coordinates.lat) &&
+    !isNaN(location.coordinates.lng)
+  );
+
   return (
     <MapContainer
       ref={mapRef}
-      center={[center.lat, center.lng]}
+      center={center && center.lat && center.lng ? [center.lat, center.lng] : [0, 0]}
       zoom={zoom}
       style={{ height: "100%", width: "100%" }}
       className="rounded-xl"
@@ -41,7 +50,7 @@ const MapComponent = ({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
-      {locations.map((location) => (
+      {validLocations.map((location) => (
         <Marker
           key={location.id}
           position={[location.coordinates.lat, location.coordinates.lng]}

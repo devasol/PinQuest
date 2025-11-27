@@ -20,8 +20,6 @@ import OptimizedImage from "../OptimizedImage";
 import RatingsAndComments from "../RatingsAndComments.jsx";
 import {
   getMarkerByCategory,
-  createUserLocationMarker,
-  createPOIMarker,
 } from "./CustomMapMarkers";
 
 // API base URL - adjust based on your backend URL
@@ -324,6 +322,8 @@ const useDraggable = (initialPosition = { x: 0, y: 0 }) => {
 
 import "./MapView.css";
 
+
+
 const MapView = () => {
   const { isAuthenticated, user } = useAuth();
   const [activePopup, setActivePopup] = useState(null);
@@ -424,12 +424,8 @@ const MapView = () => {
   const statsPanelDrag = useDraggable({ x: 24, y: 80 }); // Initial position for stats panel (top-right)
   const sidebarDrag = useDraggable({ x: 24, y: 80 }); // Initial position for sidebar (top-left)
 
-  // State for Points of Interest (POIs)
-  const [pois, setPois] = useState([]);
-  const [showPoiLayer, setShowPoiLayer] = useState(false); // Toggle for showing POIs (default off)
-
   // State for sidebar and its sections
-  const [activeSidebarTab, setActiveSidebarTab] = useState(""); // '', explore, stats, map-settings, pois, saved, recents
+  const [activeSidebarTab, setActiveSidebarTab] = useState(""); // '', explore, stats, map-settings, saved, recents
   // State for saved/bookmarked locations
   const [savedLocations, setSavedLocations] = useState([]);
   // State for recently viewed locations
@@ -631,7 +627,7 @@ const MapView = () => {
   };
 
   // Function to add a location to recents
-  const addRecentLocation = async (location) => {
+  const addRecentLocation = React.useCallback(async (location) => {
     try {
       // First, update the local state immediately for UI responsiveness
       setRecentLocations(prevRecents => {
@@ -689,7 +685,7 @@ const MapView = () => {
     } catch (error) {
       console.error('Error adding recent location:', error);
     }
-  };
+  }, [isAuthenticated]);
 
   // Load recent locations from backend API when user is authenticated
   useEffect(() => {
@@ -746,7 +742,7 @@ const MapView = () => {
       }
       
       // Open the popup for the selected marker after a short delay to ensure map transition is smooth
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         const markerRef = markerRefs.current[activePopup];
         // Different ways to access the leaflet instance depending on react-leaflet version
         if (markerRef) {
@@ -768,6 +764,8 @@ const MapView = () => {
           }
         }
       }, 300);
+      
+      return () => clearTimeout(timer);
     }
   }, [activePopup]);
 
@@ -898,103 +896,6 @@ const MapView = () => {
   const [showSearchPanel, setShowSearchPanel] = useState(false);
   const [showMapSettings, setShowMapSettings] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
-  const [showPoiSettings, setShowPoiSettings] = useState(false);
-
-  // Function to fetch nearby Points of Interest using Overpass API
-  const fetchPois = async (bounds) => {
-    if (!bounds || !showPoiLayer) return;
-    
-    setIsFetchingPOIs(true);
-
-    try {
-      // Convert bounds to bbox format for Overpass API
-      const bbox = `${bounds._southWest.lat},${bounds._southWest.lng},${bounds._northEast.lat},${bounds._northEast.lng}`;
-
-      // Overpass API query to fetch various types of POIs
-      const query = `
-        [out:json][timeout:25];
-        (
-          node["amenity"](bbox);
-          node["tourism"](bbox);
-          node["shop"](bbox);
-          node["restaurant"](bbox);
-          node["cafe"](bbox);
-          node["hotel"](bbox);
-          node["attraction"](bbox);
-          node["landmark"](bbox);
-          node["building"](bbox);
-          node["place"](bbox);
-        );
-        out body;
-      `.replace("bbox", bbox);
-
-      const response = await fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: `data=${encodeURIComponent(query)}`,
-      });
-
-      const data = await response.json();
-
-      // Process the POI data into a format we can use
-      const processedPois = data.elements
-        .filter((element) => element.type === "node") // Only process nodes for simplicity
-        .map((element) => {
-          return {
-            id: element.id,
-            lat: element.lat,
-            lng: element.lon,
-            tags: element.tags || {},
-            name:
-              element.tags.name ||
-              element.tags.amenity ||
-              element.tags.tourism ||
-              "Point of Interest",
-            type:
-              element.tags.amenity ||
-              element.tags.tourism ||
-              element.tags.shop ||
-              element.tags.building ||
-              element.tags.place ||
-              "poi",
-            position: [element.lat, element.lon],
-          };
-        })
-        .filter((poi) => poi.position[0] && poi.position[1]); // Filter out invalid positions
-
-      setPois(processedPois);
-    } catch (error) {
-      console.error("Error fetching POIs:", error);
-    } finally {
-      setIsFetchingPOIs(false);
-    }
-  };
-
-  // Effect to fetch POIs when map bounds change
-  useEffect(() => {
-    if (!mapRef.current || !showPoiLayer) return;
-
-    const handleMapMove = () => {
-      const bounds = mapRef.current.getBounds();
-      fetchPois(bounds);
-    };
-
-    // Fetch POIs initially and when map moves
-    const map = mapRef.current;
-    if (map) {
-      handleMapMove();
-      map.on("moveend", handleMapMove);
-    }
-
-    // Cleanup event listener
-    return () => {
-      if (map) {
-        map.off("moveend", handleMapMove);
-      }
-    };
-  }, [showPoiLayer, mapRef.current]);
 
   // Fetch posts from the backend API
   useEffect(() => {
@@ -1170,11 +1071,21 @@ const MapView = () => {
     watchUserLocation();
   }, []);
 
+  // Add timeout to ensure loading doesn't get stuck
+  useEffect(() => {
+    if (isLoading) {
+      const loadingTimeout = setTimeout(() => {
+        setIsLoading(false);
+      }, 10000); // 10 seconds timeout
+
+      return () => clearTimeout(loadingTimeout);
+    }
+  }, [isLoading]);
+
   // Function to get directions from user's current location to a post location
   const [isGettingDirections, setIsGettingDirections] = useState(false);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
   const [isRemovingLocation, setIsRemovingLocation] = useState(false);
-  const [isFetchingPOIs, setIsFetchingPOIs] = useState(false);
   const [isFetchingPosts, setIsFetchingPosts] = useState(false);
   
   const getDirections = (destinationPosition) => {
@@ -1338,40 +1249,45 @@ const MapView = () => {
   // All locations are now from the database
   const allLocations = userPosts;
 
-  // Filter posts based on search query and user's posts if applicable
-  let filteredLocations = allLocations.filter(
-    (location) =>
-      (searchQuery === "" ||
-        location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        location.description
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        location.category.toLowerCase().includes(searchQuery.toLowerCase())) &&
-      (!filterMine || location.postedBy === user?.name)
-  );
+  // Memoize filtered and sorted locations to prevent unnecessary re-calculations
+  const filteredLocations = React.useMemo(() => {
+    // Filter posts based on search query and user's posts if applicable
+    let result = allLocations.filter(
+      (location) =>
+        (searchQuery === "" ||
+          location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          location.description
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          location.category.toLowerCase().includes(searchQuery.toLowerCase())) &&
+        (!filterMine || location.postedBy === user?.name)
+    );
 
-  // Sort filtered locations based on selected filter
-  filteredLocations = filteredLocations.sort((a, b) => {
-    switch (postsFilter) {
-      case "latest":
-        // Sort by datePosted (newest first)
-        return new Date(b.datePosted) - new Date(a.datePosted);
-      case "top":
-        // Sort by totalRatings (highest first, then by averageRating)
-        if (b.totalRatings !== a.totalRatings) {
-          return b.totalRatings - a.totalRatings;
-        }
-        return (b.averageRating || 0) - (a.averageRating || 0);
-      case "ratings":
-        // Sort by averageRating (highest first)
-        return (b.averageRating || 0) - (a.averageRating || 0);
-      case "likes":
-        // Sort by totalRatings (highest first) - assuming totalRatings represents likes/ratings
-        return (b.totalRatings || 0) - (a.totalRatings || 0);
-      default:
-        return new Date(b.datePosted) - new Date(a.datePosted); // Default to latest
-    }
-  });
+    // Sort filtered locations based on selected filter
+    result = result.sort((a, b) => {
+      switch (postsFilter) {
+        case "latest":
+          // Sort by datePosted (newest first)
+          return new Date(b.datePosted) - new Date(a.datePosted);
+        case "top":
+          // Sort by totalRatings (highest first, then by averageRating)
+          if (b.totalRatings !== a.totalRatings) {
+            return b.totalRatings - a.totalRatings;
+          }
+          return (b.averageRating || 0) - (a.averageRating || 0);
+        case "ratings":
+          // Sort by averageRating (highest first)
+          return (b.averageRating || 0) - (a.averageRating || 0);
+        case "likes":
+          // Sort by totalRatings (highest first) - assuming totalRatings represents likes/ratings
+          return (b.totalRatings || 0) - (a.totalRatings || 0);
+        default:
+          return new Date(b.datePosted) - new Date(a.datePosted); // Default to latest
+      }
+    });
+    
+    return result;
+  }, [allLocations, searchQuery, filterMine, user?.name, postsFilter]);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [notification, setNotification] = useState({
@@ -1587,8 +1503,10 @@ const MapView = () => {
           description: formData.description,
           category: formData.category,
           location: {
-            latitude: parseFloat(clickPosition[0]),
-            longitude: parseFloat(clickPosition[1]),
+            coordinates: [
+              parseFloat(clickPosition[1]),
+              parseFloat(clickPosition[0]),
+            ],
           },
         };
 
@@ -1764,7 +1682,7 @@ const MapView = () => {
 
   // getMarkerByCategory is now imported from CustomMapMarkers
 
-  const formatDate = (dateString) => {
+  const formatDate = React.useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -1772,15 +1690,18 @@ const MapView = () => {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
+  }, []);
 
-  const flyToLocation = (position) => {
+  const flyToLocation = React.useCallback((position) => {
     if (mapRef.current) {
       mapRef.current.flyTo(position, 15);
     }
-  };
+  }, [mapRef]);
 
-  const handleSidebarItemClick = (locationId) => {
+  // Ref to track the last update time for active popup
+  const lastPopupUpdate = useRef(0);
+  
+  const handleSidebarItemClick = React.useCallback((locationId) => {
     const location = allLocations.find((loc) => loc.id === locationId);
     if (location) {
       // Close any post creation form that might be open
@@ -1791,11 +1712,16 @@ const MapView = () => {
       // Close image gallery if it's open
       setShowImageGallery(false);
       
-      setActivePopup(locationId);
-      flyToLocation(location.position);
-      addRecentLocation(location);  // Add to recent locations when clicked from explore
+      // Debounce to prevent multiple rapid updates that might cause shaking
+      const now = Date.now();
+      if (now - lastPopupUpdate.current > 100) { // 100ms debounce
+        setActivePopup(locationId);
+        lastPopupUpdate.current = now;
+        flyToLocation(location.position);
+        addRecentLocation(location);  // Add to recent locations when clicked from explore
+      }
     }
-  };
+  }, [allLocations, setActivePopup, flyToLocation, addRecentLocation, setShowPostForm, setClickPosition, setShowLoginModal, setShowImageGallery, lastPopupUpdate]);
 
   return (
     <div className="min-h-screen bg-gray-900 pt-16">
@@ -1803,12 +1729,12 @@ const MapView = () => {
       {/* pt-16 accounts for header height */}
       <Header isDiscoverPage={true} />
       {/* Full-Screen Map Container - with lower z-index to ensure header and sidebars stay on top */}
-      <div className="relative w-full h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] z-0">
+      <div className="relative w-full h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)]">
         {" "}
         {/* 4rem = 64px which is header height */}
-        {/* Loading indicator - only show when not showing post form */}
-        {isLoading && !showPostForm && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-0 flex items-center justify-center">
+        {/* Loading indicator - only show when not showing post form and no posts loaded yet */}
+        {isLoading && !showPostForm && userPosts.length === 0 && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
               <p className="text-xl font-medium text-gray-700">
@@ -1845,54 +1771,46 @@ const MapView = () => {
             />
           )}
 
-          {filteredLocations.map((location) => {
-            // Check if location.position is valid before creating the marker
-            if (
-              !location.position ||
-              !Array.isArray(location.position) ||
-              location.position.length !== 2 ||
-              typeof location.position[0] !== "number" ||
-              typeof location.position[1] !== "number" ||
-              isNaN(location.position[0]) ||
-              isNaN(location.position[1])
-            ) {
-              console.warn(
-                `Invalid location position for post ${location.id}:`,
-                location.position
-              );
-              return null; // Skip rendering this marker if location is invalid
-            }
-
-            return (
-              <Marker
-                key={location.id}
-                position={location.position}
-                // Pass averageRating so marker color reflects rating when available
-                icon={getMarkerByCategory(
-                  location.category,
-                  location.averageRating
-                )}
-                eventHandlers={{
-                  click: () => handleSidebarItemClick(location.id),
+          {filteredLocations.map((location) => (
+            <Marker
+              key={location.id}
+              position={location.position}
+              // Pass averageRating so marker color reflects rating when available
+              icon={getMarkerByCategory(
+                location.category,
+                location.averageRating
+              )}
+              eventHandlers={{
+                click: () => handleSidebarItemClick(location.id),
+              }}
+              ref={(markerRef) => {
+                if (markerRef) {
+                  markerRefs.current[location.id] = markerRef;
+                } else {
+                  delete markerRefs.current[location.id];
+                }
+              }}
+            >
+              <Popup
+                className="custom-popup"
+                onOpen={() => {
+                  // Use the same debounce mechanism to prevent shaking
+                  const now = Date.now();
+                  if (now - lastPopupUpdate.current > 100) { // 100ms debounce
+                    setActivePopup(location.id);
+                    lastPopupUpdate.current = now;
+                    addRecentLocation(location);
+                  }
                 }}
-                ref={(markerRef) => {
-                  if (markerRef) {
-                    markerRefs.current[location.id] = markerRef;
-                  } else {
-                    delete markerRefs.current[location.id];
+                onClose={() => {
+                  // Debounce the close action too
+                  const now = Date.now();
+                  if (now - lastPopupUpdate.current > 100) { // 100ms debounce
+                    setActivePopup(null);
+                    lastPopupUpdate.current = now;
                   }
                 }}
               >
-                <Popup
-                  className="custom-popup"
-                  onOpen={() => {
-                    setActivePopup(location.id);
-                    addRecentLocation(location);
-                  }}
-                  onClose={() => {
-                    setActivePopup(null);
-                  }}
-                >
                   <div
                     className="p-6 w-[90vw] max-w-[760px] relative bg-white rounded-xl shadow-xl border border-gray-100"
                     style={{
@@ -2278,209 +2196,6 @@ const MapView = () => {
                   </div>
                 </Popup>
               </Marker>
-            );
-          })}
-
-          {/* User Location Marker */}
-          {hasUserLocation && userLocation && (
-            <Marker
-              key="user-location"
-              position={userLocation}
-              icon={createUserLocationMarker()}
-              ref={(markerRef) => {
-                if (markerRef) {
-                  markerRefs.current['user-location'] = markerRef;
-                } else {
-                  delete markerRefs.current['user-location'];
-                }
-              }}
-            >
-              <Popup className="custom-popup">
-                <div 
-                  className="p-4" 
-                  onMouseDown={(e) => {
-                    // If user clicks on the background area (not a button), allow map to be draggable
-                    if (e.target === e.currentTarget) {
-                      // Allow the map to continue handling drag events
-                      e.stopPropagation();
-                    }
-                  }}
-                >
-                  <h3 className="font-bold text-xl text-gray-800 mb-2">
-                    Your Location
-                  </h3>
-                  <p className="text-gray-600 mb-3">
-                    This is your current location.
-                  </p>
-                  <div className="text-sm text-gray-500">
-                    <div>Latitude: {userLocation[0].toFixed(6)}</div>
-                    <div>Longitude: {userLocation[1].toFixed(6)}</div>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          )}
-
-          {/* Points of Interest Layer */}
-          {showPoiLayer &&
-            pois.map((poi) => (
-              <Marker
-                key={`poi-${poi.id}`}
-                position={poi.position}
-                icon={createPOIMarker(poi.type)}
-                eventHandlers={{
-                  click: () => {
-                    // Close any post creation form that might be open
-                    setShowPostForm(false);
-                    setClickPosition(null);
-                    // Close login modal if it's open
-                    setShowLoginModal(false);
-                    // Close image gallery if it's open
-                    setShowImageGallery(false);
-                    
-                    addRecentLocation(poi); // Add POI to recents when popup opens
-                    setActivePopup(`poi-${poi.id}`);
-                  },
-                }}
-                ref={(markerRef) => {
-                  if (markerRef) {
-                    markerRefs.current[`poi-${poi.id}`] = markerRef;
-                  } else {
-                    delete markerRefs.current[`poi-${poi.id}`];
-                  }
-                }}
-              >
-                <Popup className="custom-popup">
-                  <div 
-                    className="p-6 w-[90vw] max-w-[760px]" 
-                    onMouseDown={(e) => {
-                      // If user clicks on the background area (not a button), allow map to be draggable
-                      if (e.target === e.currentTarget) {
-                        // Allow the map to continue handling drag events
-                        e.stopPropagation();
-                      }
-                    }}
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-bold text-2xl text-gray-800">
-                          {poi.name}
-                        </h3>
-                        <p className="text-gray-600 text-base mt-1">
-                          {poi.type.replace("_", " ")}
-                        </p>
-                      </div>
-                      <button
-                        className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-300"
-                        onClick={() => {
-                          // Close popup
-                          if (mapRef.current) {
-                            mapRef.current.closePopup();
-                          }
-                        }}
-                        title="Close"
-                      >
-                        <svg
-                          className="w-6 h-6"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="space-y-2 text-base text-gray-500 mb-4">
-                      <div className="flex justify-between">
-                        <span>Category:</span>
-                        <span className="font-medium capitalize">
-                          {poi.type.replace("_", " ")}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Location:</span>
-                        <span className="font-medium">
-                          {poi.position[0].toFixed(4)},{" "}
-                          {poi.position[1].toFixed(4)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex space-x-1">
-                      <button
-                        className={`p-2 rounded-lg transition-colors duration-300 ${
-                          savedLocations.some(
-                            (saved) => saved.id === `poi-${poi.id}`
-                          )
-                            ? "bg-green-100 text-green-600"
-                            : "text-indigo-600 hover:bg-indigo-50"
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevent popup from closing
-
-                          // Convert POI to location format for saving
-                          const poiLocation = {
-                            id: `poi-${poi.id}`,
-                            title: poi.name,
-                            description: `${poi.type.replace(
-                              "_",
-                              " "
-                            )} at this location`,
-                            position: poi.position,
-                            postedBy: "OpenStreetMap",
-                            category: "poi",
-                            datePosted: new Date().toISOString(),
-                            type: "poi",
-                          };
-
-                          // Check if location is already saved
-                          const isAlreadySaved = savedLocations.some(
-                            (saved) => saved.id === `poi-${poi.id}`
-                          );
-                          if (!isAlreadySaved) {
-                            saveLocation(poiLocation);
-                          } else {
-                            removeSavedLocation(`poi-${poi.id}`);
-                          }
-                        }}
-                        title={
-                          savedLocations.some(
-                            (saved) => saved.id === `poi-${poi.id}`
-                          )
-                            ? "Saved"
-                            : "Save"
-                        }
-                        disabled={isSavingLocation}
-                      >
-                        {isSavingLocation ? (
-                          <svg className="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        ) : (
-                          <svg
-                            className="w-6 h-6"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
             ))}
         </MapContainer>
         {/* Floating UI Elements */}
@@ -2583,37 +2298,7 @@ const MapView = () => {
             </svg>
           </button>
 
-          <button
-            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
-              activeSidebarTab === "pois"
-                ? "bg-blue-100 text-blue-600"
-                : "text-gray-600 hover:bg-gray-200"
-            }`}
-            onClick={() =>
-              setActiveSidebarTab(activeSidebarTab === "pois" ? "" : "pois")
-            }
-            title="Points of Interest"
-          >
-            <svg
-              className="w-4 sm:w-6 h-4 sm:h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </button>
+
 
           <button
             className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
@@ -2700,10 +2385,15 @@ const MapView = () => {
           {activeSidebarTab && (
             <motion.div
               className={`sidebar-pane absolute top-0 h-full bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[999] flex flex-col overflow-x-hidden ${activeSidebarTab ? 'is-open' : ''}`}
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25 }}
+              initial={{ x: "-100%", opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "-100%", opacity: 0 }}
+              transition={{ 
+                type: "spring", 
+                damping: 20, 
+                stiffness: 300, 
+                mass: 0.8 
+              }}
             >
               <div className="p-3 sm:p-4 border-b border-gray-200 flex justify-between items-center">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-800">
@@ -2894,56 +2584,7 @@ const MapView = () => {
                     </div>
                   </div>
                 )}
-                {activeSidebarTab === "pois" && (
-                  <div className="p-4">
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg">
-                          <span>Show POIs</span>
-                          <button
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full ${
-                              showPoiLayer ? "bg-blue-500" : "bg-gray-300"
-                            }`}
-                            onClick={() => setShowPoiLayer(!showPoiLayer)}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                                showPoiLayer ? "translate-x-6" : "translate-x-1"
-                              }`}
-                            />
-                          </button>
-                        </div>
-                      </div>
 
-                      <div>
-                        <h3 className="font-semibold text-gray-800 mb-2">
-                          Nearby POIs
-                        </h3>
-                        <div className="space-y-3 max-h-96 overflow-y-auto">
-                          {pois.slice(0, 20).map((poi) => (
-                            <div
-                              key={`poi-${poi.id}`}
-                              className="p-3 bg-gray-50 rounded-lg border border-gray-200"
-                              onClick={() => {
-                                if (mapRef.current) {
-                                  mapRef.current.flyTo(poi.position, 15);
-                                  setActivePopup(`poi-${poi.id}`);
-                                }
-                              }}
-                            >
-                              <h4 className="font-medium text-gray-800">
-                                {poi.name}
-                              </h4>
-                              <p className="text-sm text-gray-600 capitalize">
-                                {poi.type.replace("_", " ")}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
                 {activeSidebarTab === "stats" && (
                   <div className="p-4">
                     <div className="space-y-4">
@@ -3213,7 +2854,7 @@ const MapView = () => {
           <>
             {/* Backdrop */}
             <motion.div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[600]"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[800]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3221,7 +2862,7 @@ const MapView = () => {
             />
 
             {/* Modal Content */}
-            <div className="fixed inset-0 flex items-center justify-center z-[601] p-4">
+            <div className="fixed inset-0 flex items-center justify-center z-[801] p-4">
               <motion.div
                 className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col transition-transform duration-300 ease-in-out"
                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -3232,7 +2873,7 @@ const MapView = () => {
               >
                 {/* Submitting overlay */}
                 {submitting && (
-                  <div className="absolute inset-0 z-[700] bg-white/80 backdrop-blur-sm flex items-center justify-center">
+                  <div className="absolute inset-0 z-[900] bg-white/80 backdrop-blur-sm flex items-center justify-center">
                     <div className="flex flex-col items-center gap-4 p-8">
                       <svg
                         className="animate-spin h-12 w-12 text-blue-600"
@@ -3265,7 +2906,7 @@ const MapView = () => {
                 )}
                 
                 {/* Fixed header with close button - always visible */}
-                <div className="p-4 flex-shrink-0 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 z-[650]">
+                <div className="p-4 flex-shrink-0 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 z-[850]">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center">
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">

@@ -15,21 +15,6 @@ router.get("/locations", async (req, res) => {
       averageRating: { $gte: 3.5 } // Only posts with rating 3.5 and above
     };
     
-    // Add category filter if provided
-    if (category && category !== 'all') {
-      query.category = category;
-    }
-    
-    // Add search filter if provided
-    if (search) {
-      const searchRegex = new RegExp(search, 'i'); // Case insensitive
-      query.$or = [
-        { title: searchRegex },
-        { description: searchRegex },
-        { category: searchRegex }
-      ];
-    }
-    
     // Calculate pagination
     const skip = (page - 1) * limit;
     

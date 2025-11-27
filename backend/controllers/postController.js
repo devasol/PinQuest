@@ -143,9 +143,7 @@ const createPost = async (req, res) => {
         coordinates: [
           parseFloat(parsedLocation.longitude),
           parseFloat(parsedLocation.latitude),
-        ], // [longitude, latitude] for GeoJSON
-        latitude: parseFloat(parsedLocation.latitude),
-        longitude: parseFloat(parsedLocation.longitude),
+        ],
       };
     }
 
@@ -440,8 +438,6 @@ const updatePost = async (req, res) => {
           parseFloat(location.longitude),
           parseFloat(location.latitude),
         ],
-        latitude: parseFloat(location.latitude),
-        longitude: parseFloat(location.longitude),
       };
     }
 
@@ -1510,7 +1506,7 @@ const deletePostByAdmin = async (req, res) => {
       });
     }
 
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findById(req..params.id);
     if (!post) {
       return res.status(404).json({
         status: 'fail',

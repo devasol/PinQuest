@@ -16,102 +16,16 @@ import {
   X,
   List,
 } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import Header from "../../components/Landing/Header/Header";
+import CustomMarker from "../../components/MapComponent/CustomMarker";
+import EnhancedMarkerCluster from "../../components/MapComponent/EnhancedMarkerCluster";
 import "./MapsPage.css";
 
 // Fix for default marker icons in Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
-
-// Create custom marker icons based on category with amazing designs
-const createCustomMarker = (category, rating = 0) => {
-  // Define colors based on category
-  const categoryColors = {
-    nature: '#22c55e',      // green
-    culture: '#8b5cf6',     // purple
-    shopping: '#f59e0b',    // amber
-    food: '#ef4444',        // red
-    event: '#3b82f6',       // blue
-    general: '#64748b',     // slate
-  };
-
-  const categoryIcons = {
-    nature: '🌳',           // tree for nature
-    culture: '🏛️',          // building for culture
-    shopping: '🛍️',         // shopping bags
-    food: '🍕',             // pizza for food
-    event: '🎭',            // theater mask for events
-    general: '📌'           // pin for general
-  };
-
-  const color = categoryColors[category] || categoryColors.general;
-  const icon = categoryIcons[category] || categoryIcons.general;
-  
-  // Create an HTML element for the custom marker with amazing styling
-  const divIcon = L.divIcon({
-    html: `
-      <div style="
-        background: linear-gradient(145deg, #ffffff, #f0f9ff);
-        border: 3px solid ${color};
-        border-radius: 50%;
-        width: 46px;
-        height: 46px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.8);
-        font-size: 24px;
-        transform: translate(-50%, -100%);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-      ">
-        <div style="
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: radial-gradient(circle at center, rgba(255,255,255,0.4) 0%, transparent 70%);
-          border-radius: 50%;
-        "></div>
-        <span style="
-          position: relative;
-          z-index: 1;
-          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-        ">${icon}</span>
-        ${rating ? `
-        <div style="
-          position: absolute;
-          bottom: -6px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: ${color};
-          color: white;
-          border-radius: 10px;
-          padding: 2px 6px;
-          font-size: 11px;
-          font-weight: bold;
-          white-space: nowrap;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          border: 1px solid rgba(255,255,255,0.3);
-        ">
-          ${rating}
-        </div>
-        ` : ''}
-      </div>
-    `,
-    className: '',
-    iconSize: [46, 46],
-    iconAnchor: [23, 46],
-    popupAnchor: [0, -46]
-  });
-
-  return divIcon;
-};
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -578,84 +492,29 @@ const MapsPage = () => {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   />
-                  {filteredLocations.map((location) => (
-                    <Marker
-                      key={location.id}
-                      position={[location.coordinates.lat, location.coordinates.lng]}
-                      icon={createCustomMarker(location.category, location.rating)}
-                      eventHandlers={{
-                        click: () => handleMarkerClick(location),
-                      }}
-                    >
-                      <Popup className="location-popup">
-                        <div className="location-popup-content">
-                          <div className="location-popup-header">
-                            <h3>{location.name}</h3>
-                            <div className="location-popup-rating">
-                              <Star size={16} fill="currentColor" className="star-icon" />
-                              <span>{location.rating}</span>
-                            </div>
-                          </div>
-                          <p className="location-popup-description">{location.description}</p>
-                          <div className="location-popup-meta">
-                            <div className="location-category">
-                              <span className="category-label">{location.category}</span>
-                            </div>
-                            <div className="location-price">{location.price || '$$'}</div>
-                          </div>
-                          {location.tags && location.tags.length > 0 && (
-                            <div className="location-popup-tags">
-                              {location.tags.slice(0, 3).map((tag, index) => (
-                                <span key={index} className="tag">{tag}</span>
-                              ))}
-                            </div>
-                          )}
-                          <div className="location-popup-actions">
-                            <button 
-                              className="directions-btn-small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Implement directions functionality if needed
-                              }}
-                            >
-                              <Navigation size={14} />
-                              <span>Directions</span>
-                            </button>
-                            <button 
-                              className="save-btn-small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Implement save functionality if needed
-                              }}
-                            >
-                              <Bookmark size={14} />
-                              <span>Save</span>
-                            </button>
-                          </div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
-                  {userLocation && (
-                    <Marker
-                      position={[userLocation.lat, userLocation.lng]}
-                      icon={L.divIcon({
-                        className: 'user-location-marker-icon',
-                        html: '<div></div>',
-                      })}
-                    />
-                  )}
+                  <EnhancedMarkerCluster>
+                    {filteredLocations
+                      .filter(location => 
+                        location.coordinates && 
+                        typeof location.coordinates.lat === 'number' && 
+                        typeof location.coordinates.lng === 'number' &&
+                        !isNaN(location.coordinates.lat) &&
+                        !isNaN(location.coordinates.lng)
+                      )
+                      .map((location) => (
+                        <CustomMarker
+                          key={location.id}
+                          position={[location.coordinates.lat, location.coordinates.lng]}
+                          location={location}
+                          onClick={handleMarkerClick}
+                          isSelected={selectedLocation?.id === location.id}
+                        />
+                      ))}
+                  </EnhancedMarkerCluster>
                 </MapContainer>
 
                 {/* Map controls */}
                 <div className="map-controls">
-                  <button
-                    className="map-control-btn"
-                    onClick={handleCenterOnUser}
-                    title="Center on my location"
-                  >
-                    <Locate size={18} />
-                  </button>
                   <button
                     className="map-control-btn"
                     onClick={handleZoomIn}

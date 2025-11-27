@@ -106,10 +106,14 @@
 /* Enhanced Marker Animations - Static Markers */
 .leaflet-marker-icon {
   transition: none !important;
+  pointer-events: auto !important;
+  /* Prevent flickering by disabling leaflet's default animations for markers */
+  will-change: auto !important;
+  transform: translate3d(0, 0, 0) !important;
 }
 
 .leaflet-marker-icon:hover {
-  transform: none !important;
+  transform: translate3d(0, 0, 0) !important;
   transition: none !important;
   filter: none !important;
 }
@@ -117,25 +121,49 @@
 /* Static marker styles - no hover effects */
 .marker {
   transition: none;
+  pointer-events: auto;
 }
 
 .marker:hover {
-  transform: none;
-  transition: none;
+  transform: none !important;
+  transition: none !important;
+  pointer-events: auto;
+  will-change: auto !important;
+}
+
+/* Disable popup animations that might cause shaking */
+.leaflet-popup {
+  transition: none !important;
+}
+
+.leaflet-popup-content-wrapper {
+  transition: none !important;
+}
+
+.leaflet-popup-tip {
+  transition: none !important;
+}
+
+/* Ensure markers have proper z-index to avoid sidebar interference */
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+.leaflet-popup-pane {
+  z-index: 650 !important;
+}
+
+.leaflet-tooltip-pane {
+  z-index: 700 !important;
 }
 
 /* Enhanced tile loading */
 .leaflet-tile {
-  transition: opacity 0.3s ease !important;
   will-change: opacity; /* Optimize for browser rendering */
 }
 
 .leaflet-tile-loaded {
   opacity: 1;
-}
-
-.leaflet-tile {
-  opacity: 0;
 }
 
 /* Smooth panning and zooming */
@@ -243,7 +271,7 @@
   backdrop-filter: blur(10px);
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.3);
-  z-index: 1000;
+  z-index: 400;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -254,6 +282,7 @@
   position: absolute;
   top: 0;
   left: 0;
+  pointer-events: auto;
 }
 
 .sidebar-pane {
@@ -266,11 +295,12 @@
   backdrop-filter: blur(10px);
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.3);
-  z-index: 999;
+  z-index: 399;
   display: flex;
   flex-direction: column;
   transform: translateX(-100%);
   transition: transform 0.3s ease-in-out;
+  pointer-events: auto;
 }
 
 .sidebar-pane.is-open {
