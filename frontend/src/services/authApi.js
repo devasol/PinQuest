@@ -200,5 +200,81 @@ export const directAuthApi = {
         error: error.message
       };
     }
+  },
+  
+  // Forgot password - request password reset
+  forgotPassword: async (email) => {
+    try {
+      const response = await apiRequest('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+        skipAuth: true,
+      });
+
+      if (response.status === 'success') {
+        return {
+          success: true,
+          message: response.message
+        };
+      } else {
+        throw new Error(response.message || 'Password reset request failed');
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+  
+  // Reset password with token
+  resetPassword: async (resetToken, newPassword) => {
+    try {
+      const response = await apiRequest(`/auth/reset-password/${resetToken}`, {
+        method: 'PUT',
+        body: JSON.stringify({ password: newPassword }),
+        skipAuth: true,
+      });
+
+      if (response.status === 'success' && response.data) {
+        return {
+          success: true,
+          user: response.data,
+          token: response.data.token
+        };
+      } else {
+        throw new Error(response.message || 'Password reset failed');
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+  
+  // Update password for authenticated user
+  updatePassword: async (currentPassword, newPassword) => {
+    try {
+      const response = await apiRequest('/auth/update-password', {
+        method: 'PUT',
+        body: JSON.stringify({ currentPassword, newPassword }),
+        skipAuth: false,
+      });
+
+      if (response.status === 'success') {
+        return {
+          success: true,
+          message: response.message
+        };
+      } else {
+        throw new Error(response.message || 'Password update failed');
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 };

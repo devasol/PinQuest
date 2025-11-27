@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { sendPasswordResetEmail } = require('../utils/email');
 
 // @desc    Request password reset
 // @route   POST /api/v1/auth/forgot-password
@@ -18,9 +19,10 @@ const forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({
-        status: 'fail',
-        message: 'No user found with that email address'
+      // Return success response even if user doesn't exist to prevent email enumeration
+      return res.status(200).json({
+        status: 'success',
+        message: 'Password reset email sent if user exists'
       });
     }
 
@@ -38,28 +40,58 @@ const forgotPassword = async (req, res) => {
 
     await user.save({ validateBeforeSave: false });
 
-    // TODO: Send email with reset token
-    // In a real application, you would send an email with the following URL:
-    // const resetUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/reset-password/${resetToken}`;
-    // await sendEmail({ ...email options });
+    // Construct the reset URL - this should point to the frontend page
+    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-    // For now, we'll just return the token
-    res.status(200).json({
-      status: 'success',
-      message: 'Password reset token sent',
-      data: {
-        resetToken // This would normally be sent via email
+    // Send email with reset token
+    const emailSent = await sendPasswordResetEmail(user.email, resetUrl);
+
+    if (!emailSent) {
+      // For development, if email fails, clear the reset token and return error
+      // In production, you might want to handle this differently
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+
+      // Check if this is a configuration issue
+      if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
+        console.log("SMTP not configured. In a real application, an email would be sent with the reset link:", resetUrl);
+        return res.status(200).json({
+          status: 'success',
+          message: 'Password reset instructions would be sent via email in a production environment. For development, here is the reset URL: ' + resetUrl
+        });
+      } else {
+        console.log("Email configuration exists but sending failed. Check SMTP settings.");
+        return res.status(500).json({
+          status: 'error',
+          message: 'Error sending password reset email. Please check server logs for details.'
+        });
       }
-    });
-  } catch (error) {
-    // Clear any existing reset tokens if there's an error
-    if (req.user) {
-      req.user.resetPasswordToken = undefined;
-      req.user.resetPasswordExpires = undefined;
-      await req.user.save({ validateBeforeSave: false });
     }
 
+    res.status(200).json({
+      status: 'success',
+      message: 'Password reset email sent'
+    });
+  } catch (error) {
     console.error('Error in forgot password:', error);
+    
+    // Clear any existing reset tokens for the user if there's an error and user exists
+    try {
+      const { email } = req.body;
+      if (email) {
+        const user = await User.findOne({ email });
+        if (user && user.resetPasswordToken) {
+          user.resetPasswordToken = undefined;
+          user.resetPasswordExpires = undefined;
+          await user.save({ validateBeforeSave: false });
+        }
+      }
+    } catch (saveError) {
+      console.error('Error clearing reset token:', saveError);
+    }
+
     res.status(500).json({
       status: 'error',
       message: 'Error sending password reset email'
@@ -231,9 +263,56 @@ const adminUpdateUserPassword = async (req, res) => {
   }
 };
 
+// @desc    Validate password reset token
+// @route   GET /api/v1/auth/reset-password/:resetToken
+// @access  Public
+const validateResetToken = async (req, res) => {
+  try {
+    const { resetToken } = req.params;
+
+    if (!resetToken) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Reset token is required'
+      });
+    }
+
+    // Hash the incoming token to compare with stored token
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    // Find user with matching token that hasn't expired
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Password reset token is invalid or has expired'
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Valid token'
+    });
+  } catch (error) {
+    console.error('Error validating reset token:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error validating password reset token'
+    });
+  }
+};
+
 module.exports = {
   forgotPassword,
   resetPassword,
   updatePassword,
-  adminUpdateUserPassword
+  adminUpdateUserPassword,
+  validateResetToken
 };

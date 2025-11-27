@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
+import ForgotPassword from "../ForgotPassword/ForgotPassword";
 
 const Login = () => {
-  const { login, signup, signupWithVerification, googleLogin } = useAuth();
+  const { login, signup, signupWithVerification, googleLogin, forgotPassword } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isLogin, setIsLogin] = useState(true);
@@ -19,6 +20,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -351,6 +353,7 @@ const Login = () => {
                     {isLogin && (
                       <button
                         type="button"
+                        onClick={() => setShowForgotPassword(true)}
                         className="text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors duration-200"
                       >
                         Forgot password?
@@ -475,6 +478,11 @@ const Login = () => {
           By continuing, you agree to our Terms of Service and Privacy Policy
         </motion.p>
       </motion.div>
+      
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <ForgotPassword onClose={() => setShowForgotPassword(false)} />
+      )}
       
       <style jsx>{`
         .overflow-y-auto::-webkit-scrollbar {

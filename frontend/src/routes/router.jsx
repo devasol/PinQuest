@@ -17,6 +17,7 @@ import Analytics from "../pages/AdminDashboard/Analytics";
 import AdminNotificationsRoute from "../pages/AdminDashboard/AdminNotificationsRoute";
 import AdminProtectedRoute from "../components/Admin/AdminProtectedRoute";
 import EmailVerification from "../components/EmailVerification";
+import ResetPasswordPage from "../pages/ResetPasswordPage/ResetPasswordPage";
 
 const router = createBrowserRouter([
   {
@@ -62,6 +63,11 @@ const router = createBrowserRouter([
   {
     element: <EmailVerification />,
     path: "/verify-email",
+    // error:</>
+  },
+  {
+    element: <ResetPasswordPage />,
+    path: "/reset-password/:resetToken",
     // error:</>
   },
   // Admin routes

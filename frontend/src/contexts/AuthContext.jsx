@@ -179,6 +179,42 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Forgot password function
+  const forgotPassword = async (email) => {
+    try {
+      const data = await directAuthApi.forgotPassword(email);
+      return data;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Reset password function
+  const resetPassword = async (resetToken, newPassword) => {
+    try {
+      const data = await directAuthApi.resetPassword(resetToken, newPassword);
+      if (data.success) {
+        // Store token and user data after successful password reset
+        localStorage.setItem('token', data.token);
+        const userInfo = {
+          _id: data.user._id,
+          email: data.user.email,
+          name: data.user.name,
+          isVerified: data.user.isVerified,
+          role: data.user.role // Include role for admin detection
+        };
+        localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
+        setUser(userInfo);
+        setIsAuthenticated(true);
+        return { success: true, data };
+      } else {
+        return { success: false, error: data.error };
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   const value = {
     user,
     isAuthenticated,
@@ -188,6 +224,8 @@ export const AuthProvider = ({ children }) => {
     signupWithVerification,
     logout,
     googleLogin: handleGoogleLogin,
+    forgotPassword,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

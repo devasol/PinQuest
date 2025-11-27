@@ -10,7 +10,7 @@ const createTransporter = () => {
     return null;
   }
 
-  const transporter = nodemailer.createTransporter({
+  const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT) || 587,
     secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
@@ -38,9 +38,6 @@ const sendVerificationEmail = async (email, verificationCode) => {
       console.error('Email transporter not configured. Missing SMTP credentials.');
       return false;
     }
-
-    // Verify transporter configuration
-    await transporter.verify();
 
     // Define email options
     const mailOptions = {
@@ -91,9 +88,6 @@ const sendVerificationReminderEmail = async (email, verificationCode) => {
       return false;
     }
 
-    // Verify transporter configuration
-    await transporter.verify();
-
     // Define email options
     const mailOptions = {
       from: process.env.SMTP_FROM_EMAIL || process.env.SMTP_EMAIL,
@@ -128,7 +122,62 @@ const sendVerificationReminderEmail = async (email, verificationCode) => {
   }
 };
 
+/**
+ * Send password reset email to user
+ * @param {string} email - User's email address
+ * @param {string} resetUrl - The password reset URL to send
+ * @returns {Promise<boolean>} - True if email was sent successfully
+ */
+const sendPasswordResetEmail = async (email, resetUrl) => {
+  try {
+    const transporter = createTransporter();
+    
+    // Check if transporter is properly configured
+    if (!transporter) {
+      console.error('Email transporter not configured. Missing SMTP credentials.');
+      return false;
+    }
+
+    // Define email options
+    const mailOptions = {
+      from: process.env.SMTP_FROM_EMAIL || process.env.SMTP_EMAIL,
+      to: email,
+      subject: 'Password Reset Request - PinQuest',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; text-align: center;">Password Reset Request</h2>
+          <p>Hello,</p>
+          <p>You have requested to reset your password for your PinQuest account.</p>
+          <p>Please click the button below to reset your password:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="display: inline-block; padding: 15px 30px; background-color: #6366f1; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+              Reset Password
+            </a>
+          </div>
+          <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666; margin: 15px 0;">
+            <a href="${resetUrl}" style="color: #6366f1;">${resetUrl}</a>
+          </p>
+          <p>This link will expire in 10 minutes. If you didn't request this, please ignore this email.</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 0.9em;">© ${new Date().getFullYear()} PinQuest. All rights reserved.</p>
+        </div>
+      `,
+    };
+
+    // Send email
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Password reset email sent:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    return false;
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
   sendVerificationReminderEmail,
+  sendPasswordResetEmail,
 };
