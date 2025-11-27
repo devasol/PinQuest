@@ -18,6 +18,7 @@ import RoutingMachine from "./RoutingMachine";
 import NotificationModal from "../NotificationModal";
 import OptimizedImage from "../OptimizedImage";
 import RatingsAndComments from "../RatingsAndComments.jsx";
+import CustomMarker from "./CustomMarker";
 import {
   getMarkerByCategory,
 } from "./CustomMapMarkers";
@@ -931,55 +932,114 @@ const MapView = () => {
           headers,
         });
         const result = await response.json();
+        console.log("API Response:", result);
 
         if (result.status === "success") {
           // Transform the API data to match the format expected by the frontend
           // and filter out posts with invalid location data
+          console.log("All posts from API (total):", result.data.length, result.data);
           const transformedPosts = result.data
             .filter((post) => {
-              // Check if the post has valid location data
-              return (
-                post.location &&
-                typeof post.location.latitude === "number" &&
-                typeof post.location.longitude === "number" &&
-                !isNaN(post.location.latitude) &&
-                !isNaN(post.location.longitude)
-              );
+              // Check if the post has valid location data in either format
+              let hasValidLocation = false;
+              let lat, lng;
+              
+              // Check for GeoJSON format: location.coordinates = [lng, lat]
+              if (post.location && 
+                  Array.isArray(post.location.coordinates) && 
+                  post.location.coordinates.length === 2 &&
+                  typeof post.location.coordinates[0] === "number" && // longitude
+                  typeof post.location.coordinates[1] === "number" && // latitude
+                  !isNaN(post.location.coordinates[0]) &&
+                  !isNaN(post.location.coordinates[1])) {
+                // Additional validation: latitude must be between -90 and 90, longitude between -180 and 180
+                const longitude = post.location.coordinates[0];
+                const latitude = post.location.coordinates[1];
+                if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
+                  hasValidLocation = true;
+                  lat = latitude;
+                  lng = longitude;
+                }
+              }
+              // Fallback: check for legacy format: location.latitude, location.longitude
+              else if (post.location && 
+                       typeof post.location.latitude === "number" && 
+                       typeof post.location.longitude === "number" &&
+                       !isNaN(post.location.latitude) &&
+                       !isNaN(post.location.longitude)) {
+                // Additional validation: latitude must be between -90 and 90, longitude between -180 and 180
+                const latitude = post.location.latitude;
+                const longitude = post.location.longitude;
+                if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
+                  hasValidLocation = true;
+                  lat = latitude;
+                  lng = longitude;
+                }
+              }
+              
+              console.log(`Post ${post._id} valid location:`, hasValidLocation, "Location:", post.location, "Lat:", lat, "Lng:", lng);
+              return hasValidLocation;
             })
-            .map((post) => ({
-              id: post._id,
-              title: post.title,
-              description: post.description,
-              image: post.image,
-              images:
-                post.images && post.images.length > 0
-                  ? post.images
-                  : post.image
-                  ? [post.image]
-                  : [],
-              // Ratings: prefer cached aggregate fields, otherwise compute from ratings array
-              averageRating:
-                typeof post.averageRating === "number"
-                  ? post.averageRating
-                  : Array.isArray(post.ratings) && post.ratings.length > 0
-                  ? post.ratings.reduce((acc, r) => acc + (r.rating || 0), 0) /
-                    post.ratings.length
-                  : 0,
-              totalRatings:
-                typeof post.totalRatings === "number"
-                  ? post.totalRatings
-                  : Array.isArray(post.ratings)
-                  ? post.ratings.length
-                  : 0,
-              postedBy:
-                post.postedBy && typeof post.postedBy === "object"
-                  ? post.postedBy.name
-                  : post.postedBy,
-              category: post.category || "general",
-              datePosted: post.datePosted,
-              position: [post.location.latitude, post.location.longitude],
-              type: "user-post",
-            }));
+            .map((post) => {
+              // Determine position based on location format
+              let position = null;
+              if (post.location && Array.isArray(post.location.coordinates) && post.location.coordinates.length === 2) {
+                // GeoJSON format: [longitude, latitude] -> [latitude, longitude] for Leaflet
+                position = [
+                  parseFloat(post.location.coordinates[1]), // latitude from GeoJSON
+                  parseFloat(post.location.coordinates[0])  // longitude from GeoJSON
+                ];
+              } else if (post.location && typeof post.location.latitude !== "undefined" && typeof post.location.longitude !== "undefined") {
+                // Legacy format: [latitude, longitude] for Leaflet
+                position = [
+                  parseFloat(post.location.latitude),   // latitude
+                  parseFloat(post.location.longitude)   // longitude
+                ];
+              }
+              
+              // If position couldn't be determined, skip this post
+              if (!position || isNaN(position[0]) || isNaN(position[1])) {
+                console.error(`Invalid position for post ${post._id}:`, position);
+                return null;
+              }
+              
+              return {
+                id: post._id,
+                title: post.title,
+                description: post.description,
+                image: post.image,
+                images:
+                  post.images && post.images.length > 0
+                    ? post.images
+                    : post.image
+                    ? [post.image]
+                    : [],
+                // Ratings: prefer cached aggregate fields, otherwise compute from ratings array
+                averageRating:
+                  typeof post.averageRating === "number"
+                    ? post.averageRating
+                    : Array.isArray(post.ratings) && post.ratings.length > 0
+                    ? post.ratings.reduce((acc, r) => acc + (r.rating || 0), 0) /
+                      post.ratings.length
+                    : 0,
+                totalRatings:
+                  typeof post.totalRatings === "number"
+                    ? post.totalRatings
+                    : Array.isArray(post.ratings)
+                    ? post.ratings.length
+                    : 0,
+                postedBy:
+                  post.postedBy && typeof post.postedBy === "object"
+                    ? post.postedBy.name
+                    : post.postedBy,
+                category: post.category || "general",
+                datePosted: post.datePosted,
+                position: position,
+                type: "user-post",
+              };
+            })
+            .filter(post => post !== null); // Remove any null entries from the map function
+          console.log("Transformed posts:", transformedPosts);
           setUserPosts(transformedPosts);
         } else {
           console.error("Error fetching posts:", result.message);
@@ -1605,10 +1665,9 @@ const MapView = () => {
         // Add the new post to the local state
         const newPost = {
           id: result.data._id, // Use the ID from the database
-          position: [
-            parseFloat(result.data.location.latitude),
-            parseFloat(result.data.location.longitude),
-          ],
+          position: Array.isArray(result.data.location.coordinates) && result.data.location.coordinates.length === 2
+            ? [result.data.location.coordinates[1], result.data.location.coordinates[0]] // [lat, lng]
+            : [clickPosition[0], clickPosition[1]], // fallback to the clicked position
           title: formData.title,
           description: formData.description,
           image: result.data.image, // This could be a string URL or an object with a url property
@@ -1771,432 +1830,50 @@ const MapView = () => {
             />
           )}
 
-          {filteredLocations.map((location) => (
-            <Marker
-              key={location.id}
-              position={location.position}
-              // Pass averageRating so marker color reflects rating when available
-              icon={getMarkerByCategory(
-                location.category,
-                location.averageRating
-              )}
-              eventHandlers={{
-                click: () => handleSidebarItemClick(location.id),
-              }}
-              ref={(markerRef) => {
-                if (markerRef) {
-                  markerRefs.current[location.id] = markerRef;
-                } else {
-                  delete markerRefs.current[location.id];
-                }
-              }}
-            >
-              <Popup
-                className="custom-popup"
-                onOpen={() => {
-                  // Use the same debounce mechanism to prevent shaking
-                  const now = Date.now();
-                  if (now - lastPopupUpdate.current > 100) { // 100ms debounce
-                    setActivePopup(location.id);
-                    lastPopupUpdate.current = now;
-                    addRecentLocation(location);
-                  }
+          {filteredLocations.map((location) => {
+            // Only render markers with valid positions
+            if (!location.position || !Array.isArray(location.position) || location.position.length !== 2) {
+              console.warn(`Invalid position for location ${location.id}:`, location.position);
+              return null;
+            }
+            
+            return (
+              <CustomMarker
+                key={location.id}
+                location={location}
+                onClick={handleSidebarItemClick}
+                isSelected={activePopup === location.id}
+                onAddToRef={(id, ref) => {
+                  markerRefs.current[id] = ref;
                 }}
-                onClose={() => {
-                  // Debounce the close action too
-                  const now = Date.now();
-                  if (now - lastPopupUpdate.current > 100) { // 100ms debounce
-                    setActivePopup(null);
-                    lastPopupUpdate.current = now;
-                  }
+                onRemoveFromRef={(id) => {
+                  delete markerRefs.current[id];
                 }}
-              >
-                  <div
-                    className="p-6 w-[90vw] max-w-[760px] relative bg-white rounded-xl shadow-xl border border-gray-100"
-                    style={{
-                      fontFamily:
-                        "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
-                    }}
-                    onMouseDown={(e) => {
-                      // If user clicks on the background area (not a button), allow map to be draggable
-                      if (e.target === e.currentTarget) {
-                        // Allow the map to continue handling drag events
-                        e.stopPropagation();
-                      }
-                    }}
-                  >
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      {/* Left: image / carousel */}
-                      <div className="w-full lg:w-1/2 flex-shrink-0">
-                        {location.images && location.images.length > 0 ? (
-                          <div className="rounded-lg overflow-hidden shadow-sm">
-                            <ImageCarousel
-                              images={location.images}
-                              alt={location.title}
-                              className="relative"
-                              onClose={(e) => {
-                                e.stopPropagation();
-                                if (mapRef.current) mapRef.current.closePopup();
-                                if (showRouting) {
-                                  setShowRouting(false);
-                                  setRoutingStart(null);
-                                  setRoutingEnd(null);
-                                }
-                              }}
-                            />
-                          </div>
-                        ) : (location.image &&
-                            typeof location.image === "string") ||
-                          (location.image && location.image.url) ? (
-                          <div className="rounded-lg overflow-hidden shadow-sm">
-                            <div className="w-full h-56 lg:h-64 bg-gray-50">
-                              <OptimizedImage
-                                src={getImageUrl(location.image)}
-                                alt={location.title}
-                                priority={activePopup === location.id}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="w-full h-56 lg:h-64 bg-gray-50 rounded-lg" />
-                        )}
-
-                        {/* View Images Button - Only show if there are multiple images */}
-                        {(location.images && location.images.length > 0) && (
-                          <div className="mt-3">
-                            <button
-                              onClick={() => {
-                                setGalleryImages(location.images);
-                                setCurrentImageIndex(0);
-                                setShowImageGallery(true);
-                              }}
-                              className="w-full py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
-                            >
-                              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              View {location.images.length} {location.images.length === 1 ? 'Image' : 'Images'}
-                            </button>
-                          </div>
-                        )}
-
-                        {/* small controls under image on mobile */}
-                        <div className="mt-3 grid grid-cols-3 gap-2 lg:hidden">
-                          <button
-                            className="py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center justify-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setTravelMode("driving");
-                              getDirections(location.position);
-                            }}
-                            disabled={isGettingDirections}
-                          >
-                            {isGettingDirections ? (
-                              <span className="flex items-center">
-                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Getting...
-                              </span>
-                            ) : 'Directions'}
-                          </button>
-                          <button
-                            className="py-2 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors duration-200 flex items-center justify-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setTravelMode("walking");
-                              getDirections(location.position);
-                            }}
-                            disabled={isGettingDirections}
-                          >
-                            {isGettingDirections ? (
-                              <span className="flex items-center">
-                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Getting...
-                              </span>
-                            ) : 'Walking'}
-                          </button>
-                          <button
-                            className={`py-2 rounded-lg border border-gray-200 transition-colors duration-200 flex items-center justify-center ${
-                              savedLocations.some((s) => s.id === location.id)
-                                ? 'text-green-600 hover:bg-green-50' 
-                                : 'text-indigo-600 hover:bg-indigo-50'
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const isAlreadySaved = savedLocations.some(
-                                (s) => s.id === location.id
-                              );
-                              if (!isAlreadySaved) {
-                                saveLocation(location);
-                              } else {
-                                removeSavedLocation(location.id);
-                              }
-                            }}
-                            disabled={isSavingLocation}
-                          >
-                            {isSavingLocation ? (
-                              <span className="flex items-center">
-                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Saving...
-                              </span>
-                            ) : (
-                              savedLocations.some((s) => s.id === location.id) ? 'Saved' : 'Save'
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Right: details */}
-                      <div className="w-full lg:w-1/2 flex flex-col">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-semibold text-2xl text-gray-900">
-                              {location.title}
-                            </h3>
-                            <p className="text-gray-600 mt-1 text-sm">
-                              {location.description}
-                            </p>
-                          </div>
-                          <div className="hidden lg:block">
-                            <button
-                              className="p-2 rounded-full bg-white border border-gray-100 shadow-sm text-gray-600 hover:shadow-md transition-all duration-200"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (mapRef.current) mapRef.current.closePopup();
-                                if (showRouting) {
-                                  setShowRouting(false);
-                                  setRoutingStart(null);
-                                  setRoutingEnd(null);
-                                }
-                              }}
-                              title={showRouting ? "Close Direction" : "Close"}
-                            >
-                              <svg
-                                className="w-5 h-5 text-gray-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M6 18L18 6M6 6l12 12"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-2 text-sm text-gray-600">
-                          <div>
-                            <div className="font-medium text-gray-800">
-                              Posted by
-                            </div>
-                            <div className="mt-1">{location.postedBy}</div>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-800">
-                              Category
-                            </div>
-                            <div className="mt-1 capitalize">
-                              {location.category}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-800">
-                              Date
-                            </div>
-                            <div className="mt-1">
-                              {formatDate(location.datePosted)}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-800">
-                              Ratings
-                            </div>
-                            <div className="mt-1 flex items-center gap-2">
-                              <span className="text-indigo-600 font-semibold">
-                                {location.averageRating &&
-                                location.totalRatings > 0
-                                  ? location.averageRating.toFixed(1)
-                                  : "—"}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                ({location.totalRatings || 0})
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4">
-                          {isAuthenticated ? (
-                            <div className="grid grid-cols-3 gap-2">
-                              <button
-                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 ${isGettingDirections ? 'opacity-75 cursor-not-allowed' : ''}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTravelMode("driving");
-                                  getDirections(location.position);
-                                }}
-                                disabled={isGettingDirections}
-                              >
-                                {isGettingDirections ? (
-                                  <span className="flex items-center">
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Getting...
-                                  </span>
-                                ) : (
-                                  <>
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12l2 2 4-4"
-                                      />
-                                    </svg>
-                                    Get Directions
-                                  </>
-                                )}
-                              </button>
-                              <button
-                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors duration-200 ${isGettingDirections ? 'opacity-75 cursor-not-allowed' : ''}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTravelMode("walking");
-                                  getDirections(location.position);
-                                }}
-                                disabled={isGettingDirections}
-                              >
-                                {isGettingDirections ? (
-                                  <span className="flex items-center">
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Getting...
-                                  </span>
-                                ) : (
-                                  <>
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                      />
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                      />
-                                    </svg>
-                                    Walking Directions
-                                  </>
-                                )}
-                              </button>
-                              <button
-                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 transition-colors duration-200 ${
-                                  savedLocations.some((s) => s.id === location.id)
-                                    ? 'text-green-600 hover:bg-green-50' 
-                                    : 'text-indigo-600 hover:bg-indigo-50'
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const isAlreadySaved = savedLocations.some(
-                                    (s) => s.id === location.id
-                                  );
-                                  if (!isAlreadySaved) {
-                                    saveLocation(location);
-                                  } else {
-                                    removeSavedLocation(location.id);
-                                  }
-                                }}
-                                disabled={isSavingLocation}
-                              >
-                                {isSavingLocation ? (
-                                  <span className="flex items-center">
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Saving...
-                                  </span>
-                                ) : (
-                                  <>
-                                    <svg
-                                      className="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                                      />
-                                    </svg>
-                                    {savedLocations.some((s) => s.id === location.id) ? 'Saved' : 'Save'}
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          ) : (
-                            <button className="w-full text-sm py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors duration-200">
-                              View Details
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Ratings & Comments section inside the popup */}
-                        <div className="mt-4 border-t border-gray-100 pt-4">
-                          <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                            <svg
-                              className="w-5 h-5 text-yellow-500"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                            Ratings & Comments
-                          </h4>
-                          <RatingsAndComments
-                            postId={location.id}
-                            isAuthenticated={isAuthenticated}
-                            user={user}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+                activePopup={activePopup}
+                onPopupOpen={setActivePopup}
+                onPopupClose={(id) => setActivePopup(null)}
+                mapRef={mapRef}
+                showRouting={showRouting}
+                setShowRouting={setShowRouting}
+                setRoutingStart={setRoutingStart}
+                setRoutingEnd={setRoutingEnd}
+                travelMode={travelMode}
+                setTravelMode={setTravelMode}
+                getDirections={getDirections}
+                savedLocations={savedLocations}
+                saveLocation={saveLocation}
+                removeSavedLocation={removeSavedLocation}
+                isSavingLocation={isSavingLocation}
+                addRecentLocation={addRecentLocation}
+                user={user}
+                isAuthenticated={isAuthenticated}
+              />
+            );
+          }).filter(Boolean)} {/* Remove any null entries from the map function */}
+          {/* Debug info to see how many posts are rendered */}
+          <div style={{position: 'absolute', top: '10px', left: '10px', background: 'rgba(255,255,255,0.9)', padding: '10px', zIndex: 1000, borderRadius: '4px', fontSize: '12px', border: '1px solid #ddd', fontFamily: 'monospace'}}>
+            Debug: {filteredLocations.length} posts on map | Total posts: {userPosts.length} | Valid positions: {userPosts.filter(p => p.position && Array.isArray(p.position) && p.position.length === 2).length}
+          </div>
         </MapContainer>
         {/* Floating UI Elements */}
         {/* Add Post Button - Bottom Center */}

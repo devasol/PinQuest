@@ -1,153 +1,70 @@
 import L from "leaflet";
+import "./CustomMapMarkers.css";
 
-// Function to create a classic pin SVG marker and return a divIcon
+// Function to create a classic pin marker using an SVG string
 const createPinMarker = (options = {}) => {
   const {
-    color = "#4F46E5",
+    className = "",
     size = 40,
-    opacity = 1,
   } = options;
 
-  const width = size;
-  const height = size;
-  
-  // Create consistent color variants for the entire marker
-  const baseColor = color;
-  const lightColor = lightenColor(color, 20);
-  const darkColor = darkenColor(color, 20);
-  
-  // Enhanced pin shape SVG with better visual appearance - using the same color consistently throughout the pin
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-      <defs>
-        <radialGradient id="pinGradient" cx="30%" cy="30%" r="70%">
-          <stop offset="0%" stop-color="${lightColor}" stop-opacity="${opacity}" />
-          <stop offset="100%" stop-color="${baseColor}" stop-opacity="${opacity}" />
-        </radialGradient>
-        <linearGradient id="stemGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="${baseColor}" stop-opacity="${opacity}" />
-          <stop offset="100%" stop-color="${darkColor}" stop-opacity="${opacity}" />
-        </linearGradient>
-        <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.25" />
-        </filter>
-        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
-          <feOffset dx="0" dy="0" result="offsetBlur"/>
-          <feSpecularLighting in="blur" surfaceScale="10" specularConstant="0.8" 
-                              specularExponent="8" lighting-color="${lightColor}" result="specOut">
-            <fePointLight x="10" y="10" z="100"/>
-          </feSpecularLighting>
-          <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut2"/>
-          <feComposite in="SourceGraphic" in2="specOut2" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
-        </filter>
-      </defs>
-      <g filter="url(#shadow)">
-        <!-- Enhanced Pin body with better visual depth -->
-        <path d="M${width / 2} ${size * 0.05} 
-                 C${width * 0.7} ${size * 0.05}, ${width * 0.95} ${size * 0.35}, ${width / 2} ${size * 0.7}
-                 C${width * 0.05} ${size * 0.35}, ${width * 0.3} ${size * 0.05}, ${width / 2} ${size * 0.05}Z" 
-              fill="url(#pinGradient)" stroke="white" stroke-width="1" />
-        <!-- Pin highlight for 3D effect -->
-        <path d="M${width * 0.4} ${size * 0.15} 
-                 C${width * 0.45} ${size * 0.1}, ${width * 0.55} ${size * 0.1}, ${width * 0.6} ${size * 0.15}
-                 C${width * 0.55} ${size * 0.2}, ${width * 0.45} ${size * 0.2}, ${width * 0.4} ${size * 0.15}Z" 
-              fill="rgba(255, 255, 255, 0.3)" />
-        <!-- Pin stem with gradient -->
-        <path d="M${width / 2} ${size * 0.7} L${width / 2} ${size * 0.95}" 
-              stroke="url(#stemGradient)" stroke-width="2" stroke-linecap="round" />
-        <!-- Pin bottom point with enhanced detail -->
-        <path d="M${width / 2 - size * 0.1} ${size * 0.95} L${width / 2} ${size * 1.0} L${width / 2 + size * 0.1} ${size * 0.95}" 
-              fill="${darkColor}" />
-      </g>
-    </svg>
-  `;
+  const iconSize = [size, size];
+  const iconAnchor = [size / 2, size];
+  const popupAnchor = [0, -size];
 
-  const iconSize = [width, height];
-  const iconAnchor = [Math.round(width / 2), height]; // Anchor at bottom point of pin
-  const popupAnchor = [0, -Math.round(height * 0.7)]; // Position popup near the top
+  // Create SVG as a data URL to ensure it's always available
+  // The fill will be controlled by CSS classes
+  const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+  </svg>`;
+  
+  const svgDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
 
-  return L.divIcon({
-    className: "custom-map-marker",
-    html: svg,
+  return L.icon({
+    iconUrl: svgDataUrl,
     iconSize,
     iconAnchor,
     popupAnchor,
+    className: `custom-map-marker ${className}`,
   });
-};
-
-// Helper function to darken a color
-const darkenColor = (color, percent) => {
-  let R = parseInt(color.substring(1, 3), 16);
-  let G = parseInt(color.substring(3, 5), 16);
-  let B = parseInt(color.substring(5, 7), 16);
-
-  R = Math.floor((R * (100 - percent)) / 100);
-  G = Math.floor((G * (100 - percent)) / 100);
-  B = Math.floor((B * (100 - percent)) / 100);
-
-  return `#${R.toString(16).padStart(2, "0")}${G.toString(16).padStart(
-    2,
-    "0"
-  )}${B.toString(16).padStart(2, "0")}`;
-};
-
-// Helper function to lighten a color
-const lightenColor = (color, percent) => {
-  let R = parseInt(color.substring(1, 3), 16);
-  let G = parseInt(color.substring(3, 5), 16);
-  let B = parseInt(color.substring(5, 7), 16);
-
-  R = Math.min(255, Math.floor(R + ((255 - R) * percent) / 100));
-  G = Math.min(255, Math.floor(G + ((255 - G) * percent) / 100));
-  B = Math.min(255, Math.floor(B + ((255 - B) * percent) / 100));
-
-  return `#${R.toString(16).padStart(2, "0")}${G.toString(16).padStart(
-    2,
-    "0"
-  )}${B.toString(16).padStart(2, "0")}`;
 };
 
 // Predefined color schemes for different categories
 const categoryColors = {
-  nature: "#10B981", // Emerald green
-  culture: "#F59E0B", // Amber
-  shopping: "#8B5CF6", // Violet
-  food: "#EF4444", // Red
-  event: "#EC4899", // Pink
-  general: "#4F46E5", // Indigo
-  poi: "#14B8A6", // Teal
-  user: "#F97316", // Orange
+  nature: "marker-green",
+  culture: "marker-amber",
+  shopping: "marker-violet",
+  food: "marker-red",
+  event: "marker-pink",
+  general: "marker-indigo",
+  poi: "marker-teal",
+  user: "marker-orange",
 };
 
 // Function to get a marker based on category and optional average rating
-// If an average rating is provided, color the pin according to the rating
-// (green for good ratings, amber/orange for mid, red for low). Falls back
-// to a category-based color when rating is not available.
 const getMarkerByCategory = (category = "general", averageRating = null) => {
-  // If a numeric averageRating is provided use it to pick a color
   if (typeof averageRating === "number" && !isNaN(averageRating)) {
-    let color = "#EF4444"; // red default
-    // Round to one decimal place to avoid floating point precision issues
+    let colorClass = "marker-red"; // default
     const roundedRating = Number(averageRating.toFixed(1));
-    if (roundedRating >= 4.0) color = "#10B981"; // green
-    else if (roundedRating >= 3.0) color = "#F59E0B"; // amber
-    else if (roundedRating >= 2.0) color = "#F97316"; // orange
+    if (roundedRating >= 4.0) colorClass = "marker-green";
+    else if (roundedRating >= 3.0) colorClass = "marker-amber";
+    else if (roundedRating >= 2.0) colorClass = "marker-orange";
 
-    return createPinMarker({ color });
+    return createPinMarker({ className: colorClass });
   }
 
-  // No rating available — fall back to category color using pin marker
-  const color = categoryColors[category] || "#4F46E5";
-  return createPinMarker({ color });
+  const className = categoryColors[category] || "marker-indigo";
+  return createPinMarker({ className });
 };
 
-// (Removed unused helper to reduce lint noise)
+// Creates a colored marker for custom purposes
+const createColoredMarker = (color = "indigo", size = 40) => {
+  return createPinMarker({ className: `marker-${color}`, size });
+};
 
 // Specialized function for user location marker
-// Create a red circular marker for user's current location
 const createUserLocationMarker = () => {
-  const svg = `
+    const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
       <defs>
         <radialGradient id="redGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
@@ -181,51 +98,51 @@ const createUserLocationMarker = () => {
 // Function to create a marker specifically for POIs
 const createPOIMarker = (poiType) => {
   const typeColors = {
-    restaurant: "#DC2626", // Red
-    cafe: "#D97706", // Amber
-    hotel: "#7C3AED", // Purple
-    shop: "#BE185D", // Pink
-    park: "#059669", // Green
-    museum: "#0891B2", // Cyan
-    bank: "#374151", // Gray
-    hospital: "#EF4444", // Red
-    pharmacy: "#8B5CF6", // Violet
-    school: "#F59E0B", // Amber
-    university: "#F59E0B", // Amber
-    library: "#64748B", // Slate
-    church: "#6B7280", // Gray
-    fuel: "#6366F1", // Indigo
-    post_office: "#A855F7", // Purple
-    police: "#3B82F6", // Blue
-    fire_station: "#F97316", // Orange
-    theatre: "#EC4899", // Pink
-    cinema: "#6366F1", // Indigo
-    bar: "#7E22CE", // Purple
-    pub: "#7E22CE", // Purple
-    fast_food: "#DC2626", // Red
-    supermarket: "#059669", // Green
-    marketplace: "#F59E0B", // Amber
-    attraction: "#EC4899", // Pink
-    tourism: "#EC4899", // Pink
-    monument: "#6B7280", // Gray
-    gallery: "#EC4899", // Pink
-    stadium: "#059669", // Green
-    zoo: "#059669", // Green
-    parking: "#64748B", // Slate
-    toilets: "#0891B2", // Cyan
-    information: "#3B82F6", // Blue
-    viewpoint: "#EC4899", // Pink
+    restaurant: "marker-red",
+    cafe: "marker-amber",
+    hotel: "marker-purple",
+    shop: "marker-pink",
+    park: "marker-green",
+    museum: "marker-cyan",
+    bank: "marker-gray",
+    hospital: "marker-red",
+    pharmacy: "marker-violet",
+    school: "marker-amber",
+    university: "marker-amber",
+    library: "marker-slate",
+    church: "marker-gray",
+    fuel: "marker-indigo",
+    post_office: "marker-purple",
+    police: "marker-blue",
+    fire_station: "marker-orange",
+    theatre: "marker-pink",
+    cinema: "marker-indigo",
+    bar: "marker-purple",
+    pub: "marker-purple",
+    fast_food: "marker-red",
+    supermarket: "marker-green",
+    marketplace: "marker-amber",
+    attraction: "marker-pink",
+    tourism: "marker-pink",
+    monument: "marker-gray",
+    gallery: "marker-pink",
+    stadium: "marker-green",
+    zoo: "marker-green",
+    parking: "marker-slate",
+    toilets: "marker-cyan",
+    information: "marker-blue",
+    viewpoint: "marker-pink",
   };
 
-  const color = typeColors[poiType] || "#4F46E5"; // Default to indigo
-
-  // Use the custom pin marker for POIs to ensure consistent popup positioning
-  return createPinMarker({ color, size: 32 });
+  const className = typeColors[poiType] || "marker-indigo";
+  return createPinMarker({ className, size: 32 });
 };
+
 
 export {
   createPinMarker,
   getMarkerByCategory,
+  createColoredMarker,
   createUserLocationMarker,
   createPOIMarker,
   categoryColors,

@@ -1506,7 +1506,7 @@ const deletePostByAdmin = async (req, res) => {
       });
     }
 
-    const post = await Post.findById(req..params.id);
+    const post = await Post.findById(req.params.id);
     if (!post) {
       return res.status(404).json({
         status: 'fail',

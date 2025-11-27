@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Search, Menu, X, Bell, User, MapPin } from "lucide-react";
+import { Search, Menu, X, Bell, User, MapPin, ChevronDown, Check, Trash2 } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext.jsx";
+import { connectSocket, getSocket, disconnectSocket } from "../../../services/socketService";
 
 const Header = ({ isDiscoverPage = false }) => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -10,6 +11,11 @@ const Header = ({ isDiscoverPage = false }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  // Notification states
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationRef = useRef();
 
   const handleLogout = () => {
     logout(); // Clear authentication state
@@ -25,6 +31,81 @@ const Header = ({ isDiscoverPage = false }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Fetch notifications when user is authenticated and set up socket connection
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    // Connect to socket
+    const socket = connectSocket(token);
+
+    // Fetch notifications on mount and periodically
+    const fetchNotifications = async () => {
+      try {
+        // Fetch unread count
+        const countResponse = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/unread-count`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (countResponse.ok) {
+          const countData = await countResponse.json();
+          setUnreadCount(countData.data.count);
+        }
+
+        // Fetch recent notifications to display in dropdown
+        const notifResponse = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications?page=1&limit=5`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (notifResponse.ok) {
+          const notifData = await notifResponse.json();
+          setNotifications(notifData.data.notifications);
+        }
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      }
+    };
+
+    // Initial fetch
+    fetchNotifications();
+
+    // Set up socket listeners for real-time notifications
+    socket.on('newNotification', (newNotification) => {
+      setNotifications(prev => [newNotification, ...prev.slice(0, 4)]); // Add new notification, keep only 5 most recent
+      setUnreadCount(prev => prev + 1);
+    });
+
+    socket.on('notificationRead', (data) => {
+      // Update local state when a notification is marked as read from elsewhere
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif._id === data.notificationId ? { ...notif, read: true } : notif
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    });
+
+    // Set up polling as backup if socket fails
+    const interval = setInterval(fetchNotifications, 30000);
+
+    // Cleanup function
+    return () => {
+      socket.off('newNotification');
+      socket.off('notificationRead');
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, user]);
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -33,6 +114,102 @@ const Header = ({ isDiscoverPage = false }) => {
       setIsMobileSearchOpen(false); // Close mobile search after submitting
     }
   };
+
+  // Function to mark a notification as read
+  const markNotificationAsRead = async (notificationId) => {
+    if (!isAuthenticated) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/${notificationId}/read`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        // Update local state
+        setNotifications(prev => 
+          prev.map(notif => 
+            notif._id === notificationId ? { ...notif, read: true } : notif
+          )
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  // Function to mark all notifications as read
+  const markAllAsRead = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/read-all`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        // Update local state
+        setNotifications(prev => 
+          prev.map(notif => ({ ...notif, read: true }))
+        );
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
+  // Format notification date
+  const formatNotificationDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Today';
+    if (diffDays === 2) return 'Yesterday';
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    
+    return date.toLocaleDateString();
+  };
+
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        const notificationButton = event.target.closest('button[aria-label="Notifications"]');
+        
+        if (isNotificationOpen && !notificationButton) {
+          setIsNotificationOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotificationOpen]);
 
   const navigationItems = [
     { name: "Home", to: "/" },
@@ -143,10 +320,99 @@ const Header = ({ isDiscoverPage = false }) => {
             </button>
 
             {/* Notifications */}
-            <button className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-md hover:bg-gray-100">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <div className="relative">
+              <button 
+                className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-md hover:bg-gray-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsNotificationOpen(!isNotificationOpen);
+                }}
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center text-xs bg-red-500 text-white rounded-full">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              {/* Notification Dropdown */}
+              {isNotificationOpen && isAuthenticated && (
+                <div 
+                  ref={notificationRef}
+                  className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-semibold text-gray-800">Notifications</h3>
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markAllAsRead();
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length > 0 ? (
+                      <div className="divide-y divide-gray-100">
+                        {notifications.map((notification) => (
+                          <div 
+                            key={notification._id} 
+                            className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                              !notification.read ? "bg-blue-50" : ""
+                            }`}
+                            onClick={() => {
+                              markNotificationAsRead(notification._id);
+                              // Navigate to the relevant post
+                              if (notification.post) {
+                                navigate(`/discover#${notification.post}`);
+                              }
+                            }}
+                          >
+                            <div className="flex items-start">
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-gray-800`}>
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {formatNotificationDate(notification.date)}
+                                </p>
+                              </div>
+                              {!notification.read && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markNotificationAsRead(notification._id);
+                                  }}
+                                  className="ml-2 text-gray-400 hover:text-blue-600"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-6 text-center">
+                        <Bell className="mx-auto h-10 w-10 text-gray-300" />
+                        <h3 className="mt-2 font-medium text-gray-900">No notifications</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          You'll see notifications here when they arrive.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Login button for unauthenticated users or Profile/Logout button for authenticated users */}
             {isAuthenticated ? (

@@ -146,15 +146,15 @@
 
 /* Ensure markers have proper z-index to avoid sidebar interference */
 .leaflet-marker-pane {
-  z-index: 600 !important;
+  z-index: 1000 !important;
 }
 
 .leaflet-popup-pane {
-  z-index: 650 !important;
+  z-index: 1050 !important;
 }
 
 .leaflet-tooltip-pane {
-  z-index: 700 !important;
+  z-index: 1100 !important;
 }
 
 /* Enhanced tile loading */

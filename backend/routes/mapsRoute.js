@@ -31,11 +31,22 @@ router.get("/locations", async (req, res) => {
 
     // Transform posts data to match the format expected by MapsPage component
     const locations = posts.map(post => {
+      // Extract coordinates from GeoJSON format
+      let lat, lng;
+      if (post.location && post.location.coordinates && Array.isArray(post.location.coordinates) && post.location.coordinates.length === 2) {
+        // [longitude, latitude] format from GeoJSON
+        lng = post.location.coordinates[0];
+        lat = post.location.coordinates[1];
+      } else if (post.location && post.location.latitude && post.location.longitude) {
+        // Legacy format fallback
+        lat = post.location.latitude;
+        lng = post.location.longitude;
+      }
+
       // Calculate distance if user location is provided
       let distance = '1.5 km'; // default
-      if (userLat && userLng && post.location?.latitude && post.location?.longitude) {
-        distance = calculateDistance(parseFloat(userLat), parseFloat(userLng), 
-                                   post.location.latitude, post.location.longitude);
+      if (userLat && userLng && lat && lng) {
+        distance = calculateDistance(parseFloat(userLat), parseFloat(userLng), lat, lng);
         distance = distance.toFixed(1) + ' km';
       }
 
@@ -46,8 +57,8 @@ router.get("/locations", async (req, res) => {
         rating: post.averageRating || 0,
         description: post.description,
         coordinates: {
-          lat: post.location.latitude,
-          lng: post.location.longitude
+          lat: lat,
+          lng: lng
         },
         image: post.image?.url || post.images?.[0]?.url || null,
         distance: distance,
@@ -98,16 +109,7 @@ const deg2rad = (deg) => {
   return deg * (Math.PI/180);
 }
 
-// Helper function to calculate distance (would need user's location)
-const calculateDistanceToUser = (userLat, userLng, postLat, postLng) => {
-  // This is a simplified version - in real implementation you'd calculate actual distance
-  // For now, return a placeholder
-  if (userLat && userLng && postLat && postLng) {
-    const distance = calculateDistance(userLat, userLng, postLat, postLng);
-    return distance.toFixed(1) + ' km';
-  }
-  return '1.5 km'; // Default placeholder
-};
+
 
 // GET /api/v1/maps/locations/:id - Get specific location details
 router.get("/locations/:id", async (req, res) => {
@@ -125,6 +127,18 @@ router.get("/locations/:id", async (req, res) => {
       });
     }
     
+    // Extract coordinates from GeoJSON format
+    let lat, lng;
+    if (post.location && post.location.coordinates && Array.isArray(post.location.coordinates) && post.location.coordinates.length === 2) {
+      // [longitude, latitude] format from GeoJSON
+      lng = post.location.coordinates[0];
+      lat = post.location.coordinates[1];
+    } else if (post.location && post.location.latitude && post.location.longitude) {
+      // Legacy format fallback
+      lat = post.location.latitude;
+      lng = post.location.longitude;
+    }
+
     // Transform to match MapsPage format
     const location = {
       id: post._id,
@@ -133,8 +147,8 @@ router.get("/locations/:id", async (req, res) => {
       rating: post.averageRating || 0,
       description: post.description,
       coordinates: {
-        lat: post.location.latitude,
-        lng: post.location.longitude
+        lat: lat,
+        lng: lng
       },
       image: post.image?.url || post.images?.[0]?.url || null,
       postedBy: post.postedBy?.username || 'Unknown',
