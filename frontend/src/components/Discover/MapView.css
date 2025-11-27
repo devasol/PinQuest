@@ -1,8 +1,25 @@
+/* Enhanced Map Container Styles */
+.leaflet-container {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.leaflet-container:focus {
+  outline: none;
+}
+
+/* Enhanced Popup Styles */
 .custom-popup .leaflet-popup-content-wrapper {
   border-radius: 16px;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
   overflow: hidden;
   max-width: 90vw;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
 }
 
 .custom-popup .leaflet-popup-content {
@@ -11,10 +28,7 @@
   width: auto !important;
   min-width: 0;
   max-width: 90vw;
-}
-
-.leaflet-container {
-  font-family: "Inter", sans-serif;
+  background: transparent;
 }
 
 .leaflet-popup-tip {
@@ -25,6 +39,137 @@
   display: none;
 }
 
+/* Enhanced Map Controls */
+.leaflet-control-zoom {
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border: none !important;
+  transition: all 0.2s ease !important;
+  color: #374151 !important;
+  font-weight: bold !important;
+  line-height: 1.8 !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: rgba(243, 244, 246, 1) !important;
+  color: #1f2937 !important;
+}
+
+.leaflet-control-zoom-in {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Enhanced Layer Control */
+.leaflet-control-layers {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 12px !important;
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  border-radius: 8px !important;
+}
+
+/* Smooth transitions for map movements */
+.leaflet-map-pane,
+.leaflet-tile-container,
+.leaflet-objects-pane {
+  transition: transform 0.25s ease, opacity 0.25s ease !important;
+}
+
+.leaflet-zoom-animated {
+  transition: transform 0.25s ease !important;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+  transition: transform 0.25s cubic-bezier(0.34, 0.69, 0.1, 1) !important;
+}
+
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+  transition: all 0.25s ease !important;
+}
+
+/* Enhanced Marker Animations */
+.leaflet-marker-icon {
+  transition: transform 0.2s ease, filter 0.3s ease !important;
+}
+
+.leaflet-marker-icon:hover {
+  transform: scale(1.1) !important;
+  filter: brightness(1.1) drop-shadow(0 0 8px rgba(79, 70, 229, 0.4)) !important;
+}
+
+/* Smooth hover effects for markers */
+.marker:hover {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Enhanced tile loading */
+.leaflet-tile {
+  transition: opacity 0.3s ease !important;
+  will-change: opacity; /* Optimize for browser rendering */
+}
+
+.leaflet-tile-loaded {
+  opacity: 1;
+}
+
+.leaflet-tile {
+  opacity: 0;
+}
+
+/* Smooth panning and zooming */
+.leaflet-map-pane {
+  transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+  will-change: transform;
+}
+
+/* Enhanced leaflet attribution */
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(5px) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  margin: 8px !important;
+  font-size: 0.8rem !important;
+  padding: 4px 8px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #4f46e5 !important;
+  text-decoration: none !important;
+}
+
+.leaflet-control-attribution a:hover {
+  text-decoration: underline !important;
+}
+
+/* Enhanced scale control */
+.leaflet-control-scale {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(5px) !important;
+}
+
+/* Text and typography */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;

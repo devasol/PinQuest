@@ -16,7 +16,7 @@ const createPinMarker = (options = {}) => {
   const lightColor = lightenColor(color, 20);
   const darkColor = darkenColor(color, 20);
   
-  // Classic pin shape SVG - using the same color consistently throughout the pin
+  // Enhanced pin shape SVG with better visual appearance - using the same color consistently throughout the pin
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
       <defs>
@@ -24,17 +24,39 @@ const createPinMarker = (options = {}) => {
           <stop offset="0%" stop-color="${lightColor}" stop-opacity="${opacity}" />
           <stop offset="100%" stop-color="${baseColor}" stop-opacity="${opacity}" />
         </radialGradient>
+        <linearGradient id="stemGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="${baseColor}" stop-opacity="${opacity}" />
+          <stop offset="100%" stop-color="${darkColor}" stop-opacity="${opacity}" />
+        </linearGradient>
         <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.3" />
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.25" />
+        </filter>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
+          <feOffset dx="0" dy="0" result="offsetBlur"/>
+          <feSpecularLighting in="blur" surfaceScale="10" specularConstant="0.8" 
+                              specularExponent="8" lighting-color="${lightColor}" result="specOut">
+            <fePointLight x="10" y="10" z="100"/>
+          </feSpecularLighting>
+          <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut2"/>
+          <feComposite in="SourceGraphic" in2="specOut2" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>
         </filter>
       </defs>
       <g filter="url(#shadow)">
-        <!-- Pin body (circle) - using consistent color gradient -->
-        <circle cx="${width / 2}" cy="${size * 0.35}" r="${size * 0.3}" fill="url(#pinGradient)" stroke="white" stroke-width="1.5" />
-        <!-- Pin stem - using consistent color -->
-        <path d="M${width / 2} ${size * 0.65} L${width / 2} ${size * 0.95}" 
-              stroke="${darkColor}" stroke-width="2" stroke-linecap="round" />
-        <!-- Pin bottom point - using consistent color -->
+        <!-- Enhanced Pin body with better visual depth -->
+        <path d="M${width / 2} ${size * 0.05} 
+                 C${width * 0.7} ${size * 0.05}, ${width * 0.95} ${size * 0.35}, ${width / 2} ${size * 0.7}
+                 C${width * 0.05} ${size * 0.35}, ${width * 0.3} ${size * 0.05}, ${width / 2} ${size * 0.05}Z" 
+              fill="url(#pinGradient)" stroke="white" stroke-width="1" />
+        <!-- Pin highlight for 3D effect -->
+        <path d="M${width * 0.4} ${size * 0.15} 
+                 C${width * 0.45} ${size * 0.1}, ${width * 0.55} ${size * 0.1}, ${width * 0.6} ${size * 0.15}
+                 C${width * 0.55} ${size * 0.2}, ${width * 0.45} ${size * 0.2}, ${width * 0.4} ${size * 0.15}Z" 
+              fill="rgba(255, 255, 255, 0.3)" />
+        <!-- Pin stem with gradient -->
+        <path d="M${width / 2} ${size * 0.7} L${width / 2} ${size * 0.95}" 
+              stroke="url(#stemGradient)" stroke-width="2" stroke-linecap="round" />
+        <!-- Pin bottom point with enhanced detail -->
         <path d="M${width / 2 - size * 0.1} ${size * 0.95} L${width / 2} ${size * 1.0} L${width / 2 + size * 0.1} ${size * 0.95}" 
               fill="${darkColor}" />
       </g>

@@ -71,6 +71,18 @@ export const adminAPI = {
     const queryParams = new URLSearchParams(params);
     return apiCall(`/analytics/activity-timeline?${queryParams}`, { method: 'GET' });
   },
+  getRecentActivity: (params = {}) => {
+    const queryParams = new URLSearchParams(params);
+    return apiCall(`/analytics/activity-timeline?${queryParams}`, { method: 'GET' });
+  },
+  getUserGrowth: (params = {}) => {
+    const queryParams = new URLSearchParams(params);
+    return apiCall(`/analytics/user-growth?${queryParams}`, { method: 'GET' });
+  },
+  getPlatformGrowth: (params = {}) => {
+    const queryParams = new URLSearchParams(params);
+    return apiCall(`/analytics/platform-growth?${queryParams}`, { method: 'GET' });
+  },
   
   // Password update
   updatePassword: (currentPassword, newPassword) => apiCall('/auth/update-password', {

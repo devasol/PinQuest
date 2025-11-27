@@ -30,6 +30,7 @@ const Analytics = () => {
 
   const [topPosts, setTopPosts] = useState([]);
   const [topCategories, setTopCategories] = useState([]);
+  const [platformGrowthData, setPlatformGrowthData] = useState([]);
   const [dateRange, setDateRange] = useState('7d');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,8 +41,23 @@ const Analytics = () => {
       try {
         setLoading(true);
         
-        // Fetch platform stats
-        const statsData = await adminAPI.getPlatformStats();
+        // Fetch all data in parallel for better performance
+        const [statsData, topPostsData, growthData] = await Promise.all([
+          adminAPI.getPlatformStats().catch(err => {
+            console.error('Error fetching stats:', err);
+            return { status: 'error', message: err.message };
+          }),
+          adminAPI.getTopPosts({ limit: 5, days: 30 }).catch(err => {
+            console.error('Error fetching top posts:', err);
+            return { status: 'error', message: err.message, data: [] };
+          }),
+          adminAPI.getPlatformGrowth({ days: 7, type: 'all' }).catch(err => {
+            console.error('Error fetching growth data:', err);
+            return { status: 'error', message: err.message, data: [] };
+          })
+        ]);
+
+        // Handle platform stats
         if (statsData.status === 'success') {
           setStats({
             totalUsers: statsData.data.totalUsers || 0,
@@ -56,8 +72,7 @@ const Analytics = () => {
           throw new Error(statsData.message || 'Failed to fetch platform stats');
         }
 
-        // Fetch top posts
-        const topPostsData = await adminAPI.getTopPosts({ limit: 5, days: 30 });
+        // Handle top posts
         if (topPostsData.status === 'success') {
           setTopPosts(topPostsData.data || []);
           
@@ -88,6 +103,13 @@ const Analytics = () => {
           }
         } else {
           throw new Error(topPostsData.message || 'Failed to fetch top posts');
+        }
+
+        // Handle platform growth data
+        if (growthData.status === 'success' && Array.isArray(growthData.data)) {
+          setPlatformGrowthData(growthData.data);
+        } else {
+          setPlatformGrowthData([]);
         }
       } catch (err) {
         setError(err.message);
@@ -249,36 +271,102 @@ const Analytics = () => {
             </div>
           </div>
           <div className="analytics-chart-placeholder">
-            <div className="analytics-chart-container">
-              <div className="analytics-chart-y-axis">
-                <span>100%</span>
-                <span>75%</span>
-                <span>50%</span>
-                <span>25%</span>
-                <span>0%</span>
+            {platformGrowthData.length > 0 ? (
+              <div className="analytics-chart-container">
+                <div className="analytics-chart-y-axis">
+                  <span>{Math.max(...platformGrowthData.map(d => d.total || d.userCount + d.postCount || d.count))}</span>
+                  <span>{Math.max(...platformGrowthData.map(d => d.total || d.userCount + d.postCount || d.count)) / 2 | 0}</span>
+                  <span>0</span>
+                </div>
+                <div className="analytics-chart-content">
+                  <svg className="analytics-line-chart" viewBox={`0 0 600 ${200}`} preserveAspectRatio="none">
+                    {platformGrowthData.length > 1 && 
+                      (() => {
+                        const maxValue = Math.max(...platformGrowthData.map(d => d.total || d.userCount + d.postCount || d.count)) || 1;
+                        const points = platformGrowthData.slice(0, 7).map((dataPoint, i) => {
+                          const x = (i * 600) / Math.max(platformGrowthData.slice(0, 7).length - 1, 1);
+                          const y = 200 - (dataPoint.total || dataPoint.userCount + dataPoint.postCount || dataPoint.count) * 200 / maxValue;
+                          return `${x},${y}`;
+                        }).join(' ');
+                        
+                        return (
+                          <polyline
+                            fill="none"
+                            stroke="#4f46e5"
+                            strokeWidth="3"
+                            points={points}
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                        );
+                      })()
+                    }
+                    {platformGrowthData.slice(0, 7).map((dataPoint, i) => {
+                      const maxValue = Math.max(...platformGrowthData.map(d => d.total || d.userCount + d.postCount || d.count)) || 1;
+                      const x = (i * 600) / Math.max(platformGrowthData.slice(0, 7).length - 1, 1);
+                      const y = 200 - (dataPoint.total || dataPoint.userCount + dataPoint.postCount || dataPoint.count) * 200 / maxValue;
+                      
+                      return (
+                        <g key={i}>
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r="4"
+                            fill="#4f46e5"
+                            stroke="white"
+                            strokeWidth="2"
+                          />
+                          <title>{new Date(dataPoint.date).toLocaleDateString()} - {dataPoint.total || dataPoint.userCount + dataPoint.postCount || dataPoint.count}</title>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  <div className="analytics-chart-dates">
+                    {platformGrowthData.slice(0, 7).map((dataPoint, i) => (
+                      <span key={i} className="analytics-chart-date" style={{ minWidth: `${100 / Math.min(platformGrowthData.length, 7)}%` }}>
+                        {new Date(dataPoint.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="analytics-chart-content">
-                <div className="analytics-chart-grid">
-                  {Array.from({ length: 7 }, (_, i) => (
-                    <div key={i} className="analytics-chart-grid-line"></div>
-                  ))}
+            ) : (
+              <div className="analytics-chart-container">
+                <div className="analytics-chart-y-axis">
+                  <span>100</span>
+                  <span>75</span>
+                  <span>0</span>
                 </div>
-                <div className="analytics-chart-bars">
-                  {Array.from({ length: 7 }, (_, i) => (
-                    <div 
-                      key={i} 
-                      className="analytics-chart-bar" 
-                      style={{ height: `${Math.random() * 80 + 10}%` }}
-                    ></div>
-                  ))}
-                </div>
-                <div className="analytics-chart-dates">
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
-                    <span key={i} className="analytics-chart-date">{day}</span>
-                  ))}
+                <div className="analytics-chart-content">
+                  <svg className="analytics-line-chart" viewBox="0 0 600 200" preserveAspectRatio="none">
+                    <polyline
+                      fill="none"
+                      stroke="#9ca3af"
+                      strokeWidth="3"
+                      points="0,150 100,120 200,140 300,100 400,80 500,110 600,90"
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                    {[0, 100, 200, 300, 400, 500, 600].map((x, i) => (
+                      <circle
+                        key={i}
+                        cx={x}
+                        cy={[150, 120, 140, 100, 80, 110, 90][i]}
+                        r="4"
+                        fill="#9ca3af"
+                        stroke="white"
+                        strokeWidth="2"
+                      />
+                    ))}
+                  </svg>
+                  <div className="analytics-chart-dates">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+                      <span key={i} className="analytics-chart-date" style={{ minWidth: `${100 / 7}%` }}>{day}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 

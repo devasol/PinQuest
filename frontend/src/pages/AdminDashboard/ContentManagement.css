@@ -1,6 +1,8 @@
 .content-management {
-  padding: 0;
+  padding: 0 0 0 5rem; /* Match admin dashboard left spacing */
   min-width: 320px; /* Prevent layout issues on small screens */
+  min-height: calc(100vh - 110px); /* Ensure proper height */
+  background-color: #f8fafc; /* Match admin dashboard background */
 }
 
 .content-management-header {

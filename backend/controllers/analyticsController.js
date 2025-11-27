@@ -269,6 +269,259 @@ const getUserEngagement = async (req, res) => {
   }
 };
 
+// @desc    Get platform growth data for charts
+// @route   GET /api/v1/analytics/platform-growth
+// @access  Private (admin only)
+const getPlatformGrowth = async (req, res) => {
+  try {
+    const { days = 30, type = 'users' } = req.query;
+
+    // Validate days parameter
+    if (isNaN(parseInt(days)) || parseInt(days) <= 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Days must be a positive number'
+      });
+    }
+
+    const daysCount = parseInt(days);
+    
+    // Calculate date ranges for each day
+    const today = new Date();
+    const startDate = new Date();
+    startDate.setDate(today.getDate() - daysCount);
+
+    let growthData = [];
+    
+    // Get data based on type
+    switch(type.toLowerCase()) {
+      case 'users':
+        growthData = await User.aggregate([
+          {
+            $match: {
+              createdAt: {
+                $gte: startDate,
+                $lte: today
+              }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+              },
+              count: { $sum: 1 }
+            }
+          },
+          {
+            $sort: { _id: 1 }
+          }
+        ]);
+        break;
+        
+      case 'posts':
+        growthData = await Post.aggregate([
+          {
+            $match: {
+              datePosted: {
+                $gte: startDate,
+                $lte: today
+              }
+            }
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$datePosted" }
+              },
+              count: { $sum: 1 }
+            }
+          },
+          {
+            $sort: { _id: 1 }
+          }
+        ]);
+        break;
+        
+      case 'all':
+      default:
+        // Get both users and posts data
+        const [usersData, postsData] = await Promise.all([
+          User.aggregate([
+            {
+              $match: {
+                createdAt: {
+                  $gte: startDate,
+                  $lte: today
+                }
+              }
+            },
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+                },
+                userCount: { $sum: 1 }
+              }
+            },
+            {
+              $sort: { _id: 1 }
+            }
+          ]),
+          Post.aggregate([
+            {
+              $match: {
+                datePosted: {
+                  $gte: startDate,
+                  $lte: today
+                }
+              }
+            },
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: "%Y-%m-%d", date: "$datePosted" }
+                },
+                postCount: { $sum: 1 }
+              }
+            },
+            {
+              $sort: { _id: 1 }
+            }
+          ])
+        ]);
+        
+        // Merge the data by date
+        const mergedData = {};
+        
+        usersData.forEach(item => {
+          mergedData[item._id] = { ...mergedData[item._id], userCount: item.userCount };
+        });
+        
+        postsData.forEach(item => {
+          mergedData[item._id] = { ...mergedData[item._id], postCount: item.postCount };
+        });
+        
+        growthData = Object.entries(mergedData).map(([date, counts]) => ({
+          _id: date,
+          ...counts
+        })).sort((a, b) => a._id.localeCompare(b._id));
+        
+        break;
+    }
+
+    // Create a complete date range with zeros for days without data
+    const dateRange = [];
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= today) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const existingData = growthData.find(item => item._id === dateStr);
+      
+      if (existingData || type === 'all') {
+        dateRange.push({
+          date: dateStr,
+          userCount: existingData?.userCount || 0,
+          postCount: existingData?.postCount || 0,
+          total: (existingData?.userCount || 0) + (existingData?.postCount || 0)
+        });
+      } else {
+        dateRange.push({
+          date: dateStr,
+          count: existingData ? existingData.count : 0
+        });
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: dateRange
+    });
+  } catch (error) {
+    console.error('Error fetching platform growth data:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to fetch platform growth data'
+    });
+  }
+};
+
+// @desc    Get user growth data for charts
+// @route   GET /api/v1/analytics/user-growth
+// @access  Private (admin only)
+const getUserGrowth = async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+
+    // Validate days parameter
+    if (isNaN(parseInt(days)) || parseInt(days) <= 0) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Days must be a positive number'
+      });
+    }
+
+    const daysCount = parseInt(days);
+    
+    // Calculate date ranges for each day
+    const today = new Date();
+    const startDate = new Date();
+    startDate.setDate(today.getDate() - daysCount);
+
+    // Get user registration data grouped by date
+    const userGrowth = await User.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: startDate,
+            $lte: today
+          }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    // Create a complete date range with zeros for days without new users
+    const dateRange = [];
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= today) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const existingData = userGrowth.find(item => item._id === dateStr);
+      
+      dateRange.push({
+        date: dateStr,
+        count: existingData ? existingData.count : 0
+      });
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: dateRange
+    });
+  } catch (error) {
+    console.error('Error fetching user growth data:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to fetch user growth data'
+    });
+  }
+};
+
 // @desc    Get activity timeline
 // @route   GET /api/v1/analytics/activity-timeline
 // @access  Private
@@ -399,5 +652,7 @@ module.exports = {
   getPostAnalytics,
   getTopPosts,
   getUserEngagement,
-  getActivityTimeline
+  getActivityTimeline,
+  getUserGrowth,
+  getPlatformGrowth
 };
