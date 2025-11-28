@@ -1,12 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
-import 'leaflet-routing-machine';
 
 const RoutingMachine = ({ start, end, isVisible, travelMode = 'driving' }) => {
   const map = useMap();
   const routingControlRef = useRef(null);
 
   useEffect(() => {
+    // Check if L is available globally (leaflet-routing-machine should be available)
+    if (typeof L === 'undefined' || typeof L.Routing === 'undefined') {
+      console.warn('Leaflet routing is not available. Make sure leaflet-routing-machine is installed and imported properly.');
+      return;
+    }
+
     if (!start || !end || !isVisible || !map) {
       // If routing is not visible or start/end not set, remove existing control
       if (map && routingControlRef.current) {

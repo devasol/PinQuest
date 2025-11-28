@@ -210,14 +210,19 @@ const CustomMarker = ({
                   <div className="font-medium text-gray-800">
                     Posted by
                   </div>
-                  <div className="mt-1">{location.postedBy}</div>
+                  <div className="mt-1">
+                    {location.postedBy || 
+                      (location.postedBy && typeof location.postedBy === 'object' ? 
+                        location.postedBy.name || location.postedBy.displayName || 'Unknown' : 
+                        location.postedBy) || 'Unknown'}
+                  </div>
                 </div>
                 <div>
                   <div className="font-medium text-gray-800">
                     Category
                   </div>
                   <div className="mt-1 capitalize">
-                    {location.category}
+                    {location.category || 'general'}
                   </div>
                 </div>
                 <div>
@@ -225,7 +230,7 @@ const CustomMarker = ({
                     Date
                   </div>
                   <div className="mt-1">
-                    {formatDate(location.datePosted)}
+                    {formatDate(location.datePosted || new Date().toISOString())}
                   </div>
                 </div>
                 <div>
@@ -234,9 +239,10 @@ const CustomMarker = ({
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-indigo-600 font-semibold">
-                      {location.averageRating &&
+                      {location.averageRating !== undefined && 
+                      location.totalRatings !== undefined &&
                       location.totalRatings > 0
-                        ? location.averageRating.toFixed(1)
+                        ? Number(location.averageRating).toFixed(1)
                         : "—"}
                     </span>
                     <span className="text-sm text-gray-500">

@@ -15,11 +15,12 @@
   border-radius: 16px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  max-width: 90vw;
+  max-width: min(90vw, 760px);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
+  min-width: 300px;
 }
 
 .custom-popup .leaflet-popup-content {
@@ -27,7 +28,7 @@
   padding: 0;
   width: auto !important;
   min-width: 0;
-  max-width: 90vw;
+  max-width: none;
   background: transparent;
 }
 
@@ -110,6 +111,8 @@
   /* Prevent flickering by disabling leaflet's default animations for markers */
   will-change: auto !important;
   transform: translate3d(0, 0, 0) !important;
+  z-index: 1000 !important;
+  opacity: 1 !important;
 }
 
 .leaflet-marker-icon:hover {
@@ -150,11 +153,43 @@
 }
 
 .leaflet-popup-pane {
-  z-index: 1050 !important;
+  z-index: 1500 !important;
 }
 
 .leaflet-tooltip-pane {
   z-index: 1100 !important;
+}
+
+/* Enhance custom marker visibility and add shadow */
+.leaflet-marker-icon {
+  z-index: 1000 !important;
+  filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3)) !important;
+  opacity: 1 !important;
+}
+
+/* Increase base z-index for all map elements to ensure visibility */
+.leaflet-map-pane {
+  z-index: 1 !important;
+}
+
+.leaflet-tile-container {
+  z-index: 2 !important;
+}
+
+.leaflet-overlay-pane {
+  z-index: 800 !important;
+}
+
+.leaflet-marker-pane {
+  z-index: 1000 !important;
+}
+
+.leaflet-shadow-pane {
+  z-index: 900 !important;
+}
+
+.leaflet-pane {
+  z-index: 1000 !important;
 }
 
 /* Enhanced tile loading */
@@ -283,6 +318,7 @@
   top: 0;
   left: 0;
   pointer-events: auto;
+  overflow-y: auto;
 }
 
 .sidebar-pane {
@@ -291,7 +327,7 @@
   left: 80px;
   height: 100%;
   width: 320px;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.3);
@@ -301,6 +337,7 @@
   transform: translateX(-100%);
   transition: transform 0.3s ease-in-out;
   pointer-events: auto;
+  overflow: hidden;
 }
 
 .sidebar-pane.is-open {

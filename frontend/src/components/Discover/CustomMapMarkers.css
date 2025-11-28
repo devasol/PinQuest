@@ -1,52 +1,23 @@
-.custom-map-marker.marker-green {
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-  fill: #10B981;
+/* Marker styles for the popup */
+.custom-popup {
+  z-index: 1000;
 }
-.custom-map-marker.marker-amber {
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-  fill: #F59E0B;
+
+/* Custom map marker container */
+.custom-map-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
 }
-.custom-map-marker.marker-violet {
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-  fill: #8B5CF6;
+
+/* Ensure no default leaflet marker appears */
+.leaflet-marker-icon {
+  background: transparent !important;
+  box-shadow: none !important;
 }
-.custom-map-marker.marker-red {
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-  fill: #EF4444;
-}
-.custom-map-marker.marker-pink {
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-  fill: #EC4899;
-}
-.custom-map-marker.marker-indigo {
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-  fill: #4F46E5;
-}
-.custom-map-marker.marker-teal {
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-  fill: #14B8A6;
-}
-.custom-map-marker.marker-orange {
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-  fill: #F97316;
-}
-.custom-map-marker.marker-purple {
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-    fill: #7E22CE;
-}
-.custom-map-marker.marker-cyan {
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-    fill: #0891B2;
-}
-.custom-map-marker.marker-gray {
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-    fill: #6B7280;
-}
-.custom-map-marker.marker-slate {
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-    fill: #64748B;
-}
-.custom-map-marker.marker-blue {
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-    fill: #3B82F6;
+
+/* Make sure the SVG inside the divIcon is visible */
+.custom-map-marker svg {
+  display: block;
 }

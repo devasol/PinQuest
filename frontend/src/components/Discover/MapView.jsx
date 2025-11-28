@@ -15,6 +15,9 @@ import Header from "../Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { auth } from "../../config/firebase";
 import RoutingMachine from "./RoutingMachine";
+
+// Ensure Leaflet routing is properly imported
+// This import should happen before using L.Routing in components
 import NotificationModal from "../NotificationModal";
 import OptimizedImage from "../OptimizedImage";
 import RatingsAndComments from "../RatingsAndComments.jsx";
@@ -22,6 +25,7 @@ import CustomMarker from "./CustomMarker";
 import {
   getMarkerByCategory,
 } from "./CustomMapMarkers";
+import "./MapView.css";
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL =
@@ -115,16 +119,7 @@ function ImageCarousel({
   );
 }
 
-// Fix for missing marker icons (Leaflet's default markers)
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-});
+
 
 // Component to handle map click events
 function MapClickHandler({ onMapClick }) {
@@ -139,9 +134,15 @@ function MapRefHandler({ mapRef }) {
   const map = useMap();
 
   useEffect(() => {
-    mapRef.current = map;
+    if (map && mapRef.current !== map) {
+      mapRef.current = map;
+    }
+    
     return () => {
-      mapRef.current = null;
+      // Only clear the ref if it's still pointing to the same map
+      if (mapRef.current === map) {
+        mapRef.current = null;
+      }
     };
   }, [map, mapRef]);
 
@@ -321,8 +322,6 @@ const useDraggable = (initialPosition = { x: 0, y: 0 }) => {
   return { position, isDragging, handleMouseDown, handleTouchStart };
 };
 
-import "./MapView.css";
-
 
 
 const MapView = () => {
@@ -370,7 +369,7 @@ const MapView = () => {
   const [mapLayout, setMapLayout] = useState(() => {
     // Try to get saved preference from localStorage
     const savedLayout = localStorage.getItem("mapLayout");
-    return savedLayout || "google_style"; // Default to 'google_style' for more detailed labels
+    return savedLayout || "light"; // Default to 'light' for a cleaner look
   });
 
   // Map layout options
@@ -768,7 +767,7 @@ const MapView = () => {
       
       return () => clearTimeout(timer);
     }
-  }, [activePopup]);
+  }, [activePopup, markerRefs, mapRef]);
 
   // Fetch saved locations from backend when user is authenticated
   useEffect(() => {
@@ -1005,11 +1004,11 @@ const MapView = () => {
               
               return {
                 id: post._id,
-                title: post.title,
-                description: post.description,
+                title: post.title || "Untitled",
+                description: post.description || "No description provided",
                 image: post.image,
                 images:
-                  post.images && post.images.length > 0
+                  Array.isArray(post.images) && post.images.length > 0
                     ? post.images
                     : post.image
                     ? [post.image]
@@ -1030,10 +1029,10 @@ const MapView = () => {
                     : 0,
                 postedBy:
                   post.postedBy && typeof post.postedBy === "object"
-                    ? post.postedBy.name
-                    : post.postedBy,
+                    ? post.postedBy.name || post.postedBy.displayName || "Anonymous"
+                    : post.postedBy || "Anonymous",
                 category: post.category || "general",
-                datePosted: post.datePosted,
+                datePosted: post.datePosted || new Date().toISOString(),
                 position: position,
                 type: "user-post",
               };
@@ -1052,83 +1051,83 @@ const MapView = () => {
     };
 
     // Get user location with improved accuracy
-    const watchUserLocation = () => {
-      if (navigator.geolocation) {
-        // First, get a high accuracy position
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude, accuracy } = position.coords;
+    let watchId;
+    if (navigator.geolocation) {
+      // First, get a high accuracy position
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          setUserLocation([latitude, longitude]);
+          setHasUserLocation(true);
+          console.log(
+            `Initial location: ${latitude}, ${longitude} with accuracy: ${accuracy} meters`
+          );
+
+          if (mapRef.current) {
+            mapRef.current.flyTo([latitude, longitude], 15);
+          }
+        },
+        (error) => {
+          console.error("Error getting initial user location:", error);
+          setHasUserLocation(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        }
+      );
+
+      // Set up continuous location watching for more accurate positioning
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude, accuracy, timestamp } =
+            position.coords;
+
+          // Only update if the new position is more accurate than the current one
+          // or if it's the first update after initial positioning
+          if (!userLocation || accuracy < 50) {
+            // Update if accuracy is better than 50 meters
             setUserLocation([latitude, longitude]);
             setHasUserLocation(true);
             console.log(
-              `Initial location: ${latitude}, ${longitude} with accuracy: ${accuracy} meters`
+              `Updated location: ${latitude}, ${longitude} with accuracy: ${accuracy} meters at ${new Date(
+                timestamp
+              ).toLocaleTimeString()}`
             );
 
-            if (mapRef.current) {
-              mapRef.current.flyTo([latitude, longitude], 15);
+            // Optionally fly to new location if it's significantly more accurate
+            if (accuracy < 30 && mapRef.current) {
+              // Only fly to location if accuracy is better than 30 meters
+              mapRef.current.flyTo([latitude, longitude], 15, {
+                animate: true,
+              });
             }
-          },
-          (error) => {
-            console.error("Error getting initial user location:", error);
-            setHasUserLocation(false);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0,
           }
-        );
-
-        // Set up continuous location watching for more accurate positioning
-        const watchId = navigator.geolocation.watchPosition(
-          (position) => {
-            const { latitude, longitude, accuracy, timestamp } =
-              position.coords;
-
-            // Only update if the new position is more accurate than the current one
-            // or if it's the first update after initial positioning
-            if (!userLocation || accuracy < 50) {
-              // Update if accuracy is better than 50 meters
-              setUserLocation([latitude, longitude]);
-              setHasUserLocation(true);
-              console.log(
-                `Updated location: ${latitude}, ${longitude} with accuracy: ${accuracy} meters at ${new Date(
-                  timestamp
-                ).toLocaleTimeString()}`
-              );
-
-              // Optionally fly to new location if it's significantly more accurate
-              if (accuracy < 30 && mapRef.current) {
-                // Only fly to location if accuracy is better than 30 meters
-                mapRef.current.flyTo([latitude, longitude], 15, {
-                  animate: true,
-                });
-              }
-            }
-          },
-          (error) => {
-            console.error("Error watching user location:", error);
-          },
-          {
-            enableHighAccuracy: true,
-            maximumAge: 10000, // Accept cached positions up to 10 seconds old
-            timeout: 20000, // Wait up to 20 seconds for a position
-            distanceFilter: 5, // Update only when user moves at least 5 meters
-          }
-        );
-
-        // Clean up the watch when component unmounts
-        return () => {
-          navigator.geolocation.clearWatch(watchId);
-        };
-      } else {
-        console.log("Geolocation is not supported by this browser.");
-        setHasUserLocation(false);
-      }
-    };
+        },
+        (error) => {
+          console.error("Error watching user location:", error);
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 10000, // Accept cached positions up to 10 seconds old
+          timeout: 20000, // Wait up to 20 seconds for a position
+          distanceFilter: 5, // Update only when user moves at least 5 meters
+        }
+      );
+    } else {
+      console.log("Geolocation is not supported by this browser.");
+      setHasUserLocation(false);
+    }
 
     fetchPosts();
-    watchUserLocation();
+
+    // Clean up the watch when component unmounts
+    return () => {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
 
   // Add timeout to ensure loading doesn't get stuck
@@ -1364,6 +1363,8 @@ const MapView = () => {
     });
   };
 
+  // Make sure showNotification is in the dependency array of useCallback hooks that reference it
+
   const hideNotification = () => {
     setNotification({
       show: false,
@@ -1536,8 +1537,13 @@ const MapView = () => {
         postData.append(
           "location",
           JSON.stringify({
+            type: "Point",
             latitude: parseFloat(clickPosition[0]),
             longitude: parseFloat(clickPosition[1]),
+            coordinates: [
+              parseFloat(clickPosition[1]),
+              parseFloat(clickPosition[0]),
+            ],
           })
         );
         isFormData = true;
@@ -1551,8 +1557,13 @@ const MapView = () => {
         postData.append(
           "location",
           JSON.stringify({
+            type: "Point",
             latitude: parseFloat(clickPosition[0]),
             longitude: parseFloat(clickPosition[1]),
+            coordinates: [
+              parseFloat(clickPosition[1]),
+              parseFloat(clickPosition[0]),
+            ],
           })
         );
         isFormData = true;
@@ -1563,10 +1574,13 @@ const MapView = () => {
           description: formData.description,
           category: formData.category,
           location: {
+            type: "Point",
             coordinates: [
               parseFloat(clickPosition[1]),
               parseFloat(clickPosition[0]),
             ],
+            latitude: parseFloat(clickPosition[0]),   // Added explicit latitude
+            longitude: parseFloat(clickPosition[1]),  // Added explicit longitude
           },
         };
 
@@ -1661,46 +1675,42 @@ const MapView = () => {
         result = { status: "success", data: null, raw: text };
       }
 
-      if (result.status === "success") {
+      if (result.status === "success" && result.data) {
         // Add the new post to the local state
         const newPost = {
-          id: result.data._id, // Use the ID from the database
-          position: Array.isArray(result.data.location.coordinates) && result.data.location.coordinates.length === 2
+          id: result.data._id || `new-post-${Date.now()}`,
+          position: (Array.isArray(result.data.location?.coordinates) && result.data.location.coordinates.length === 2)
             ? [result.data.location.coordinates[1], result.data.location.coordinates[0]] // [lat, lng]
-            : [clickPosition[0], clickPosition[1]], // fallback to the clicked position
-          title: formData.title,
-          description: formData.description,
-          image: result.data.image, // This could be a string URL or an object with a url property
-          images:
-            result.data.images && result.data.images.length > 0
-              ? result.data.images
-              : result.data.image
-              ? [result.data.image]
-              : [],
-          postedBy:
-            result.data.postedBy && typeof result.data.postedBy === "object"
-              ? result.data.postedBy.name
-              : result.data.postedBy,
+            : (Array.isArray(clickPosition) && clickPosition.length === 2)
+            ? [clickPosition[0], clickPosition[1]]
+            : null,
+          title: formData.title || result.data.title,
+          description: formData.description || result.data.description,
+          image: result.data.image,
+          images: Array.isArray(result.data.images) && result.data.images.length > 0
+            ? result.data.images
+            : result.data.image
+            ? [result.data.image]
+            : [],
+          postedBy: result.data.postedBy && typeof result.data.postedBy === "object"
+            ? result.data.postedBy.name
+            : result.data.postedBy || user?.name,
           category: result.data.category || formData.category,
-          datePosted: result.data.datePosted,
+          datePosted: result.data.datePosted || new Date().toISOString(),
           type: "user-post",
         };
-
-        setUserPosts((prevPosts) => [...prevPosts, newPost]);
-
+        setUserPosts((prevPosts) => {
+          // Filter out any duplicates by id, keep new one at top
+          const others = prevPosts.filter(p => p.id !== newPost.id);
+          return [...others, newPost];
+        });
         showNotification("Post created successfully!", "success");
         setShowPostForm(false);
         setClickPosition(null);
-        setFormData({
-          title: "",
-          description: "",
-          image: null,
-          category: "general",
-        });
-        setImages([]);
+        setFormData({ title: "", description: "", image: null, postedBy: "", category: "general" });
       } else {
-        console.error("Error creating post:", result.message);
-        showNotification("Error creating post: " + result.message, "error");
+        console.error("Error creating post:", result.message || "Unknown error");
+        showNotification("Error creating post: " + (result.message || "Unknown error"), "error");
       }
     } catch (error) {
       console.error("Error:", error);
@@ -1780,20 +1790,19 @@ const MapView = () => {
         addRecentLocation(location);  // Add to recent locations when clicked from explore
       }
     }
-  }, [allLocations, setActivePopup, flyToLocation, addRecentLocation, setShowPostForm, setClickPosition, setShowLoginModal, setShowImageGallery, lastPopupUpdate]);
+  }, [allLocations, setActivePopup, flyToLocation, addRecentLocation, setShowPostForm, setClickPosition, setShowLoginModal, setShowImageGallery]);
 
   return (
     <div className="min-h-screen bg-gray-900 pt-16">
       {" "}
       {/* pt-16 accounts for header height */}
       <Header isDiscoverPage={true} />
-      {/* Full-Screen Map Container - with lower z-index to ensure header and sidebars stay on top */}
-      <div className="relative w-full h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)]">
-        {" "}
+      {/* Full-Screen Map Container - with explicit z-index */}
+      <div className="relative w-full h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] z-[1]">
         {/* 4rem = 64px which is header height */}
         {/* Loading indicator - only show when not showing post form and no posts loaded yet */}
         {isLoading && !showPostForm && userPosts.length === 0 && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-[10]">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
               <p className="text-xl font-medium text-gray-700">
@@ -1804,15 +1813,16 @@ const MapView = () => {
         )}
         {/* Map */}
         <MapContainer
+          key="discover-map" // Adding key to prevent potential re-rendering issues
           center={userLocation || [20, 0]} // Default to world view until location is acquired
           zoom={userLocation ? 15 : 5}
           minZoom={3}
           maxZoom={18}
           style={{ height: "100%", width: "100%" }}
-          className="absolute inset-0"
+          className="absolute inset-0 z-[1]"
         >
           <TileLayer
-            key={mapLayout} // This ensures the TileLayer re-renders when layout changes
+            key={`tile-layer-${mapLayout}`} // This ensures the TileLayer re-renders when layout changes
             attribution={mapLayouts[mapLayout].attribution}
             url={mapLayouts[mapLayout].url}
           />
@@ -1830,69 +1840,54 @@ const MapView = () => {
             />
           )}
 
-          {filteredLocations.map((location) => {
-            // Only render markers with valid positions
-            if (!location.position || !Array.isArray(location.position) || location.position.length !== 2) {
-              console.warn(`Invalid position for location ${location.id}:`, location.position);
-              return null;
-            }
-            
-            return (
-              <CustomMarker
-                key={location.id}
-                location={location}
-                onClick={handleSidebarItemClick}
-                isSelected={activePopup === location.id}
-                onAddToRef={(id, ref) => {
-                  markerRefs.current[id] = ref;
-                }}
-                onRemoveFromRef={(id) => {
-                  delete markerRefs.current[id];
-                }}
-                activePopup={activePopup}
-                onPopupOpen={setActivePopup}
-                onPopupClose={(id) => setActivePopup(null)}
-                mapRef={mapRef}
-                showRouting={showRouting}
-                setShowRouting={setShowRouting}
-                setRoutingStart={setRoutingStart}
-                setRoutingEnd={setRoutingEnd}
-                travelMode={travelMode}
-                setTravelMode={setTravelMode}
-                getDirections={getDirections}
-                savedLocations={savedLocations}
-                saveLocation={saveLocation}
-                removeSavedLocation={removeSavedLocation}
-                isSavingLocation={isSavingLocation}
-                addRecentLocation={addRecentLocation}
-                user={user}
-                isAuthenticated={isAuthenticated}
-              />
-            );
-          }).filter(Boolean)} {/* Remove any null entries from the map function */}
-          {/* Debug info to see how many posts are rendered */}
-          <div style={{position: 'absolute', top: '10px', left: '10px', background: 'rgba(255,255,255,0.9)', padding: '10px', zIndex: 1000, borderRadius: '4px', fontSize: '12px', border: '1px solid #ddd', fontFamily: 'monospace'}}>
-            Debug: {filteredLocations.length} posts on map | Total posts: {userPosts.length} | Valid positions: {userPosts.filter(p => p.position && Array.isArray(p.position) && p.position.length === 2).length}
-          </div>
+          {filteredLocations
+            .filter(location => {
+              // Only render markers with valid positions
+              return location.position && 
+                     Array.isArray(location.position) && 
+                     location.position.length === 2 &&
+                     typeof location.position[0] === 'number' && 
+                     typeof location.position[1] === 'number' &&
+                     !isNaN(location.position[0]) && 
+                     !isNaN(location.position[1]);
+            })
+            .map((location) => {
+              return (
+                <CustomMarker
+                  key={location.id}
+                  location={location}
+                  onClick={handleSidebarItemClick}
+                  isSelected={activePopup === location.id}
+                  onAddToRef={(id, ref) => {
+                    markerRefs.current[id] = ref;
+                  }}
+                  onRemoveFromRef={(id) => {
+                    delete markerRefs.current[id];
+                  }}
+                  activePopup={activePopup}
+                  onPopupOpen={setActivePopup}
+                  onPopupClose={(id) => setActivePopup(null)}
+                  mapRef={mapRef}
+                  showRouting={showRouting}
+                  setShowRouting={setShowRouting}
+                  setRoutingStart={setRoutingStart}
+                  setRoutingEnd={setRoutingEnd}
+                  travelMode={travelMode}
+                  setTravelMode={setTravelMode}
+                  getDirections={getDirections}
+                  savedLocations={savedLocations}
+                  saveLocation={saveLocation}
+                  removeSavedLocation={removeSavedLocation}
+                  isSavingLocation={isSavingLocation}
+                  addRecentLocation={addRecentLocation}
+                  user={user}
+                  isAuthenticated={isAuthenticated}
+                />
+              );
+            })}
+
         </MapContainer>
-        {/* Floating UI Elements */}
-        {/* Add Post Button - Bottom Center */}
-        {!showPostForm && !activePopup && (
-        <motion.div
-          className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2 }}
-        >
-          <div className="bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-lg text-center transition-colors duration-200 ease-in-out">
-            <p className="font-semibold text-lg">
-              {isAuthenticated
-                ? "💡 Click anywhere on the map to add a post!"
-                : "💡 Login to add a post to the map!"}
-            </p>
-          </div>
-        </motion.div>
-        )}
+
         
         {/* Directions Close Button - Top Right when routing is visible */}
         {showRouting && (
