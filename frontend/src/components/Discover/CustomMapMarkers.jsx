@@ -29,16 +29,14 @@ const createPinMarker = (options = {}) => {
 
   const fillColor = colorMap[className] || '#4f46e5'; // Default to indigo
 
-  const svgString = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" style="filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));">
+  const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" style="filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));">
       <path fill="${fillColor}" stroke="white" stroke-width="1" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
       <circle fill="white" cx="12" cy="9" r="2.5"/>
-    </svg>
-  `;
+    </svg>`;
 
   return L.divIcon({
     className: `custom-map-marker ${className}`,
-    html: svgString,
+    html: `<div>${svgString}</div>`, // Wrap in a div to ensure proper rendering
     iconSize,
     iconAnchor,
     popupAnchor,

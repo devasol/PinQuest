@@ -6,7 +6,6 @@ import LoginPage from "../pages/LoginPage/LoginPage";
 import CategoriesPage from "../pages/CategoriesPage/CategoriesPage";
 import ProfilePage from "../pages/ProfilePage/ProfilePage";
 import AddPost from "../pages/AddPost/AddPost";
-import MapsPage from "../pages/MapsPage/MapsPage";
 import AdminLogin from "../pages/AdminLogin/AdminLogin";
 import AdminDashboard from "../components/Admin/AdminDashboard/AdminDashboard";
 import AdminDashboardPage from "../pages/AdminDashboard/AdminDashboard";
@@ -50,11 +49,7 @@ const router = createBrowserRouter([
     path: "/categories",
     // error:</>
   },
-  {
-    element: <MapsPage />,
-    path: "/maps",
-    // error:</>
-  },
+
   {
     element: <AddPost />,
     path: "/add-post",

@@ -215,7 +215,6 @@ const Header = ({ isDiscoverPage = false }) => {
     { name: "Home", to: "/" },
     { name: "Discover", to: "/discover" },
     { name: "Categories", to: "/categories" },
-    { name: "Maps", to: "/maps" },
   ];
 
   const toggleMobileMenu = () => {
