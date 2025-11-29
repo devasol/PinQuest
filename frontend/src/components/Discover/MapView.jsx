@@ -430,6 +430,18 @@ const MapView = () => {
   const [savedLocations, setSavedLocations] = useState([]);
   // State for recently viewed locations
   const [recentLocations, setRecentLocations] = useState([]);
+  
+  // Pagination state for posts
+  const [currentPage, setCurrentPage] = useState(1);
+  const postsPerPage = 10; // Display 10 posts per page
+  
+  // Pagination state for recent locations
+  const [currentRecentPage, setCurrentRecentPage] = useState(1);
+  const recentsPerPage = 10; // Display 10 recent locations per page
+  
+  // Pagination state for saved locations
+  const [currentSavedPage, setCurrentSavedPage] = useState(1);
+  const savedPerPage = 10; // Display 10 saved locations per page
 
   // Function to save a location
   const saveLocation = async (location) => {
@@ -1348,6 +1360,72 @@ const MapView = () => {
     return result;
   }, [allLocations, searchQuery, filterMine, user?.name, postsFilter]);
 
+  // Memoize paginated locations
+  const paginatedLocations = React.useMemo(() => {
+    if (!filteredLocations || filteredLocations.length === 0) {
+      return [];
+    }
+    
+    // Calculate start and end indices for pagination
+    const startIndex = (currentPage - 1) * postsPerPage;
+    const endIndex = startIndex + postsPerPage;
+    
+    // Return the slice of filtered locations for the current page
+    return filteredLocations.slice(startIndex, endIndex);
+  }, [filteredLocations, currentPage, postsPerPage]);
+
+  // Calculate total number of pages
+  const totalPages = Math.ceil((filteredLocations?.length || 0) / postsPerPage);
+
+  // Reset to page 1 when filters change (search, filterMine, postsFilter)
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterMine, postsFilter]);
+
+  // Memoize paginated recent locations
+  const paginatedRecentLocations = React.useMemo(() => {
+    if (!recentLocations || recentLocations.length === 0) {
+      return [];
+    }
+    
+    // Calculate start and end indices for recent locations pagination
+    const startIndex = (currentRecentPage - 1) * recentsPerPage;
+    const endIndex = startIndex + recentsPerPage;
+    
+    // Return the slice of recent locations for the current page
+    return recentLocations.slice(startIndex, endIndex);
+  }, [recentLocations, currentRecentPage, recentsPerPage]);
+
+  // Calculate total number of recent location pages
+  const totalRecentPages = Math.ceil((recentLocations?.length || 0) / recentsPerPage);
+
+  // Reset to page 1 when recent locations change
+  React.useEffect(() => {
+    setCurrentRecentPage(1);
+  }, [recentLocations]);
+
+  // Memoize paginated saved locations
+  const paginatedSavedLocations = React.useMemo(() => {
+    if (!savedLocations || savedLocations.length === 0) {
+      return [];
+    }
+    
+    // Calculate start and end indices for saved locations pagination
+    const startIndex = (currentSavedPage - 1) * savedPerPage;
+    const endIndex = startIndex + savedPerPage;
+    
+    // Return the slice of saved locations for the current page
+    return savedLocations.slice(startIndex, endIndex);
+  }, [savedLocations, currentSavedPage, savedPerPage]);
+
+  // Calculate total number of saved location pages
+  const totalSavedPages = Math.ceil((savedLocations?.length || 0) / savedPerPage);
+
+  // Reset to page 1 when saved locations change
+  React.useEffect(() => {
+    setCurrentSavedPage(1);
+  }, [savedLocations]);
+
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [notification, setNotification] = useState({
     show: false,
@@ -1693,7 +1771,7 @@ const MapView = () => {
             ? [result.data.image]
             : [],
           postedBy: result.data.postedBy && typeof result.data.postedBy === "object"
-            ? result.data.postedBy.name
+            ? result.data.postedBy?.name || result.data.postedBy
             : result.data.postedBy || user?.name,
           category: result.data.category || formData.category,
           datePosted: result.data.datePosted || new Date().toISOString(),
@@ -2090,9 +2168,9 @@ const MapView = () => {
                   </svg>
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1">
                 {activeSidebarTab === "explore" && (
-                  <div className="p-3 sm:p-4 flex-1 flex flex-col overflow-hidden">
+                  <div className="p-3 sm:p-4 flex-1 flex flex-col">
                     <div className="space-y-3 sm:space-y-4 flex-shrink-0 mb-3">
                       <div>
                         <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">
@@ -2127,7 +2205,7 @@ const MapView = () => {
                       )}
                     </div>
 
-                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+                    <div className="flex-1 min-h-0">
                       <div>
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
                           <h3 className="font-semibold text-gray-800 text-sm sm:text-base">
@@ -2144,10 +2222,10 @@ const MapView = () => {
                             <option value="likes">By Likes</option>
                           </select>
                         </div>
-                        <div className="space-y-3 sm:space-y-4 h-full overflow-y-auto pr-1 sm:pr-2">
+                        <div className="space-y-3 sm:space-y-4 h-full">
                           <AnimatePresence>
-                            {filteredLocations.length > 0 ? (
-                              filteredLocations.map((location, index) => (
+                            {paginatedLocations.length > 0 ? (
+                              paginatedLocations.map((location, index) => (
                                 <motion.div
                                   key={location.id}
                                   initial={{ opacity: 0, y: 20 }}
@@ -2222,6 +2300,40 @@ const MapView = () => {
                             )}
                           </AnimatePresence>
                         </div>
+                        {/* Pagination Controls */}
+                        {filteredLocations.length > postsPerPage && (
+                          <div className="flex items-center justify-between mt-4 pt-2 border-t border-gray-200">
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                              disabled={currentPage === 1}
+                              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                currentPage === 1
+                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                              }`}
+                            >
+                              Previous
+                            </button>
+                            
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm text-gray-600">
+                                Page {currentPage} of {totalPages}
+                              </span>
+                            </div>
+                            
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                              disabled={currentPage === totalPages}
+                              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                currentPage === totalPages
+                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                              }`}
+                            >
+                              Next
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2248,7 +2360,7 @@ const MapView = () => {
                                 localStorage.setItem("mapLayout", key);
                               }}
                             >
-                              {layout.name}
+                              {layout?.name || key}
                             </button>
                           ))}
                         </div>
@@ -2338,81 +2450,117 @@ const MapView = () => {
                           </div>
                         </div>
                       ) : savedLocations.length > 0 ? (
-                        <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
-                          {savedLocations.map((location, index) => (
-                            <motion.div
-                              key={location.id}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
-                              onClick={() => {
-                                if (mapRef.current) {
-                                  mapRef.current.flyTo(location.position, 15);
-                                  setActivePopup(location.id);
-                                }
-                              }}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <h3 className="font-semibold text-gray-800">
-                                    {location.name || location.title}
-                                  </h3>
-                                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                    {location.description || ""}
-                                  </p>
-                                  <div className="flex items-center justify-between mt-2">
-                                    <span className="text-xs text-gray-500">
-                                      {location.type === "poi"
-                                        ? `From OpenStreetMap`
-                                        : `By ${
-                                            typeof location.postedBy === "object"
-                                              ? location.postedBy.name ||
-                                                location.postedBy
-                                              : location.postedBy
-                                          }`}
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      {new Date(
-                                        location.savedAt
-                                      ).toLocaleDateString()}
-                                    </span>
+                        <>
+                          <div className="space-y-3">
+                            {paginatedSavedLocations.map((location, index) => (
+                              <motion.div
+                                key={location.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
+                                onClick={() => {
+                                  if (mapRef.current) {
+                                    mapRef.current.flyTo(location.position, 15);
+                                    setActivePopup(location.id);
+                                  }
+                                }}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-gray-800">
+                                      {location.name || location.title}
+                                    </h3>
+                                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                      {location.description || ""}
+                                    </p>
+                                    <div className="flex items-center justify-between mt-2">
+                                      <span className="text-xs text-gray-500">
+                                        {location.type === "poi"
+                                          ? `From OpenStreetMap`
+                                          : `By ${
+                                              typeof location.postedBy === "object"
+                                                ? location.postedBy?.name ||
+                                                  location.postedBy
+                                                : location.postedBy
+                                            }`}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {new Date(
+                                          location.savedAt
+                                        ).toLocaleDateString()}
+                                      </span>
+                                    </div>
                                   </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeSavedLocation(location.id);
+                                    }}
+                                    className={`ml-2 ${isRemovingLocation ? 'opacity-50 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}`}
+                                    title="Remove from saved"
+                                    disabled={isRemovingLocation}
+                                  >
+                                    {isRemovingLocation ? (
+                                      <svg className="animate-spin h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                      </svg>
+                                    ) : (
+                                      <svg
+                                        className="w-5 h-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                        />
+                                      </svg>
+                                    )}
+                                  </button>
                                 </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeSavedLocation(location.id);
-                                  }}
-                                  className={`ml-2 ${isRemovingLocation ? 'opacity-50 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}`}
-                                  title="Remove from saved"
-                                  disabled={isRemovingLocation}
-                                >
-                                  {isRemovingLocation ? (
-                                    <svg className="animate-spin h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                  ) : (
-                                    <svg
-                                      className="w-5 h-5"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                      />
-                                    </svg>
-                                  )}
-                                </button>
+                              </motion.div>
+                            ))}
+                          </div>
+                          {/* Saved Locations Pagination Controls */}
+                          {savedLocations.length > savedPerPage && (
+                            <div className="flex items-center justify-between mt-4 pt-2 border-t border-gray-200">
+                              <button
+                                onClick={() => setCurrentSavedPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentSavedPage === 1}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                  currentSavedPage === 1
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                }`}
+                              >
+                                Previous
+                              </button>
+                              
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm text-gray-600">
+                                  Page {currentSavedPage} of {totalSavedPages}
+                                </span>
                               </div>
-                            </motion.div>
-                          ))}
-                        </div>
+                              
+                              <button
+                                onClick={() => setCurrentSavedPage(prev => Math.min(prev + 1, totalSavedPages))}
+                                disabled={currentSavedPage === totalSavedPages}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                  currentSavedPage === totalSavedPages
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                }`}
+                              >
+                                Next
+                              </button>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="text-center py-12 text-gray-500">
                           <svg
@@ -2441,45 +2589,81 @@ const MapView = () => {
                   <div className="p-4">
                     <div className="space-y-4">
                       {recentLocations.length > 0 ? (
-                        <div className="space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto">
-                          {recentLocations.map((location, index) => (
-                            <motion.div
-                              key={location.id}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
-                              onClick={() => {
-                                if (mapRef.current) {
-                                  mapRef.current.flyTo(location.position, 15);
-                                  setActivePopup(location.id);
-                                }
-                              }}
-                            >
-                              <h3 className="font-semibold text-gray-800">
-                                {location.title}
-                              </h3>
-                              <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                {location.description}
-                              </p>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-gray-500">
-                                  {location.type === "poi"
-                                    ? `From OpenStreetMap`
-                                    : `By ${
-                                        typeof location.postedBy === "object"
-                                          ? location.postedBy.name ||
-                                            location.postedBy
-                                          : location.postedBy
-                                      }`}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {new Date(location.viewedAt).toLocaleDateString()}
+                        <>
+                          <div className="space-y-3">
+                            {paginatedRecentLocations.map((location, index) => (
+                              <motion.div
+                                key={location.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
+                                onClick={() => {
+                                  if (mapRef.current) {
+                                    mapRef.current.flyTo(location.position, 15);
+                                    setActivePopup(location.id);
+                                  }
+                                }}
+                              >
+                                <h3 className="font-semibold text-gray-800">
+                                  {location.title}
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                  {location.description}
+                                </p>
+                                <div className="flex items-center justify-between mt-2">
+                                  <span className="text-xs text-gray-500">
+                                    {location.type === "poi"
+                                      ? `From OpenStreetMap`
+                                      : `By ${
+                                          typeof location.postedBy === "object"
+                                            ? location.postedBy?.name ||
+                                              location.postedBy
+                                            : location.postedBy
+                                        }`}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(location.viewedAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                          {/* Recent Locations Pagination Controls */}
+                          {recentLocations.length > recentsPerPage && (
+                            <div className="flex items-center justify-between mt-4 pt-2 border-t border-gray-200">
+                              <button
+                                onClick={() => setCurrentRecentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentRecentPage === 1}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                  currentRecentPage === 1
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                }`}
+                              >
+                                Previous
+                              </button>
+                              
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm text-gray-600">
+                                  Page {currentRecentPage} of {totalRecentPages}
                                 </span>
                               </div>
-                            </motion.div>
-                          ))}
-                        </div>
+                              
+                              <button
+                                onClick={() => setCurrentRecentPage(prev => Math.min(prev + 1, totalRecentPages))}
+                                disabled={currentRecentPage === totalRecentPages}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                  currentRecentPage === totalRecentPages
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                }`}
+                              >
+                                Next
+                              </button>
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="text-center py-12 text-gray-500">
                           <svg
@@ -2606,7 +2790,7 @@ const MapView = () => {
                 </div>
                 
                 {/* Scrollable form area */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+                <div className="flex-1 p-4 sm:p-6 custom-scrollbar">
                   <form onSubmit={handleFormSubmit} className="space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div className="sm:col-span-2">

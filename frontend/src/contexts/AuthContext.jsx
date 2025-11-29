@@ -214,6 +214,16 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: error.message };
     }
   };
+  
+  // Change password function
+  const updatePassword = async (currentPassword, newPassword) => {
+    try {
+      const data = await directAuthApi.updatePassword(currentPassword, newPassword);
+      return data;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
 
   const value = {
     user,
@@ -226,6 +236,7 @@ export const AuthProvider = ({ children }) => {
     googleLogin: handleGoogleLogin,
     forgotPassword,
     resetPassword,
+    updatePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

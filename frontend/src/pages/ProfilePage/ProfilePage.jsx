@@ -7,7 +7,7 @@ import './ProfilePage.css';
 
 const ProfilePage = () => {
   usePageTitle("Profile");
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading, updatePassword } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [userData, setUserData] = useState(user || {});
   const [isEditing, setIsEditing] = useState(false);
@@ -23,6 +23,13 @@ const ProfilePage = () => {
   const [postEditData, setPostEditData] = useState({ title: '', description: '', category: 'general' });
   const [deleting, setDeleting] = useState(null); // Track what we're deleting
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordErrors, setPasswordErrors] = useState({});
 
   // Load user data and initialize
   useEffect(() => {
@@ -51,9 +58,11 @@ const ProfilePage = () => {
         },
       });
       
+      let savedData = [];
       if (savedResponse.ok) {
-        const savedData = await savedResponse.json();
-        setSavedLocations(savedData.data?.savedLocations || []);
+        const data = await savedResponse.json();
+        savedData = data.data?.savedLocations || [];
+        setSavedLocations(savedData);
       }
       
       // Load all posts and filter for user's posts
@@ -64,17 +73,18 @@ const ProfilePage = () => {
         },
       });
       
+      let postsData = [];
       if (postsResponse.ok) {
-        const postsData = await postsResponse.json();
+        const data = await postsResponse.json();
         // Filter posts by current user
-        const userPostsData = postsData.data?.filter(post => 
+        postsData = data.data?.filter(post => 
           post.postedBy?._id === user._id || post.postedBy === user._id
         ) || [];
-        setUserPosts(userPostsData);
+        setUserPosts(postsData);
       }
       
       // Generate activity log
-      generateActivityLog();
+      await generateActivityLog();
       
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -84,60 +94,178 @@ const ProfilePage = () => {
   };
 
   // Generate activity log based on user actions
-  const generateActivityLog = () => {
-    const newActivities = [];
-    
-    // Add saved locations to activities
-    savedLocations.slice(0, 10).forEach(location => {
-      newActivities.push({
-        id: `save-${location.id}`,
-        type: 'saved',
-        title: `Saved ${location.title || location.name}`,
-        timestamp: location.savedAt || location.datePosted,
-        icon: Bookmark,
+  const generateActivityLog = async () => {
+    try {
+      // Try to fetch user-specific activity log from backend
+      // First attempt with a user-specific activity endpoint
+      let activityResponse;
+      try {
+        activityResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/users/activity`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      } catch (error) {
+        // If that fails, try with /analytics/activity-timeline as a fallback
+        activityResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/analytics/activity-timeline?limit=20`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
+      
+      let newActivities = [];
+      
+      if (activityResponse.ok) {
+        const activityData = await activityResponse.json();
+        const activities = Array.isArray(activityData.data) ? activityData.data : activityData;
+        
+        newActivities = activities?.map(activity => ({
+          id: activity._id || activity.id || Math.random().toString(36).substr(2, 9),
+          type: activity.type || activity.action || 'general',
+          title: activity.title || activity.action || activity.message || 'Activity occurred',
+          timestamp: activity.timestamp || activity.createdAt || activity.datePosted || activity.date,
+          icon: getActivityIcon(activity.type || activity.action),
+        })) || [];
+      }
+      
+      // If we still don't have activities or the API failed, enhance with local data
+      if (newActivities.length === 0) {
+        // Add saved locations to activities
+        savedLocations.forEach(location => {
+          newActivities.push({
+            id: `save-${location.id || Math.random().toString(36).substr(2, 9)}`,
+            type: 'saved',
+            title: `Saved ${location.title || location.name || 'location'}`,
+            timestamp: location.savedAt || location.datePosted || new Date().toISOString(),
+            icon: Bookmark,
+          });
+        });
+        
+        // Add posts to activities
+        userPosts.forEach(post => {
+          newActivities.push({
+            id: `post-${post._id || Math.random().toString(36).substr(2, 9)}`,
+            type: 'post',
+            title: `Posted ${post.title}`,
+            timestamp: post.datePosted || new Date().toISOString(),
+            icon: MapPin,
+          });
+        });
+      }
+      
+      // Sort by timestamp, newest first
+      newActivities.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+      // Limit to last 20 activities
+      setActivities(newActivities.slice(0, 20));
+    } catch (error) {
+      console.error('Error generating activity log:', error);
+      // Fallback to basic activity generation from local data
+      const fallbackActivities = [];
+      
+      // Add saved locations to activities
+      savedLocations.forEach(location => {
+        fallbackActivities.push({
+          id: `save-${location.id || Math.random().toString(36).substr(2, 9)}`,
+          type: 'saved',
+          title: `Saved ${location.title || location.name || 'location'}`,
+          timestamp: location.savedAt || location.datePosted || new Date().toISOString(),
+          icon: Bookmark,
+        });
       });
-    });
-    
-    // Add posts to activities
-    userPosts.slice(0, 10).forEach(post => {
-      newActivities.push({
-        id: `post-${post._id}`,
-        type: 'post',
-        title: `Posted ${post.title}`,
-        timestamp: post.datePosted,
-        icon: MapPin,
+      
+      // Add posts to activities
+      userPosts.forEach(post => {
+        fallbackActivities.push({
+          id: `post-${post._id || Math.random().toString(36).substr(2, 9)}`,
+          type: 'post',
+          title: `Posted ${post.title}`,
+          timestamp: post.datePosted || new Date().toISOString(),
+          icon: MapPin,
+        });
       });
-    });
-    
-    // Sort by timestamp, newest first
-    newActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    setActivities(newActivities);
+      
+      // Sort by timestamp, newest first
+      fallbackActivities.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+      // Limit to last 20 activities
+      setActivities(fallbackActivities.slice(0, 20));
+    }
+  };
+  
+  // Helper function to get appropriate icon based on activity type
+  const getActivityIcon = (type) => {
+    switch (type) {
+      case 'saved':
+      case 'save':
+        return Bookmark;
+      case 'post':
+      case 'create_post':
+        return MapPin;
+      case 'comment':
+      case 'add_comment':
+        return Activity; // Using Activity icon for comments
+      case 'rating':
+      case 'review':
+        return Star; // Using Star icon for ratings
+      case 'profile_update':
+        return User; // Using User icon for profile updates
+      default:
+        return Activity; // Default to Activity icon
+    }
   };
 
   // Handle profile updates
   const handleUpdateProfile = async () => {
     try {
-      setUploading(true);
+      setLoadingData(true);
       
-      // Update user profile in Firebase
-      if (auth.currentUser) {
-        await auth.currentUser.updateProfile({
-          displayName: editData.name,
-        });
+      // Update profile details in backend
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          name: editData.name,
+          bio: editData.bio,
+          location: editData.location
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Update local state 
+        setUserData(prev => ({
+          ...prev,
+          name: editData.name,
+          bio: editData.bio,
+          location: editData.location
+        }));
+        
+        // Update user in auth context
+        const userInfo = {
+          ...user,
+          name: editData.name,
+          bio: editData.bio,
+          location: editData.location
+        };
+        localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
+        
+        setIsEditing(false);
+      } else {
+        const errorData = await response.json();
+        console.error('Error updating profile:', errorData);
+        alert('Failed to update profile: ' + errorData.message);
       }
-      
-      // Update local state 
-      setUserData(prev => ({
-        ...prev,
-        name: editData.name,
-        bio: editData.bio,
-        location: editData.location
-      }));
-      setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
+      alert('An error occurred while updating your profile');
     } finally {
-      setUploading(false);
+      setLoadingData(false);
     }
   };
 
@@ -177,7 +305,7 @@ const ProfilePage = () => {
         setSavedLocations(updatedSavedLocations);
         
         // Update activities log to reflect the change
-        generateActivityLog();
+        setTimeout(() => generateActivityLog(), 100); // Use setTimeout to avoid blocking
       } else {
         const errorData = await response.json();
         console.error('Delete saved location error:', errorData);
@@ -214,7 +342,7 @@ const ProfilePage = () => {
         setUserPosts(updatedUserPosts);
         
         // Update activities log to reflect the change
-        generateActivityLog();
+        setTimeout(() => generateActivityLog(), 100); // Use setTimeout to avoid blocking
       } else {
         const errorData = await response.json();
         console.error('Delete post error:', errorData);
@@ -285,6 +413,67 @@ const ProfilePage = () => {
   const cancelEditPost = () => {
     setEditingPost(null);
     setPostEditData({ title: '', description: '', category: 'general' });
+  };
+  
+  // Function to validate password
+  const validatePassword = (password) => {
+    // Password must be at least 8 characters, contain at least one uppercase, one lowercase, and one number
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
+    return regex.test(password);
+  };
+  
+  // Function to handle password changes
+  const handleChangePassword = async () => {
+    // Reset errors
+    setPasswordErrors({});
+    
+    // Validate inputs
+    const errors = {};
+    
+    if (!passwordData.currentPassword) {
+      errors.currentPassword = 'Current password is required';
+    }
+    
+    if (!passwordData.newPassword) {
+      errors.newPassword = 'New password is required';
+    } else if (!validatePassword(passwordData.newPassword)) {
+      errors.newPassword = 'Password must be at least 8 characters with uppercase, lowercase, and number';
+    }
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      errors.confirmPassword = 'New passwords do not match';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setPasswordErrors(errors);
+      return;
+    }
+    
+    try {
+      setLoadingData(true);
+      
+      // Call the auth context function to update password
+      const result = await updatePassword(passwordData.currentPassword, passwordData.newPassword);
+      
+      if (result.success) {
+        // Success - show success message and reset form
+        alert('Password changed successfully!');
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setShowChangePassword(false);
+      } else {
+        // Handle error
+        setPasswordErrors({ general: result.error || 'Failed to change password' });
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      setPasswordErrors({ general: 'An error occurred while changing password' });
+    } finally {
+      setLoadingData(false);
+    }
   };
 
   // Pagination for posts
@@ -429,10 +618,10 @@ const ProfilePage = () => {
                       </button>
                       <button
                         onClick={handleUpdateProfile}
-                        disabled={uploading}
+                        disabled={loadingData}
                         className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-teal-700 transition-all duration-200 disabled:opacity-50"
                       >
-                        {uploading ? 'Saving...' : 'Save Changes'}
+                        {loadingData ? 'Saving...' : 'Save Changes'}
                       </button>
                     </div>
                   )}
@@ -498,6 +687,85 @@ const ProfilePage = () => {
                       <span className="text-gray-600">Location</span>
                       <span className="font-medium">{userData.location || 'Not set'}</span>
                     </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Change Password Section */}
+              <div className="mt-8">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Change Password</h3>
+                  <button
+                    onClick={() => setShowChangePassword(!showChangePassword)}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-all duration-200"
+                  >
+                    {showChangePassword ? 'Cancel' : 'Change Password'}
+                  </button>
+                </div>
+                
+                {showChangePassword && (
+                  <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                      <input
+                        type="password"
+                        value={passwordData.currentPassword}
+                        onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                          passwordErrors.currentPassword ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter current password"
+                      />
+                      {passwordErrors.currentPassword && (
+                        <p className="mt-1 text-sm text-red-600">{passwordErrors.currentPassword}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                      <input
+                        type="password"
+                        value={passwordData.newPassword}
+                        onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                          passwordErrors.newPassword ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter new password"
+                      />
+                      {passwordErrors.newPassword && (
+                        <p className="mt-1 text-sm text-red-600">{passwordErrors.newPassword}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                      <input
+                        type="password"
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                          passwordErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Confirm new password"
+                      />
+                      {passwordErrors.confirmPassword && (
+                        <p className="mt-1 text-sm text-red-600">{passwordErrors.confirmPassword}</p>
+                      )}
+                    </div>
+                    
+                    {passwordErrors.general && (
+                      <div className="p-3 bg-red-50 text-red-700 rounded-lg">
+                        {passwordErrors.general}
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={handleChangePassword}
+                      disabled={loadingData}
+                      className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50"
+                    >
+                      {loadingData ? 'Changing Password...' : 'Change Password'}
+                    </button>
                   </div>
                 )}
               </div>
