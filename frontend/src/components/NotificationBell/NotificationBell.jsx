@@ -1,8 +1,7 @@
 // src/components/NotificationBell/NotificationBell.jsx
 import React, { useState, useEffect } from 'react';
 import { Bell, BellOff } from 'lucide-react';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+import { adminAPI } from '../../services/api';
 
 const NotificationBell = ({ userId, authToken }) => {
   const [notifications, setNotifications] = useState([]);
@@ -12,22 +11,13 @@ const NotificationBell = ({ userId, authToken }) => {
 
   // Fetch notifications
   const fetchNotifications = async () => {
-    if (!authToken) return;
-    
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const data = await response.json();
-      if (data.status === 'success') {
-        setNotifications(data.data.notifications);
+      const response = await adminAPI.getAdminNotifications({}, authToken);
+      if (response.success) {
+        setNotifications(response.data.notifications);
         // Calculate unread count
-        const unread = data.data.notifications.filter(n => !n.read).length;
+        const unread = response.data.notifications.filter(n => !n.read).length;
         setUnreadCount(unread);
       }
     } catch (error) {
@@ -39,19 +29,10 @@ const NotificationBell = ({ userId, authToken }) => {
 
   // Fetch unread count
   const fetchUnreadCount = async () => {
-    if (!authToken) return;
-    
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications/unread-count`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const data = await response.json();
-      if (data.status === 'success') {
-        setUnreadCount(data.data.count);
+      const response = await adminAPI.getAdminNotificationCount(authToken);
+      if (response.success) {
+        setUnreadCount(response.data.count);
       }
     } catch (error) {
       console.error('Error fetching unread count:', error);
@@ -60,16 +41,8 @@ const NotificationBell = ({ userId, authToken }) => {
 
   // Mark notification as read
   const markAsRead = async (notificationId) => {
-    if (!authToken) return;
-    
     try {
-      await fetch(`${API_BASE_URL}/notifications/${notificationId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      await adminAPI.markAsRead(notificationId, authToken);
       
       // Update local state
       setNotifications(prev => 
@@ -85,16 +58,8 @@ const NotificationBell = ({ userId, authToken }) => {
 
   // Mark all as read
   const markAllAsRead = async () => {
-    if (!authToken) return;
-    
     try {
-      await fetch(`${API_BASE_URL}/notifications/read-all`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      await adminAPI.markAllAdminNotificationsAsRead(authToken);
       
       // Update local state
       setNotifications(prev => 

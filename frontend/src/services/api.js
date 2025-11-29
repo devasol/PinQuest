@@ -258,20 +258,477 @@ export const authApi = {
 
 // Admin-specific API endpoints
 export const adminAPI = {
-  // Get admin notification count
-  getAdminNotificationCount: (authToken) => apiService.get('/admin/notifications/count', authToken),
-  
-  // Get admin notifications
-  getAdminNotifications: (params = {}, authToken) => {
-    const queryString = new URLSearchParams(params).toString();
-    return apiService.get(`/admin/notifications?${queryString}`, authToken);
+  // Helper function to get token if not provided
+  getToken: (authToken) => {
+    if (authToken) return authToken;
+    return localStorage.getItem('token');
   },
   
-  // Mark all admin notifications as read
-  markAllAdminNotificationsAsRead: (authToken) => apiService.put('/admin/notifications/mark-all-read', {}, authToken),
+  // Analytics functions
+  getPlatformStats: async (authToken) => {
+    try {
+      const response = await apiService.get('/analytics/platform', adminAPI.getToken(authToken));
+      
+      // The ApiService returns { success: true, data: backendResponse } when HTTP is successful
+      // The backendResponse is { status: 'success', data: actualData }
+      if (response.success) {
+        // Return the backend's response as-is, which has the format { status: ..., data: ... }
+        return response.data;
+      } else {
+        // If HTTP request failed, return error format
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch platform statistics'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching platform stats:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch platform statistics' };
+    }
+  },
+  getTopPosts: async (params, authToken) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await apiService.get(`/analytics/top-posts?${queryString}`, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch top posts'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching top posts:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch top posts' };
+    }
+  },
+  getPlatformGrowth: async (params, authToken) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await apiService.get(`/analytics/platform-growth?${queryString}`, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch platform growth data'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching platform growth:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch platform growth data' };
+    }
+  },
+  getUserGrowth: async (params, authToken) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await apiService.get(`/analytics/user-growth?${queryString}`, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch user growth data'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching user growth:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch user growth data' };
+    }
+  },
+  getActivityTimeline: async (params, authToken) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await apiService.get(`/analytics/activity-timeline?${queryString}`, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch activity timeline'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching activity timeline:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch activity timeline' };
+    }
+  },
   
-  // Mark a specific notification as read (reusing general endpoint)
-  markAsRead: (notificationId, authToken) => apiService.put(`/notifications/${notificationId}/read`, {}, authToken),
+  // User management functions
+  getUsers: async (authToken) => {
+    try {
+      const response = await apiService.get('/admin/users', adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch users'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch users' };
+    }
+  },
+  getUserById: async (userId, authToken) => {
+    try {
+      const response = await apiService.get(`/admin/users/${userId}`, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch user'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching user by ID:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch user' };
+    }
+  },
+  createUser: async (userData, authToken) => {
+    try {
+      const response = await apiService.post('/admin/users', userData, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to create user'
+        };
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      return { status: 'error', message: error.message || 'Failed to create user' };
+    }
+  },
+  deleteUser: async (userId, authToken) => {
+    try {
+      const response = await apiService.delete(`/admin/users/${userId}`, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to delete user'
+        };
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      return { status: 'error', message: error.message || 'Failed to delete user' };
+    }
+  },
+  updateUserRole: async (userId, role, authToken) => {
+    try {
+      const response = await apiService.put(`/admin/users/${userId}/role`, { role }, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to update user role'
+        };
+      }
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      return { status: 'error', message: error.message || 'Failed to update user role' };
+    }
+  },
+  updateUserBanStatus: async (userId, ban, authToken) => {
+    try {
+      const response = await apiService.put(`/admin/users/${userId}/ban`, { ban }, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to update user ban status'
+        };
+      }
+    } catch (error) {
+      console.error('Error updating user ban status:', error);
+      return { status: 'error', message: error.message || 'Failed to update user ban status' };
+    }
+  },
+  updateUserPassword: async (userId, passwordData, authToken) => {
+    try {
+      const response = await apiService.put(`/admin/users/${userId}/password`, passwordData, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to update user password'
+        };
+      }
+    } catch (error) {
+      console.error('Error updating user password:', error);
+      return { status: 'error', message: error.message || 'Failed to update user password' };
+    }
+  },
+  
+  // Content management functions
+  getPosts: async (authToken) => {
+    try {
+      const response = await apiService.get('/admin/posts', adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch posts'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch posts' };
+    }
+  },
+  deletePost: async (postId, authToken) => {
+    try {
+      const response = await apiService.delete(`/admin/posts/${postId}`, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to delete post'
+        };
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      return { status: 'error', message: error.message || 'Failed to delete post' };
+    }
+  },
+  updatePost: async (postId, postData, authToken) => {
+    try {
+      const response = await apiService.put(`/admin/posts/${postId}`, postData, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to update post'
+        };
+      }
+    } catch (error) {
+      console.error('Error updating post:', error);
+      return { status: 'error', message: error.message || 'Failed to update post' };
+    }
+  },
+  approvePost: async (postId, authToken) => {
+    try {
+      const response = await apiService.put(`/admin/posts/${postId}/approve`, {}, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to approve post'
+        };
+      }
+    } catch (error) {
+      console.error('Error approving post:', error);
+      return { status: 'error', message: error.message || 'Failed to approve post' };
+    }
+  },
+  rejectPost: async (postId, authToken) => {
+    try {
+      const response = await apiService.put(`/admin/posts/${postId}/reject`, {}, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to reject post'
+        };
+      }
+    } catch (error) {
+      console.error('Error rejecting post:', error);
+      return { status: 'error', message: error.message || 'Failed to reject post' };
+    }
+  },
+  
+  // Security settings functions
+  getSecuritySettings: async (authToken) => {
+    try {
+      const response = await apiService.get('/admin/security-settings', adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch security settings'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching security settings:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch security settings' };
+    }
+  },
+  updateSecuritySetting: async (settingName, value, authToken) => {
+    try {
+      const settings = {};
+      settings[settingName] = value;
+      const response = await apiService.put('/admin/security-settings', settings, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to update security setting'
+        };
+      }
+    } catch (error) {
+      console.error('Error updating security setting:', error);
+      return { status: 'error', message: error.message || 'Failed to update security setting' };
+    }
+  },
+  updatePassword: async (currentPassword, newPassword, authToken) => {
+    try {
+      const response = await apiService.put('/auth/update-password', { currentPassword, newPassword }, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to update password'
+        };
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      return { status: 'error', message: error.message || 'Failed to update password' };
+    }
+  },
+  getActivityLog: async (params, authToken) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await apiService.get(`/admin/activity-log?${queryString}`, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch activity log'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching activity log:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch activity log' };
+    }
+  },
+  
+  // Notification functions
+  getAdminNotificationCount: async (authToken) => {
+    try {
+      const response = await apiService.get('/admin/notifications/count', adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch notification count'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching admin notification count:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch notification count' };
+    }
+  },
+  getAdminNotifications: async (params = {}, authToken) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const response = await apiService.get(`/admin/notifications?${queryString}`, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to fetch notifications'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching admin notifications:', error);
+      return { status: 'error', message: error.message || 'Failed to fetch notifications' };
+    }
+  },
+  markAllAdminNotificationsAsRead: async (authToken) => {
+    try {
+      const response = await apiService.put('/admin/notifications/read-all', {}, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to mark notifications as read'
+        };
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      return { status: 'error', message: error.message || 'Failed to mark notifications as read' };
+    }
+  },
+  markAsRead: async (notificationId, authToken) => {
+    try {
+      const response = await apiService.put(`/notifications/${notificationId}/read`, {}, adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to mark notification as read'
+        };
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return { status: 'error', message: error.message || 'Failed to mark notification as read' };
+    }
+  },
+  
+  // Verification functions
+  verifyAdmin: async (authToken) => {
+    try {
+      const response = await apiService.get('/admin/verify', adminAPI.getToken(authToken));
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        return { 
+          status: 'error', 
+          message: response.error || 'Failed to verify admin access'
+        };
+      }
+    } catch (error) {
+      console.error('Error verifying admin:', error);
+      return { status: 'error', message: error.message || 'Failed to verify admin access' };
+    }
+  },
 };
 
 // Authentication service
