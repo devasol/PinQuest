@@ -1751,6 +1751,13 @@ const MapView = () => {
     e.preventDefault();
 
     if (submitting) return; // prevent duplicate submits
+    
+    // Check authentication first
+    if (!isAuthenticated) {
+      showNotification("Please login to create a post.", "error");
+      return;
+    }
+    
     setSubmitting(true);
 
     try {
@@ -1770,24 +1777,41 @@ const MapView = () => {
         return;
       }
 
-      // Check if we have a valid token
-      let token = localStorage.getItem("token");
-
-      if (!token) {
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-          try {
-            const freshToken = await currentUser.getIdToken(true); // Force refresh
-            localStorage.setItem("token", freshToken);
-            token = freshToken;
-          } catch (error) {
-            console.error("Error getting token:", error);
+      // Always try to get a fresh token from Firebase if user is logged in
+      // This ensures we never use an expired token
+      let token = null;
+      const currentUser = auth.currentUser;
+      
+      if (currentUser) {
+        try {
+          // Always force refresh to get a valid token
+          token = await currentUser.getIdToken(true);
+          localStorage.setItem("token", token);
+          console.log("Token refreshed successfully for post creation");
+        } catch (error) {
+          console.error("Error refreshing token:", error);
+          // Fallback to stored token if refresh fails
+          token = localStorage.getItem("token");
+          if (!token) {
+            showNotification("Authentication error. Please login again.", "error");
+            setSubmitting(false);
+            return;
           }
+        }
+      } else {
+        // No user logged in, check if there's a stored token (shouldn't happen but safety check)
+        token = localStorage.getItem("token");
+        if (!token) {
+          showNotification("Authentication required. Please login.", "error");
+          setSubmitting(false);
+          return;
         }
       }
 
-      if (!token) {
+      // Final check - ensure we have a token
+      if (!token || token.trim() === "") {
         showNotification("Authentication required. Please login.", "error");
+        setSubmitting(false);
         return;
       }
 
@@ -1860,9 +1884,16 @@ const MapView = () => {
         }
       }
 
-      // Prepare headers
+      // Prepare headers - ensure token is clean and properly formatted
+      const cleanToken = token.trim();
+      if (!cleanToken) {
+        showNotification("Invalid authentication token. Please login again.", "error");
+        setSubmitting(false);
+        return;
+      }
+      
       const headers = {
-        Authorization: `Bearer ${token.trim()}`,
+        Authorization: `Bearer ${cleanToken}`,
       };
 
       // Set content type only if not FormData
