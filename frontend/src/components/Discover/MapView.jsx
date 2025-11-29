@@ -364,6 +364,9 @@ const MapView = () => {
   
   // Ref to store marker instances for programmatic popup opening
   const markerRefs = useRef({});
+  
+  // Ref for POI search timeout
+  const searchPoiTimeoutRef = useRef(null);
 
   // Map layout state
   const [mapLayout, setMapLayout] = useState(() => {
@@ -431,6 +434,11 @@ const MapView = () => {
   // State for recently viewed locations
   const [recentLocations, setRecentLocations] = useState([]);
   
+  // State for POIs visibility toggle
+  const [showPoisOnMap, setShowPoisOnMap] = useState(false); // Default is off
+  // State for POIs loading
+  const [isPoisLoading, setIsPoisLoading] = useState(false);
+  
   // Pagination state for posts
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 10; // Display 10 posts per page
@@ -442,6 +450,13 @@ const MapView = () => {
   // Pagination state for saved locations
   const [currentSavedPage, setCurrentSavedPage] = useState(1);
   const savedPerPage = 10; // Display 10 saved locations per page
+  
+  // State for points of interest
+  const [pois, setPois] = useState([]);
+  
+  // Pagination state for POIs
+  const [currentPoiPage, setCurrentPoiPage] = useState(1);
+  const poisPerPage = 10; // Display 10 POIs per page
 
   // Function to save a location
   const saveLocation = async (location) => {
@@ -1426,6 +1441,36 @@ const MapView = () => {
     setCurrentSavedPage(1);
   }, [savedLocations]);
 
+  // Memoize paginated POIs
+  const paginatedPois = React.useMemo(() => {
+    if (!pois || pois.length === 0) {
+      return [];
+    }
+    
+    // Calculate start and end indices for POIs pagination
+    const startIndex = (currentPoiPage - 1) * poisPerPage;
+    const endIndex = startIndex + poisPerPage;
+    
+    // Return the slice of POIs for the current page
+    return pois.slice(startIndex, endIndex);
+  }, [pois, currentPoiPage, poisPerPage]);
+
+  // Calculate total number of POI pages
+  const totalPoiPages = Math.ceil((pois?.length || 0) / poisPerPage);
+
+  // Reset to page 1 when POIs change
+  React.useEffect(() => {
+    setCurrentPoiPage(1);
+  }, [pois]);
+
+  // Fetch POIs when the POIs toggle is turned on and map is available
+  React.useEffect(() => {
+    if (showPoisOnMap && mapRef.current && pois.length === 0) {
+      // Fetch POIs for the current map view when toggle is turned on
+      searchPois(null); // Search for POIs around current map center
+    }
+  }, [showPoisOnMap, pois.length, mapRef]);
+
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [notification, setNotification] = useState({
     show: false,
@@ -1439,6 +1484,121 @@ const MapView = () => {
       message,
       type,
     });
+  };
+
+  // Function to search for points of interest near current map view or a specific location
+  const searchPois = async (locationQuery = null) => {
+    if (!mapRef.current && !locationQuery) {
+      showNotification("Map not ready or no location provided", "error");
+      return;
+    }
+
+    setIsPoisLoading(true);
+    try {
+      // Determine search location (either from map center or a specific query)
+      let center;
+      if (locationQuery) {
+        // If locationQuery is provided, geocode it first
+        const geocodeResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationQuery)}&limit=1`
+        );
+        const geocodeResults = await geocodeResponse.json();
+        
+        if (geocodeResults.length === 0) {
+          showNotification("Location not found", "error");
+          setIsPoisLoading(false);
+          return;
+        }
+        
+        center = [parseFloat(geocodeResults[0].lat), parseFloat(geocodeResults[0].lon)];
+      } else {
+        // Use current map center
+        const mapCenter = mapRef.current.getCenter();
+        center = [mapCenter.lat, mapCenter.lng];
+      }
+
+      // Search for POIs in a radius around the center
+      const radius = 5000; // 5km radius around the center
+      
+      // Use Overpass API to get POIs (points of interest)
+      const overpassQuery = `
+        [out:json];
+        (
+          node["tourism"]["name"](around:${radius},${center[0]},${center[1]});
+          node["amenity"]["name"](around:${radius},${center[0]},${center[1]});
+          node["shop"]["name"](around:${radius},${center[0]},${center[1]});
+          node["leisure"]["name"](around:${radius},${center[0]},${center[1]});
+          node["historic"]["name"](around:${radius},${center[0]},${center[1]});
+          node["natural"]["name"](around:${radius},${center[0]},${center[1]});
+          node["highway"]["name"](around:${radius},${center[0]},${center[1]});
+        );
+        out body;
+      `;
+
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `data=${encodeURIComponent(overpassQuery)}`
+      });
+
+      const data = await response.json();
+      
+      if (data.elements && data.elements.length > 0) {
+        // Transform the data to our format
+        const poisData = data.elements.map((element, index) => {
+          // Calculate distance from center (if available)
+          const distance = calculateDistance(
+            center[0],
+            center[1],
+            parseFloat(element.lat),
+            parseFloat(element.lon)
+          );
+          
+          return {
+            id: element.id || `poi-${index}`,
+            name: element.tags.name || element.tags.operator || `POI #${index}`,
+            description: element.tags.description || element.tags.website || element.tags.phone || "",
+            position: [parseFloat(element.lat), parseFloat(element.lon)],
+            category: element.tags.tourism || element.tags.amenity || element.tags.shop || element.tags.leisure || "Point of Interest",
+            address: element.tags.address || element.tags["addr:street"] || "",
+            distance: distance.toFixed(2)
+          };
+        });
+        
+        // Sort by distance if available
+        poisData.sort((a, b) => a.distance - b.distance);
+        
+        setPois(poisData);
+        showNotification(`Found ${poisData.length} points of interest`, "success");
+      } else {
+        setPois([]);
+        showNotification("No points of interest found in this area", "info");
+      }
+    } catch (error) {
+      console.error('Error searching for POIs:', error);
+      showNotification("Error searching for points of interest", "error");
+      setPois([]);
+    } finally {
+      setIsPoisLoading(false);
+    }
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    // Update image URL only if it's currently a string (not a File object)
+    if (name === "image") {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    } else if (name !== "image") {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   // Make sure showNotification is in the dependency array of useCallback hooks that reference it
@@ -1478,22 +1638,6 @@ const MapView = () => {
     });
     // Clear any previously selected images when opening the modal
     setImages([]);
-  };
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    // Update image URL only if it's currently a string (not a File object)
-    if (name === "image") {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    } else if (name !== "image") {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    }
   };
 
   // Image helpers for multi-file upload in the map modal
@@ -1964,6 +2108,63 @@ const MapView = () => {
               );
             })}
 
+          {/* POI Markers - only show when toggle is on */}
+          {showPoisOnMap && pois.map((poi) => {
+            // Only render POI markers with valid positions
+            if (poi.position && 
+                Array.isArray(poi.position) && 
+                poi.position.length === 2 &&
+                typeof poi.position[0] === 'number' && 
+                typeof poi.position[1] === 'number' &&
+                !isNaN(poi.position[0]) && 
+                !isNaN(poi.position[1])) {
+              return (
+                <CustomMarker
+                  key={`poi-${poi.id}`}
+                  location={{
+                    ...poi,
+                    id: `poi-${poi.id}`, // Ensure unique ID for POIs
+                    type: "poi",
+                    postedBy: poi.category || "OpenStreetMap",
+                    category: poi.category || "poi"
+                  }}
+                  onClick={() => {
+                    if (mapRef.current) {
+                      mapRef.current.flyTo(poi.position, 15);
+                      setActivePopup(`poi-${poi.id}`);
+                    }
+                  }}
+                  isSelected={activePopup === `poi-${poi.id}`}
+                  onAddToRef={(id, ref) => {
+                    markerRefs.current[id] = ref;
+                  }}
+                  onRemoveFromRef={(id) => {
+                    delete markerRefs.current[id];
+                  }}
+                  activePopup={activePopup}
+                  onPopupOpen={setActivePopup}
+                  onPopupClose={(id) => setActivePopup(null)}
+                  mapRef={mapRef}
+                  showRouting={showRouting}
+                  setShowRouting={setShowRouting}
+                  setRoutingStart={setRoutingStart}
+                  setRoutingEnd={setRoutingEnd}
+                  travelMode={travelMode}
+                  setTravelMode={setTravelMode}
+                  getDirections={getDirections}
+                  savedLocations={savedLocations}
+                  saveLocation={saveLocation}
+                  removeSavedLocation={removeSavedLocation}
+                  isSavingLocation={isSavingLocation}
+                  addRecentLocation={addRecentLocation}
+                  user={user}
+                  isAuthenticated={isAuthenticated}
+                />
+              );
+            }
+            return null;
+          })}
+
         </MapContainer>
 
         
@@ -2100,6 +2301,32 @@ const MapView = () => {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </button>
+
+          <button
+            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
+              activeSidebarTab === "pois"
+                ? "bg-blue-100 text-blue-600"
+                : "text-gray-600 hover:bg-gray-200"
+            }`}
+            onClick={() =>
+              setActiveSidebarTab(activeSidebarTab === "pois" ? "" : "pois")
+            }
+            title="Points of Interest"
+          >
+            <svg
+              className="w-4 sm:w-6 h-4 sm:h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
           </button>
@@ -2694,6 +2921,180 @@ const MapView = () => {
                               </button>
                             </div>
                           )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {activeSidebarTab === "pois" && (
+                  <div className="p-4">
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-gray-800 mb-2">
+                          Points of Interest
+                        </h3>
+                        <div className="relative mb-3">
+                          <input
+                            type="text"
+                            placeholder="Search for nearby attractions..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/90 backdrop-blur-sm"
+                          />
+                          <button 
+                            onClick={() => searchPois(searchQuery || null)}
+                            className="absolute inset-y-0 right-0 pl-3 pr-3 flex items-center"
+                          >
+                            <svg
+                              className="h-5 w-5 text-gray-400"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        
+                        {/* POIs Toggle */}
+                        <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg mb-3">
+                          <span className="text-sm">Show POIs on Map</span>
+                          <button
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+                              showPoisOnMap ? "bg-blue-500" : "bg-gray-300"
+                            }`}
+                            onClick={async () => {
+                              const newState = !showPoisOnMap;
+                              setShowPoisOnMap(newState);
+                              // If turning on and no POIs are loaded, fetch them
+                              if (newState && pois.length === 0 && mapRef.current) {
+                                await searchPois(null); // Search for POIs around current map center
+                              }
+                            }}
+                            disabled={isPoisLoading}
+                          >
+                            {isPoisLoading ? (
+                              <span className="flex items-center justify-center w-6 h-6">
+                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                              </span>
+                            ) : (
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                                  showPoisOnMap ? "translate-x-6" : "translate-x-1"
+                                }`}
+                              />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {isPoisLoading && pois.length === 0 ? (
+                          <div className="text-center py-8">
+                            <div className="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                            <p className="text-gray-600">Loading points of interest...</p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Searching nearby attractions
+                            </p>
+                          </div>
+                        ) : pois.length > 0 ? (
+                          <div className="space-y-3">
+                            {paginatedPois.map((poi, index) => (
+                              <motion.div
+                                key={poi.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
+                                onClick={() => {
+                                  if (mapRef.current) {
+                                    mapRef.current.flyTo(poi.position, 15);
+                                    setActivePopup(null); // Close any existing popups
+                                  }
+                                }}
+                              >
+                                <h3 className="font-semibold text-gray-800">
+                                  {poi.name}
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                  {poi.description || poi.address}
+                                </p>
+                                <div className="flex items-center justify-between mt-2">
+                                  <span className="text-xs text-gray-500">
+                                    {poi.category || "Point of Interest"}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {poi.distance ? `${poi.distance} km away` : ""}
+                                  </span>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <svg
+                                className="w-8 h-8 text-gray-500"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0L6.94 17.25a1.998 1.998 0 010-2.827l3.646-3.647a1.999 1.999 0 012.828 0L17.657 16.657zM19.07 8.93l-1.414-1.414a1.999 1.999 0 00-2.828 0L10.586 11.75a1.999 1.999 0 000 2.828l3.646 3.647a1.999 1.999 0 002.828 0L19.07 13.93a1.999 1.999 0 000-2.828z"
+                                />
+                              </svg>
+                            </div>
+                            <p className="text-gray-500">No points of interest found</p>
+                            <p className="text-sm text-gray-400 mt-1">
+                              Search for a location or enable the map toggle to show nearby POIs
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* POIs Pagination Controls */}
+                      {pois.length > poisPerPage && (
+                        <div className="flex items-center justify-between mt-4 pt-2 border-t border-gray-200">
+                          <button
+                            onClick={() => setCurrentPoiPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPoiPage === 1}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                              currentPoiPage === 1
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            }`}
+                          >
+                            Previous
+                          </button>
+                          
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm text-gray-600">
+                              Page {currentPoiPage} of {totalPoiPages}
+                            </span>
+                          </div>
+                          
+                          <button
+                            onClick={() => setCurrentPoiPage(prev => Math.min(prev + 1, totalPoiPages))}
+                            disabled={currentPoiPage === totalPoiPages}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                              currentPoiPage === totalPoiPages
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            }`}
+                          >
+                            Next
+                          </button>
                         </div>
                       )}
                     </div>
