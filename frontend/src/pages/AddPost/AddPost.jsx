@@ -5,10 +5,7 @@ import { MapPin, X, Image as ImageIcon, Plus, Upload } from "lucide-react";
 import Header from "../../components/Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext";
 import usePageTitle from "../../services/usePageTitle";
-
-// API base URL - should be consistent with other components
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+import { postApi } from "../../services/api";
 
 const AddPost = () => {
   usePageTitle("Add Post");
@@ -169,31 +166,23 @@ const AddPost = () => {
     setLoading(true);
 
     try {
-      // Create form data for post submission
-      const postData = new FormData();
-      postData.append("title", formData.title);
-      postData.append("description", formData.description);
-      postData.append("category", formData.category);
-
-      // Add all images if provided
-      images.forEach((img, index) => {
-        postData.append(`images`, img.file, img.file.name);
-      });
-
-      // Add location as JSON string - include proper parseFloat to ensure numeric values
-      postData.append(
-        "location",
-        JSON.stringify({
+      // Prepare post data for submission
+      const postData = {
+        ...formData,
+        images: images.map(img => img.file), // Send the files in the data
+        location: {
           latitude: parseFloat(selectedLocation.lat),
           longitude: parseFloat(selectedLocation.lng),
-        })
-      );
+        }
+      };
 
-      // Import and use the posts API service to handle the post creation
-      const { postsApi } = await import("../../services/postsApi.js");
-      const result = await postsApi.createPostWithFiles(postData);
+      // Get token from local storage
+      const token = localStorage.getItem('token');
+      
+      // Use the postApi service to create the post
+      const result = await postApi.createPost(postData, token);
 
-      if (result.status === "success") {
+      if (result.success) {
         // Success - clear form and navigate to success page or home
         setFormData({
           title: '',
@@ -208,23 +197,15 @@ const AddPost = () => {
         setLoading(false);
         navigate("/discover");
       } else {
-        throw new Error(result.message || "Failed to create post");
+        throw new Error(result.error || "Failed to create post");
       }
     } catch (error) {
       console.error("Error creating post:", error);
       console.error("Error details:", error.message, error.stack);
       
-      // Improved error handling to detect when server returns HTML instead of JSON
-      let errorMessage = error.message || "An error occurred while creating the post";
-      
-      // Check if the error message looks like HTML (which suggests the server returned an error page)
-      if (errorMessage.includes("<!DOCTYPE html") || errorMessage.includes("<html")) {
-        errorMessage = "Server error occurred, please try again later.";
-      }
-      
       setErrors((prev) => ({
         ...prev,
-        submit: errorMessage,
+        submit: error.message || "An error occurred while creating the post",
       }));
       
       // Remove loading state so user can try again

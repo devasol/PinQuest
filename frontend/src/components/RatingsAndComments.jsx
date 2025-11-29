@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-
-// API base URL - adjust based on your backend URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+import React, { useState, useEffect } from 'react';
+import { postApi } from '../services/api';
 
 const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
   const [rating, setRating] = useState(0);
@@ -64,156 +62,130 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
           }
         }
 
-        // Create headers with auth token if available
-        const headers = {
-          'Content-Type': 'application/json',
-        };
-        
+        // Get token from local storage
         const token = localStorage.getItem('token');
-        if (token) {
-          const trimmedToken = token.trim(); // Ensure token is properly trimmed
-          // Validate token format (basic JWT format check)
-          if (trimmedToken && trimmedToken.split('.').length === 3) {
-            headers['Authorization'] = `Bearer ${trimmedToken}`;
-          } else {
-            console.error('Invalid token format in RatingsAndComments');
-            localStorage.removeItem('token');
-          }
-        }
-
-        // Fetch the entire post to get any existing ratings or comments
-        const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
-          headers
-        });
         
-        if (response.ok) {
-          const postData = await response.json();
+        // Fetch the entire post to get any existing ratings or comments
+        const result = await postApi.getPostById(postId, token);
+        
+        if (result.success) {
+          const post = result.data;
           
-          if (postData.status === 'success' && postData.data) {
-            const post = postData.data;
+          let average = 0; // Initialize to 0 to ensure it's defined
+          let total = 0;
+          let currentUserRating = null; // Initialize here to avoid 'not defined' error
+          
+          // Extract ratings data if it exists in the post
+          if (post.ratings) {
+            const ratings = post.ratings;
+            total = ratings.length;
+            average = total > 0 ? ratings.reduce((acc, r) => acc + r.rating, 0) / total : 0;
             
-            let average = 0; // Initialize to 0 to ensure it's defined
-            let total = 0;
-            let currentUserRating = null; // Initialize here to avoid 'not defined' error
-            
-            // Extract ratings data if it exists in the post
-            if (post.ratings) {
-              const ratings = post.ratings;
-              total = ratings.length;
-              average = total > 0 ? ratings.reduce((acc, r) => acc + r.rating, 0) / total : 0;
-              
-              // Check if current user has rated this post
-              if (authState && user && post.ratings && Array.isArray(post.ratings)) {
-                const userRatingObj = post.ratings.find(r => {
-                  // Check if rating.user is an object with _id or just the ObjectId string
-                  const ratingUserId = typeof r.user === 'object' ? r.user._id : r.user;
-                  const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
-                  return ratingUserId && currentUserId && ratingUserId.toString() === currentUserId.toString();
-                });
-                
-                if (userRatingObj) {
-                  currentUserRating = userRatingObj.rating;
-                  setRating(currentUserRating); // Set the rating state to the user's existing rating
-                }
-              }
-              
-              setAverageRating(average);
-              setTotalRatings(total);
-              setUserRating(currentUserRating);
-            } else if (post.averageRating !== undefined) {
-              setAverageRating(post.averageRating);
-              setTotalRatings(post.totalRatings || 0);
-              // We don't have user-specific rating data here, so we need to fetch it separately
-              // or rely on local storage
-              average = post.averageRating;
-              total = post.totalRatings || 0;
-            }
-
-            // Extract comments data if it exists in the post - handle different data structures
-            let loadedComments = (post.comments || post.userComments || []).map(comment => {
-              // Check if the current user has liked this comment
-              const hasUserLiked = (comment.likes || []).some(like => {
-                const likeUserId = typeof like.user === 'object' ? like.user._id : like.user;
+            // Check if current user has rated this post
+            if (authState && user && post.ratings && Array.isArray(post.ratings)) {
+              const userRatingObj = post.ratings.find(r => {
+                // Check if rating.user is an object with _id or just the ObjectId string
+                const ratingUserId = typeof r.user === 'object' ? r.user._id : r.user;
                 const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
-                return likeUserId && currentUserId && likeUserId.toString() === currentUserId.toString();
-              }) || false;
-
-              // Check if comment.user is an object with an _id but no name field
-              let processedUser = comment.user;
-              if (comment.user && typeof comment.user === 'object') {
-                // If user object has name fields, use it as is
-                if (comment.user.name || comment.user.displayName) {
-                  processedUser = comment.user;
-                } else if (comment.username) {
-                  // If user object exists but lacks name, but username is available, prioritize username
-                  processedUser = { name: comment.username };
-                } else if (comment.postedBy) {
-                  // Else, use postedBy
-                  processedUser = { name: comment.postedBy };
-                } else {
-                  // Otherwise, try to get a name from the user object
-                  processedUser = {
-                    name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 
-                          (comment.user._id ? `User_${comment.user._id.substring(0, 8)}` : 'Anonymous'),
-                    ...comment.user
-                  };
-                }
-              } else if (!comment.user && (comment.username || comment.postedBy)) {
-                // If no user object but username/postedBy exist, create a simple user object
-                processedUser = { name: comment.username || comment.postedBy };
-              } else if (!comment.user) {
-                // Otherwise, default to anonymous
-                processedUser = { name: 'Anonymous' };
+                return ratingUserId && currentUserId && ratingUserId.toString() === currentUserId.toString();
+              });
+              
+              if (userRatingObj) {
+                currentUserRating = userRatingObj.rating;
+                setRating(currentUserRating); // Set the rating state to the user's existing rating
               }
-              
-              return {
-                ...comment,
-                _id: comment._id || comment.id,
-                text: comment.text || comment.content,
-                user: processedUser,
-                date: comment.date || comment.createdAt || comment.datePosted,
-                likes: comment.likes || [],
-                likesCount: comment.likesCount || (comment.likes && Array.isArray(comment.likes) ? comment.likes.length : 0) || 0,
-                userHasLiked: hasUserLiked // Add the userHasLiked property
-              };
-            });
+            }
             
-            // Apply optimistic updates to the server comments
-            loadedComments = loadedComments.map(comment => {
-              const commentId = comment._id?.toString() || comment.id?.toString();
-              if (!commentId) return comment;
-              
-              let updatedComment = { ...comment };
-              
-              // Apply optimistic like updates if any
-              if (optimisticLikes.has(commentId)) {
-                const optimisticLikeDelta = optimisticLikes.get(commentId);
-                updatedComment.likesCount = (updatedComment.likesCount || 0) + optimisticLikeDelta;
-              }
-              
-              return updatedComment;
-            });
-            
-            setComments(loadedComments);
-            
-            // Store in local storage for persistence
-            const localStorageKey = `post_${postId}_ratings`;
-            
-            // Store fresh server data in localStorage (without optimistic updates to avoid duplication)
-            const dataToStore = {
-              comments: loadedComments,
-              averageRating: average,
-              totalRatings: total,
-              userRating: currentUserRating
-            };
-            localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
-          } else {
-            // Fallback to defaults if no post data
-            setComments([]);
-            setAverageRating(0);
-            setTotalRatings(0);
-            setUserRating(null);
+            setAverageRating(average);
+            setTotalRatings(total);
+            setUserRating(currentUserRating);
+          } else if (post.averageRating !== undefined) {
+            setAverageRating(post.averageRating);
+            setTotalRatings(post.totalRatings || 0);
+            // We don't have user-specific rating data here, so we need to fetch it separately
+            // or rely on local storage
+            average = post.averageRating;
+            total = post.totalRatings || 0;
           }
+
+          // Extract comments data if it exists in the post - handle different data structures
+          let loadedComments = (post.comments || post.userComments || []).map(comment => {
+            // Check if the current user has liked this comment
+            const hasUserLiked = (comment.likes || []).some(like => {
+              const likeUserId = typeof like.user === 'object' ? like.user._id : like.user;
+              const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
+              return likeUserId && currentUserId && likeUserId.toString() === currentUserId.toString();
+            }) || false;
+
+            // Check if comment.user is an object with an _id but no name field
+            let processedUser = comment.user;
+            if (comment.user && typeof comment.user === 'object') {
+              // If user object has name fields, use it as is
+              if (comment.user.name || comment.user.displayName) {
+                processedUser = comment.user;
+              } else if (comment.username) {
+                // If user object exists but lacks name, but username is available, prioritize username
+                processedUser = { name: comment.username };
+              } else if (comment.postedBy) {
+                // Else, use postedBy
+                processedUser = { name: comment.postedBy };
+              } else {
+                // Otherwise, try to get a name from the user object
+                processedUser = {
+                  name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 
+                        (comment.user._id ? `User_${comment.user._id.substring(0, 8)}` : 'Anonymous'),
+                  ...comment.user
+                };
+              }
+            } else if (!comment.user && (comment.username || comment.postedBy)) {
+              // If no user object but username/postedBy exist, create a simple user object
+              processedUser = { name: comment.username || comment.postedBy };
+            } else if (!comment.user) {
+              // Otherwise, default to anonymous
+              processedUser = { name: 'Anonymous' };
+            }
+            
+            return {
+              ...comment,
+              _id: comment._id || comment.id,
+              text: comment.text || comment.content,
+              user: processedUser,
+              date: comment.date || comment.createdAt || comment.datePosted,
+              likes: comment.likes || [],
+              likesCount: comment.likesCount || (comment.likes && Array.isArray(comment.likes) ? comment.likes.length : 0) || 0,
+              userHasLiked: hasUserLiked // Add the userHasLiked property
+            };
+          });
+          
+          // Apply optimistic updates to the server comments
+          loadedComments = loadedComments.map(comment => {
+            const commentId = comment._id?.toString() || comment.id?.toString();
+            if (!commentId) return comment;
+            
+            let updatedComment = { ...comment };
+            
+            // Apply optimistic like updates if any
+            if (optimisticLikes.has(commentId)) {
+              const optimisticLikeDelta = optimisticLikes.get(commentId);
+              updatedComment.likesCount = (updatedComment.likesCount || 0) + optimisticLikeDelta;
+            }
+            
+            return updatedComment;
+          });
+          
+          setComments(loadedComments);
+          
+          // Store in local storage for persistence
+          const localStorageKey = `post_${postId}_ratings`;
+          
+          // Store fresh server data in localStorage (without optimistic updates to avoid duplication)
+          const dataToStore = {
+            comments: loadedComments,
+            averageRating: average,
+            totalRatings: total,
+            userRating: currentUserRating
+          };
+          localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
         } else {
           // If API call fails but we have stored data, continue with that
           if (!storedData) {
@@ -309,68 +281,45 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
 
     setRatingSubmitting(true);
     try {
-      // Create headers with auth token if available
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
       const token = localStorage.getItem('token');
-      if (token) {
-        const trimmedToken = token.trim(); // Ensure token is properly trimmed
-        // Validate token format (basic JWT format check)
-        if (trimmedToken && trimmedToken.split('.').length === 3) {
-          headers['Authorization'] = `Bearer ${trimmedToken}`;
-        } else {
-          console.error('Invalid token format in handleRatingSubmit');
-          localStorage.removeItem('token');
-          throw new Error('Invalid token. Please login again.');
-        }
-      } else {
+      
+      if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      // Try to submit the rating to backend
-      const response = await fetch(`${API_BASE_URL}/posts/${postId}/ratings`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ rating }),
-      });
+      // Submit the rating using the API service
+      const result = await postApi.addRating(postId, { rating }, token);
 
-      let newAverageRating, newTotalRatings;
+      if (result.success) {
+        const newAverageRating = result.data.averageRating || rating;
+        const newTotalRatings = result.data.totalRatings || 1;
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-          newAverageRating = data.averageRating || rating;
-          newTotalRatings = data.totalRatings || 1;
-        } else {
-          // If backend response format is unexpected, calculate locally
-          newTotalRatings = totalRatings + 1;
-          newAverageRating = ((averageRating * totalRatings) + rating) / newTotalRatings;
-        }
+        // Update state
+        setAverageRating(newAverageRating);
+        setTotalRatings(newTotalRatings);
+        setUserRating(rating); // Set the user's current rating
+        setError(null);
+
+        // Save to local storage to persist after refresh
+        const localStorageKey = `post_${postId}_ratings`;
+        const currentStored = JSON.parse(localStorage.getItem(localStorageKey) || '{}');
+        const dataToStore = {
+          comments: currentStored.comments || comments,
+          averageRating: newAverageRating,
+          totalRatings: newTotalRatings,
+          userRating: rating
+        };
+        localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
       } else {
-        // If the backend API doesn't exist or failed, calculate locally
-        newTotalRatings = totalRatings + 1;
-        newAverageRating = ((averageRating * totalRatings) + rating) / newTotalRatings;
+        // If submission fails, calculate locally
+        const newTotalRatings = totalRatings + 1;
+        const newAverageRating = ((averageRating * totalRatings) + rating) / newTotalRatings;
+        
+        setAverageRating(newAverageRating);
+        setTotalRatings(newTotalRatings);
+        setUserRating(rating);
+        setError(null);
       }
-
-      // Update state
-      setAverageRating(newAverageRating);
-      setTotalRatings(newTotalRatings);
-      setUserRating(rating); // Set the user's current rating
-      setError(null);
-
-      // Save to local storage to persist after refresh
-      const localStorageKey = `post_${postId}_ratings`;
-      const currentStored = JSON.parse(localStorage.getItem(localStorageKey) || '{}');
-      const dataToStore = {
-        comments: currentStored.comments || comments,
-        averageRating: newAverageRating,
-        totalRatings: newTotalRatings,
-        userRating: rating
-      };
-      localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
 
     } catch (err) {
       setError(err.message || 'Failed to submit rating');
@@ -389,66 +338,34 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
 
     setCommentSubmitting(true);
     try {
-      // Create headers with auth token if available
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
       const token = localStorage.getItem('token');
-      if (token) {
-        const trimmedToken = token.trim(); // Ensure token is properly trimmed
-        // Validate token format (basic JWT format check)
-        if (trimmedToken && trimmedToken.split('.').length === 3) {
-          headers['Authorization'] = `Bearer ${trimmedToken}`;
-        } else {
-          console.error('Invalid token format in handleCommentSubmit');
-          localStorage.removeItem('token');
-          throw new Error('Invalid token. Please login again.');
-        }
-      } else {
+      
+      if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      // Try to submit the comment to backend
-      const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ 
-          content: comment.trim(),
-        }),
-      });
+      // Submit the comment using the API service
+      const result = await postApi.addComment(postId, { 
+        content: comment.trim(),
+      }, token);
 
       let newComment;
       let updatedComments;
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.status === 'success' && data.comment) {
-          // Add the new comment to the list from response - handle different data structures
-          newComment = {
-            ...data.comment,
-            _id: data.comment._id || data.comment.id,
-            text: data.comment.text || data.comment.content,
-            user: data.comment.user || { name: user.name || user.displayName || user.email?.split('@')[0] },
-            date: data.comment.date || data.comment.createdAt || data.comment.datePosted || new Date().toISOString(),
-            likesCount: data.comment.likesCount || (data.comment.likes && Array.isArray(data.comment.likes) ? data.comment.likes.length : 0) || 0,
-            likes: data.comment.likes || [],
-            userHasLiked: false // New comment by user hasn't been liked by the same user yet
-          };
-        } else {
-          // If backend response format is unexpected, create locally
-          newComment = {
-            _id: `new_comment_${Date.now()}`,
-            text: comment.trim(),
-            user: { name: user.name || user.displayName || user.email?.split('@')[0] },
-            date: new Date().toISOString(),
-            likesCount: 0,
-            likes: []
-          };
-        }
+      if (result.success && result.data && result.data.comment) {
+        // Add the new comment to the list from response - handle different data structures
+        newComment = {
+          ...result.data.comment,
+          _id: result.data.comment._id || result.data.comment.id,
+          text: result.data.comment.text || result.data.comment.content,
+          user: result.data.comment.user || { name: user.name || user.displayName || user.email?.split('@')[0] },
+          date: result.data.comment.date || result.data.comment.createdAt || result.data.comment.datePosted || new Date().toISOString(),
+          likesCount: result.data.comment.likesCount || (result.data.comment.likes && Array.isArray(result.data.comment.likes) ? result.data.comment.likes.length : 0) || 0,
+          likes: result.data.comment.likes || [],
+          userHasLiked: false // New comment by user hasn't been liked by the same user yet
+        };
       } else {
-        // If the backend API doesn't exist or failed, create locally
+        // If submission fails, create locally
         newComment = {
           _id: `new_comment_${Date.now()}`,
           text: comment.trim(),
@@ -492,149 +409,129 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
   const refreshComments = async () => {
     if (postId) {
       try {
-        // Create headers with auth token if available
-        const headers = {
-          'Content-Type': 'application/json',
-        };
-        
         const token = localStorage.getItem('token');
-        if (token) {
-          const trimmedToken = token.trim();
-          if (trimmedToken && trimmedToken.split('.').length === 3) {
-            headers['Authorization'] = `Bearer ${trimmedToken}`;
-          } else {
-            console.error('Invalid token format in refreshComments');
-            localStorage.removeItem('token');
-          }
-        }
-
-        // Fetch the entire post to get updated ratings and comments
-        const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
-          headers
-        });
         
-        if (response.ok) {
-          const postData = await response.json();
+        // Fetch the entire post to get updated ratings and comments
+        const result = await postApi.getPostById(postId, token);
+        
+        if (result.success && result.data) {
+          const post = result.data;
           
-          if (postData.status === 'success' && postData.data) {
-            const post = postData.data;
+          let average = 0; // Initialize to 0 to ensure it's defined
+          let total = 0;
+          let currentUserRating = null; // Initialize here to avoid 'not defined' error
+          
+          // Extract ratings data if it exists in the post
+          if (post.ratings) {
+            const ratings = post.ratings;
+            total = ratings.length;
+            average = total > 0 ? ratings.reduce((acc, r) => acc + r.rating, 0) / total : 0;
             
-            let average = 0; // Initialize to 0 to ensure it's defined
-            let total = 0;
-            let currentUserRating = null; // Initialize here to avoid 'not defined' error
-            
-            // Extract ratings data if it exists in the post
-            if (post.ratings) {
-              const ratings = post.ratings;
-              total = ratings.length;
-              average = total > 0 ? ratings.reduce((acc, r) => acc + r.rating, 0) / total : 0;
-              
-              // Check if current user has rated this post
-              if (authState && user && post.ratings && Array.isArray(post.ratings)) {
-                const userRatingObj = post.ratings.find(r => {
-                  // Check if rating.user is an object with _id or just the ObjectId string
-                  const ratingUserId = typeof r.user === 'object' ? r.user._id : r.user;
-                  const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
-                  return ratingUserId && currentUserId && ratingUserId.toString() === currentUserId.toString();
-                });
-                
-                if (userRatingObj) {
-                  currentUserRating = userRatingObj.rating;
-                  setRating(currentUserRating); // Set the rating state to the user's existing rating
-                }
-              }
-              
-              setAverageRating(average);
-              setTotalRatings(total);
-              setUserRating(currentUserRating);
-            } else if (post.averageRating !== undefined) {
-              setAverageRating(post.averageRating);
-              setTotalRatings(post.totalRatings || 0);
-              // We don't have user-specific rating data here, so we need to fetch it separately
-              // or rely on local storage
-              average = post.averageRating;
-              total = post.totalRatings || 0;
-            }
-
-            // Extract comments data if it exists in the post - handle different data structures
-            let loadedComments = (post.comments || post.userComments || []).map(comment => {
-              // Check if the current user has liked this comment
-              const hasUserLiked = (comment.likes || []).some(like => {
-                const likeUserId = typeof like.user === 'object' ? like.user._id : like.user;
+            // Check if current user has rated this post
+            if (authState && user && post.ratings && Array.isArray(post.ratings)) {
+              const userRatingObj = post.ratings.find(r => {
+                // Check if rating.user is an object with _id or just the ObjectId string
+                const ratingUserId = typeof r.user === 'object' ? r.user._id : r.user;
                 const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
-                return likeUserId && currentUserId && likeUserId.toString() === currentUserId.toString();
-              }) || false;
-
-              // Check if comment.user is an object with an _id but no name field
-              let processedUser = comment.user;
-              if (comment.user && typeof comment.user === 'object') {
-                // If user object has name fields, use it as is
-                if (comment.user.name || comment.user.displayName) {
-                  processedUser = comment.user;
-                } else if (comment.username) {
-                  // If user object exists but lacks name, but username is available, prioritize username
-                  processedUser = { name: comment.username };
-                } else if (comment.postedBy) {
-                  // Else, use postedBy
-                  processedUser = { name: comment.postedBy };
-                } else {
-                  // Otherwise, try to get a name from the user object
-                  processedUser = {
-                    name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 
-                          (comment.user._id ? `User_${comment.user._id.substring(0, 8)}` : 'Anonymous'),
-                    ...comment.user
-                  };
-                }
-              } else if (!comment.user && (comment.username || comment.postedBy)) {
-                // If no user object but username/postedBy exist, create a simple user object
-                processedUser = { name: comment.username || comment.postedBy };
-              } else if (!comment.user) {
-                // Otherwise, default to anonymous
-                processedUser = { name: 'Anonymous' };
+                return ratingUserId && currentUserId && ratingUserId.toString() === currentUserId.toString();
+              });
+              
+              if (userRatingObj) {
+                currentUserRating = userRatingObj.rating;
+                setRating(currentUserRating); // Set the rating state to the user's existing rating
               }
-              
-              return {
-                ...comment,
-                _id: comment._id || comment.id,
-                text: comment.text || comment.content,
-                user: processedUser,
-                date: comment.date || comment.createdAt || comment.datePosted,
-                likes: comment.likes || [],
-                likesCount: comment.likesCount || (comment.likes && Array.isArray(comment.likes) ? comment.likes.length : 0) || 0,
-                userHasLiked: hasUserLiked // Add the userHasLiked property
-              };
-            });
+            }
             
-            // Apply optimistic updates to the server comments
-            loadedComments = loadedComments.map(comment => {
-              const commentId = comment._id?.toString() || comment.id?.toString();
-              if (!commentId) return comment;
-              
-              let updatedComment = { ...comment };
-              
-              // Apply optimistic like updates if any
-              if (optimisticLikes.has(commentId)) {
-                const optimisticLikeDelta = optimisticLikes.get(commentId);
-                updatedComment.likesCount = (updatedComment.likesCount || 0) + optimisticLikeDelta;
-              }
-              
-              return updatedComment;
-            });
-            
-            setComments(loadedComments);
-            
-            // Store in local storage for persistence
-            const localStorageKey = `post_${postId}_ratings`;
-            
-            // Store fresh server data in localStorage (without optimistic updates to avoid duplication)
-            const dataToStore = {
-              comments: loadedComments,
-              averageRating: average,
-              totalRatings: total,
-              userRating: currentUserRating
-            };
-            localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
+            setAverageRating(average);
+            setTotalRatings(total);
+            setUserRating(currentUserRating);
+          } else if (post.averageRating !== undefined) {
+            setAverageRating(post.averageRating);
+            setTotalRatings(post.totalRatings || 0);
+            // We don't have user-specific rating data here, so we need to fetch it separately
+            // or rely on local storage
+            average = post.averageRating;
+            total = post.totalRatings || 0;
           }
+
+          // Extract comments data if it exists in the post - handle different data structures
+          let loadedComments = (post.comments || post.userComments || []).map(comment => {
+            // Check if the current user has liked this comment
+            const hasUserLiked = (comment.likes || []).some(like => {
+              const likeUserId = typeof like.user === 'object' ? like.user._id : like.user;
+              const currentUserId = typeof user === 'object' ? (user._id || user.id) : user;
+              return likeUserId && currentUserId && likeUserId.toString() === currentUserId.toString();
+            }) || false;
+
+            // Check if comment.user is an object with an _id but no name field
+            let processedUser = comment.user;
+            if (comment.user && typeof comment.user === 'object') {
+              // If user object has name fields, use it as is
+              if (comment.user.name || comment.user.displayName) {
+                processedUser = comment.user;
+              } else if (comment.username) {
+                // If user object exists but lacks name, but username is available, prioritize username
+                processedUser = { name: comment.username };
+              } else if (comment.postedBy) {
+                // Else, use postedBy
+                processedUser = { name: comment.postedBy };
+              } else {
+                // Otherwise, try to get a name from the user object
+                processedUser = {
+                  name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 
+                        (comment.user._id ? `User_${comment.user._id.substring(0, 8)}` : 'Anonymous'),
+                  ...comment.user
+                };
+              }
+            } else if (!comment.user && (comment.username || comment.postedBy)) {
+              // If no user object but username/postedBy exist, create a simple user object
+              processedUser = { name: comment.username || comment.postedBy };
+            } else if (!comment.user) {
+              // Otherwise, default to anonymous
+              processedUser = { name: 'Anonymous' };
+            }
+            
+            return {
+              ...comment,
+              _id: comment._id || comment.id,
+              text: comment.text || comment.content,
+              user: processedUser,
+              date: comment.date || comment.createdAt || comment.datePosted,
+              likes: comment.likes || [],
+              likesCount: comment.likesCount || (comment.likes && Array.isArray(comment.likes) ? comment.likes.length : 0) || 0,
+              userHasLiked: hasUserLiked // Add the userHasLiked property
+            };
+          });
+          
+          // Apply optimistic updates to the server comments
+          loadedComments = loadedComments.map(comment => {
+            const commentId = comment._id?.toString() || comment.id?.toString();
+            if (!commentId) return comment;
+            
+            let updatedComment = { ...comment };
+            
+            // Apply optimistic like updates if any
+            if (optimisticLikes.has(commentId)) {
+              const optimisticLikeDelta = optimisticLikes.get(commentId);
+              updatedComment.likesCount = (updatedComment.likesCount || 0) + optimisticLikeDelta;
+            }
+            
+            return updatedComment;
+          });
+          
+          setComments(loadedComments);
+          
+          // Store in local storage for persistence
+          const localStorageKey = `post_${postId}_ratings`;
+          
+          // Store fresh server data in localStorage (without optimistic updates to avoid duplication)
+          const dataToStore = {
+            comments: loadedComments,
+            averageRating: average,
+            totalRatings: total,
+            userRating: currentUserRating
+          };
+          localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
         }
       } catch (err) {
         console.error('Error refreshing comments:', err);

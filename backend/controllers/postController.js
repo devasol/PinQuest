@@ -5,7 +5,8 @@ const {
   createCommentNotification,
 } = require("../utils/notificationUtils");
 const { emitToUser, emitToPost, emitGlobal } = require("../utils/socketUtils");
-const fs = require("fs");
+const { processUploadedImages, deleteLocalImages } = require("../utils/imageUtils");
+const { sendSuccessResponse, sendErrorResponse } = require("../utils/errorHandler");
 const path = require("path");
 
 const createPost = async (req, res) => {
@@ -28,19 +29,13 @@ const createPost = async (req, res) => {
         typeof parsedLocation.latitude === "undefined" ||
         typeof parsedLocation.longitude === "undefined"
       ) {
-        return res.status(400).json({
-          status: "fail",
-          message: "Location with latitude and longitude is required",
-        });
+        return sendErrorResponse(res, 400, "Location with latitude and longitude is required");
       }
     }
 
     // Verify that the user is authenticated
     if (!req.user) {
-      return res.status(401).json({
-        status: "fail",
-        message: "Authentication required to create a post",
-      });
+      return sendErrorResponse(res, 401, "Authentication required to create a post");
     }
 
     console.log(
@@ -50,80 +45,8 @@ const createPost = async (req, res) => {
       req.user.name
     );
 
-    // Handle image uploads (support multiple images uploaded under field 'images')
-    let image = null;
-    let imagesArr = [];
-
-    // If multer saved multiple files they will be in req.files
-    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
-      try {
-        for (const f of req.files) {
-          try {
-            // If file object contains a remote URL (kept for backward compat), use it
-            if (f && typeof f === "object") {
-              if (
-                f.secure_url ||
-                f.url ||
-                f.location ||
-                (f.path && String(f.path).startsWith("http"))
-              ) {
-                const url = f.secure_url || f.url || f.path || f.location;
-                const publicId =
-                  f.public_id || f.publicId || f.filename || null;
-                imagesArr.push({ url, publicId });
-                continue;
-              }
-
-              // If multer wrote a local file to disk, use that local path and construct an accessible URL
-              if (f.path && !String(f.path).startsWith("http")) {
-                const filename = path.basename(f.path);
-                const url = `${req.protocol}://${req.get(
-                  "host"
-                )}/uploads/${filename}`;
-                imagesArr.push({ url, filename, localPath: f.path });
-                continue;
-              }
-            }
-
-            // Unsupported file object
-            return res.status(400).json({
-              status: "fail",
-              message: "Unsupported file upload format",
-            });
-          } catch (uploadError) {
-            console.error("Error processing uploaded file:", uploadError);
-            const msg =
-              uploadError && uploadError.message
-                ? uploadError.message
-                : String(uploadError);
-            return res.status(500).json({
-              status: "error",
-              message: `Failed to process uploaded image: ${msg}`,
-            });
-          }
-        }
-
-        // Keep first image in `image` for backward compatibility
-        if (imagesArr.length > 0) image = imagesArr[0];
-      } catch (err) {
-        console.error("Error processing uploaded images:", err);
-        const msg = err && err.message ? err.message : String(err);
-        return res
-          .status(400)
-          .json({ status: "fail", message: `Error uploading images: ${msg}` });
-      }
-    } else if (req.file) {
-      // Single-file upload handled by multer.diskStorage
-      if (req.file.path) {
-        const filename = path.basename(req.file.path);
-        const url = `${req.protocol}://${req.get("host")}/uploads/${filename}`;
-        image = { url, filename, localPath: req.file.path };
-        imagesArr = image ? [image] : [];
-      }
-    } else if (req.body.image) {
-      // For backward compatibility - if image is provided in request body as a URL
-      image = { url: req.body.image, publicId: null };
-    }
+    // Process uploaded images using utility
+    const { image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host"));
 
     // Use authenticated user ID for postedBy (from middleware)
     // This ensures security by preventing users from impersonating others
@@ -195,10 +118,7 @@ const createPost = async (req, res) => {
       });
     }
 
-    res.status(201).json({
-      status: "success",
-      data: populatedPost,
-    });
+    sendSuccessResponse(res, 201, populatedPost);
   } catch (error) {
     console.error("Error creating post:", error);
     console.error("Error details:", error.message, error.code, error.name);
@@ -206,17 +126,10 @@ const createPost = async (req, res) => {
     // Handle specific MongoDB errors
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({
-        status: "fail",
-        message: "Validation error",
-        errors,
-      });
+      return sendErrorResponse(res, 400, "Validation error", errors);
     }
 
-    res.status(500).json({
-      status: "error",
-      message: error.message,
-    });
+    sendErrorResponse(res, 500, error.message);
   }
 };
 
@@ -288,20 +201,11 @@ const getPostById = async (req, res) => {
       "name email avatar"
     ); // Populate the user data for the poster
     if (!post) {
-      return res.status(404).json({
-        status: "fail",
-        message: "Post not found",
-      });
+      return sendErrorResponse(res, 404, "Post not found");
     }
-    res.status(200).json({
-      status: "success",
-      data: post,
-    });
+    sendSuccessResponse(res, 200, post);
   } catch (error) {
-    res.status(400).json({
-      status: "fail",
-      message: error.message,
-    });
+    sendErrorResponse(res, 400, error.message);
   }
 };
 
@@ -312,104 +216,27 @@ const updatePost = async (req, res) => {
     // Find the existing post
     const existingPost = await Post.findById(req.params.id);
     if (!existingPost) {
-      return res.status(404).json({
-        status: "fail",
-        message: "Post not found",
-      });
+      return sendErrorResponse(res, 404, "Post not found");
     }
 
     // Check if the user is authorized to update this post
     if (existingPost.postedBy.toString() !== req.user._id.toString()) {
-      return res.status(401).json({
-        status: "fail",
-        message: "Not authorized to update this post",
-      });
+      return sendErrorResponse(res, 401, "Not authorized to update this post");
     }
 
     console.log("Updating post:", req.params.id, "by user:", req.user._id);
 
-    // Handle image upload if present
-    // Handle image(s) update
-    let image = existingPost.image; // Keep existing primary image by default
-    let imagesArr =
-      existingPost.images && existingPost.images.length
-        ? existingPost.images.slice()
-        : [];
-
+    // Delete existing images if new images are being uploaded
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
       // Delete any existing local files referenced by the post prior to replacing
-      if (Array.isArray(imagesArr) && imagesArr.length > 0) {
-        for (const img of imagesArr) {
-          try {
-            if (img && img.localPath) {
-              await fs.promises.unlink(img.localPath).catch(() => {});
-            }
-            if (img && img.filename && !img.localPath) {
-              const p = path.join(__dirname, "..", "uploads", img.filename);
-              await fs.promises.unlink(p).catch(() => {});
-            }
-          } catch (e) {
-            console.error(
-              "Error deleting existing local image during update",
-              e
-            );
-          }
-        }
-      }
-
-      imagesArr = [];
-      try {
-        for (const f of req.files) {
-          try {
-            if (f && f.path && !String(f.path).startsWith("http")) {
-              const filename = path.basename(f.path);
-              const url = `${req.protocol}://${req.get(
-                "host"
-              )}/uploads/${filename}`;
-              imagesArr.push({ url, filename, localPath: f.path });
-            } else if (f && (f.secure_url || f.url || f.location)) {
-              const url = f.secure_url || f.url || f.path || f.location;
-              imagesArr.push({
-                url,
-                publicId: f.public_id || f.publicId || null,
-              });
-            } else {
-              console.warn("Skipping unsupported file object during update", f);
-            }
-          } catch (uploadError) {
-            console.error(
-              "Error handling uploaded file during update:",
-              uploadError
-            );
-          }
-        }
-        image = imagesArr.length > 0 ? imagesArr[0] : null;
-      } catch (err) {
-        console.error("Error processing uploaded images during update:", err);
-        return res
-          .status(400)
-          .json({ status: "fail", message: "Error uploading images" });
-      }
+      await deleteLocalImages(existingPost.images, path.join(__dirname, "..", "uploads"));
     } else if (req.body.image === null || req.body.image === "") {
       // If image is explicitly set to null or empty string, clear it
-      // Delete all existing local images
-      if (Array.isArray(imagesArr) && imagesArr.length > 0) {
-        for (const img of imagesArr) {
-          try {
-            if (img && img.localPath) {
-              await fs.promises.unlink(img.localPath).catch(() => {});
-            } else if (img && img.filename) {
-              const p = path.join(__dirname, "..", "uploads", img.filename);
-              await fs.promises.unlink(p).catch(() => {});
-            }
-          } catch (e) {
-            console.error("Error deleting existing local image", e);
-          }
-        }
-      }
-      image = null;
-      imagesArr = [];
+      await deleteLocalImages(existingPost.images, path.join(__dirname, "..", "uploads"));
     }
+
+    // Process uploaded images using utility
+    const { image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host"));
 
     // Prepare the update object
     // Don't allow changing the postedBy field - it should always remain as the original creator
@@ -427,10 +254,7 @@ const updatePost = async (req, res) => {
         typeof location.latitude === "undefined" ||
         typeof location.longitude === "undefined"
       ) {
-        return res.status(400).json({
-          status: "fail",
-          message: "Location with latitude and longitude is required",
-        });
+        return sendErrorResponse(res, 400, "Location with latitude and longitude is required");
       }
       updateData.location = {
         type: "Point",
@@ -452,10 +276,7 @@ const updatePost = async (req, res) => {
 
     console.log("Post updated successfully:", updatedPost._id);
 
-    res.status(200).json({
-      status: "success",
-      data: updatedPost,
-    });
+    sendSuccessResponse(res, 200, updatedPost);
   } catch (error) {
     console.error("Error updating post:", error);
     console.error("Error details:", error.message, error.code, error.name);
@@ -463,17 +284,10 @@ const updatePost = async (req, res) => {
     // Handle specific MongoDB errors
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({
-        status: "fail",
-        message: "Validation error",
-        errors,
-      });
+      return sendErrorResponse(res, 400, "Validation error", errors);
     }
 
-    res.status(500).json({
-      status: "error",
-      message: error.message,
-    });
+    sendErrorResponse(res, 500, error.message);
   }
 };
 
@@ -481,46 +295,21 @@ const deletePost = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
     if (!post) {
-      return res.status(404).json({
-        status: "fail",
-        message: "Post not found",
-      });
+      return sendErrorResponse(res, 404, "Post not found");
     }
 
     // Check if the user is authorized to delete this post
     if (post.postedBy.toString() !== req.user._id.toString()) {
-      return res.status(401).json({
-        status: "fail",
-        message: "Not authorized to delete this post",
-      });
+      return sendErrorResponse(res, 401, "Not authorized to delete this post");
     }
 
     console.log("Deleting post:", req.params.id, "by user:", req.user._id);
 
-    // If the post has images stored locally, delete them from disk
-    if (Array.isArray(post.images) && post.images.length > 0) {
-      for (const img of post.images) {
-        try {
-          if (img && img.localPath) {
-            await fs.promises.unlink(img.localPath).catch(() => {});
-          } else if (img && img.filename) {
-            const p = path.join(__dirname, "..", "uploads", img.filename);
-            await fs.promises.unlink(p).catch(() => {});
-          }
-        } catch (e) {
-          console.error("Error deleting local image during post deletion", e);
-        }
-      }
-    } else if (post.image && post.image.localPath) {
+    // Delete local images if they exist
+    await deleteLocalImages(post.images, path.join(__dirname, "..", "uploads"));
+    if (post.image && post.image.localPath) {
       // Fallback for posts using legacy single image field stored locally
-      try {
-        await fs.promises.unlink(post.image.localPath).catch(() => {});
-      } catch (e) {
-        console.error(
-          "Error deleting legacy local image during post deletion",
-          e
-        );
-      }
+      await deleteLocalImages([post.image], path.join(__dirname, "..", "uploads"));
     }
 
     await Post.findByIdAndDelete(req.params.id);
@@ -536,18 +325,12 @@ const deletePost = async (req, res) => {
       });
     }
 
-    res.status(204).json({
-      status: "success",
-      data: null,
-    });
+    sendSuccessResponse(res, 204, null);
   } catch (error) {
     console.error("Error deleting post:", error);
     console.error("Error details:", error.message, error.code, error.name);
 
-    res.status(500).json({
-      status: "error",
-      message: error.message,
-    });
+    sendErrorResponse(res, 500, error.message);
   }
 };
 
@@ -562,10 +345,7 @@ const likePost = async (req, res) => {
     );
 
     if (!post) {
-      return res.status(404).json({
-        status: "fail",
-        message: "Post not found",
-      });
+      return sendErrorResponse(res, 404, "Post not found");
     }
 
     // Check if user already liked the post
@@ -574,10 +354,7 @@ const likePost = async (req, res) => {
     );
 
     if (alreadyLiked) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Post already liked",
-      });
+      return sendErrorResponse(res, 400, "Post already liked");
     }
 
     // Add user to likes array
@@ -633,19 +410,13 @@ const likePost = async (req, res) => {
       }
     }
 
-    res.status(200).json({
-      status: "success",
-      data: {
-        postId: post._id,
-        likes: post.likes,
-        likesCount: post.likesCount,
-      },
+    sendSuccessResponse(res, 200, {
+      postId: post._id,
+      likes: post.likes,
+      likesCount: post.likesCount,
     });
   } catch (error) {
-    res.status(400).json({
-      status: "fail",
-      message: error.message,
-    });
+    sendErrorResponse(res, 400, error.message);
   }
 };
 
@@ -657,10 +428,7 @@ const unlikePost = async (req, res) => {
     const post = await Post.findById(req.params.id);
 
     if (!post) {
-      return res.status(404).json({
-        status: "fail",
-        message: "Post not found",
-      });
+      return sendErrorResponse(res, 404, "Post not found");
     }
 
     // Check if user already liked the post
@@ -669,10 +437,7 @@ const unlikePost = async (req, res) => {
     );
 
     if (!alreadyLiked) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Post has not been liked yet",
-      });
+      return sendErrorResponse(res, 400, "Post has not been liked yet");
     }
 
     // Remove user from likes array
@@ -715,19 +480,13 @@ const unlikePost = async (req, res) => {
       });
     }
 
-    res.status(200).json({
-      status: "success",
-      data: {
-        postId: post._id,
-        likes: post.likes,
-        likesCount: post.likesCount,
-      },
+    sendSuccessResponse(res, 200, {
+      postId: post._id,
+      likes: post.likes,
+      likesCount: post.likesCount,
     });
   } catch (error) {
-    res.status(400).json({
-      status: "fail",
-      message: error.message,
-    });
+    sendErrorResponse(res, 400, error.message);
   }
 };
 
@@ -835,30 +594,28 @@ const addComment = async (req, res) => {
 
     // Validate input
     if (!text) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Comment text is required",
-      });
+      return sendErrorResponse(res, 400, "Comment text is required");
     }
 
-    const post = await Post.findById(postId).populate("postedBy", "_id");
+    const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({
-        status: "fail",
-        message: "Post not found",
-      });
+      return sendErrorResponse(res, 404, "Post not found");
+    }
+
+    // Ensure comments array exists
+    if (!post.comments) {
+      post.comments = [];
     }
 
     // Check if the user has already commented on this post
-    const existingCommentIndex = post.comments.findIndex(
-      (comment) => comment.user.toString() === req.user._id.toString()
-    );
+    const existingCommentIndex = post.comments && post.comments.findIndex 
+      ? post.comments.findIndex(
+          (comment) => comment.user.toString() === req.user._id.toString()
+        )
+      : -1;
 
     if (existingCommentIndex !== -1) {
-      return res.status(400).json({
-        status: "fail",
-        message: "User can only leave one comment per post",
-      });
+      return sendErrorResponse(res, 400, "User can only leave one comment per post");
     }
 
     // Create new comment
@@ -876,7 +633,7 @@ const addComment = async (req, res) => {
         userId: req.user._id,
         action: 'commented on post',
         targetType: 'comment',
-        targetId: addedComment._id || newComment._id, // This is tricky - we don't have the comment ID yet
+        targetId: newComment._id, // Using newComment._id which will be set by MongoDB
         targetTitle: text.substring(0, 50) + (text.length > 50 ? '...' : ''), // First 50 chars of comment
         metadata: {
           commentText: text,
@@ -924,18 +681,12 @@ const addComment = async (req, res) => {
       });
     }
 
-    res.status(201).json({
-      status: "success",
-      data: {
-        comment: addedComment,
-      },
+    sendSuccessResponse(res, 201, {
+      comment: addedComment,
     });
   } catch (error) {
     console.error("Error adding comment:", error);
-    res.status(500).json({
-      status: "error",
-      message: error.message,
-    });
+    sendErrorResponse(res, 500, error.message);
   }
 };
 
@@ -1119,27 +870,26 @@ const likeComment = async (req, res) => {
 
     const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({
-        status: "fail",
-        message: "Post not found",
-      });
+      return sendErrorResponse(res, 404, "Post not found");
     }
 
-    // Find the comment index
-    const commentIndex = post.comments.findIndex(c => c._id.toString() === commentId);
+    // Find the comment index - ensure comments exist before calling findIndex
+    const commentIndex = post.comments && post.comments.findIndex 
+      ? post.comments.findIndex(c => c._id.toString() === commentId)
+      : -1;
+      
     if (commentIndex === -1) {
-      return res.status(404).json({
-        status: "fail",
-        message: "Comment not found",
-      });
+      return sendErrorResponse(res, 404, "Comment not found");
     }
 
     const comment = post.comments[commentIndex];
 
-    // Check if user already liked this comment
-    const userLikeIndex = comment.likes.findIndex(
-      (like) => like.user.toString() === req.user._id.toString()
-    );
+    // Check if user already liked this comment - ensure likes array exists
+    const userLikeIndex = comment.likes && comment.likes.findIndex
+      ? comment.likes.findIndex(
+          (like) => like.user.toString() === req.user._id.toString()
+        )
+      : -1;
 
     if (userLikeIndex !== -1) {
       // User has already liked, so remove the like (toggle off)
@@ -1165,18 +915,12 @@ const likeComment = async (req, res) => {
 
     const updatedComment = updatedPost.comments.id(commentId);
 
-    res.status(200).json({
-      status: "success",
-      data: {
-        comment: updatedComment,
-      },
+    sendSuccessResponse(res, 200, {
+      comment: updatedComment,
     });
   } catch (error) {
     console.error("Error liking comment:", error);
-    res.status(500).json({
-      status: "error",
-      message: error.message,
-    });
+    sendErrorResponse(res, 500, error.message);
   }
 };
 
@@ -1500,44 +1244,19 @@ const deletePostByAdmin = async (req, res) => {
   try {
     // Check if user is admin (this should be handled by admin middleware)
     if (req.user.role !== 'admin') {
-      return res.status(403).json({
-        status: 'fail',
-        message: 'Access denied. Admin privileges required.',
-      });
+      return sendErrorResponse(res, 403, 'Access denied. Admin privileges required.');
     }
 
     const post = await Post.findById(req.params.id);
     if (!post) {
-      return res.status(404).json({
-        status: 'fail',
-        message: 'Post not found',
-      });
+      return sendErrorResponse(res, 404, 'Post not found');
     }
 
-    // If the post has images stored locally, delete them from disk
-    if (Array.isArray(post.images) && post.images.length > 0) {
-      for (const img of post.images) {
-        try {
-          if (img && img.localPath) {
-            await fs.promises.unlink(img.localPath).catch(() => {});
-          } else if (img && img.filename) {
-            const p = path.join(__dirname, "..", "uploads", img.filename);
-            await fs.promises.unlink(p).catch(() => {});
-          }
-        } catch (e) {
-          console.error("Error deleting local image during post deletion", e);
-        }
-      }
-    } else if (post.image && post.image.localPath) {
+    // Delete local images if they exist
+    await deleteLocalImages(post.images, path.join(__dirname, "..", "uploads"));
+    if (post.image && post.image.localPath) {
       // Fallback for posts using legacy single image field stored locally
-      try {
-        await fs.promises.unlink(post.image.localPath).catch(() => {});
-      } catch (e) {
-        console.error(
-          "Error deleting legacy local image during post deletion",
-          e
-        );
-      }
+      await deleteLocalImages([post.image], path.join(__dirname, "..", "uploads"));
     }
 
     await Post.findByIdAndDelete(req.params.id);
@@ -1551,17 +1270,10 @@ const deletePostByAdmin = async (req, res) => {
       });
     }
 
-    res.status(200).json({
-      status: 'success',
-      message: 'Post deleted successfully',
-      data: null,
-    });
+    sendSuccessResponse(res, 200, null, { message: 'Post deleted successfully' });
   } catch (error) {
     console.error("Error deleting post by admin:", error);
-    res.status(500).json({
-      status: "error",
-      message: error.message,
-    });
+    sendErrorResponse(res, 500, error.message);
   }
 };
 

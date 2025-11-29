@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const logger = require('../utils/logger');
+const { sendErrorResponse } = require('../utils/errorHandler');
 
 const protect = async (req, res, next) => {
   let token;
@@ -21,10 +22,7 @@ const protect = async (req, res, next) => {
 
         if (!req.user) {
           logger.warn('User not found for traditional JWT token ID', { userId: decoded.id });
-          return res.status(401).json({
-            status: 'fail',
-            message: 'Not authorized, user not found',
-          });
+          return sendErrorResponse(res, 401, 'Not authorized, user not found');
         }
 
         logger.info('User authenticated successfully with traditional JWT', { 
@@ -77,10 +75,7 @@ const protect = async (req, res, next) => {
             // Validate that the private key looks like a proper PEM format
             if (!privateKey.includes('-----BEGIN PRIVATE KEY-----') || !privateKey.includes('-----END PRIVATE KEY-----')) {
               logger.error('Invalid Firebase private key format: key does not contain proper PEM boundaries');
-              return res.status(500).json({
-                status: 'error',
-                message: 'Server configuration error - Invalid Firebase private key format',
-              });
+              return sendErrorResponse(res, 500, 'Server configuration error - Invalid Firebase private key format');
             }
             
             // Check if app is already initialized
@@ -129,10 +124,7 @@ const protect = async (req, res, next) => {
                 firebaseUid: decodedToken.uid,
                 email: decodedToken.email 
               });
-              return res.status(401).json({
-                status: 'fail',
-                message: 'User not found in database',
-              });
+              return sendErrorResponse(res, 401, 'User not found in database');
             }
 
             // Attach user to request object
@@ -158,15 +150,9 @@ const protect = async (req, res, next) => {
             
             // Check if it's a specific JWT error from Firebase
             if (firebaseError.code === 'auth/id-token-expired' || firebaseError.code === 'auth/argument-error') {
-              return res.status(401).json({
-                status: 'fail',
-                message: 'Token expired or invalid',
-              });
+              return sendErrorResponse(res, 401, 'Token expired or invalid');
             } else if (firebaseError.code === 'auth/id-token-revoked') {
-              return res.status(401).json({
-                status: 'fail',
-                message: 'Token revoked',
-              });
+              return sendErrorResponse(res, 401, 'Token revoked');
             } else {
               logger.debug('Firebase token verification failed:', firebaseError.message);
               
@@ -213,10 +199,7 @@ const protect = async (req, res, next) => {
                           firebaseUid: uid,
                           email: email 
                         });
-                        return res.status(401).json({
-                          status: 'fail',
-                          message: 'User not found in database',
-                        });
+                        return sendErrorResponse(res, 401, 'User not found in database');
                       }
 
                       // Attach user to request object
@@ -238,10 +221,7 @@ const protect = async (req, res, next) => {
                 logger.debug('Development fallback decoding failed:', devError.message);
               }
               
-              return res.status(401).json({
-                status: 'fail',
-                message: 'Not authorized, token failed',
-              });
+              return sendErrorResponse(res, 401, 'Not authorized, token failed');
             }
           }
         } else {
@@ -291,10 +271,7 @@ const protect = async (req, res, next) => {
                       firebaseUid: uid,
                       email: email 
                     });
-                    return res.status(401).json({
-                      status: 'fail',
-                      message: 'User not found in database',
-                    });
+                    return sendErrorResponse(res, 401, 'User not found in database');
                   }
 
                   // Attach user to request object
@@ -316,10 +293,7 @@ const protect = async (req, res, next) => {
             logger.debug('Development fallback decoding failed:', devError.message);
           }
           
-          return res.status(401).json({
-            status: 'fail',
-            message: 'Not authorized, token failed',
-          });
+          return sendErrorResponse(res, 401, 'Not authorized, token failed');
         }
       }
     } catch (error) {
@@ -329,37 +303,25 @@ const protect = async (req, res, next) => {
         name: error.name 
       });
       
-      return res.status(500).json({
-        status: 'error',
-        message: 'Internal server error during authentication',
-      });
+      return sendErrorResponse(res, 500, 'Internal server error during authentication');
     }
   }
 
   if (!token) {
     logger.warn('No token provided in authorization header', { userAgent: req.get('User-Agent'), ip: req.ip });
-    return res.status(401).json({
-      status: 'fail',
-      message: 'Not authorized, no token',
-    });
+    return sendErrorResponse(res, 401, 'Not authorized, no token');
   }
 };
 
 const admin = async (req, res, next) => {
   // First ensure user is authenticated
   if (!req.user) {
-    return res.status(401).json({
-      status: 'fail',
-      message: 'Not authorized, no user attached to request',
-    });
+    return sendErrorResponse(res, 401, 'Not authorized, no user attached to request');
   }
 
   // Check if user has admin role
   if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      status: 'fail',
-      message: 'Access denied. Admin privileges required.',
-    });
+    return sendErrorResponse(res, 403, 'Access denied. Admin privileges required.');
   }
 
   next();

@@ -9,10 +9,8 @@ import {
   User,
 } from "lucide-react";
 import OptimizedImage from "../OptimizedImage";
-
-// API base URL - should be consistent with other components
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+import { postApi, userApi } from "../../services/api";
+import { getImageUrl, formatDate } from "../../utils/imageUtils";
 
 const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
   const [liked, setLiked] = useState(
@@ -29,26 +27,15 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
       return;
     }
 
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/posts/${post._id}/${liked ? "unlike" : "like"}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    const result = await (liked 
+      ? postApi.unlikePost(post._id, authToken)
+      : postApi.likePost(post._id, authToken)
+    );
 
-      if (response.ok) {
-        const data = await response.json();
-        setLiked(!liked);
-        setLikeCount(data.data.likesCount);
-        onLike && onLike(post._id, !liked);
-      }
-    } catch (error) {
-      console.error("Error toggling like:", error);
+    if (result.success) {
+      setLiked(!liked);
+      setLikeCount(result.data.likesCount || (likeCount + (liked ? -1 : 1)));
+      onLike && onLike(post._id, !liked);
     }
   };
 
@@ -58,82 +45,24 @@ const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
       return;
     }
 
-    try {
-      if (bookmarked) {
-        // Remove from favorites
-        const response = await fetch(
-          `${API_BASE_URL}/users/favorites/${post._id}`,
-          {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        if (response.ok) {
-          setBookmarked(false);
-        }
-      } else {
-        // Add to favorites
-        const response = await fetch(`${API_BASE_URL}/users/favorites`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ postId: post._id }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setBookmarked(true);
-        }
+    let result;
+    if (bookmarked) {
+      // Remove from favorites
+      result = await userApi.removeFavorite(post._id, authToken);
+      if (result.success) {
+        setBookmarked(false);
       }
-    } catch (error) {
-      console.error("Error toggling bookmark:", error);
+    } else {
+      // Add to favorites
+      result = await userApi.addFavorite(post._id, authToken);
+      if (result.success) {
+        setBookmarked(true);
+      }
     }
   };
 
   const handleComment = () => {
     onComment && onComment(post._id);
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Extract the base server URL from the API base URL for image paths
-  const getServerBaseUrl = () => {
-    const apiBaseUrl =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
-    // Remove the /api/v1 part to get the base server URL
-    return apiBaseUrl.replace("/api/v1", "");
-  };
-
-  // Helper function to get the correct image URL
-  const getImageUrl = (imageObj) => {
-    if (!imageObj) return "";
-    const serverBaseUrl = getServerBaseUrl();
-    if (typeof imageObj === "string") {
-      return imageObj.startsWith("http")
-        ? imageObj
-        : `${serverBaseUrl}${imageObj}`;
-    }
-    if (imageObj.url) {
-      return imageObj.url.startsWith("http")
-        ? imageObj.url
-        : `${serverBaseUrl}${imageObj.url}`;
-    }
-    return "";
   };
 
   return (
