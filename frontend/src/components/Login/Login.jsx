@@ -195,7 +195,7 @@ const Login = () => {
               {/* Scrollable Input Fields Container */}
               <div className="max-h-[30vh] overflow-y-auto pr-2 -mr-2">
                 {/* Custom scrollbar styles for input fields container */}
-                <style jsx>{`
+                <style>{`
                   div.max-h-\\[30vh\\].overflow-y-auto::-webkit-scrollbar {
                     width: 6px;
                   }
@@ -484,7 +484,7 @@ const Login = () => {
         <ForgotPassword onClose={() => setShowForgotPassword(false)} />
       )}
       
-      <style jsx>{`
+      <style>{`
         .overflow-y-auto::-webkit-scrollbar {
           width: 8px;
         }

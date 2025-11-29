@@ -13,13 +13,22 @@
   height: auto !important;
   background: transparent !important;
   border: none !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 1000 !important;
 }
 
 /* Ensure no default leaflet marker appears */
-.leaflet-marker-icon,
-.leaflet-marker-shadow {
+.leaflet-marker-icon {
   background: transparent !important;
   box-shadow: none !important;
+  border: none !important;
+}
+
+.leaflet-marker-shadow {
+  display: none !important;
 }
 
 /* Make sure the SVG inside the divIcon is visible */
@@ -28,4 +37,17 @@
   pointer-events: none !important;
   width: 100% !important;
   height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure marker pane has proper z-index */
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+.leaflet-marker-pane .leaflet-marker-icon {
+  z-index: 600 !important;
 }

@@ -11,10 +11,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import L from "leaflet";
+import markerIconPng from "leaflet/dist/images/marker-icon.png";
+import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
+import markerIcon2xPng from "leaflet/dist/images/marker-icon-2x.png";
 import Header from "../Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { auth } from "../../config/firebase";
 import RoutingMachine from "./RoutingMachine";
+import { getMarkerByCategory } from "./CustomMapMarkers";
 
 // Ensure Leaflet routing is properly imported
 // This import should happen before using L.Routing in components
@@ -22,10 +26,54 @@ import NotificationModal from "../NotificationModal";
 import OptimizedImage from "../OptimizedImage";
 import RatingsAndComments from "../RatingsAndComments.jsx";
 import CustomMarker from "./CustomMarker";
-import {
-  getMarkerByCategory,
-} from "./CustomMapMarkers";
 import "./MapView.css";
+
+// Create a proper icon for our markers to avoid conflicts
+const defaultIcon = L.icon({
+  iconUrl: markerIconPng,
+  iconRetinaUrl: markerIcon2xPng,
+  shadowUrl: markerShadowPng,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowAnchor: [12, 41],
+  shadowSize: [41, 41]
+});
+
+// Fix for Leaflet default icon issue in React/Vite environments
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2xPng,
+  iconUrl: markerIconPng,
+  shadowUrl: markerShadowPng,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  tooltipAnchor: [16, -28],
+  shadowSize: [41, 41]
+});
+
+// Additional CSS to ensure marker icons display properly
+const addMarkerStyles = () => {
+  const styleId = 'leaflet-marker-fix';
+  if (document.getElementById(styleId)) return; // Only add once
+
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.innerHTML = `
+    .leaflet-marker-icon, .leaflet-marker-shadow {
+      min-width: 25px;
+      min-height: 41px;
+    }
+    .custom-marker-icon {
+      filter: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+};
+
+// Call the function to add styles
+addMarkerStyles();
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL =
@@ -1902,9 +1950,11 @@ const MapView = () => {
         const newPost = {
           id: result.data._id || `new-post-${Date.now()}`,
           position: (Array.isArray(result.data.location?.coordinates) && result.data.location.coordinates.length === 2)
-            ? [result.data.location.coordinates[1], result.data.location.coordinates[0]] // [lat, lng]
+            ? [result.data.location.coordinates[1], result.data.location.coordinates[0]] // [lat, lng] - GeoJSON format is [lng, lat]
+            : (result.data.location?.latitude !== undefined && result.data.location?.longitude !== undefined)
+            ? [result.data.location.latitude, result.data.location.longitude] // [lat, lng] - legacy format
             : (Array.isArray(clickPosition) && clickPosition.length === 2)
-            ? [clickPosition[0], clickPosition[1]]
+            ? [clickPosition[0], clickPosition[1]] // fallback to original click position [lat, lng]
             : null,
           title: formData.title || result.data.title,
           description: formData.description || result.data.description,
@@ -1971,7 +2021,7 @@ const MapView = () => {
     setShowImageGallery(false); // Close image gallery if open
   };
 
-  // getMarkerByCategory is now imported from CustomMapMarkers
+
 
   const formatDate = React.useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -2022,8 +2072,8 @@ const MapView = () => {
       {/* Full-Screen Map Container - with explicit z-index */}
       <div className="relative w-full h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)] z-[1]">
         {/* 4rem = 64px which is header height */}
-        {/* Loading indicator - only show when not showing post form and no posts loaded yet */}
-        {isLoading && !showPostForm && userPosts.length === 0 && (
+        {/* Loading indicator - only show when loading is in progress and not showing post form */}
+        {isLoading && !showPostForm && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-[10]">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
@@ -2075,36 +2125,37 @@ const MapView = () => {
             })
             .map((location) => {
               return (
-                <CustomMarker
-                  key={location.id}
-                  location={location}
-                  onClick={handleSidebarItemClick}
-                  isSelected={activePopup === location.id}
-                  onAddToRef={(id, ref) => {
-                    markerRefs.current[id] = ref;
-                  }}
-                  onRemoveFromRef={(id) => {
-                    delete markerRefs.current[id];
-                  }}
-                  activePopup={activePopup}
-                  onPopupOpen={setActivePopup}
-                  onPopupClose={(id) => setActivePopup(null)}
-                  mapRef={mapRef}
-                  showRouting={showRouting}
-                  setShowRouting={setShowRouting}
-                  setRoutingStart={setRoutingStart}
-                  setRoutingEnd={setRoutingEnd}
-                  travelMode={travelMode}
-                  setTravelMode={setTravelMode}
-                  getDirections={getDirections}
-                  savedLocations={savedLocations}
-                  saveLocation={saveLocation}
-                  removeSavedLocation={removeSavedLocation}
-                  isSavingLocation={isSavingLocation}
-                  addRecentLocation={addRecentLocation}
-                  user={user}
-                  isAuthenticated={isAuthenticated}
-                />
+                  <CustomMarker
+                    key={location.id}
+                    location={location}
+                    onClick={handleSidebarItemClick}
+                    isSelected={activePopup === location.id}
+                    onAddToRef={(id, ref) => {
+                      markerRefs.current[id] = ref;
+                    }}
+                    onRemoveFromRef={(id) => {
+                      delete markerRefs.current[id];
+                    }}
+                    activePopup={activePopup}
+                    onPopupOpen={setActivePopup}
+                    onPopupClose={(id) => setActivePopup(null)}
+                    mapRef={mapRef}
+                    showRouting={showRouting}
+                    setShowRouting={setShowRouting}
+                    setRoutingStart={setRoutingStart}
+                    setRoutingEnd={setRoutingEnd}
+                    travelMode={travelMode}
+                    setTravelMode={setTravelMode}
+                    getDirections={getDirections}
+                    savedLocations={savedLocations}
+                    saveLocation={saveLocation}
+                    removeSavedLocation={removeSavedLocation}
+                    isSavingLocation={isSavingLocation}
+                    addRecentLocation={addRecentLocation}
+                    user={user}
+                    isAuthenticated={isAuthenticated}
+                    icon={getMarkerByCategory(location.category || "general", location.averageRating)}
+                  />
               );
             })}
 
@@ -2159,6 +2210,7 @@ const MapView = () => {
                   addRecentLocation={addRecentLocation}
                   user={user}
                   isAuthenticated={isAuthenticated}
+                  icon={getMarkerByCategory(poi.category || "poi")}
                 />
               );
             }
@@ -3191,7 +3243,7 @@ const MapView = () => {
                 </div>
                 
                 {/* Scrollable form area */}
-                <div className="flex-1 p-4 sm:p-6 custom-scrollbar">
+                <div className="flex-1 p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
                   <form onSubmit={handleFormSubmit} className="space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div className="sm:col-span-2">

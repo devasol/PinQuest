@@ -11,6 +11,7 @@ const createPinMarker = (options = {}) => {
 
   // SVG string with inline fill based on class
   // Define colors based on className
+  // Use indigo as fallback.
   const colorMap = {
     'marker-green': '#10b981',
     'marker-amber': '#f59e0b',
@@ -26,21 +27,19 @@ const createPinMarker = (options = {}) => {
     'marker-slate': '#64748b',
     'marker-blue': '#3b82f6',
   };
-
-  const fillColor = colorMap[className] || '#4f46e5'; // Default to indigo
-
-  const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" style="filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));">
-      <path fill="${fillColor}" stroke="white" stroke-width="1" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-      <circle fill="white" cx="12" cy="9" r="2.5"/>
-    </svg>`;
-
+  // Always use a mapped color, never black.
+  const resolvedClass = colorMap[className] ? className : 'marker-indigo';
+  const fillColor = colorMap[resolvedClass];
+  const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${size}" height="${size}" style="display:block; pointer-events:none;">
+    <path fill="${fillColor}" stroke="white" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+    <circle fill="white" cx="12" cy="9" r="2.5"/>
+  </svg>`;
   return L.divIcon({
-    className: `custom-map-marker ${className}`,
-    html: `<div>${svgString}</div>`, // Wrap in a div to ensure proper rendering
+    className: `custom-map-marker ${resolvedClass}`,
+    html: svgString,
     iconSize,
     iconAnchor,
     popupAnchor,
-    // Ensure the marker appears on top of other map elements
     zIndexOffset: 1000
   });
 };
@@ -58,8 +57,13 @@ const categoryColors = {
 };
 
 // Function to get a marker based on category and optional average rating
+// ALWAYS returns a valid custom pin marker - never null/undefined
 const getMarkerByCategory = (category = "general", averageRating = null) => {
-  if (typeof averageRating === "number" && !isNaN(averageRating)) {
+  // Normalize category to string and lowercase
+  const normalizedCategory = String(category || "general").toLowerCase().trim();
+  
+  // If we have a valid rating, use rating-based color
+  if (typeof averageRating === "number" && !isNaN(averageRating) && averageRating > 0) {
     let colorClass = "marker-red";
     const roundedRating = Number(averageRating.toFixed(1));
 
@@ -70,7 +74,8 @@ const getMarkerByCategory = (category = "general", averageRating = null) => {
     return createPinMarker({ className: colorClass });
   }
 
-  const className = categoryColors[category] || "marker-indigo";
+  // Use category-based color, default to indigo if category not found
+  const className = categoryColors[normalizedCategory] || "marker-indigo";
   return createPinMarker({ className });
 };
 

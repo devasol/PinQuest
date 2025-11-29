@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
 import { getMarkerByCategory } from './CustomMapMarkers';
 import OptimizedImage from "../OptimizedImage";
 import RatingsAndComments from "../RatingsAndComments.jsx";
@@ -62,7 +63,8 @@ const CustomMarker = ({
   isSavingLocation = false,
   addRecentLocation = null,
   user = null,
-  isAuthenticated = false
+  isAuthenticated = false,
+  icon = null
 }) => {
   // Ref to store marker instance
   const markerRef = useRef(null);
@@ -98,10 +100,13 @@ const CustomMarker = ({
     }
   };
 
+  // Ensure we always have a valid icon - if not provided, create default pin
+  const markerIcon = icon || getMarkerByCategory(location.category || "general", location.averageRating);
+
   return (
     <Marker
       position={location.position}
-      icon={getMarkerByCategory(location.category, location.averageRating)}
+      icon={markerIcon}
       eventHandlers={{
         click: (e) => {
           e.target.openPopup(); // This ensures the popup opens when marker is clicked
