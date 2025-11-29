@@ -44,36 +44,47 @@ const forgotPassword = async (req, res) => {
     const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-    // Send email with reset token
-    const emailSent = await sendPasswordResetEmail(user.email, resetUrl);
+    // Send email with reset token, but we'll send the response immediately to avoid hanging
+    // Start email sending as a background process
+    const emailPromise = sendPasswordResetEmail(user.email, resetUrl)
+      .catch(emailError => {
+        console.error("Error sending password reset email:", emailError.message || emailError);
+        // Don't throw here, just log the error
+        return false;
+      });
 
-    if (!emailSent) {
-      // For development, if email fails, clear the reset token and return error
-      // In production, you might want to handle this differently
-      user.resetPasswordToken = undefined;
-      user.resetPasswordExpires = undefined;
-      await user.save({ validateBeforeSave: false });
-
-      // Check if this is a configuration issue
-      if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-        console.log("SMTP not configured. In a real application, an email would be sent with the reset link:", resetUrl);
-        return res.status(200).json({
-          status: 'success',
-          message: 'Password reset instructions would be sent via email in a production environment. For development, here is the reset URL: ' + resetUrl
-        });
-      } else {
-        console.log("Email configuration exists but sending failed. Check SMTP settings.");
-        return res.status(500).json({
-          status: 'error',
-          message: 'Error sending password reset email. Please check server logs for details.'
-        });
-      }
-    }
-
+    // We return the response immediately, regardless of email success/failure
+    // This prevents the request from hanging if email service is slow or fails
     res.status(200).json({
       status: 'success',
       message: 'Password reset email sent'
     });
+
+    // Process the email in the background after sending the response
+    // This ensures the API call doesn't hang even if email fails
+    try {
+      const emailSent = await emailPromise;
+      if (!emailSent) {
+        // If email failed, clear the reset token to prevent token from being left hanging
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save({ validateBeforeSave: false });
+        console.log("Password reset token cleared because email failed to send");
+      } else {
+        console.log("Password reset email sent successfully");
+      }
+    } catch (bgError) {
+      console.error("Background email processing error:", bgError);
+      // Even if background processing fails, we already sent the response
+      try {
+        // Clear the token in case of error to prevent tokens from lingering
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save({ validateBeforeSave: false });
+      } catch (cleanupError) {
+        console.error("Error cleaning up reset token:", cleanupError);
+      }
+    }
   } catch (error) {
     console.error('Error in forgot password:', error);
     

@@ -10,17 +10,42 @@ const createTransporter = () => {
     return null;
   }
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_EMAIL,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
+  try {
+    // Validate that the credentials are not just placeholders
+    if (process.env.SMTP_EMAIL.includes('your_email') || process.env.SMTP_PASSWORD.includes('your_app_password')) {
+      console.error('SMTP configuration contains placeholder values. Please update with real credentials.');
+      return null;
+    }
 
-  return transporter;
+    // For Gmail specifically, ensure the correct settings
+    const isGmail = process.env.SMTP_HOST && process.env.SMTP_HOST.includes('gmail');
+    const isPort465 = parseInt(process.env.SMTP_PORT) === 465;
+    const isPort587 = parseInt(process.env.SMTP_PORT) === 587;
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT) || 587,
+      secure: isPort465, // true for 465, false for other ports like 587
+      auth: {
+        user: process.env.SMTP_EMAIL,
+        pass: process.env.SMTP_PASSWORD,
+      },
+      // Additional settings for Gmail
+      tls: {
+        // Do not fail on certificate validation for compatibility
+        rejectUnauthorized: false,
+      },
+      // Add connection and operation timeouts
+      connectionTimeout: 30000, // 30 seconds
+      greetingTimeout: 30000,   // 30 seconds  
+      socketTimeout: 30000,     // 30 seconds
+    });
+
+    return transporter;
+  } catch (error) {
+    console.error('Error creating SMTP transporter:', error.message);
+    return null;
+  }
 };
 
 /**
@@ -62,12 +87,21 @@ const sendVerificationEmail = async (email, verificationCode) => {
       `,
     };
 
-    // Send email
-    const info = await transporter.sendMail(mailOptions);
+    // Set a timeout for the sendMail operation to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Email sending timeout after 10 seconds')), 10000);
+    });
+
+    // Race between email sending and timeout
+    const info = await Promise.race([
+      transporter.sendMail(mailOptions),
+      timeoutPromise
+    ]);
+
     console.log('Verification email sent:', info.messageId);
     return true;
   } catch (error) {
-    console.error('Error sending verification email:', error);
+    console.error('Error sending verification email:', error.message || error);
     return false;
   }
 };
@@ -112,12 +146,21 @@ const sendVerificationReminderEmail = async (email, verificationCode) => {
       `,
     };
 
-    // Send email
-    const info = await transporter.sendMail(mailOptions);
+    // Set a timeout for the sendMail operation to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Email sending timeout after 10 seconds')), 10000);
+    });
+
+    // Race between email sending and timeout
+    const info = await Promise.race([
+      transporter.sendMail(mailOptions),
+      timeoutPromise
+    ]);
+
     console.log('Verification reminder email sent:', info.messageId);
     return true;
   } catch (error) {
-    console.error('Error sending verification reminder email:', error);
+    console.error('Error sending verification reminder email:', error.message || error);
     return false;
   }
 };
@@ -166,12 +209,21 @@ const sendPasswordResetEmail = async (email, resetUrl) => {
       `,
     };
 
-    // Send email
-    const info = await transporter.sendMail(mailOptions);
+    // Set a timeout for the sendMail operation to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Email sending timeout after 10 seconds')), 10000);
+    });
+
+    // Race between email sending and timeout
+    const info = await Promise.race([
+      transporter.sendMail(mailOptions),
+      timeoutPromise
+    ]);
+
     console.log('Password reset email sent:', info.messageId);
     return true;
   } catch (error) {
-    console.error('Error sending password reset email:', error);
+    console.error('Error sending password reset email:', error.message || error);
     return false;
   }
 };
