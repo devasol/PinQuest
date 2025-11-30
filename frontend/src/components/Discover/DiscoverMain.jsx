@@ -3,7 +3,8 @@ import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import Header from '../Landing/Header/Header';
 import CustomMarker from './CustomMarker';
-import PostWindow from '../PostWindow';
+import PostWindow from '../PostWindow/PostWindow';
+import CurrentLocationMarker from './CurrentLocationMarker';
 import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -38,6 +39,7 @@ const DiscoverMain = () => {
   const [showListings, setShowListings] = useState(false);
   const [mapCenter, setMapCenter] = useState([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
+  const [userLocation, setUserLocation] = useState(null);
   const [mobileView, setMobileView] = useState('map'); // 'map' or 'list' for mobile
   const mapRef = useRef();
   const fetchIntervalRef = useRef(null);
@@ -234,11 +236,16 @@ const DiscoverMain = () => {
 
   // Get user location for initial centering
   useEffect(() => {
+    let watchId;
+    
     if (navigator.geolocation) {
+      // Try to get initial position
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setMapCenter([latitude, longitude]);
+          const userPos = [latitude, longitude];
+          setUserLocation(userPos);
+          setMapCenter(userPos);
           setMapZoom(13);
         },
         (error) => {
@@ -251,7 +258,30 @@ const DiscoverMain = () => {
           maximumAge: 600000, // 10 minutes
         }
       );
+      
+      // Watch for position updates
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation([latitude, longitude]);
+        },
+        (error) => {
+          console.log("Geolocation watch error:", error.message);
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 30000, // 30 seconds
+          timeout: 27000, // 27 seconds
+        }
+      );
     }
+    
+    // Cleanup function to stop watching position
+    return () => {
+      if (watchId !== undefined) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
 
   // Fly to a post's location on the map
@@ -361,6 +391,36 @@ const DiscoverMain = () => {
     );
   }, [flyToPost]);
 
+  // Update user's current location manually
+  const updateUserLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const userPos = [latitude, longitude];
+        setUserLocation(userPos);
+        
+        // Optionally animate to the new location
+        if (mapRef.current) {
+          mapRef.current.flyTo(userPos, 15);
+        }
+      },
+      (error) => {
+        console.error("Error getting user location:", error.message);
+        alert('Could not get your current location. Make sure location services are enabled.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  }, []);
+
   // Get the appropriate tile layer URL based on map type
   const getTileLayerUrl = () => {
     switch (mapType) {
@@ -441,6 +501,17 @@ const DiscoverMain = () => {
           <MapClickHandler onMapClick={(latlng) => {
             // Handle map click
           }} />
+          
+          {/* Show user's current location on the map */}
+          {userLocation && (
+            <CurrentLocationMarker 
+              position={userLocation} 
+              onClick={(position) => {
+                // Optional: Add click functionality for user location marker
+                console.log('User location marker clicked');
+              }}
+            />
+          )}
           
           {/* Render custom markers for each post */}
           {filteredPosts.map((post) => (
@@ -531,6 +602,16 @@ const DiscoverMain = () => {
           >
             {mapType === 'street' ? 'Satellite' : 'Street'}
           </button>
+          
+          {userLocation && (
+            <button
+              onClick={updateUserLocation}
+              className="px-4 py-3 bg-blue-500 text-white rounded-xl shadow-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
+            >
+              <Navigation className="h-4 w-4" />
+              My Location
+            </button>
+          )}
         </div>
         
         {/* Listing Panel - Side Panel on Desktop, Bottom Panel on Mobile */}

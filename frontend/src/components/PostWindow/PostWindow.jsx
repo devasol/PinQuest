@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
@@ -51,7 +51,7 @@ const PostWindow = ({
   const [showInfo, setShowInfo] = useState(true);
   const [likeAnimation, setLikeAnimation] = useState(false);
 
-  const images = post?.images || (post?.image ? [post.image] : []);
+  const images = useMemo(() => post?.images || (post?.image ? [post.image] : []), [post?.images, post?.image]);
 
   // Preload images to improve user experience
   useEffect(() => {
@@ -253,6 +253,88 @@ const PostWindow = ({
       setImagePosition({ x: 0, y: 0 });
     }
   }, [imageScale]);
+
+  // Handle sharing the post
+  const handleShare = () => {
+    if (navigator.share) {
+      // Web Share API is supported
+      navigator.share({
+        title: post.title,
+        text: post.description,
+        url: window.location.href,
+      }).catch((error) => console.log('Error sharing:', error));
+    } else {
+      // Fallback: Copy link to clipboard
+      const postUrl = `${window.location.origin}/post/${post._id}`;
+      navigator.clipboard.writeText(postUrl).then(() => {
+        alert('Post link copied to clipboard!');
+      }).catch(() => {
+        // If clipboard API fails, fallback to prompt
+        prompt('Copy this link:', postUrl);
+      });
+    }
+  };
+
+  // Handle getting directions to the post location
+  const handleGetDirections = () => {
+    if (!post.location || !post.location.latitude || !post.location.longitude) {
+      alert('Location information is not available for this post.');
+      return;
+    }
+    
+    // Create a Google Maps directions URL
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${post.location.latitude},${post.location.longitude}`;
+    window.open(directionsUrl, '_blank');
+  };
+
+  // Handle rating submission
+  const handleRate = async (starRating) => {
+    if (!authToken) {
+      alert('Please login to rate posts');
+      return;
+    }
+
+    if (!post?._id) {
+      console.error('Post ID is missing for rating');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/posts/${post._id}/ratings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          rating: starRating
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.status === 'success') {
+        // Update the rating state to reflect the new rating
+        setRating(starRating);
+        // Refetch average rating to update display
+        const ratingResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/posts/${post._id}/ratings`);
+        const ratingData = await ratingResponse.json();
+        
+        if (ratingData.status === 'success') {
+          setAverageRating(ratingData.averageRating || 0);
+          setTotalRatings(ratingData.totalRatings || 0);
+        }
+        
+        alert('Thank you for rating this post!');
+      } else {
+        console.error('Error submitting rating:', result.message);
+        alert('Error submitting rating. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      alert('Error submitting rating. Please try again.');
+    }
+  };
 
   if (!isOpen || !post) return null;
 
@@ -520,11 +602,12 @@ const PostWindow = ({
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
                               key={star}
-                              className={`w-6 h-6 ${
+                              className={`w-6 h-6 cursor-pointer ${
                                 star <= (hoverRating || Math.round(averageRating)) 
                                   ? 'text-yellow-500 fill-current' 
                                   : 'text-gray-300'
                               }`}
+                              onClick={() => handleRate(star)}
                               onMouseEnter={() => setHoverRating(star)}
                               onMouseLeave={() => setHoverRating(0)}
                             />
@@ -625,6 +708,7 @@ const PostWindow = ({
 
                   <div className="flex items-center space-x-3">
                     <motion.button
+                      onClick={handleShare}
                       className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-white px-5 py-3 rounded-xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
                       whileTap={{ scale: 0.95 }}
                     >
@@ -632,11 +716,12 @@ const PostWindow = ({
                       <span className="font-medium">Share</span>
                     </motion.button>
                     <motion.button
+                      onClick={handleGetDirections}
                       className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-white px-5 py-3 rounded-xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
                       whileTap={{ scale: 0.95 }}
                     >
                       <ExternalLink className="w-5 h-5" />
-                      <span className="font-medium">View</span>
+                      <span className="font-medium">Get Directions</span>
                     </motion.button>
                   </div>
                 </div>
