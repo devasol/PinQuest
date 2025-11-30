@@ -9,38 +9,20 @@ import {
 } from "react-leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import "leaflet/dist/leaflet.css";
-import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import L from "leaflet";
-// Import routing machine to ensure it extends L.Routing
-import "leaflet-routing-machine";
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
 import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
 import markerIcon2xPng from "leaflet/dist/images/marker-icon-2x.png";
 import Header from "../Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import { auth } from "../../config/firebase";
-import RoutingMachine from "./RoutingMachine";
 import { getMarkerByCategory } from "./CustomMapMarkers";
+import CustomMarker from "./CustomMarker";
 
-// Ensure Leaflet routing is properly imported
-// This import should happen before using L.Routing in components
 import NotificationModal from "../NotificationModal";
 import OptimizedImage from "../OptimizedImage";
 import RatingsAndComments from "../RatingsAndComments.jsx";
-import CustomMarker from "./CustomMarker";
 import "./MapView.css";
-
-// Create a proper icon for our markers to avoid conflicts
-const defaultIcon = L.icon({
-  iconUrl: markerIconPng,
-  iconRetinaUrl: markerIcon2xPng,
-  shadowUrl: markerShadowPng,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowAnchor: [12, 41],
-  shadowSize: [41, 41]
-});
 
 // Fix for Leaflet default icon issue in React/Vite environments
 delete L.Icon.Default.prototype._getIconUrl;
@@ -54,28 +36,6 @@ L.Icon.Default.mergeOptions({
   tooltipAnchor: [16, -28],
   shadowSize: [41, 41]
 });
-
-// Additional CSS to ensure marker icons display properly
-const addMarkerStyles = () => {
-  const styleId = 'leaflet-marker-fix';
-  if (document.getElementById(styleId)) return; // Only add once
-
-  const style = document.createElement('style');
-  style.id = styleId;
-  style.innerHTML = `
-    .leaflet-marker-icon, .leaflet-marker-shadow {
-      min-width: 25px;
-      min-height: 41px;
-    }
-    .custom-marker-icon {
-      filter: none !important;
-    }
-  `;
-  document.head.appendChild(style);
-};
-
-// Call the function to add styles
-addMarkerStyles();
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL =
@@ -103,73 +63,6 @@ const getImageUrl = (imageObj) => {
   }
   return "";
 };
-
-// Small carousel component for showing multiple images with next/prev buttons
-function ImageCarousel({
-  images = [],
-  alt = "",
-  className = "",
-  onClose = null,
-}) {
-  const [index, setIndex] = React.useState(0);
-
-  if (!images || images.length === 0) return null;
-
-  const gotoPrev = (e) => {
-    e.stopPropagation();
-    setIndex((i) => (i - 1 + images.length) % images.length);
-  };
-
-  const gotoNext = (e) => {
-    e.stopPropagation();
-    setIndex((i) => (i + 1) % images.length);
-  };
-
-  const currentImage = images[index];
-
-  return (
-    <div
-      className={`relative ${className}`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="w-full h-48 rounded-lg mb-4 overflow-hidden">
-        <OptimizedImage
-          src={getImageUrl(currentImage)}
-          alt={alt}
-          className="w-full h-full object-cover rounded-lg"
-          priority={false}
-        />
-      </div>
-
-      {images.length > 1 && (
-        <>
-          <button
-            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white z-20"
-            onClick={gotoPrev}
-            aria-label="Previous image"
-          >
-            {"‹"}
-          </button>
-          <button
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white z-20"
-            onClick={gotoNext}
-            aria-label="Next image"
-          >
-            {"›"}
-          </button>
-
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-2 z-20 flex items-center gap-2 bg-black/30 px-2 py-1 rounded-full">
-            <span className="text-white text-sm">{index + 1}</span>
-            <span className="text-white text-sm">/</span>
-            <span className="text-white text-sm">{images.length}</span>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-
 
 // Component to handle map click events
 function MapClickHandler({ onMapClick }) {
@@ -301,78 +194,6 @@ function Geocoder({
   );
 }
 
-// Custom hook for drag functionality
-const useDraggable = (initialPosition = { x: 0, y: 0 }) => {
-  const [position, setPosition] = useState(initialPosition);
-  const [isDragging, setIsDragging] = useState(false);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    const rect = e.currentTarget.getBoundingClientRect();
-    setOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
-  };
-
-  const handleTouchStart = (e) => {
-    setIsDragging(true);
-    const touch = e.touches[0];
-    const rect = e.currentTarget.getBoundingClientRect();
-    setOffset({
-      x: touch.clientX - rect.left,
-      y: touch.clientY - rect.top,
-    });
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!isDragging) return;
-
-      setPosition({
-        x: e.clientX - offset.x,
-        y: e.clientY - offset.y,
-      });
-    };
-
-    const handleTouchMove = (e) => {
-      if (!isDragging) return;
-      const touch = e.touches[0];
-
-      setPosition({
-        x: touch.clientX - offset.x,
-        y: touch.clientY - offset.y,
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    const handleTouchEnd = () => {
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("touchmove", handleTouchMove, { passive: false });
-      window.addEventListener("mouseup", handleMouseUp);
-      window.addEventListener("touchend", handleTouchEnd);
-    }
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("touchend", handleTouchEnd);
-    };
-  }, [isDragging, offset]);
-
-  return { position, isDragging, handleMouseDown, handleTouchStart };
-};
-
-
 
 const MapView = () => {
   const { isAuthenticated, user } = useAuth();
@@ -396,16 +217,11 @@ const MapView = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null); // Initialize as null to indicate no location yet
   const [hasUserLocation, setHasUserLocation] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
   const [suggestions, setSuggestions] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [filterMine, setFilterMine] = useState(false); // New state for filtering user's posts
   const [postsFilter, setPostsFilter] = useState("latest"); // Filter for posts: latest, top, ratings, likes
   const mapRef = useRef();
-  const [routingStart, setRoutingStart] = useState(null);
-  const [routingEnd, setRoutingEnd] = useState(null);
-  const [showRouting, setShowRouting] = useState(false);
-  const [travelMode, setTravelMode] = useState("driving"); // 'driving' or 'walking'
   
   // Image gallery state
   const [showImageGallery, setShowImageGallery] = useState(false);
@@ -415,79 +231,12 @@ const MapView = () => {
   // Ref to store marker instances for programmatic popup opening
   const markerRefs = useRef({});
   
-  // Ref for POI search timeout
-  const searchPoiTimeoutRef = useRef(null);
-
-  // Map layout state
-  const [mapLayout, setMapLayout] = useState(() => {
-    // Try to get saved preference from localStorage
-    const savedLayout = localStorage.getItem("mapLayout");
-    return savedLayout || "light"; // Default to 'light' for a cleaner look
-  });
-
-  // Map layout options
-  const mapLayouts = {
-    default: {
-      name: "Streets",
-      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
-    },
-    satellite: {
-      name: "Satellite",
-      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      attribution:
-        "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
-    },
-    terrain: {
-      name: "Terrain",
-      url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-      attribution:
-        'Map data: &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-    },
-    dark: {
-      name: "Dark",
-      url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-    },
-    light: {
-      name: "Light",
-      url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-    },
-    // New layout with enhanced labeling
-    labels: {
-      name: "Detailed Labels",
-      url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-    },
-    // Google Maps style layer with more POIs
-    google_style: {
-      name: "Google Style",
-      url: "https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png",
-      attribution:
-        '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM contributors</a>',
-    },
-  };
-
-  // Draggable positions for UI elements (keeping for backward compatibility)
-  const statsPanelDrag = useDraggable({ x: 24, y: 80 }); // Initial position for stats panel (top-right)
-  const sidebarDrag = useDraggable({ x: 24, y: 80 }); // Initial position for sidebar (top-left)
-
   // State for sidebar and its sections
   const [activeSidebarTab, setActiveSidebarTab] = useState(""); // '', explore, stats, map-settings, saved, recents
   // State for saved/bookmarked locations
   const [savedLocations, setSavedLocations] = useState([]);
   // State for recently viewed locations
   const [recentLocations, setRecentLocations] = useState([]);
-  
-  // State for POIs visibility toggle
-  const [showPoisOnMap, setShowPoisOnMap] = useState(false); // Default is off
-  // State for POIs loading
-  const [isPoisLoading, setIsPoisLoading] = useState(false);
   
   // Pagination state for posts
   const [currentPage, setCurrentPage] = useState(1);
@@ -500,13 +249,6 @@ const MapView = () => {
   // Pagination state for saved locations
   const [currentSavedPage, setCurrentSavedPage] = useState(1);
   const savedPerPage = 10; // Display 10 saved locations per page
-  
-  // State for points of interest
-  const [pois, setPois] = useState([]);
-  
-  // Pagination state for POIs
-  const [currentPoiPage, setCurrentPoiPage] = useState(1);
-  const poisPerPage = 10; // Display 10 POIs per page
 
   // Function to save a location
   const saveLocation = async (location) => {
@@ -521,7 +263,6 @@ const MapView = () => {
     }
 
     if (!isAlreadySaved) {
-      setIsSavingLocation(true);
       
       // First, save to local state
       const newSavedLocation = {
@@ -620,8 +361,6 @@ const MapView = () => {
           JSON.stringify(revertedSavedLocations)
         );
         showNotification("Failed to save location. Please try again.", "error");
-      } finally {
-        setIsSavingLocation(false);
       }
     } else {
       showNotification("Location already saved!", "info");
@@ -635,8 +374,6 @@ const MapView = () => {
       return;
     }
 
-    setIsRemovingLocation(true);
-    
     // First, update local state
     const updatedSavedLocations = savedLocations.filter(
       (location) => location.id !== locationId
@@ -698,8 +435,6 @@ const MapView = () => {
         JSON.stringify(revertedSavedLocations)
       );
       showNotification("Failed to remove location. Please try again.", "error");
-    } finally {
-      setIsRemovingLocation(false);
     }
   };
 
@@ -970,9 +705,6 @@ const MapView = () => {
       }
     }
   };
-  const [showSearchPanel, setShowSearchPanel] = useState(false);
-  const [showMapSettings, setShowMapSettings] = useState(false);
-  const [showStatsPanel, setShowStatsPanel] = useState(false);
 
   // Fetch posts from the backend API
   useEffect(() => {
@@ -1008,140 +740,66 @@ const MapView = () => {
           headers,
         });
         const result = await response.json();
-        console.log("API Response:", result);
 
         if (result.status === "success") {
           // Transform the API data to match the format expected by the frontend
           // and filter out posts with invalid location data
-          console.log("All posts from API (total):", result.data.length, result.data);
+          if (!result.data || !Array.isArray(result.data)) {
+            console.error("API response data is not an array:", result.data);
+            setUserPosts([]);
+            setIsLoading(false);
+            return;
+          }
+          
           const transformedPosts = result.data
             .filter((post) => {
-              // Check if the post has valid location data in either format
-              let hasValidLocation = false;
-              let lat, lng;
-              
-              // Check for GeoJSON format: location.coordinates = [lng, lat]
-              if (post.location && 
-                  Array.isArray(post.location.coordinates) && 
-                  post.location.coordinates.length === 2 &&
-                  typeof post.location.coordinates[0] === "number" && // longitude
-                  typeof post.location.coordinates[1] === "number" && // latitude
-                  !isNaN(post.location.coordinates[0]) &&
-                  !isNaN(post.location.coordinates[1])) {
-                // Additional validation: latitude must be between -90 and 90, longitude between -180 and 180
-                const longitude = post.location.coordinates[0];
-                const latitude = post.location.coordinates[1];
-                if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
-                  hasValidLocation = true;
-                  lat = latitude;
-                  lng = longitude;
-                }
-              }
-              // Fallback: check for legacy format: location.latitude, location.longitude
-              else if (post.location && 
-                       typeof post.location.latitude === "number" && 
-                       typeof post.location.longitude === "number" &&
-                       !isNaN(post.location.latitude) &&
-                       !isNaN(post.location.longitude)) {
-                // Additional validation: latitude must be between -90 and 90, longitude between -180 and 180
-                const latitude = post.location.latitude;
-                const longitude = post.location.longitude;
-                if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
-                  hasValidLocation = true;
-                  lat = latitude;
-                  lng = longitude;
-                }
-              }
-              // Additional fallback: check for coordinates nested in a different structure
-              else if (post.coordinates && 
-                       Array.isArray(post.coordinates) && 
-                       post.coordinates.length === 2 &&
-                       typeof post.coordinates[0] === "number" && 
-                       typeof post.coordinates[1] === "number" &&
-                       !isNaN(post.coordinates[0]) &&
-                       !isNaN(post.coordinates[1])) {
-                const longitude = post.coordinates[0];
-                const latitude = post.coordinates[1];
-                if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
-                  hasValidLocation = true;
-                  lat = latitude;
-                  lng = longitude;
-                }
-              }
-              
-              console.log(`Post ${post._id} valid location:`, hasValidLocation, "Location:", post.location, "Lat:", lat, "Lng:", lng);
-              return hasValidLocation;
+              // Check if the post has valid location data in the expected format
+              return (
+                post.location &&
+                typeof post.location.latitude === "number" &&
+                typeof post.location.longitude === "number" &&
+                !isNaN(post.location.latitude) &&
+                !isNaN(post.location.longitude)
+              );
             })
-            .map((post) => {
-              // Determine position based on location format
-              let position = null;
-              if (post.location && Array.isArray(post.location.coordinates) && post.location.coordinates.length === 2) {
-                // GeoJSON format: [longitude, latitude] -> [latitude, longitude] for Leaflet
-                position = [
-                  parseFloat(post.location.coordinates[1]), // latitude from GeoJSON
-                  parseFloat(post.location.coordinates[0])  // longitude from GeoJSON
-                ];
-              } else if (post.location && typeof post.location.latitude !== "undefined" && typeof post.location.longitude !== "undefined") {
-                // Legacy format: [latitude, longitude] for Leaflet
-                position = [
-                  parseFloat(post.location.latitude),   // latitude
-                  parseFloat(post.location.longitude)   // longitude
-                ];
-              }
-              // Additional fallback for coordinates
-              else if (post.coordinates && Array.isArray(post.coordinates) && post.coordinates.length === 2) {
-                position = [
-                  parseFloat(post.coordinates[1]), // latitude
-                  parseFloat(post.coordinates[0])  // longitude
-                ];
-              }
-              
-              // If position couldn't be determined, skip this post
-              if (!position || isNaN(position[0]) || isNaN(position[1])) {
-                console.error(`Invalid position for post ${post._id}:`, position);
-                return null;
-              }
-              
-              return {
-                id: post._id,
-                title: post.title || "Untitled",
-                description: post.description || "No description provided",
-                image: post.image,
-                images:
-                  Array.isArray(post.images) && post.images.length > 0
-                    ? post.images
-                    : post.image
-                    ? [post.image]
-                    : [],
-                // Ratings: prefer cached aggregate fields, otherwise compute from ratings array
-                averageRating:
-                  typeof post.averageRating === "number"
-                    ? post.averageRating
-                    : Array.isArray(post.ratings) && post.ratings.length > 0
-                    ? post.ratings.reduce((acc, r) => acc + (r.rating || 0), 0) /
-                      post.ratings.length
-                    : 0,
-                totalRatings:
-                  typeof post.totalRatings === "number"
-                    ? post.totalRatings
-                    : Array.isArray(post.ratings)
-                    ? post.ratings.length
-                    : 0,
-                postedBy:
-                  post.postedBy && typeof post.postedBy === "object"
-                    ? post.postedBy.name || post.postedBy.displayName || "Anonymous"
-                    : post.postedBy || "Anonymous",
-                category: post.category || "general",
-                datePosted: post.datePosted || new Date().toISOString(),
-                position: position,
-                type: "user-post",
-              };
-            })
-            .filter(post => post !== null); // Remove any null entries from the map function
-          console.log("Transformed posts:", transformedPosts);
+            .map((post) => ({
+              id: post._id,
+              title: post.title || "Untitled",
+              description: post.description || "No description provided",
+              image: post.image,
+              images:
+                Array.isArray(post.images) && post.images.length > 0
+                  ? post.images
+                  : post.image
+                  ? [post.image]
+                  : [],
+              // Ratings: prefer cached aggregate fields, otherwise compute from ratings array
+              averageRating:
+                typeof post.averageRating === "number"
+                  ? post.averageRating
+                  : Array.isArray(post.ratings) && post.ratings.length > 0
+                  ? post.ratings.reduce((acc, r) => acc + (r.rating || 0), 0) /
+                    post.ratings.length
+                  : 0,
+              totalRatings:
+                typeof post.totalRatings === "number"
+                  ? post.totalRatings
+                  : Array.isArray(post.ratings)
+                  ? post.ratings.length
+                  : 0,
+              postedBy:
+                post.postedBy && typeof post.postedBy === "object"
+                  ? post.postedBy.name || post.postedBy.displayName || "Anonymous"
+                  : post.postedBy || "Anonymous",
+              category: post.category || "general",
+              datePosted: post.datePosted || new Date().toISOString(),
+              position: [post.location.latitude, post.location.longitude], // [lat, lng] format for Leaflet
+              type: "user-post",
+            }));
           setUserPosts(transformedPosts);
         } else {
           console.error("Error fetching posts:", result.message);
+          setUserPosts([]); // Set to empty array on error to ensure markers are updated
         }
       } catch (error) {
         console.error("Error fetching posts:", error);
@@ -1241,137 +899,8 @@ const MapView = () => {
     }
   }, [isLoading]);
 
-  // Function to get directions from user's current location to a post location
-  const [isGettingDirections, setIsGettingDirections] = useState(false);
-  const [isSavingLocation, setIsSavingLocation] = useState(false);
-  const [isRemovingLocation, setIsRemovingLocation] = useState(false);
-  const [isFetchingPosts, setIsFetchingPosts] = useState(false);
+
   
-  const getDirections = (destinationPosition) => {
-    if (!isAuthenticated) {
-      showNotification("Please login to get directions", "warning");
-      return;
-    }
-
-    if (isGettingDirections) return; // Prevent multiple requests
-    
-    setIsGettingDirections(true);
-    
-    // Function to handle successful location and setup routing
-    const handleLocationForRouting = (startPosition) => {
-      console.log(`Using start location for directions: ${startPosition[0]}, ${startPosition[1]}`);
-      
-      // Clear previous routing before setting new one
-      setRoutingStart(null);
-      setRoutingEnd(null);
-      setTimeout(() => {
-        setRoutingStart(startPosition);
-        setRoutingEnd(destinationPosition);
-        setShowRouting(true);
-
-        // Close any active popup
-        setActivePopup(null);
-
-        // Fly to the route area
-        if (mapRef.current) {
-          // Calculate center point between start and end
-          const centerLat =
-            (startPosition[0] + destinationPosition[0]) / 2;
-          const centerLng =
-            (startPosition[1] + destinationPosition[1]) / 2;
-          const center = [centerLat, centerLng];
-
-          // Determine appropriate zoom level based on distance
-          const distance = calculateDistance(
-            startPosition[0],
-            startPosition[1],
-            destinationPosition[0],
-            destinationPosition[1]
-          );
-          const zoom =
-            distance < 1 ? 14 : distance < 5 ? 12 : distance < 20 ? 10 : 8;
-
-          mapRef.current.flyTo(center, zoom);
-        }
-      }, 100); // Small delay to ensure proper cleanup
-      
-      setIsGettingDirections(false);
-    };
-
-    // Immediately use fallback if no user location is available
-    if (userLocation && userLocation.length === 2) {
-      // Use stored user location immediately
-      console.log("Using stored user location for directions");
-      handleLocationForRouting(userLocation);
-      return;
-    }
-    
-    // If no user location, immediately use map center
-    if (mapRef.current) {
-      try {
-        const mapCenter = mapRef.current.getCenter();
-        console.log("Using map center as immediate fallback location for directions:", mapCenter.lat, mapCenter.lng);
-        handleLocationForRouting([mapCenter.lat, mapCenter.lng]);
-        return; // Exit immediately after using fallback
-      } catch (e) {
-        console.error("Could not get map center for directions fallback:", e);
-      }
-    }
-    
-    // If geolocation is available, try to get location but with short timeout
-    // This runs in the background while we already showed directions with fallback
-    if (navigator.geolocation) {
-      const timeoutId = setTimeout(() => {
-        // If the geolocation request is still pending after short timeout,
-        // we'll just keep using the fallback we already set
-        console.log("Geolocation request timed out, using fallback location");
-      }, 3000); // 3 second timeout for background location request
-      
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // Clear the timeout since we got the location
-          clearTimeout(timeoutId);
-          const { latitude, longitude } = position.coords;
-          console.log("Successfully got updated location for directions");
-          
-          // Update routing with the actual user location (this will override the fallback)
-          setRoutingStart([latitude, longitude]);
-          setRoutingEnd(destinationPosition);
-        },
-        (error) => {
-          console.error("Background location request failed:", error);
-          clearTimeout(timeoutId);
-          // Keep using the fallback location that was already displayed
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 3000, // Short timeout for the background request
-          maximumAge: 30000, // Accept cached locations up to 30 seconds old
-        }
-      );
-    } else {
-      showNotification(
-        "Geolocation is not supported by this browser. Using map center as start location.",
-        "info"
-      );
-    }
-  };
-
-  // Helper function to calculate distance between two points (in km)
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Earth's radius in km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in km
-  };
-
   // All locations are now from the database
   const allLocations = userPosts;
 
@@ -1379,14 +908,17 @@ const MapView = () => {
   const filteredLocations = React.useMemo(() => {
     // Filter posts based on search query and user's posts if applicable
     let result = allLocations.filter(
-      (location) =>
-        (searchQuery === "" ||
+      (location) => {
+        const matchesSearch = searchQuery === "" ||
           location.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          location.description
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          location.category.toLowerCase().includes(searchQuery.toLowerCase())) &&
-        (!filterMine || location.postedBy === user?.name)
+          location.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          location.category.toLowerCase().includes(searchQuery.toLowerCase());
+          
+        const matchesFilterMine = !filterMine || (location.postedBy === user?.name) || 
+          (typeof location.postedBy === 'object' && location.postedBy.name === user?.name);
+          
+        return matchesSearch && matchesFilterMine;
+      }
     );
 
     // Sort filtered locations based on selected filter
@@ -1481,36 +1013,6 @@ const MapView = () => {
     setCurrentSavedPage(1);
   }, [savedLocations]);
 
-  // Memoize paginated POIs
-  const paginatedPois = React.useMemo(() => {
-    if (!pois || pois.length === 0) {
-      return [];
-    }
-    
-    // Calculate start and end indices for POIs pagination
-    const startIndex = (currentPoiPage - 1) * poisPerPage;
-    const endIndex = startIndex + poisPerPage;
-    
-    // Return the slice of POIs for the current page
-    return pois.slice(startIndex, endIndex);
-  }, [pois, currentPoiPage, poisPerPage]);
-
-  // Calculate total number of POI pages
-  const totalPoiPages = Math.ceil((pois?.length || 0) / poisPerPage);
-
-  // Reset to page 1 when POIs change
-  React.useEffect(() => {
-    setCurrentPoiPage(1);
-  }, [pois]);
-
-  // Fetch POIs when the POIs toggle is turned on and map is available
-  React.useEffect(() => {
-    if (showPoisOnMap && mapRef.current && pois.length === 0) {
-      // Fetch POIs for the current map view when toggle is turned on
-      searchPois(null); // Search for POIs around current map center
-    }
-  }, [showPoisOnMap, pois.length, mapRef]);
-
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [notification, setNotification] = useState({
     show: false,
@@ -1524,105 +1026,6 @@ const MapView = () => {
       message,
       type,
     });
-  };
-
-  // Function to search for points of interest near current map view or a specific location
-  const searchPois = async (locationQuery = null) => {
-    if (!mapRef.current && !locationQuery) {
-      showNotification("Map not ready or no location provided", "error");
-      return;
-    }
-
-    setIsPoisLoading(true);
-    try {
-      // Determine search location (either from map center or a specific query)
-      let center;
-      if (locationQuery) {
-        // If locationQuery is provided, geocode it first
-        const geocodeResponse = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationQuery)}&limit=1`
-        );
-        const geocodeResults = await geocodeResponse.json();
-        
-        if (geocodeResults.length === 0) {
-          showNotification("Location not found", "error");
-          setIsPoisLoading(false);
-          return;
-        }
-        
-        center = [parseFloat(geocodeResults[0].lat), parseFloat(geocodeResults[0].lon)];
-      } else {
-        // Use current map center
-        const mapCenter = mapRef.current.getCenter();
-        center = [mapCenter.lat, mapCenter.lng];
-      }
-
-      // Search for POIs in a radius around the center
-      const radius = 5000; // 5km radius around the center
-      
-      // Use Overpass API to get POIs (points of interest)
-      const overpassQuery = `
-        [out:json];
-        (
-          node["tourism"]["name"](around:${radius},${center[0]},${center[1]});
-          node["amenity"]["name"](around:${radius},${center[0]},${center[1]});
-          node["shop"]["name"](around:${radius},${center[0]},${center[1]});
-          node["leisure"]["name"](around:${radius},${center[0]},${center[1]});
-          node["historic"]["name"](around:${radius},${center[0]},${center[1]});
-          node["natural"]["name"](around:${radius},${center[0]},${center[1]});
-          node["highway"]["name"](around:${radius},${center[0]},${center[1]});
-        );
-        out body;
-      `;
-
-      const response = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `data=${encodeURIComponent(overpassQuery)}`
-      });
-
-      const data = await response.json();
-      
-      if (data.elements && data.elements.length > 0) {
-        // Transform the data to our format
-        const poisData = data.elements.map((element, index) => {
-          // Calculate distance from center (if available)
-          const distance = calculateDistance(
-            center[0],
-            center[1],
-            parseFloat(element.lat),
-            parseFloat(element.lon)
-          );
-          
-          return {
-            id: element.id || `poi-${index}`,
-            name: element.tags.name || element.tags.operator || `POI #${index}`,
-            description: element.tags.description || element.tags.website || element.tags.phone || "",
-            position: [parseFloat(element.lat), parseFloat(element.lon)],
-            category: element.tags.tourism || element.tags.amenity || element.tags.shop || element.tags.leisure || "Point of Interest",
-            address: element.tags.address || element.tags["addr:street"] || "",
-            distance: distance.toFixed(2)
-          };
-        });
-        
-        // Sort by distance if available
-        poisData.sort((a, b) => a.distance - b.distance);
-        
-        setPois(poisData);
-        showNotification(`Found ${poisData.length} points of interest`, "success");
-      } else {
-        setPois([]);
-        showNotification("No points of interest found in this area", "info");
-      }
-    } catch (error) {
-      console.error('Error searching for POIs:', error);
-      showNotification("Error searching for points of interest", "error");
-      setPois([]);
-    } finally {
-      setIsPoisLoading(false);
-    }
   };
 
   const handleFormChange = (e) => {
@@ -2117,155 +1520,65 @@ const MapView = () => {
           className="absolute inset-0 z-[1]"
         >
           <TileLayer
-            key={`tile-layer-${mapLayout}`} // This ensures the TileLayer re-renders when layout changes
-            attribution={mapLayouts[mapLayout].attribution}
-            url={mapLayouts[mapLayout].url}
+            attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
 
           <MapClickHandler onMapClick={handleMapClick} />
           <MapRefHandler mapRef={mapRef} />
 
-          {/* Routing Machine Component */}
-          {showRouting && routingStart && routingEnd && (
-            <RoutingMachine
-              start={routingStart}
-              end={routingEnd}
-              isVisible={showRouting}
-              travelMode={travelMode}
-            />
-          )}
-
-          {filteredLocations
-            .filter(location => {
-              // Only render markers with valid positions
-              return location.position && 
-                     Array.isArray(location.position) && 
-                     location.position.length === 2 &&
-                     typeof location.position[0] === 'number' && 
-                     typeof location.position[1] === 'number' &&
-                     !isNaN(location.position[0]) && 
-                     !isNaN(location.position[1]);
-            })
-            .map((location) => {
-              return (
-                  <CustomMarker
-                    key={location.id}
-                    location={location}
-                    onClick={handleSidebarItemClick}
-                    isSelected={activePopup === location.id}
-                    onAddToRef={(id, ref) => {
-                      markerRefs.current[id] = ref;
-                    }}
-                    onRemoveFromRef={(id) => {
-                      delete markerRefs.current[id];
-                    }}
-                    activePopup={activePopup}
-                    onPopupOpen={setActivePopup}
-                    onPopupClose={(id) => setActivePopup(null)}
-                    mapRef={mapRef}
-                    showRouting={showRouting}
-                    setShowRouting={setShowRouting}
-                    setRoutingStart={setRoutingStart}
-                    setRoutingEnd={setRoutingEnd}
-                    travelMode={travelMode}
-                    setTravelMode={setTravelMode}
-                    getDirections={getDirections}
-                    savedLocations={savedLocations}
-                    saveLocation={saveLocation}
-                    removeSavedLocation={removeSavedLocation}
-                    isSavingLocation={isSavingLocation}
-                    addRecentLocation={addRecentLocation}
-                    user={user}
-                    isAuthenticated={isAuthenticated}
-                    icon={getMarkerByCategory(location.category || "general", location.averageRating)}
-                  />
+          {filteredLocations.map((location) => {
+            // Check if location.position is valid before creating the marker
+            if (
+              !location.position ||
+              !Array.isArray(location.position) ||
+              location.position.length !== 2 ||
+              typeof location.position[0] !== "number" ||
+              typeof location.position[1] !== "number" ||
+              isNaN(location.position[0]) ||
+              isNaN(location.position[1])
+            ) {
+              console.warn(
+                `Invalid location position for post ${location.id}:`,
+                location.position
               );
-            })}
-
-          {/* POI Markers - only show when toggle is on */}
-          {showPoisOnMap && pois.map((poi) => {
-            // Only render POI markers with valid positions
-            if (poi.position && 
-                Array.isArray(poi.position) && 
-                poi.position.length === 2 &&
-                typeof poi.position[0] === 'number' && 
-                typeof poi.position[1] === 'number' &&
-                !isNaN(poi.position[0]) && 
-                !isNaN(poi.position[1])) {
-              return (
-                <CustomMarker
-                  key={`poi-${poi.id}`}
-                  location={{
-                    ...poi,
-                    id: `poi-${poi.id}`, // Ensure unique ID for POIs
-                    type: "poi",
-                    postedBy: poi.category || "OpenStreetMap",
-                    category: poi.category || "poi"
-                  }}
-                  onClick={() => {
-                    if (mapRef.current) {
-                      mapRef.current.flyTo(poi.position, 15);
-                      setActivePopup(`poi-${poi.id}`);
-                    }
-                  }}
-                  isSelected={activePopup === `poi-${poi.id}`}
-                  onAddToRef={(id, ref) => {
-                    markerRefs.current[id] = ref;
-                  }}
-                  onRemoveFromRef={(id) => {
-                    delete markerRefs.current[id];
-                  }}
-                  activePopup={activePopup}
-                  onPopupOpen={setActivePopup}
-                  onPopupClose={(id) => setActivePopup(null)}
-                  mapRef={mapRef}
-                  showRouting={showRouting}
-                  setShowRouting={setShowRouting}
-                  setRoutingStart={setRoutingStart}
-                  setRoutingEnd={setRoutingEnd}
-                  travelMode={travelMode}
-                  setTravelMode={setTravelMode}
-                  getDirections={getDirections}
-                  savedLocations={savedLocations}
-                  saveLocation={saveLocation}
-                  removeSavedLocation={removeSavedLocation}
-                  isSavingLocation={isSavingLocation}
-                  addRecentLocation={addRecentLocation}
-                  user={user}
-                  isAuthenticated={isAuthenticated}
-                  icon={getMarkerByCategory(poi.category || "poi")}
-                />
-              );
+              return null; // Skip rendering this marker if location is invalid
             }
-            return null;
+
+            return (
+              <CustomMarker
+                key={location.id}
+                location={location}
+                icon={getMarkerByCategory(
+                  location.category || "general",
+                  location.averageRating
+                )}
+                onClick={() => handleSidebarItemClick(location.id)}
+                onAddToRef={(id, markerRef) => {
+                  if (markerRef) {
+                    markerRefs.current[id] = markerRef;
+                  }
+                }}
+                onRemoveFromRef={(id) => {
+                  delete markerRefs.current[id];
+                }}
+                mapRef={mapRef}
+                savedLocations={savedLocations}
+                saveLocation={saveLocation}
+                removeSavedLocation={removeSavedLocation}
+                addRecentLocation={addRecentLocation}
+                user={user}
+                isAuthenticated={isAuthenticated}
+                activePopup={activePopup}
+                onPopupOpen={setActivePopup}
+                onPopupClose={() => setActivePopup(null)}
+              />
+            );
           })}
 
         </MapContainer>
 
         
-        {/* Directions Close Button - Top Right when routing is visible */}
-        {showRouting && (
-          <motion.div
-            className="absolute top-4 right-4 z-[1000]"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <button
-              onClick={() => {
-                setShowRouting(false);
-                setRoutingStart(null);
-                setRoutingEnd(null);
-              }}
-              className="bg-white text-gray-800 px-4 py-2 rounded-xl shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2 font-medium"
-            >
-              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Close Directions
-            </button>
-          </motion.div>
-        )}
         {/* Static Icon Sidebar */}
         <div className="sidebar-icon-container absolute left-0 top-0 h-full w-16 sm:w-20 bg-white/90 backdrop-blur-lg shadow-2xl border-r border-white/30 z-[1000] flex flex-col items-center py-4 space-y-2 sm:space-y-3">
           <button
@@ -2292,34 +1605,6 @@ const MapView = () => {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </button>
-
-          <button
-            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
-              activeSidebarTab === "map-settings"
-                ? "bg-blue-100 text-blue-600"
-                : "text-gray-600 hover:bg-gray-200"
-            }`}
-            onClick={() =>
-              setActiveSidebarTab(
-                activeSidebarTab === "map-settings" ? "" : "map-settings"
-              )
-            }
-            title="Map Settings"
-          >
-            <svg
-              className="w-4 sm:w-6 h-4 sm:h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276a1 1 0 001.447-.894V5.618a1 1 0 00-1.447-.894L15 7m0 13v-3m0-4H9m4 0V9m0 0H9m4 0v4m0 4h.01"
               />
             </svg>
           </button>
@@ -2376,32 +1661,6 @@ const MapView = () => {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </button>
-
-          <button
-            className={`p-2 sm:p-3 rounded-xl transition-all duration-200 ${
-              activeSidebarTab === "pois"
-                ? "bg-blue-100 text-blue-600"
-                : "text-gray-600 hover:bg-gray-200"
-            }`}
-            onClick={() =>
-              setActiveSidebarTab(activeSidebarTab === "pois" ? "" : "pois")
-            }
-            title="Points of Interest"
-          >
-            <svg
-              className="w-4 sm:w-6 h-4 sm:h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
           </button>
@@ -2636,36 +1895,6 @@ const MapView = () => {
                             </button>
                           </div>
                         )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {activeSidebarTab === "map-settings" && (
-                  <div className="p-4">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-semibold text-gray-800 mb-2">
-                          Map Layout
-                        </h3>
-                        <div className="grid grid-cols-1 gap-2">
-                          {Object.entries(mapLayouts).map(([key, layout]) => (
-                            <button
-                              key={key}
-                              className={`text-left px-3 py-2 text-sm rounded-lg transition-colors duration-200 ${
-                                mapLayout === key
-                                  ? "bg-blue-100 text-blue-700 font-medium"
-                                  : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                              }`}
-                              onClick={() => {
-                                setMapLayout(key);
-                                // Save preference to localStorage
-                                localStorage.setItem("mapLayout", key);
-                              }}
-                            >
-                              {layout?.name || key}
-                            </button>
-                          ))}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -2996,180 +2225,6 @@ const MapView = () => {
                               </button>
                             </div>
                           )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {activeSidebarTab === "pois" && (
-                  <div className="p-4">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-semibold text-gray-800 mb-2">
-                          Points of Interest
-                        </h3>
-                        <div className="relative mb-3">
-                          <input
-                            type="text"
-                            placeholder="Search for nearby attractions..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 bg-white/90 backdrop-blur-sm"
-                          />
-                          <button 
-                            onClick={() => searchPois(searchQuery || null)}
-                            className="absolute inset-y-0 right-0 pl-3 pr-3 flex items-center"
-                          >
-                            <svg
-                              className="h-5 w-5 text-gray-400"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                        
-                        {/* POIs Toggle */}
-                        <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg mb-3">
-                          <span className="text-sm">Show POIs on Map</span>
-                          <button
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full ${
-                              showPoisOnMap ? "bg-blue-500" : "bg-gray-300"
-                            }`}
-                            onClick={async () => {
-                              const newState = !showPoisOnMap;
-                              setShowPoisOnMap(newState);
-                              // If turning on and no POIs are loaded, fetch them
-                              if (newState && pois.length === 0 && mapRef.current) {
-                                await searchPois(null); // Search for POIs around current map center
-                              }
-                            }}
-                            disabled={isPoisLoading}
-                          >
-                            {isPoisLoading ? (
-                              <span className="flex items-center justify-center w-6 h-6">
-                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                </svg>
-                              </span>
-                            ) : (
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                                  showPoisOnMap ? "translate-x-6" : "translate-x-1"
-                                }`}
-                              />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        {isPoisLoading && pois.length === 0 ? (
-                          <div className="text-center py-8">
-                            <div className="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                            <p className="text-gray-600">Loading points of interest...</p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              Searching nearby attractions
-                            </p>
-                          </div>
-                        ) : pois.length > 0 ? (
-                          <div className="space-y-3">
-                            {paginatedPois.map((poi, index) => (
-                              <motion.div
-                                key={poi.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                className="p-4 rounded-xl bg-gray-50/80 border border-gray-200 hover:bg-gray-100 transition-all duration-300 cursor-pointer"
-                                onClick={() => {
-                                  if (mapRef.current) {
-                                    mapRef.current.flyTo(poi.position, 15);
-                                    setActivePopup(null); // Close any existing popups
-                                  }
-                                }}
-                              >
-                                <h3 className="font-semibold text-gray-800">
-                                  {poi.name}
-                                </h3>
-                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                  {poi.description || poi.address}
-                                </p>
-                                <div className="flex items-center justify-between mt-2">
-                                  <span className="text-xs text-gray-500">
-                                    {poi.category || "Point of Interest"}
-                                  </span>
-                                  <span className="text-xs text-gray-500">
-                                    {poi.distance ? `${poi.distance} km away` : ""}
-                                  </span>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8">
-                            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <svg
-                                className="w-8 h-8 text-gray-500"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0L6.94 17.25a1.998 1.998 0 010-2.827l3.646-3.647a1.999 1.999 0 012.828 0L17.657 16.657zM19.07 8.93l-1.414-1.414a1.999 1.999 0 00-2.828 0L10.586 11.75a1.999 1.999 0 000 2.828l3.646 3.647a1.999 1.999 0 002.828 0L19.07 13.93a1.999 1.999 0 000-2.828z"
-                                />
-                              </svg>
-                            </div>
-                            <p className="text-gray-500">No points of interest found</p>
-                            <p className="text-sm text-gray-400 mt-1">
-                              Search for a location or enable the map toggle to show nearby POIs
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* POIs Pagination Controls */}
-                      {pois.length > poisPerPage && (
-                        <div className="flex items-center justify-between mt-4 pt-2 border-t border-gray-200">
-                          <button
-                            onClick={() => setCurrentPoiPage(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPoiPage === 1}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-                              currentPoiPage === 1
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                            }`}
-                          >
-                            Previous
-                          </button>
-                          
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm text-gray-600">
-                              Page {currentPoiPage} of {totalPoiPages}
-                            </span>
-                          </div>
-                          
-                          <button
-                            onClick={() => setCurrentPoiPage(prev => Math.min(prev + 1, totalPoiPages))}
-                            disabled={currentPoiPage === totalPoiPages}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-                              currentPoiPage === totalPoiPages
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                            }`}
-                          >
-                            Next
-                          </button>
                         </div>
                       )}
                     </div>
