@@ -1406,11 +1406,7 @@ const MapView = () => {
           datePosted: result.data.datePosted || new Date().toISOString(),
           type: "user-post",
         };
-        setUserPosts((prevPosts) => {
-          // Filter out any duplicates by id, keep new one at top
-          const others = prevPosts.filter(p => p.id !== newPost.id);
-          return [...others, newPost];
-        });
+        setUserPosts((prevPosts) => [newPost, ...prevPosts]);
         showNotification("Post created successfully!", "success");
         setShowPostForm(false);
         setClickPosition(null);
@@ -1575,6 +1571,7 @@ const MapView = () => {
                 savedLocations={savedLocations}
                 saveLocation={saveLocation}
                 removeSavedLocation={removeSavedLocation}
+                isSavingLocation={isSavingLocation}
                 addRecentLocation={addRecentLocation}
                 user={user}
                 isAuthenticated={isAuthenticated}
