@@ -3,7 +3,8 @@ import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import Header from '../Landing/Header/Header';
 import CustomMarker from './CustomMarker';
-import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal } from 'lucide-react';
+import PostWindow from '../PostWindow';
+import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 // API base URL - adjust based on your backend URL
@@ -105,6 +106,7 @@ const DiscoverMain = () => {
               position: position, // [lat, lng] format for Leaflet
               price: post.price || 0,
               tags: post.tags || [],
+              comments: post.comments || [],
             };
           });
         
@@ -327,6 +329,38 @@ const DiscoverMain = () => {
     }
   };
 
+  // Get directions to a location
+  const getDirections = useCallback((position) => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+
+    // Try to get user's current location for directions
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+        
+        // Using Google Maps for directions (fallback to a simple approach if needed)
+        // You could also use other routing options like Mapbox or OpenStreetMap routing
+        const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${position[0]},${position[1]}`;
+        window.open(directionsUrl, '_blank');
+      },
+      (error) => {
+        console.error("Error getting user location:", error.message);
+        // Fallback: just center the map on the destination
+        flyToPost(position);
+        alert('Could not get your location. Centering map on destination instead.');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5 minutes
+      }
+    );
+  }, [flyToPost]);
+
   // Get the appropriate tile layer URL based on map type
   const getTileLayerUrl = () => {
     switch (mapType) {
@@ -413,12 +447,14 @@ const DiscoverMain = () => {
             <CustomMarker 
               key={post.id} 
               post={post}
+              onSave={saveLocation}
+              isSaved={savedLocations.some(loc => loc.id === post.id)}
+              onGetDirections={getDirections}
               onClick={(post) => {
                 setSelectedPost(post);
                 // Handle click on marker
+                console.log('Marker clicked for post:', post.title);
               }}
-              onSave={saveLocation}
-              isSaved={savedLocations.some(loc => loc.id === post.id)}
             />
           ))}
         </MapContainer>
@@ -645,6 +681,31 @@ const DiscoverMain = () => {
           </div>
         )}
       </div>
+      
+      {/* Post Window Modal */}
+      <PostWindow
+        post={selectedPost}
+        currentUser={isAuthenticated ? user : null}
+        authToken={isAuthenticated ? localStorage.getItem('token') : null}
+        isOpen={!!selectedPost}
+        onClose={() => setSelectedPost(null)}
+        onLike={(postId, isLiked) => {
+          // Update the posts state in DiscoverMain if needed
+          if (selectedPost && selectedPost.id === postId) {
+            setSelectedPost(prev => ({
+              ...prev,
+              likes: isLiked 
+                ? [...(prev.likes || []), { user: user?._id }] 
+                : (prev.likes || []).filter(like => like.user !== user?._id),
+              likesCount: isLiked ? (prev.likesCount || 0) + 1 : (prev.likesCount || 0) - 1
+            }));
+          }
+        }}
+        onComment={(postId) => {
+          console.log('Comment clicked for post:', postId);
+          // Handle comment click if needed
+        }}
+      />
     </div>
   );
 };
