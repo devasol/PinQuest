@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import MapView from '../../components/Discover/MapView';
+import React from 'react';
+import DiscoverMain from '../../components/Discover/DiscoverMain';
 import usePageTitle from '../../services/usePageTitle';
 
 const DiscoverPage = () => {
   usePageTitle("Discover");
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <MapView />
-    </div>
+    <DiscoverMain />
   );
 };
 

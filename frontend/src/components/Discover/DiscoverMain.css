@@ -1,37 +1,4 @@
-/* MapView.css - Styles for the map component */
-
-.popup-content {
-  min-width: 200px;
-}
-
-.leaflet-container {
-  height: 100%;
-  width: 100%;
-  z-index: 1;
-}
-
-/* Custom styles for the map container */
-.map-container {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-}
-
-/* Responsive design for the map */
-@media (max-width: 768px) {
-  .map-container {
-    height: 100vh;
-  }
-}
-
-/* Styling for loading/error states */
-.loading-container, .error-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background-color: #111827; /* gray-900 */
-}
+/* Custom styles for Discover components */
 
 /* Custom marker styling */
 .leaflet-marker-icon.custom-marker {
@@ -130,12 +97,4 @@
     max-height: 40vh;
     overflow-y: auto;
   }
-}
-
-/* Truncate text */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
