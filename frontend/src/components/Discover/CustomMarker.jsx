@@ -48,7 +48,7 @@ const createCustomMarker = (category = 'general', averageRating = 0) => {
 };
 
 // Simple marker component that wraps react-leaflet Marker
-const CustomMarker = ({ post, onClick }) => {
+const CustomMarker = ({ post, onClick, onSave }) => {
   const markerIcon = createCustomMarker(post.category, post.averageRating);
 
   return (
@@ -68,6 +68,17 @@ const CustomMarker = ({ post, onClick }) => {
             Category: {post.category} | 
             Rating: {post.averageRating.toFixed(1)} ({post.totalRatings})
           </p>
+          {onSave && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent popup from closing
+                onSave(post);
+              }}
+              className="mt-2 w-full bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded text-xs"
+            >
+              Save Location
+            </button>
+          )}
         </div>
       </Popup>
     </Marker>
