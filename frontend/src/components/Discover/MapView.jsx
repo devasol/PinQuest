@@ -215,6 +215,8 @@ const MapView = () => {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [isRemovingLocation, setIsRemovingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState(null); // Initialize as null to indicate no location yet
   const [hasUserLocation, setHasUserLocation] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
@@ -263,6 +265,7 @@ const MapView = () => {
     }
 
     if (!isAlreadySaved) {
+      setIsSavingLocation(true);
       
       // First, save to local state
       const newSavedLocation = {
@@ -361,6 +364,8 @@ const MapView = () => {
           JSON.stringify(revertedSavedLocations)
         );
         showNotification("Failed to save location. Please try again.", "error");
+      } finally {
+        setIsSavingLocation(false);
       }
     } else {
       showNotification("Location already saved!", "info");
@@ -374,6 +379,8 @@ const MapView = () => {
       return;
     }
 
+    setIsRemovingLocation(true);
+    
     // First, update local state
     const updatedSavedLocations = savedLocations.filter(
       (location) => location.id !== locationId
@@ -435,6 +442,8 @@ const MapView = () => {
         JSON.stringify(revertedSavedLocations)
       );
       showNotification("Failed to remove location. Please try again.", "error");
+    } finally {
+      setIsRemovingLocation(false);
     }
   };
 
