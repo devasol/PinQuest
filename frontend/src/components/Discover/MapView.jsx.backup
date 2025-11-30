@@ -11,8 +11,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import L from "leaflet";
-// Import routing machine to ensure it extends L.Routing
-import "leaflet-routing-machine";
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
 import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
 import markerIcon2xPng from "leaflet/dist/images/marker-icon-2x.png";
@@ -1052,22 +1050,6 @@ const MapView = () => {
                   lng = longitude;
                 }
               }
-              // Additional fallback: check for coordinates nested in a different structure
-              else if (post.coordinates && 
-                       Array.isArray(post.coordinates) && 
-                       post.coordinates.length === 2 &&
-                       typeof post.coordinates[0] === "number" && 
-                       typeof post.coordinates[1] === "number" &&
-                       !isNaN(post.coordinates[0]) &&
-                       !isNaN(post.coordinates[1])) {
-                const longitude = post.coordinates[0];
-                const latitude = post.coordinates[1];
-                if (latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180) {
-                  hasValidLocation = true;
-                  lat = latitude;
-                  lng = longitude;
-                }
-              }
               
               console.log(`Post ${post._id} valid location:`, hasValidLocation, "Location:", post.location, "Lat:", lat, "Lng:", lng);
               return hasValidLocation;
@@ -1086,13 +1068,6 @@ const MapView = () => {
                 position = [
                   parseFloat(post.location.latitude),   // latitude
                   parseFloat(post.location.longitude)   // longitude
-                ];
-              }
-              // Additional fallback for coordinates
-              else if (post.coordinates && Array.isArray(post.coordinates) && post.coordinates.length === 2) {
-                position = [
-                  parseFloat(post.coordinates[1]), // latitude
-                  parseFloat(post.coordinates[0])  // longitude
                 ];
               }
               
@@ -1257,103 +1232,136 @@ const MapView = () => {
     
     setIsGettingDirections(true);
     
-    // Function to handle successful location and setup routing
-    const handleLocationForRouting = (startPosition) => {
-      console.log(`Using start location for directions: ${startPosition[0]}, ${startPosition[1]}`);
-      
-      // Clear previous routing before setting new one
-      setRoutingStart(null);
-      setRoutingEnd(null);
-      setTimeout(() => {
-        setRoutingStart(startPosition);
-        setRoutingEnd(destinationPosition);
-        setShowRouting(true);
-
-        // Close any active popup
-        setActivePopup(null);
-
-        // Fly to the route area
-        if (mapRef.current) {
-          // Calculate center point between start and end
-          const centerLat =
-            (startPosition[0] + destinationPosition[0]) / 2;
-          const centerLng =
-            (startPosition[1] + destinationPosition[1]) / 2;
-          const center = [centerLat, centerLng];
-
-          // Determine appropriate zoom level based on distance
-          const distance = calculateDistance(
-            startPosition[0],
-            startPosition[1],
-            destinationPosition[0],
-            destinationPosition[1]
-          );
-          const zoom =
-            distance < 1 ? 14 : distance < 5 ? 12 : distance < 20 ? 10 : 8;
-
-          mapRef.current.flyTo(center, zoom);
-        }
-      }, 100); // Small delay to ensure proper cleanup
-      
-      setIsGettingDirections(false);
-    };
-
-    // Immediately use fallback if no user location is available
-    if (userLocation && userLocation.length === 2) {
-      // Use stored user location immediately
-      console.log("Using stored user location for directions");
-      handleLocationForRouting(userLocation);
-      return;
-    }
-    
-    // If no user location, immediately use map center
-    if (mapRef.current) {
-      try {
-        const mapCenter = mapRef.current.getCenter();
-        console.log("Using map center as immediate fallback location for directions:", mapCenter.lat, mapCenter.lng);
-        handleLocationForRouting([mapCenter.lat, mapCenter.lng]);
-        return; // Exit immediately after using fallback
-      } catch (e) {
-        console.error("Could not get map center for directions fallback:", e);
-      }
-    }
-    
-    // If geolocation is available, try to get location but with short timeout
-    // This runs in the background while we already showed directions with fallback
     if (navigator.geolocation) {
-      const timeoutId = setTimeout(() => {
-        // If the geolocation request is still pending after short timeout,
-        // we'll just keep using the fallback we already set
-        console.log("Geolocation request timed out, using fallback location");
-      }, 3000); // 3 second timeout for background location request
-      
+      // Use high accuracy to get the most precise location for directions
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // Clear the timeout since we got the location
-          clearTimeout(timeoutId);
-          const { latitude, longitude } = position.coords;
-          console.log("Successfully got updated location for directions");
+          const { latitude, longitude, accuracy } = position.coords;
+          const startPosition = [latitude, longitude];
+          console.log(
+            `Direction start location: ${latitude}, ${longitude} with accuracy: ${accuracy} meters`
+          );
+
+          const updatedStartPosition = [latitude, longitude];
+
+          // Clear previous routing before setting new one
+          setRoutingStart(null);
+          setRoutingEnd(null);
+          setTimeout(() => {
+            setRoutingStart(updatedStartPosition);
+            setRoutingEnd(destinationPosition);
+            setShowRouting(true);
+
+            // Close any active popup
+            setActivePopup(null);
+
+            // Fly to the route area
+            if (mapRef.current) {
+              // Calculate center point between start and end
+              const centerLat =
+                (updatedStartPosition[0] + destinationPosition[0]) / 2;
+              const centerLng =
+                (updatedStartPosition[1] + destinationPosition[1]) / 2;
+              const center = [centerLat, centerLng];
+
+              // Determine appropriate zoom level based on distance
+              const distance = calculateDistance(
+                updatedStartPosition[0],
+                updatedStartPosition[1],
+                destinationPosition[0],
+                destinationPosition[1]
+              );
+              const zoom =
+                distance < 1 ? 14 : distance < 5 ? 12 : distance < 20 ? 10 : 8;
+
+              mapRef.current.flyTo(center, zoom);
+            }
+          }, 100); // Small delay to ensure proper cleanup
           
-          // Update routing with the actual user location (this will override the fallback)
-          setRoutingStart([latitude, longitude]);
-          setRoutingEnd(destinationPosition);
+          setIsGettingDirections(false);
         },
         (error) => {
-          console.error("Background location request failed:", error);
-          clearTimeout(timeoutId);
-          // Keep using the fallback location that was already displayed
+          console.error("Error getting user location for directions:", error);
+          let errorMessage =
+            "Could not get your location for directions. Please enable location services and try again.";
+
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage =
+                "Location access denied. Please enable location services in your browser settings.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable.";
+              break;
+            case error.TIMEOUT:
+              // Retry with default location (or last known location if available)
+              if (userLocation) {
+                // Use last known user location if available
+                console.log("Using last known user location for directions");
+                
+                const updatedStartPosition = userLocation;
+                
+                // Clear previous routing before setting new one
+                setRoutingStart(null);
+                setRoutingEnd(null);
+                setTimeout(() => {
+                  setRoutingStart(updatedStartPosition);
+                  setRoutingEnd(destinationPosition);
+                  setShowRouting(true);
+
+                  // Close any active popup
+                  setActivePopup(null);
+
+                  // Fly to the route area
+                  if (mapRef.current) {
+                    // Calculate center point between start and end
+                    const centerLat =
+                      (updatedStartPosition[0] + destinationPosition[0]) / 2;
+                    const centerLng =
+                      (updatedStartPosition[1] + destinationPosition[1]) / 2;
+                    const center = [centerLat, centerLng];
+
+                    // Determine appropriate zoom level based on distance
+                    const distance = calculateDistance(
+                      updatedStartPosition[0],
+                      updatedStartPosition[1],
+                      destinationPosition[0],
+                      destinationPosition[1]
+                    );
+                    const zoom =
+                      distance < 1 ? 14 : distance < 5 ? 12 : distance < 20 ? 10 : 8;
+
+                    mapRef.current.flyTo(center, zoom);
+                  }
+                }, 100); // Small delay to ensure proper cleanup
+                
+                setIsGettingDirections(false);
+                return; // Exit early, we've handled the timeout by using stored location
+              } else {
+                errorMessage = "The request to get your location timed out. We couldn't get your current location, so directions can't be shown.";
+              }
+              break;
+            default:
+              errorMessage =
+                "An unknown error occurred while getting your location.";
+              break;
+          }
+
+          showNotification(errorMessage, "error");
+          setIsGettingDirections(false);
         },
         {
-          enableHighAccuracy: false,
-          timeout: 3000, // Short timeout for the background request
+          enableHighAccuracy: true,
+          timeout: 30000, // Increased timeout to 30 seconds for better reliability
           maximumAge: 30000, // Accept cached locations up to 30 seconds old
         }
       );
     } else {
       showNotification(
-        "Geolocation is not supported by this browser. Using map center as start location.",
-        "info"
+        "Geolocation is not supported by this browser. Please use a different browser to get directions.",
+        "error"
       );
+      setIsGettingDirections(false);
     }
   };
 
