@@ -1,16 +1,14 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PostWindow from './PostWindow';
 import usePostInteractions from '../../hooks/usePostInteractions';
-import { getImageUrl, formatDate } from '../../utils/imageUtils';
-import { connectSocket } from '../../services/socketService';
+import { formatDate } from '../../utils/imageUtils';
 
 // Mock the usePostInteractions hook
 jest.mock('../../hooks/usePostInteractions');
 // Mock imageUtils
 jest.mock('../../utils/imageUtils', () => ({
-  getImageUrl: jest.fn((url) => `mocked-image-url/${url}`),
   formatDate: jest.fn((dateString) => {
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
@@ -24,14 +22,6 @@ jest.mock('../../utils/imageUtils', () => ({
       minute: '2-digit',
     });
   }),
-}));
-// Mock socketService
-jest.mock('../../services/socketService', () => ({
-  connectSocket: jest.fn(() => ({
-    emit: jest.fn(),
-    on: jest.fn(),
-    off: jest.fn(),
-  })),
 }));
 
 describe('PostWindow', () => {
@@ -173,5 +163,32 @@ describe('PostWindow', () => {
     
     expect(screen.getByText('No comments yet. Be the first to comment!')).toBeInTheDocument();
     expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
+  });
+
+  it('calls handleLike when the like button is clicked', () => {
+    const handleLikeMock = jest.fn();
+    usePostInteractions.mockReturnValue({
+      liked: false,
+      likeCount: 5,
+      bookmarked: false,
+      handleLike: handleLikeMock,
+      handleBookmark: jest.fn(),
+    });
+
+    render(
+      <PostWindow
+        post={mockPost}
+        currentUser={mockCurrentUser}
+        authToken={mockAuthToken}
+        isAuthenticated={true}
+        isOpen={true}
+        onClose={jest.fn()}
+      />
+    );
+
+    const likeButton = screen.getByText('5').closest('button');
+    fireEvent.click(likeButton);
+
+    expect(handleLikeMock).toHaveBeenCalledTimes(1);
   });
 });

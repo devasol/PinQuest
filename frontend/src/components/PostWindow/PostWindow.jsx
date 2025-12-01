@@ -15,9 +15,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import OptimizedImage from "../OptimizedImage";
-import { postApi } from "../../services/api.js";
+import { postApi, userApi } from "../../services/api.js";
 import { getImageUrl, formatDate } from "../../utils/imageUtils";
-import usePostInteractions from "../../hooks/usePostInteractions";
 import CommentItem from './CommentItem'; // Import the new CommentItem component
 import { connectSocket } from "../../services/socketService";
 import './PostWindow.css';
@@ -29,7 +28,6 @@ const PostWindow = ({
   isAuthenticated, 
   isOpen, 
   onClose,
-  onLike,
   onSave,
   onRate,
   onGetDirections
@@ -43,22 +41,53 @@ const PostWindow = ({
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showInfo, setShowInfo] = useState(true);
-  const [likeAnimation, setLikeAnimation] = useState(false);
 
-  // Initialize from hook for interaction states (using currentPost state)
-  const {
-    liked,
-    likeCount,
-    bookmarked,
-    loading, // Destructure the new loading state
-    handleLike: handleLikeFromHook,
-    handleBookmark: handleBookmarkFromHook,
-  } = usePostInteractions(currentPost, currentUser || null, authToken, isAuthenticated);
 
-  // Update currentPost when the post prop changes
+  // Initialize bookmark state
+  const [bookmarked, setBookmarked] = useState(post?.bookmarked || false);
+  const [loading, setLoading] = useState(false);
+
+  // Simple local bookmark functionality
+  const handleBookmarkFromHook = async () => {
+    if (!authToken) {
+      alert("Please login to bookmark posts");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let result;
+      if (bookmarked) {
+        result = await userApi.removeFavorite(currentPost._id, authToken);
+      } else {
+        result = await userApi.addFavorite(currentPost._id, authToken);
+      }
+
+      if (result.success) {
+        setBookmarked(!bookmarked);
+        onSave && onSave(currentPost._id, !bookmarked); // Notify parent
+      } else {
+        throw new Error(result.error || 'Failed to update bookmark status');
+      }
+    } catch (error) {
+      console.error('Error handling bookmark:', error);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update currentPost when the post prop changes (for initial load or when switching posts)
   useEffect(() => {
     if (post) {
-      setCurrentPost(post);
+      setCurrentPost(prevCurrentPost => {
+        // Only update if it's a different post entirely
+        if (!prevCurrentPost || prevCurrentPost._id !== post._id) {
+          return post;
+        }
+        // If same post, keep the current state
+        return prevCurrentPost;
+      });
       setComments(post.comments || []);
     }
   }, [post]);
@@ -74,20 +103,24 @@ const PostWindow = ({
 
     const handlePostUpdate = (updatedPost) => {
       if (updatedPost._id === currentPost._id) {
-        setCurrentPost(updatedPost);
+        setCurrentPost(prevPost => {
+          // Preserve comment updates but no need to preserve like fields since likes are removed
+          return {
+            ...updatedPost,
+            comments: updatedPost.comments || [] // Comments can be updated from server
+          };
+        });
         setComments(updatedPost.comments || []);
       }
     };
     
     socket.on('post-updated', handlePostUpdate);
-    socket.on('post-liked', handlePostUpdate);
     socket.on('post-bookmarked', handlePostUpdate);
     socket.on('new-comment', handlePostUpdate);
 
     // Cleanup function
     return () => {
       socket.off('post-updated', handlePostUpdate);
-      socket.off('post-liked', handlePostUpdate);
       socket.off('post-bookmarked', handlePostUpdate);
       socket.off('new-comment', handlePostUpdate);
       socket.emit('leave-post-room', currentPost._id);
@@ -122,27 +155,7 @@ const PostWindow = ({
     }
   }, [images]);
 
-  // Interaction handlers
-  const handleLike = async () => {
-    if (!authToken) {
-      alert("Please login to like posts");
-      return;
-    }
 
-    try {
-      if (!liked) {
-        setLikeAnimation(true);
-        setTimeout(() => setLikeAnimation(false), 1000);
-      }
-      await handleLikeFromHook();
-      // The hook already handles optimistic updates and server sync
-      // The parent will update accordingly through the callback
-      onLike && onLike(currentPost._id, !liked); // This should trigger parent component to update
-    } catch (error) {
-      console.error('Error handling like:', error);
-      // The hook already handles error recovery, so no additional action needed here
-    }
-  };
 
   const handleBookmark = async () => {
     if (!authToken) {
@@ -528,33 +541,7 @@ const PostWindow = ({
               <div className="p-5 border-t border-gray-200 bg-gray-50">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center space-x-4">
-                    <motion.button
-                      onClick={handleLike}
-                      disabled={loading} // Disable button when loading
-                      className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all relative ${
-                        liked 
-                          ? "bg-red-100 text-red-600" 
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      } ${loading ? 'cursor-not-allowed' : ''}`}
-                      whileTap={{ scale: 0.95 }}
-                      animate={likeAnimation ? { scale: [1, 1.3, 1] } : {}}
-                      transition={{ duration: 0.5 }}
-                    >
-                      {likeAnimation && (
-                        <motion.div
-                          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                          initial={{ scale: 0.8, opacity: 1 }}
-                          animate={{ scale: 2, opacity: 0 }}
-                          transition={{ duration: 1 }}
-                        >
-                          <Heart className="w-6 h-6 text-red-300" />
-                        </motion.div>
-                      )}
-                      <Heart className={`w-6 h-6 relative z-10 ${liked ? "fill-current" : ""}`} />
-                      <span className="font-bold relative z-10">
-                        {likeCount || 0}
-                      </span>
-                    </motion.button>
+
 
                     <motion.button
                       onClick={handleComment}

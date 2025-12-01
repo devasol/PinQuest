@@ -88,7 +88,8 @@ const usePostInteractions = (post, currentUser, authToken, isAuthenticated) => {
       setLikeCount(post?.likesCount || 0);
       setLoading(false);
     }
-  }, [post?._id, currentUser?._id, authToken, isAuthenticated, post?.likes, post?.likesCount, currentUser?.favorites]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post?._id, currentUser?._id, authToken, isAuthenticated]);
 
   const handleLike = useCallback(async () => {
     if (!authToken || !post?._id || !currentUser?._id) {
