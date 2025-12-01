@@ -7,17 +7,23 @@ import CustomMarker from './CustomMarker';
 import PostWindow from '../PostWindow/PostWindow';
 import CurrentLocationMarker from './CurrentLocationMarker';
 import MapRouting from './MapRouting';
-import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark } from 'lucide-react';
+import CreatePostModal from './CreatePostModal';
+import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 
 // Custom hook for map events
-const MapClickHandler = ({ onMapClick }) => {
+const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
   useMapEvents({
     click: (e) => {
       if (onMapClick) onMapClick(e.latlng);
+      
+      // If user is authenticated, allow them to create a post at the clicked location
+      if (onMapPositionSelected) {
+        onMapPositionSelected(e.latlng);
+      }
       
       // Hide all control windows when clicking on map
       const windows = ['filter-window', 'view-mode-window', 'map-type-window', 'saved-locations-window'];
@@ -58,6 +64,9 @@ const DiscoverMain = () => {
   const [routingActive, setRoutingActive] = useState(false); // Track if routing is active
   const [routingDestination, setRoutingDestination] = useState(null); // Store destination for routing
   const [routingLoading, setRoutingLoading] = useState(false); // Track if routing is being calculated
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false); // Track if create post modal is open
+  const [selectedMapPosition, setSelectedMapPosition] = useState(null); // Store selected position for post creation
+  const [createPostLoading, setCreatePostLoading] = useState(false); // Track if post creation is in progress
   const mapRef = useRef();
   const fetchIntervalRef = useRef(null);
   const { isAuthenticated, user } = useAuth();
@@ -814,6 +823,88 @@ const DiscoverMain = () => {
     setRoutingLoading(false); // Also reset loading state
   }, []);
 
+  // Function to handle creating a new post
+  const handleCreatePost = async (postPayload) => {
+    if (!isAuthenticated) {
+      alert('Please login to create posts');
+      return;
+    }
+
+    setCreatePostLoading(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      // Prepare form data for multipart request
+      const formData = new FormData();
+      
+      // Add basic post data
+      formData.append('title', postPayload.title);
+      formData.append('description', postPayload.description);
+      formData.append('category', postPayload.category);
+      formData.append('location[latitude]', postPayload.location.latitude.toString());
+      formData.append('location[longitude]', postPayload.location.longitude.toString());
+
+      // Add uploaded file images
+      if (postPayload.images) {
+        postPayload.images.forEach((image) => {
+          if (image.file) {
+            formData.append('images', image.file, image.name);
+          }
+        });
+      }
+
+      // Add image links if any
+      if (postPayload.imageLinks && postPayload.imageLinks.length > 0) {
+        postPayload.imageLinks.forEach((link) => {
+          formData.append('imageLinks', link.url || link);
+        });
+      }
+
+      // Send the request
+      const response = await fetch(`${API_BASE_URL}/posts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.status === 'success') {
+        // Add the new post to our local state
+        const newPost = {
+          ...result.data,
+          id: result.data._id,
+          position: [postPayload.location.latitude, postPayload.location.longitude],
+          likes: [],
+          likesCount: 0,
+          comments: [],
+        };
+        
+        setPosts(prev => [newPost, ...prev]);
+        setFilteredPosts(prev => [newPost, ...prev]);
+        
+        // Close the modal
+        setShowCreatePostModal(false);
+        setSelectedMapPosition(null);
+        
+        alert('Post created successfully!');
+      } else {
+        throw new Error(result.message || 'Failed to create post');
+      }
+    } catch (error) {
+      console.error('Error creating post:', error);
+      alert(error.message || 'An error occurred while creating the post');
+    } finally {
+      setCreatePostLoading(false);
+    }
+  };
+
   // Get the appropriate tile layer URL based on map type
   const getTileLayerUrl = () => {
     switch (mapType) {
@@ -877,9 +968,20 @@ const DiscoverMain = () => {
             url={getTileLayerUrl()}
           />
           
-          <MapClickHandler onMapClick={(latlng) => {
-            // Handle map click
-          }} />
+          <MapClickHandler 
+            onMapClick={(latlng) => {
+              // Handle map click
+            }} 
+            onMapPositionSelected={(position) => {
+              // Only allow authenticated users to create posts
+              if (isAuthenticated) {
+                setSelectedMapPosition(position);
+                setShowCreatePostModal(true);
+              } else {
+                alert('Please login to create posts');
+              }
+            }}
+          />
           
           {/* Show user's current location on the map */}
           {userLocation && (
@@ -1131,6 +1233,24 @@ const DiscoverMain = () => {
               title="My Location"
             >
               <Navigation className="h-6 w-6" />
+            </button>
+          )}
+          
+          {isAuthenticated && (
+            <button
+              onClick={() => {
+                // For now, we'll use a default position if user hasn't selected one
+                // In a real implementation, you might want to prompt to select a location first
+                if (mapRef.current) {
+                  const center = mapRef.current.getCenter();
+                  setSelectedMapPosition(center);
+                }
+                setShowCreatePostModal(true);
+              }}
+              className="w-14 h-14 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl shadow-lg hover:from-emerald-600 hover:to-teal-600 transition-colors flex items-center justify-center"
+              title="Create New Post"
+            >
+              <Plus className="h-6 w-6" />
             </button>
           )}
         </div>
@@ -1535,6 +1655,18 @@ const DiscoverMain = () => {
           console.log('Comment clicked for post:', postId);
           // Handle comment click if needed
         }}
+      />
+      
+      {/* Create Post Modal */}
+      <CreatePostModal
+        isOpen={showCreatePostModal}
+        onClose={() => {
+          setShowCreatePostModal(false);
+          setSelectedMapPosition(null);
+        }}
+        initialPosition={selectedMapPosition}
+        onCreatePost={handleCreatePost}
+        loading={createPostLoading}
       />
     </div>
   );
