@@ -1,221 +1,173 @@
 import { useState, useEffect, useCallback } from 'react';
 import { postApi, userApi } from '../services/api';
+import { getInteractionState, updateInteractionState } from '../utils/interactionCache';
 
 // Custom hook to manage post interactions (likes, bookmarks) with server synchronization
 const usePostInteractions = (post, currentUser, authToken, isAuthenticated) => {
-  const [liked, setLiked] = useState(() => {
-    if (post?.likes && Array.isArray(post.likes) && currentUser && currentUser._id) {
-      return post.likes.some((like) => {
-        const userId = typeof like.user === 'object' ? like.user._id : like.user;
-        return userId && userId === currentUser._id;
-      });
-    }
-    return false;
-  });
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(post?.likesCount || 0);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const [likeCount, setLikeCount] = useState(post?.likesCount || (post?.likes ? post?.likes.length : 0) || 0);
+  useEffect(() => {
+    const fetchPostStatus = async () => {
+      if (!post?._id || !currentUser?._id || !authToken) {
+        setLoading(false);
+        return;
+      }
 
-  const [bookmarked, setBookmarked] = useState(() => {
-    if (post?.isBookmarked !== undefined) {
-      return post.isBookmarked;
-    } else if (currentUser && currentUser.favorites && Array.isArray(currentUser.favorites)) {
-      return currentUser.favorites.some((fav) => {
-        const favPostId = typeof fav.post === 'object' ? fav.post._id : fav.post;
-        return favPostId && favPostId === post._id;
-      });
-    }
-    return false;
-  });
+      setLoading(true);
 
-  // Function to refresh post status from the server
-  const refreshPostStatus = useCallback(async () => {
-    if (!post?._id || !authToken || !isAuthenticated || !currentUser) {
+      try {
+        // Get cached state for initial optimistic display, but verify with server
+        const cachedState = getInteractionState(currentUser._id, post._id);
+
+        // Fetch authoritative data from server
+        const [postResponse, favoritesResponse] = await Promise.all([
+          postApi.getPostById(post._id, authToken),
+          userApi.getFavorites(authToken),
+        ]);
+
+        let serverLiked = false;
+        let serverLikeCount = 0;
+        if (postResponse.success && postResponse.data) {
+          const updatedPost = postResponse.data;
+          serverLikeCount = updatedPost.likesCount || (updatedPost.likes ? updatedPost.likes.length : 0);
+          if (updatedPost.likes && Array.isArray(updatedPost.likes)) {
+            serverLiked = updatedPost.likes.some(like => 
+              (typeof like.user === 'object' ? like.user._id : like.user) === currentUser._id
+            );
+          }
+        } else {
+          // Fallback to cached or prop data if server fails for posts
+          serverLiked = cachedState.liked !== undefined ? cachedState.liked : (post.likes?.some(like => (typeof like.user === 'object' ? like.user._id : like.user) === currentUser._id) || false);
+          serverLikeCount = cachedState.likeCount !== undefined ? cachedState.likeCount : (post.likes?.length || 0);
+        }
+
+        let serverBookmarked = false;
+        if (favoritesResponse.success && favoritesResponse.data?.favorites) {
+          serverBookmarked = favoritesResponse.data.favorites.some(fav => 
+            (typeof fav.post === 'object' ? fav.post._id : fav.post) === post._id
+          );
+        } else {
+          // Fallback to cached or prop data if server fails for favorites
+          serverBookmarked = cachedState.bookmarked !== undefined ? cachedState.bookmarked : (currentUser.favorites?.some(fav => (typeof fav.post === 'object' ? fav.post._id : fav.post) === post._id) || false);
+        }
+
+        // Set state with authoritative server data
+        setLiked(serverLiked);
+        setLikeCount(serverLikeCount);
+        setBookmarked(serverBookmarked);
+
+        // Update cache with the latest server state
+        updateInteractionState(currentUser._id, post._id, {
+          liked: serverLiked,
+          bookmarked: serverBookmarked,
+          likeCount: serverLikeCount,
+        });
+
+      } catch (error) {
+        console.error('Error refreshing post status:', error);
+        // On error, fall back to cached data if available
+        const cachedState = getInteractionState(currentUser._id, post._id);
+        if (cachedState) {
+          setLiked(cachedState.liked || false);
+          setLikeCount(cachedState.likeCount || post?.likesCount || 0);
+          setBookmarked(cachedState.bookmarked || false);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchPostStatus();
+    } else {
       setLiked(false);
       setBookmarked(false);
-      return;
+      setLikeCount(post?.likesCount || 0);
+      setLoading(false);
     }
+  }, [post?._id, currentUser?._id, authToken, isAuthenticated, post?.likes, post?.likesCount, currentUser?.favorites]);
 
-    try {
-      // Fetch updated post data to get accurate like status
-      const response = await postApi.getPostById(post._id, authToken);
-      if (response.success && response.data) {
-        const updatedPost = response.data;
-
-        // Update like status
-        if (updatedPost.likes && Array.isArray(updatedPost.likes) && currentUser._id) {
-          const isLiked = updatedPost.likes.some(like => {
-            const userId = typeof like.user === 'object' ? like.user._id : like.user;
-            return userId && userId === currentUser._id;
-          });
-          setLiked(isLiked);
-        } else {
-          setLiked(false);
-        }
-
-        // Update like count
-        setLikeCount(updatedPost.likesCount || (updatedPost.likes ? updatedPost.likes.length : 0) || 0);
-      }
-
-      // Check if this post is bookmarked by fetching user's favorites
-      const bookmarkResponse = await userApi.getFavorites(authToken);
-      if (bookmarkResponse.success && bookmarkResponse.data?.favorites) {
-        const isBookmarked = bookmarkResponse.data.favorites.some(fav => {
-          const favPostId = typeof fav.post === 'object' ? fav.post._id : fav.post;
-          return favPostId && favPostId === post._id;
-        });
-        setBookmarked(isBookmarked);
-      } else {
-        setBookmarked(false);
-      }
-    } catch (error) {
-      console.error('Error refreshing post status:', error);
-      // Fallback to props data if API call fails
-      if (post?.likes && Array.isArray(post.likes) && currentUser && currentUser._id) {
-        const isLiked = post.likes.some(like => {
-          const userId = typeof like.user === 'object' ? like.user._id : like.user;
-          return userId && userId === currentUser._id;
-        });
-        setLiked(isLiked);
-      } else {
-        setLiked(false);
-      }
-
-      if (currentUser && currentUser.favorites && Array.isArray(currentUser.favorites)) {
-        const isBookmarked = currentUser.favorites.some(fav => {
-          const favPostId = typeof fav.post === 'object' ? fav.post._id : fav.post;
-          return favPostId && favPostId === post._id;
-        });
-        setBookmarked(isBookmarked);
-      } else {
-        setBookmarked(false);
-      }
-    }
-  }, [post?._id, authToken, isAuthenticated, currentUser?._id, post?.likes, post?.likesCount, currentUser?.favorites]);
-
-  // Refresh status when dependencies change (only when authentication state or post changes)
-  useEffect(() => {
-    refreshPostStatus();
-  }, [isAuthenticated, post?._id, currentUser?._id, authToken]);
-
-  // Handle like/unlike action
   const handleLike = useCallback(async () => {
-    if (!authToken || !post?._id) {
-      alert("Please login to like posts or the post data is not available");
+    if (!authToken || !post?._id || !currentUser?._id) {
+      alert("Please login to like posts.");
       return;
     }
 
-    // Optimistically update UI
+    const originalState = { liked, likeCount };
     const newLikedState = !liked;
-    const newLikeCount = liked ? likeCount - 1 : likeCount + 1;
-    
+    const newLikeCount = newLikedState ? likeCount + 1 : likeCount - 1;
+
+    // Optimistic UI update
     setLiked(newLikedState);
     setLikeCount(newLikeCount);
+    updateInteractionState(currentUser._id, post._id, { liked: newLikedState, likeCount: newLikeCount });
 
-    const result = await (liked 
-      ? postApi.unlikePost(post._id, authToken)
-      : postApi.likePost(post._id, authToken)
-    );
+    try {
+      const result = await (originalState.liked
+        ? postApi.unlikePost(post._id, authToken)
+        : postApi.likePost(post._id, authToken)
+      );
 
-    if (result.success) {
-      // Update the like count from server response to ensure accuracy
-      const serverLikeCount = result.data?.likesCount;
-      if (serverLikeCount !== undefined) {
+      if (result.success && result.data) {
+        // Confirm server state
+        const serverLikeCount = result.data.likesCount;
         setLikeCount(serverLikeCount);
-        // Ensure the liked state matches server state (double-check)
-        setLiked(newLikedState);
-      }
-    } else {
-      // If the API call fails, revert the optimistic update
-      console.error('Failed to update like status:', result.error || result.message);
-      setLiked(liked); // Revert to original state
-      setLikeCount(likeCount); // Revert to original count
-      
-      // Handle specific error messages
-      if (result.error && (result.error.includes('already') || result.error.includes('Already'))) {
-        // If it says "already liked", it means the server state was already liked
-        if (result.error.includes('liked')) {
-          if (!liked) { // User tried to like an already liked post
-            setLiked(true);
-            setLikeCount(prev => prev + 1);
-          }
-        } else if (result.error.includes('unliked')) {
-          // If it says "already unliked", it means the server state was already unliked
-          if (liked) { // User tried to unlike an already unliked post
-            setLiked(false);
-            setLikeCount(prev => prev - 1);
-          }
-        }
+        updateInteractionState(currentUser._id, post._id, { liked: newLikedState, likeCount: serverLikeCount });
       } else {
-        // For other errors, show a general message and revert state
-        alert('An error occurred. Please try again.');
+        throw new Error(result.error || 'Failed to update like status.');
       }
+    } catch (error) {
+      console.error('Failed to update like status:', error);
+      // Revert on failure
+      setLiked(originalState.liked);
+      setLikeCount(originalState.likeCount);
+      updateInteractionState(currentUser._id, post._id, { liked: originalState.liked, likeCount: originalState.likeCount });
+      alert('An error occurred. Please try again.');
     }
-  }, [authToken, liked, likeCount, post?._id]);
+  }, [authToken, post?._id, currentUser?._id, liked, likeCount]);
 
-  // Handle bookmark/unbookmark action
   const handleBookmark = useCallback(async () => {
-    if (!authToken || !post?._id) {
-      alert("Please login to bookmark posts or the post data is not available");
+    if (!authToken || !post?._id || !currentUser?._id) {
+      alert("Please login to bookmark posts.");
       return;
     }
 
-    // Store the previous state to revert if needed
-    const previousBookmarked = bookmarked;
-    
-    // Optimistically update the UI
-    setBookmarked(prev => !prev);
+    const originalBookmarked = bookmarked;
+    const newBookmarkedState = !bookmarked;
 
-    let result;
-    if (bookmarked) {
-      // Remove from favorites
-      result = await userApi.removeFavorite(post._id, authToken);
+    // Optimistic UI update
+    setBookmarked(newBookmarkedState);
+    updateInteractionState(currentUser._id, post._id, { bookmarked: newBookmarkedState });
+
+    try {
+      const result = await (originalBookmarked
+        ? userApi.removeFavorite(post._id, authToken)
+        : userApi.addFavorite(post._id, authToken)
+      );
+
       if (!result.success) {
-        console.error('Failed to remove bookmark:', result.error || result.message);
-        // Revert the UI state if the API call failed
-        setBookmarked(previousBookmarked);
-        
-        // Handle specific error messages
-        if (result.error && (result.error.includes('already') || result.error.includes('Already'))) {
-          // If it says "already unfavorited", it means the server state was already unfavorited
-          if (result.error.includes('favorited')) {
-            setBookmarked(true);
-          } else {
-            setBookmarked(false);
-          }
-        } else {
-          alert('An error occurred while removing bookmark. Please try again.');
-        }
+        throw new Error(result.error || 'Failed to update bookmark status.');
       }
-    } else {
-      // Add to favorites
-      result = await userApi.addFavorite(post._id, authToken);
-      if (!result.success) {
-        console.error('Failed to add bookmark:', result.error || result.message);
-        // Revert the UI state if the API call failed
-        setBookmarked(previousBookmarked);
-        
-        // Handle specific error messages
-        if (result.error && (result.error.includes('already') || result.error.includes('Already'))) {
-          // If it says "already favorited", it means the server state was already favorited
-          if (result.error.includes('favorited')) {
-            setBookmarked(true);
-          } else {
-            setBookmarked(false);
-          }
-        } else {
-          alert('An error occurred while saving bookmark. Please try again.');
-        }
-      }
+      // No need to do anything on success, optimistic update is confirmed
+    } catch (error) {
+      console.error('Failed to update bookmark status:', error);
+      // Revert on failure
+      setBookmarked(originalBookmarked);
+      updateInteractionState(currentUser._id, post._id, { bookmarked: originalBookmarked });
+      alert('An error occurred. Please try again.');
     }
-  }, [authToken, bookmarked, post?._id]);
+  }, [authToken, post?._id, currentUser?._id, bookmarked]);
 
   return {
     liked,
     likeCount,
     bookmarked,
-    refreshPostStatus,
+    loading,
     handleLike,
-    handleBookmark
+    handleBookmark,
   };
 };
 

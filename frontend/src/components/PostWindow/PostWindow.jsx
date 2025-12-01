@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
@@ -15,7 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import OptimizedImage from "../OptimizedImage";
-import { postApi, userApi } from "../../services/api.js";
+import { postApi } from "../../services/api.js";
 import { getImageUrl, formatDate } from "../../utils/imageUtils";
 import usePostInteractions from "../../hooks/usePostInteractions";
 import CommentItem from './CommentItem'; // Import the new CommentItem component
@@ -30,7 +30,6 @@ const PostWindow = ({
   isOpen, 
   onClose,
   onLike,
-  onComment,
   onSave,
   onRate,
   onGetDirections
@@ -43,8 +42,6 @@ const PostWindow = ({
   const [hoverRating, setHoverRating] = useState(0);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [imageScale, setImageScale] = useState(1);
-  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
   const [showInfo, setShowInfo] = useState(true);
   const [likeAnimation, setLikeAnimation] = useState(false);
 
@@ -53,107 +50,60 @@ const PostWindow = ({
     liked,
     likeCount,
     bookmarked,
+    loading, // Destructure the new loading state
     handleLike: handleLikeFromHook,
     handleBookmark: handleBookmarkFromHook,
-    refreshPostStatus
   } = usePostInteractions(currentPost, currentUser || null, authToken, isAuthenticated);
 
-  // Update currentPost when the post prop changes, but be careful not to override interaction states
+  // Update currentPost when the post prop changes
   useEffect(() => {
     if (post) {
-      // Preserve current interaction states if they exist in currentPost
-      setCurrentPost(prevCurrentPost => {
-        // Only update non-interaction fields, preserving the interaction states managed by the hook
-        if (!prevCurrentPost || post._id !== prevCurrentPost._id) {
-          // If switching to a different post, use the new post data completely
-          return post;
-        } else {
-          // If the same post but with updated data, merge preserving UI state from hook
-          // but taking the new data from the post
-          return {
-            ...post,
-            // Preserve the current state values that might have been updated by user interactions
-            // The actual interaction states (like, bookmark) are handled by the hook separately
-            ...prevCurrentPost
-          };
-        }
-      });
+      setCurrentPost(post);
       setComments(post.comments || []);
     }
   }, [post]);
 
-  // Refresh interaction status when component opens or post changes
-  useEffect(() => {
-    if (isOpen && currentPost && refreshPostStatus) {
-      // Refresh interaction states when currentPost changes or component opens
-      refreshPostStatus();
-    }
-  }, [isOpen, currentPost, refreshPostStatus]);
-
   // Set up real-time updates via socket
   useEffect(() => {
-    if (!isOpen || !authToken || !currentPost?._id || !refreshPostStatus) return;
+    if (!isOpen || !authToken || !currentPost?._id) return;
 
     const socket = connectSocket(authToken);
 
     // Join a room specific to this post to receive updates
     socket.emit('join-post-room', currentPost._id);
 
-    // Listen for post updates
-    socket.on('post-updated', (updatedPost) => {
+    const handlePostUpdate = (updatedPost) => {
       if (updatedPost._id === currentPost._id) {
         setCurrentPost(updatedPost);
         setComments(updatedPost.comments || []);
-        // Refresh interaction states to reflect updates
-        refreshPostStatus();
       }
-    });
-
-    // Listen for like updates
-    socket.on('post-liked', (likeData) => {
-      if (likeData.postId === currentPost._id) {
-        // Refresh the post data to get updated like count
-        refreshPostStatus();
-      }
-    });
-
-    // Listen for bookmark updates
-    socket.on('post-bookmarked', (bookmarkData) => {
-      if (bookmarkData.postId === currentPost._id) {
-        // Refresh the post data to get updated bookmark status
-        refreshPostStatus();
-      }
-    });
-
-    // Listen for comment updates
-    socket.on('new-comment', (commentData) => {
-      if (commentData.postId === currentPost._id) {
-        // Refresh to get the new comment count
-        refreshPostStatus();
-      }
-    });
+    };
+    
+    socket.on('post-updated', handlePostUpdate);
+    socket.on('post-liked', handlePostUpdate);
+    socket.on('post-bookmarked', handlePostUpdate);
+    socket.on('new-comment', handlePostUpdate);
 
     // Cleanup function
     return () => {
-      socket.off('post-updated');
-      socket.off('post-liked');
-      socket.off('post-bookmarked');
-      socket.off('new-comment');
-      // Optionally leave the post room
+      socket.off('post-updated', handlePostUpdate);
+      socket.off('post-liked', handlePostUpdate);
+      socket.off('post-bookmarked', handlePostUpdate);
+      socket.off('new-comment', handlePostUpdate);
       socket.emit('leave-post-room', currentPost._id);
     };
-  }, [isOpen, authToken, currentPost?._id, refreshPostStatus]);
+  }, [isOpen, authToken, currentPost?._id]);
 
   // Create stable images array
   const hasImages = useMemo(() => {
     return currentPost && ((currentPost.images && currentPost.images.length > 0) || currentPost.image);
-  }, [currentPost?.images, currentPost?.image]);
+  }, [currentPost]);
 
   const images = useMemo(() => {
     if (!currentPost) return [];
     const result = currentPost?.images || (currentPost?.image ? [currentPost.image] : []);
     return [...result];
-  }, [currentPost?.images, currentPost?.image, currentPost?.image]);
+  }, [currentPost]);
 
   // Navigation functions for images
   const nextImage = useCallback(() => {
@@ -161,8 +111,6 @@ const PostWindow = ({
       setCurrentImageIndex(prev => 
         prev === images.length - 1 ? 0 : prev + 1
       );
-      setImageScale(1);
-      setImagePosition({ x: 0, y: 0 });
     }
   }, [images]);
 
@@ -171,8 +119,6 @@ const PostWindow = ({
       setCurrentImageIndex(prev => 
         prev === 0 ? images.length - 1 : prev - 1
       );
-      setImageScale(1);
-      setImagePosition({ x: 0, y: 0 });
     }
   }, [images]);
 
@@ -189,8 +135,8 @@ const PostWindow = ({
         setTimeout(() => setLikeAnimation(false), 1000);
       }
       await handleLikeFromHook();
-      // Refresh the post status to ensure UI immediately reflects the change
-      setTimeout(() => refreshPostStatus(), 100);
+      // The hook already handles optimistic updates and server sync
+      // The parent will update accordingly through the callback
       onLike && onLike(currentPost._id, !liked); // This should trigger parent component to update
     } catch (error) {
       console.error('Error handling like:', error);
@@ -206,8 +152,8 @@ const PostWindow = ({
 
     try {
       await handleBookmarkFromHook();
-      // Refresh the post status to ensure UI immediately reflects the change
-      setTimeout(() => refreshPostStatus(), 100);
+      // The hook already handles optimistic updates and server sync
+      // The parent will update accordingly through the callback
       onSave && onSave(currentPost._id, !bookmarked); // This should trigger parent component to update
     } catch (error) {
       console.error('Error handling bookmark:', error);
@@ -584,11 +530,12 @@ const PostWindow = ({
                   <div className="flex items-center space-x-4">
                     <motion.button
                       onClick={handleLike}
+                      disabled={loading} // Disable button when loading
                       className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all relative ${
                         liked 
                           ? "bg-red-100 text-red-600" 
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
+                      } ${loading ? 'cursor-not-allowed' : ''}`}
                       whileTap={{ scale: 0.95 }}
                       animate={likeAnimation ? { scale: [1, 1.3, 1] } : {}}
                       transition={{ duration: 0.5 }}
@@ -620,11 +567,12 @@ const PostWindow = ({
 
                     <motion.button
                       onClick={handleBookmark}
+                      disabled={loading} // Disable button when loading
                       className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all ${
                         bookmarked
                           ? "bg-yellow-100 text-yellow-600"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
+                      } ${loading ? 'cursor-not-allowed' : ''}`}
                       whileTap={{ scale: 0.95 }}
                     >
                       <Bookmark
