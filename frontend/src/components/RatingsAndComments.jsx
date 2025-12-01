@@ -117,12 +117,24 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
               return likeUserId && currentUserId && likeUserId.toString() === currentUserId.toString();
             }) || false;
 
-            // Check if comment.user is an object with an _id but no name field
+            // Extract name from comment.user object, ensuring we only have the name field
             let processedUser = comment.user;
             if (comment.user && typeof comment.user === 'object') {
-              // If user object has name fields, use it as is
-              if (comment.user.name || comment.user.displayName) {
-                processedUser = comment.user;
+              // If user object has name fields, extract the name
+              if (comment.user.name) {
+                processedUser = { name: comment.user.name };
+              } else if (comment.user.displayName) {
+                processedUser = { name: comment.user.displayName };
+              } else if (comment.user.firstName && comment.user.lastName) {
+                processedUser = { name: `${comment.user.firstName} ${comment.user.lastName}` };
+              } else if (comment.user.firstName) {
+                processedUser = { name: comment.user.firstName };
+              } else if (comment.user.lastName) {
+                processedUser = { name: comment.user.lastName };
+              } else if (comment.user.email) {
+                processedUser = { name: comment.user.email.split('@')[0] };
+              } else if (comment.user.username) {
+                processedUser = { name: comment.user.username };
               } else if (comment.username) {
                 // If user object exists but lacks name, but username is available, prioritize username
                 processedUser = { name: comment.username };
@@ -130,12 +142,8 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                 // Else, use postedBy
                 processedUser = { name: comment.postedBy };
               } else {
-                // Otherwise, try to get a name from the user object
-                // If we have a populated user object but still no name, default to Anonymous
-                processedUser = {
-                  name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 'Anonymous',
-                  ...comment.user
-                };
+                // Otherwise, default to Anonymous
+                processedUser = { name: 'Anonymous' };
               }
             } else if (!comment.user && (comment.username || comment.postedBy)) {
               // If no user object but username/postedBy exist, create a simple user object
@@ -382,7 +390,6 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
           _id: result.data.comment._id || result.data.comment.id,
           text: result.data.comment.text || result.data.comment.content,
           user: { 
-            ...commentUser,
             name: displayName 
           },
           date: result.data.comment.date || result.data.comment.createdAt || result.data.comment.datePosted || new Date().toISOString(),
@@ -504,12 +511,24 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
               return likeUserId && currentUserId && likeUserId.toString() === currentUserId.toString();
             }) || false;
 
-            // Check if comment.user is an object with an _id but no name field
+            // Extract name from comment.user object, ensuring we only have the name field
             let processedUser = comment.user;
             if (comment.user && typeof comment.user === 'object') {
-              // If user object has name fields, use it as is
-              if (comment.user.name || comment.user.displayName) {
-                processedUser = comment.user;
+              // If user object has name fields, extract the name
+              if (comment.user.name) {
+                processedUser = { name: comment.user.name };
+              } else if (comment.user.displayName) {
+                processedUser = { name: comment.user.displayName };
+              } else if (comment.user.firstName && comment.user.lastName) {
+                processedUser = { name: `${comment.user.firstName} ${comment.user.lastName}` };
+              } else if (comment.user.firstName) {
+                processedUser = { name: comment.user.firstName };
+              } else if (comment.user.lastName) {
+                processedUser = { name: comment.user.lastName };
+              } else if (comment.user.email) {
+                processedUser = { name: comment.user.email.split('@')[0] };
+              } else if (comment.user.username) {
+                processedUser = { name: comment.user.username };
               } else if (comment.username) {
                 // If user object exists but lacks name, but username is available, prioritize username
                 processedUser = { name: comment.username };
@@ -517,12 +536,8 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                 // Else, use postedBy
                 processedUser = { name: comment.postedBy };
               } else {
-                // Otherwise, try to get a name from the user object
-                // If we have a populated user object but still no name, default to Anonymous
-                processedUser = {
-                  name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 'Anonymous',
-                  ...comment.user
-                };
+                // Otherwise, default to Anonymous
+                processedUser = { name: 'Anonymous' };
               }
             } else if (!comment.user && (comment.username || comment.postedBy)) {
               // If no user object but username/postedBy exist, create a simple user object
@@ -882,7 +897,14 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                                 {username}
                               </h5>
                               <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
-                                {new Date(comment.date || comment.createdAt || comment.datePosted || comment.timestamp || Date.now()).toLocaleDateString()}
+                                {(() => {
+                                  const dateValue = comment.date || comment.createdAt || comment.datePosted || comment.timestamp;
+                                  if (dateValue) {
+                                    const date = new Date(dateValue);
+                                    return isNaN(date.getTime()) ? 'Just now' : date.toLocaleDateString();
+                                  }
+                                  return 'Just now';
+                                })()}
                               </span>
                             </div>
                             

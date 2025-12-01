@@ -200,13 +200,13 @@ const getPostById = async (req, res) => {
     const post = await Post.findById(req.params.id)
       .populate("postedBy", "name email avatar")
       .populate({
-        path: "comments.user",
-        select: "name avatar",
-      })
-      .populate({
-        path: "comments.replies.user",
-        select: "name avatar",
-      }); // Populate the user data for the poster and comments
+              path: "comments.user",
+              select: "name _id", // Standardize to name and _id
+            })
+              .populate({
+                path: "comments.replies.user",
+                select: "name _id", // Standardize to name and _id
+              }); // Populate the user data for the poster and comments
     if (!post) {
       return sendErrorResponse(res, 404, "Post not found");
     }
@@ -626,16 +626,7 @@ const addComment = async (req, res) => {
       post.comments = [];
     }
 
-    // Check if the user has already commented on this post
-    const existingCommentIndex = post.comments && post.comments.findIndex 
-      ? post.comments.findIndex(
-          (comment) => comment.user.toString() === req.user._id.toString()
-        )
-      : -1;
-
-    if (existingCommentIndex !== -1) {
-      return sendErrorResponse(res, 400, "User can only leave one comment per post");
-    }
+    // No restriction on number of comments per user per post - users can add multiple comments
 
     // Create new comment
     const newComment = {
@@ -671,7 +662,7 @@ const addComment = async (req, res) => {
     // Populate the user info for the returned comment
     const populatedPost = await Post.findById(postId).populate({
       path: "comments.user",
-      select: "name avatar",
+      select: "name _id", // Standardize to name and _id
     });
 
     const addedComment = populatedPost.comments[0]; // First comment is the newly added one
@@ -762,12 +753,12 @@ const updateComment = async (req, res) => {
     await post.save();
 
     // Populate the user info for the returned comment
-    const populatedPost = await Post.findById(postId).populate({
+    const populatedPost = await post.populate({
       path: "comments.user",
-      select: "name avatar",
+      select: "name _id", // Explicitly select name and _id
     }).populate({
       path: "comments.replies.user",
-      select: "name avatar",
+      select: "name _id", // Explicitly select name and _id
     });
 
     const updatedComment = populatedPost.comments.find(
@@ -860,15 +851,16 @@ const getComments = async (req, res) => {
       });
     }
 
-    // Populate user info for all comments
-    const populatedPost = await Post.findById(req.params.id).populate({
-      path: "comments.user",
-      select: "name avatar",
-    }).populate({
-      path: "comments.replies.user",
-      select: "name avatar",
-    });
-
+          // Populate user info for all comments on the fetched post object
+          const populatedPost = await post
+            .populate({
+              path: "comments.user",
+              select: "name _id", // Explicitly select name and _id for comment users
+            })
+            .populate({
+              path: "comments.replies.user",
+              select: "name _id", // Explicitly select name and _id for reply users
+            });
     res.status(200).json({
       status: "success",
       data: populatedPost.comments,
@@ -929,10 +921,10 @@ const likeComment = async (req, res) => {
     // Populate the updated comment with user info
     const updatedPost = await Post.findById(postId).populate({
       path: "comments.user",
-      select: "name avatar",
+      select: "name _id", // Standardize to name and _id
     }).populate({
       path: "comments.replies.user",
-      select: "name avatar",
+      select: "name _id", // Standardize to name and _id
     });
 
     const updatedComment = updatedPost.comments.id(commentId);
@@ -992,10 +984,10 @@ const replyToComment = async (req, res) => {
     // Populate the updated comment with user info
     const updatedPost = await Post.findById(postId).populate({
       path: "comments.user",
-      select: "name avatar",
+      select: "name _id", // Standardize to name and _id
     }).populate({
       path: "comments.replies.user",
-      select: "name avatar",
+      select: "name _id", // Standardize to name and _id
     });
 
     const updatedComment = updatedPost.comments.id(commentId);
@@ -1047,7 +1039,7 @@ const searchPosts = async (req, res) => {
       .populate("postedBy", "name avatar")
       .populate({
         path: "comments.user",
-        select: "name avatar",
+        select: "name _id", // Standardize to name and _id
       })
       .sort({ datePosted: -1 })
       .skip(skip)
@@ -1109,7 +1101,7 @@ const getNearbyPosts = async (req, res) => {
       .populate("postedBy", "name avatar")
       .populate({
         path: "comments.user",
-        select: "name avatar",
+        select: "name _id", // Standardize to name and _id
       })
       .limit(parseInt(limit));
 
@@ -1154,7 +1146,7 @@ const getPostsWithinArea = async (req, res) => {
       .populate("postedBy", "name email avatar")
       .populate({
         path: "comments.user",
-        select: "name avatar",
+        select: "name _id", // Standardize to name and _id
       });
 
     res.status(200).json({

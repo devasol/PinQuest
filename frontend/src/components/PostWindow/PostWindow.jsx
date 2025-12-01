@@ -18,6 +18,7 @@ import OptimizedImage from "../OptimizedImage";
 import { postApi, userApi } from "../../services/api.js";
 import { getImageUrl, formatDate } from "../../utils/imageUtils";
 import usePostInteractions from "../../hooks/usePostInteractions";
+import CommentItem from './CommentItem'; // Import the new CommentItem component
 import { connectSocket } from "../../services/socketService";
 import './PostWindow.css';
 
@@ -673,22 +674,11 @@ const PostWindow = ({
                         {comments && comments.length > 0 ? (
                           <div className="space-y-4">
                             {comments.map((comment) => (
-                              <div key={comment._id || `comment-${Math.random()}`} className="bg-gray-50 rounded-xl p-4">
-                                <div className="flex items-start gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                                    {(typeof comment.user === 'object' ? comment.user.name : comment.user)?.charAt(0)?.toUpperCase() || 'A'}
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <p className="font-semibold text-gray-800">{typeof comment.user === 'object' ? comment.user.name : comment.user || 'Anonymous'}</p>
-                                        <p className="text-xs text-gray-500">{new Date(comment.createdAt || comment.datePosted).toLocaleString()}</p>
-                                      </div>
-                                    </div>
-                                    <p className="mt-2 text-gray-700">{comment.text}</p>
-                                  </div>
-                                </div>
-                              </div>
+                              <CommentItem 
+                                key={comment._id || `comment-${Math.random()}`}
+                                comment={comment}
+                                authToken={authToken}
+                              />
                             ))}
                           </div>
                         ) : (

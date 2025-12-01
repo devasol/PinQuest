@@ -239,6 +239,8 @@ export const userApi = {
   // User profile operations
   getProfile: (authToken) => apiService.get('/users/profile', authToken),
   updateProfile: (userData, authToken) => apiService.put('/users/profile', userData, authToken),
+  // Get user by ID
+  getUserById: (userId, authToken) => apiService.get(`/users/${userId}`, authToken),
   
   // User authentication
   login: (credentials) => apiService.post('/auth/login', credentials),
