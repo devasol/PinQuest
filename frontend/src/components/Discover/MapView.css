@@ -139,3 +139,71 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Leaflet routing machine styles */
+.routing-summary {
+  text-align: center;
+  padding: 5px;
+}
+
+.leaflet-routing-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.leaflet-routing-container h2 {
+  margin: 0;
+  padding: 12px;
+  background-color: #2563eb;
+  color: white;
+  font-size: 18px;
+}
+
+.leaflet-routing-alt {
+  border-bottom: 1px solid #eee;
+}
+
+.leaflet-routing-alt:last-child {
+  border-bottom: none;
+}
+
+.leaflet-routing-alt:hover {
+  background-color: #f5f5f5;
+}
+
+.leaflet-routing-summary {
+  padding: 8px 12px;
+  font-weight: bold;
+}
+
+.leaflet-routing-instruction {
+  padding: 8px 12px;
+  border-left: 2px solid #2563eb;
+}
+
+.leaflet-routing-geocoder {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+
+.leaflet-routing-geocoders {
+  padding: 15px;
+}
+
+.leaflet-routing-remove-waypoint {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.leaflet-routing-remove-waypoint:hover {
+  color: #f00;
+}

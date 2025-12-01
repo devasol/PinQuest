@@ -250,7 +250,7 @@ const MapView = () => {
 
   // Fly to a post's location on the map
   const flyToPost = useCallback((position) => {
-    if (mapRef.current) {
+    if (mapRef.current && position && Array.isArray(position) && position.length >= 2) {
       mapRef.current.flyTo(position, 15);
     }
   }, []);

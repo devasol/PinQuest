@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import Header from '../Landing/Header/Header';
 import CustomMarker from './CustomMarker';
 import PostWindow from '../PostWindow/PostWindow';
 import CurrentLocationMarker from './CurrentLocationMarker';
+import MapRouting from './MapRouting';
 import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -52,6 +54,9 @@ const DiscoverMain = () => {
   const [mapZoom, setMapZoom] = useState(2);
   const [userLocation, setUserLocation] = useState(null);
   const [mobileView, setMobileView] = useState('map'); // 'map' or 'list' for mobile
+  const [routingActive, setRoutingActive] = useState(false); // Track if routing is active
+  const [routingDestination, setRoutingDestination] = useState(null); // Store destination for routing
+  const [routingLoading, setRoutingLoading] = useState(false); // Track if routing is being calculated
   const mapRef = useRef();
   const fetchIntervalRef = useRef(null);
   const { isAuthenticated, user } = useAuth();
@@ -415,12 +420,27 @@ const DiscoverMain = () => {
           const { latitude, longitude } = position.coords;
           const userPos = [latitude, longitude];
           setUserLocation(userPos);
-          setMapCenter(userPos);
-          setMapZoom(13);
+          
+          // Center the map on the user's location when page loads
+          if (mapRef.current) {
+            mapRef.current.setView(userPos, 13);
+          } else {
+            // If map isn't ready yet, update the state
+            setMapCenter(userPos);
+            setMapZoom(13);
+          }
         },
         (error) => {
           console.log("Geolocation error:", error.message);
-          // Default to world view if geolocation fails
+          // Default to a reasonable view if geolocation fails
+          // Using a default location (like a general city center) instead of [20, 0] (world view)
+          const defaultLocation = [20.5937, 78.9629]; // India coordinates as a default
+          if (mapRef.current) {
+            mapRef.current.setView(defaultLocation, 3);
+          } else {
+            setMapCenter(defaultLocation);
+            setMapZoom(3);
+          }
         },
         {
           enableHighAccuracy: true,
@@ -433,7 +453,11 @@ const DiscoverMain = () => {
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setUserLocation([latitude, longitude]);
+          const userPos = [latitude, longitude];
+          setUserLocation(userPos);
+          
+          // Optionally update map to follow user if they've enabled it
+          // (not automatically following to avoid disrupting user experience)
         },
         (error) => {
           console.log("Geolocation watch error:", error.message);
@@ -444,6 +468,17 @@ const DiscoverMain = () => {
           timeout: 27000, // 27 seconds
         }
       );
+    } else {
+      // Geolocation is not supported
+      console.log("Geolocation is not supported by this browser");
+      // Use a default location
+      const defaultLocation = [20.5937, 78.9629]; // India coordinates as a default
+      if (mapRef.current) {
+        mapRef.current.setView(defaultLocation, 3);
+      } else {
+        setMapCenter(defaultLocation);
+        setMapZoom(3);
+      }
     }
     
     // Cleanup function to stop watching position
@@ -452,11 +487,11 @@ const DiscoverMain = () => {
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, []);
+  }, []); // Run once when component mounts
 
   // Fly to a post's location on the map
   const flyToPost = useCallback((position) => {
-    if (mapRef.current) {
+    if (mapRef.current && position && Array.isArray(position) && position.length >= 2) {
       mapRef.current.flyTo(position, 15);
     }
   }, []);
@@ -589,29 +624,51 @@ const DiscoverMain = () => {
     }
   };
 
-  // Get directions to a location
+  // Get directions to a location - now shows directions in the map itself
   const getDirections = useCallback((position) => {
     if (!navigator.geolocation) {
       alert('Geolocation is not supported by your browser');
       return;
     }
 
+    // Validate the destination position before attempting to get user location
+    if (!position || !Array.isArray(position) || position.length < 2) {
+      alert('Invalid destination position provided');
+      return;
+    }
+
+    // Set loading state
+    setRoutingLoading(true);
+
     // Try to get user's current location for directions
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
+      (userPosition) => {
+        const userLat = userPosition.coords.latitude;
+        const userLng = userPosition.coords.longitude;
         
-        // Using Google Maps for directions (fallback to a simple approach if needed)
-        // You could also use other routing options like Mapbox or OpenStreetMap routing
-        const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${position[0]},${position[1]}`;
-        window.open(directionsUrl, '_blank');
+        // Store the destination and activate routing visualization
+        setRoutingDestination({ origin: [userLat, userLng], destination: position });
+        setRoutingActive(true);
+        
+        // Fly to the destination to show it on the map
+        if (mapRef.current) {
+          mapRef.current.flyTo(position, 13);
+        }
+        
+        // Set loading to false after a delay to allow route to load
+        setTimeout(() => {
+          setRoutingLoading(false);
+        }, 1000); // Adjust timing as needed
       },
       (error) => {
         console.error("Error getting user location:", error.message);
-        // Fallback: just center the map on the destination
-        flyToPost(position);
-        alert('Could not get your location. Centering map on destination instead.');
+        // Fallback: just center the map on the destination without routing
+        if (mapRef.current) {
+          mapRef.current.flyTo(position, 13);
+        }
+        alert('Could not get your location. Showing destination on map instead.');
+        // Still set loading to false even if there's an error
+        setRoutingLoading(false);
       },
       {
         enableHighAccuracy: true,
@@ -649,6 +706,13 @@ const DiscoverMain = () => {
         maximumAge: 0,
       }
     );
+  }, []);
+
+  // Clear the routing state
+  const clearRouting = useCallback(() => {
+    setRoutingActive(false);
+    setRoutingDestination(null);
+    setRoutingLoading(false); // Also reset loading state
   }, []);
 
   // Get the appropriate tile layer URL based on map type
@@ -727,6 +791,29 @@ const DiscoverMain = () => {
                 console.log('User location marker clicked');
               }}
             />
+          )}
+          
+          {/* Close Directions Button - appears when routing is active */}
+          {routingActive && (
+            <div className="absolute top-24 right-4 z-[1000]">
+              <button
+                onClick={clearRouting}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg shadow-lg hover:bg-red-600 transition-colors flex items-center gap-2"
+              >
+                <X className="h-4 w-4" />
+                Close Direction
+              </button>
+            </div>
+          )}
+          
+          {/* Loading indicator - appears when routing is loading */}
+          {routingLoading && (
+            <div className="absolute top-24 right-4 z-[1000]">
+              <div className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-lg flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Calculating route...
+              </div>
+            </div>
           )}
           
           {/* Render custom markers for each post */}
@@ -818,6 +905,15 @@ const DiscoverMain = () => {
             }
             return null;
           })}
+          
+          {/* Show route on the map when routing is active */}
+          {routingActive && routingDestination && (
+            <MapRouting 
+              origin={routingDestination.origin}
+              destination={routingDestination.destination}
+              clearRoute={!routingActive}
+            />
+          )}
         </MapContainer>
         
         {/* Top Banner - Shown when saved locations are displayed */}
@@ -1369,10 +1465,15 @@ const DiscoverMain = () => {
         authToken={isAuthenticated ? localStorage.getItem('token') : null}
         isAuthenticated={isAuthenticated}
         isOpen={!!selectedPost}
-        onClose={() => setSelectedPost(null)}
+        onClose={() => {
+          setSelectedPost(null);
+          // Clear routing when closing the post window
+          clearRouting();
+        }}
         onLike={handlePostLike}
         onSave={handlePostSave}
         onRate={handlePostRate}
+        onGetDirections={getDirections}
         onComment={(postId) => {
           console.log('Comment clicked for post:', postId);
           // Handle comment click if needed

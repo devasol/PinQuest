@@ -18,6 +18,7 @@ import OptimizedImage from "../OptimizedImage";
 import { postApi, userApi } from "../../services/api.js";
 import { getImageUrl, formatDate } from "../../utils/imageUtils";
 import usePostInteractions from "../../hooks/usePostInteractions";
+import { connectSocket } from "../../services/socketService";
 import './PostWindow.css';
 
 const PostWindow = ({ 
@@ -30,7 +31,8 @@ const PostWindow = ({
   onLike,
   onComment,
   onSave,
-  onRate
+  onRate,
+  onGetDirections
 }) => {
   // Use the incoming post data directly instead of complex state management
   const [currentPost, setCurrentPost] = useState(post);
@@ -45,15 +47,7 @@ const PostWindow = ({
   const [showInfo, setShowInfo] = useState(true);
   const [likeAnimation, setLikeAnimation] = useState(false);
 
-  // Update currentPost when the post prop changes
-  useEffect(() => {
-    if (post) {
-      setCurrentPost(post);
-      setComments(post.comments || []);
-    }
-  }, [post]);
-
-  // Initialize from hook for interaction states
+  // Initialize from hook for interaction states (using currentPost state)
   const {
     liked,
     likeCount,
@@ -62,6 +56,92 @@ const PostWindow = ({
     handleBookmark: handleBookmarkFromHook,
     refreshPostStatus
   } = usePostInteractions(currentPost, currentUser || null, authToken, isAuthenticated);
+
+  // Update currentPost when the post prop changes, but be careful not to override interaction states
+  useEffect(() => {
+    if (post) {
+      // Preserve current interaction states if they exist in currentPost
+      setCurrentPost(prevCurrentPost => {
+        // Only update non-interaction fields, preserving the interaction states managed by the hook
+        if (!prevCurrentPost || post._id !== prevCurrentPost._id) {
+          // If switching to a different post, use the new post data completely
+          return post;
+        } else {
+          // If the same post but with updated data, merge preserving UI state from hook
+          // but taking the new data from the post
+          return {
+            ...post,
+            // Preserve the current state values that might have been updated by user interactions
+            // The actual interaction states (like, bookmark) are handled by the hook separately
+            ...prevCurrentPost
+          };
+        }
+      });
+      setComments(post.comments || []);
+    }
+  }, [post]);
+
+  // Refresh interaction status when component opens or post changes
+  useEffect(() => {
+    if (isOpen && currentPost && refreshPostStatus) {
+      // Refresh interaction states when currentPost changes or component opens
+      refreshPostStatus();
+    }
+  }, [isOpen, currentPost, refreshPostStatus]);
+
+  // Set up real-time updates via socket
+  useEffect(() => {
+    if (!isOpen || !authToken || !currentPost?._id || !refreshPostStatus) return;
+
+    const socket = connectSocket(authToken);
+
+    // Join a room specific to this post to receive updates
+    socket.emit('join-post-room', currentPost._id);
+
+    // Listen for post updates
+    socket.on('post-updated', (updatedPost) => {
+      if (updatedPost._id === currentPost._id) {
+        setCurrentPost(updatedPost);
+        setComments(updatedPost.comments || []);
+        // Refresh interaction states to reflect updates
+        refreshPostStatus();
+      }
+    });
+
+    // Listen for like updates
+    socket.on('post-liked', (likeData) => {
+      if (likeData.postId === currentPost._id) {
+        // Refresh the post data to get updated like count
+        refreshPostStatus();
+      }
+    });
+
+    // Listen for bookmark updates
+    socket.on('post-bookmarked', (bookmarkData) => {
+      if (bookmarkData.postId === currentPost._id) {
+        // Refresh the post data to get updated bookmark status
+        refreshPostStatus();
+      }
+    });
+
+    // Listen for comment updates
+    socket.on('new-comment', (commentData) => {
+      if (commentData.postId === currentPost._id) {
+        // Refresh to get the new comment count
+        refreshPostStatus();
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      socket.off('post-updated');
+      socket.off('post-liked');
+      socket.off('post-bookmarked');
+      socket.off('new-comment');
+      // Optionally leave the post room
+      socket.emit('leave-post-room', currentPost._id);
+    };
+  }, [isOpen, authToken, currentPost?._id, refreshPostStatus]);
 
   // Create stable images array
   const hasImages = useMemo(() => {
@@ -103,14 +183,17 @@ const PostWindow = ({
     }
 
     try {
-      if (rating > 0) {
+      if (!liked) {
         setLikeAnimation(true);
         setTimeout(() => setLikeAnimation(false), 1000);
       }
       await handleLikeFromHook();
-      onLike && onLike(currentPost._id, !liked);
+      // Refresh the post status to ensure UI immediately reflects the change
+      setTimeout(() => refreshPostStatus(), 100);
+      onLike && onLike(currentPost._id, !liked); // This should trigger parent component to update
     } catch (error) {
       console.error('Error handling like:', error);
+      // The hook already handles error recovery, so no additional action needed here
     }
   };
 
@@ -122,9 +205,12 @@ const PostWindow = ({
 
     try {
       await handleBookmarkFromHook();
-      onSave && onSave(currentPost._id, !bookmarked);
+      // Refresh the post status to ensure UI immediately reflects the change
+      setTimeout(() => refreshPostStatus(), 100);
+      onSave && onSave(currentPost._id, !bookmarked); // This should trigger parent component to update
     } catch (error) {
       console.error('Error handling bookmark:', error);
+      // The hook already handles error recovery, so no additional action needed here
     }
   };
 
@@ -153,8 +239,12 @@ const PostWindow = ({
       return;
     }
     
-    const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${currentPost.location.latitude},${currentPost.location.longitude}`;
-    window.open(directionsUrl, '_blank');
+    // Use the parent's getDirections function to show directions in the map
+    const position = [currentPost.location.latitude, currentPost.location.longitude];
+    onGetDirections && onGetDirections(position);
+    
+    // Close the post window after getting directions
+    onClose && onClose();
   };
 
   const handleRate = async (starRating) => {
