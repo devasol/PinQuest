@@ -25,8 +25,9 @@ const MapView = () => {
   const { isAuthenticated, user } = useAuth();
 
   // Fetch posts from the backend API
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async (preserveSelectedPost = null, limit = null) => {
     try {
+      // Fetch all posts
       const response = await fetch(`${API_BASE_URL}/posts`);
       
       if (!response.ok) {
@@ -38,7 +39,7 @@ const MapView = () => {
       if (result.status === 'success' && Array.isArray(result.data)) {
         // Transform the API data to match the format expected by the frontend
         // Handle both location formats: coordinates array and latitude/longitude fields
-        const transformedPosts = result.data
+        let transformedPosts = result.data
           .filter(post => {
             // Check if the post has valid location data in either format
             if (post.location) {
@@ -81,12 +82,33 @@ const MapView = () => {
               images: post.images || [],
               averageRating: post.averageRating || 0,
               totalRatings: post.totalRatings || 0,
-              postedBy: post.postedBy?.name || post.postedBy || "Unknown",
+              postedBy: post.postedBy || post.postedBy?.name || "Unknown", // Preserve full postedBy object
               category: post.category || "general",
               datePosted: post.datePosted || new Date().toISOString(),
               position: position, // [lat, lng] format for Leaflet
+              location: post.location || {}, // Preserve full location object
             };
           });
+        
+        // Apply client-side limit if specified
+        if (limit && limit > 0) {
+          transformedPosts = transformedPosts.slice(0, limit);
+        }
+        
+        // If we're preserving a selected post, we need to handle it specially
+        if (preserveSelectedPost) {
+          // Find if the selected post exists in the newly fetched data
+          const updatedSelectedPost = transformedPosts.find(p => p._id === preserveSelectedPost._id);
+          
+          if (updatedSelectedPost) {
+            // Update the selected post with only the fresh volatile data while preserving detailed data
+            setSelectedPost(prev => prev ? {
+              ...updatedSelectedPost, // Get updated basic fields from fresh data
+              // Preserve the detailed data that was originally loaded
+              ...prev
+            } : null);
+          }
+        }
         
         setPosts(transformedPosts);
         setFilteredPosts(transformedPosts);
@@ -131,15 +153,42 @@ const MapView = () => {
   useEffect(() => {
     const initialFetch = async () => {
       setLoading(true);
-      await Promise.all([fetchPosts(), fetchSavedLocations()]);
-      setLoading(false);
+      
+      // Fetch saved locations in background (not blocking)
+      if (isAuthenticated) {
+        setTimeout(() => {
+          fetchSavedLocations(); // Run in background to avoid blocking
+        }, 0);
+      }
+      
+      // Fetch posts with a timeout mechanism
+      const postsPromise = fetchPosts(null, 50); // Fetch limited posts initially
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 8000) // 8 second timeout for posts
+      );
+      
+      try {
+        await Promise.race([postsPromise, timeoutPromise]);
+      } catch (error) {
+        if (error.message === 'Timeout') {
+          console.warn('Posts fetch timed out, showing interface while loading continues');
+        } else {
+          console.error('Error fetching posts:', error);
+        }
+      } finally {
+        setLoading(false);
+      }
     };
     
     initialFetch();
 
     // Set up periodic refresh every 30 seconds
     fetchIntervalRef.current = setInterval(() => {
-      fetchPosts();
+      // Preserve the selected post if it exists before refreshing
+      const preservedSelectedPost = selectedPost;
+      
+      fetchPosts(preservedSelectedPost, 50);
+      
       if (isAuthenticated) {
         fetchSavedLocations();
       }
@@ -150,7 +199,7 @@ const MapView = () => {
         clearInterval(fetchIntervalRef.current);
       }
     };
-  }, [fetchPosts, fetchSavedLocations, isAuthenticated]);
+  }, [fetchPosts, fetchSavedLocations, isAuthenticated, selectedPost]);
 
   // Apply filters when search query or category changes
   useEffect(() => {
@@ -431,7 +480,7 @@ const MapView = () => {
                 <div className="space-y-3">
                   {filteredPosts.map(post => (
                     <div 
-                      key={post.id} 
+                      key={`panel-post-${post.id}`} 
                       className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors"
                       onClick={() => {
                         setSelectedPost(post);
@@ -468,7 +517,7 @@ const MapView = () => {
                 <div className="space-y-3">
                   {filteredPosts.slice(0, 10).map(post => (
                     <div 
-                      key={post.id} 
+                      key={`search-post-${post.id}`} 
                       className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors"
                       onClick={() => {
                         setSelectedPost(post);
@@ -590,7 +639,7 @@ const MapView = () => {
                 <h3 className="font-semibold text-gray-800 mb-3">Saved Locations ({savedLocations.length})</h3>
                 <div className="space-y-3">
                   {savedLocations.map(location => (
-                    <div key={location.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div key={`saved-${location.id}`} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex justify-between">
                         <h4 className="font-medium text-gray-800 truncate">{location.name || location.title}</h4>
                         <button 
@@ -637,7 +686,7 @@ const MapView = () => {
           {/* Render custom markers for each post */}
           {filteredPosts.map((post) => (
             <CustomMarker 
-              key={post.id} 
+              key={`post-${post.id}`} 
               post={post}
               onClick={(post) => {
                 setSelectedPost(post);

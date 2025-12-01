@@ -215,6 +215,9 @@ export const postApi = {
   // Add or update rating
   addRating: (postId, ratingData, authToken) => apiService.post(`/posts/${postId}/ratings`, ratingData, authToken),
   
+  // Get ratings for a post
+  getRatings: (postId, authToken) => apiService.get(`/posts/${postId}/ratings`, authToken),
+  
   // Add comment
   addComment: (postId, commentData, authToken) => 
     apiService.post(`/posts/${postId}/comments`, commentData, authToken),

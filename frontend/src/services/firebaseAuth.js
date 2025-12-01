@@ -142,6 +142,8 @@ export const firebaseAuthService = {
         prompt: 'select_account' // Forces account selection
       });
 
+      // Check if popup operations are allowed in the current context
+      // This helps with the Cross-Origin-Opener-Policy error
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       const firebaseIdToken = await user.getIdToken();
@@ -172,6 +174,11 @@ export const firebaseAuthService = {
         return {
           success: false,
           error: 'Popup was closed by the user'
+        };
+      } else if (error.code === 'auth/cancelled-popup-request' || error.message.includes('window.closed')) {
+        return {
+          success: false,
+          error: 'Authentication popup was interrupted. This may be due to browser security policies.'
         };
       }
       return {

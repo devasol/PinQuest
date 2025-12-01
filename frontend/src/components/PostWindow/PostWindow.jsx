@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
@@ -12,141 +12,74 @@ import {
   ChevronRight,
   Star,
   Calendar,
-  Clock,
-  Minus,
-  Plus,
   ExternalLink,
 } from "lucide-react";
 import OptimizedImage from "../OptimizedImage";
-import { postApi, userApi } from "../../services/api";
+import { postApi, userApi } from "../../services/api.js";
 import { getImageUrl, formatDate } from "../../utils/imageUtils";
+import usePostInteractions from "../../hooks/usePostInteractions";
 import './PostWindow.css';
 
 const PostWindow = ({ 
   post, 
   currentUser, 
   authToken, 
+  isAuthenticated, 
   isOpen, 
   onClose,
   onLike,
-  onComment
+  onComment,
+  onSave,
+  onRate
 }) => {
-  const [liked, setLiked] = useState(
-    post?.likes && post?.likes.some((like) => like.user === currentUser?._id)
-  );
-  const [likeCount, setLikeCount] = useState(post?.likesCount || 0);
-  const [bookmarked, setBookmarked] = useState(
-    currentUser?.favorites?.some((fav) => fav.post === post?._id)
-  );
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // Use the incoming post data directly instead of complex state management
+  const [currentPost, setCurrentPost] = useState(post);
+  const [comments, setComments] = useState(post?.comments || []);
+  const [newComment, setNewComment] = useState('');
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [averageRating, setAverageRating] = useState(0);
-  const [totalRatings, setTotalRatings] = useState(0);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageScale, setImageScale] = useState(1);
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [showImageControls, setShowImageControls] = useState(true);
   const [showInfo, setShowInfo] = useState(true);
   const [likeAnimation, setLikeAnimation] = useState(false);
 
-  const images = useMemo(() => post?.images || (post?.image ? [post.image] : []), [post?.images, post?.image]);
-
-  // Preload images to improve user experience
+  // Update currentPost when the post prop changes
   useEffect(() => {
-    if (images && images.length > 0) {
-      images.forEach(img => {
-        const imgElement = new Image();
-        imgElement.src = getImageUrl(img);
-      });
+    if (post) {
+      setCurrentPost(post);
+      setComments(post.comments || []);
     }
-  }, [images]);
+  }, [post]);
 
-  // Fetch ratings for the post
-  useEffect(() => {
-    const fetchRatings = async () => {
-      if (!post?._id) return;
-      
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/posts/${post._id}/ratings`);
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-          setAverageRating(data.averageRating || 0);
-          setTotalRatings(data.totalRatings || 0);
-        } else {
-          setAverageRating(0);
-          setTotalRatings(0);
-        }
-      } catch (err) {
-        setAverageRating(0);
-        setTotalRatings(0);
-      }
-    };
+  // Initialize from hook for interaction states
+  const {
+    liked,
+    likeCount,
+    bookmarked,
+    handleLike: handleLikeFromHook,
+    handleBookmark: handleBookmarkFromHook,
+    refreshPostStatus
+  } = usePostInteractions(currentPost, currentUser || null, authToken, isAuthenticated);
 
-    fetchRatings();
-  }, [post?._id]);
+  // Create stable images array
+  const hasImages = useMemo(() => {
+    return currentPost && ((currentPost.images && currentPost.images.length > 0) || currentPost.image);
+  }, [currentPost?.images, currentPost?.image]);
 
-  const handleLike = async () => {
-    if (!authToken) {
-      alert("Please login to like posts");
-      return;
-    }
+  const images = useMemo(() => {
+    if (!currentPost) return [];
+    const result = currentPost?.images || (currentPost?.image ? [currentPost.image] : []);
+    return [...result];
+  }, [currentPost?.images, currentPost?.image, currentPost?.image]);
 
-    const result = await (liked 
-      ? postApi.unlikePost(post._id, authToken)
-      : postApi.likePost(post._id, authToken)
-    );
-
-    if (result.success) {
-      setLiked(!liked);
-      setLikeCount(result.data?.likesCount || (likeCount + (liked ? -1 : 1)));
-      
-      // Trigger like animation
-      if (!liked) {
-        setLikeAnimation(true);
-        setTimeout(() => setLikeAnimation(false), 1000);
-      }
-      
-      onLike && onLike(post._id, !liked);
-    } else {
-      // Revert the state if the API call failed
-      setLiked(prev => !prev);
-      setLikeCount(prev => prev + (liked ? 1 : -1));
-    }
-  };
-
-  const handleBookmark = async () => {
-    if (!authToken) {
-      alert("Please login to bookmark posts");
-      return;
-    }
-
-    let result;
-    if (bookmarked) {
-      result = await userApi.removeFavorite(post._id, authToken);
-      if (result.success) {
-        setBookmarked(false);
-      }
-    } else {
-      result = await userApi.addFavorite(post._id, authToken);
-      if (result.success) {
-        setBookmarked(true);
-      }
-    }
-  };
-
-  const handleComment = () => {
-    onComment && onComment(post._id);
-  };
-
+  // Navigation functions for images
   const nextImage = useCallback(() => {
     if (images && images.length > 0) {
       setCurrentImageIndex(prev => 
         prev === images.length - 1 ? 0 : prev + 1
       );
-      // Reset zoom when switching images
       setImageScale(1);
       setImagePosition({ x: 0, y: 0 });
     }
@@ -157,186 +90,131 @@ const PostWindow = ({
       setCurrentImageIndex(prev => 
         prev === 0 ? images.length - 1 : prev - 1
       );
-      // Reset zoom when switching images
       setImageScale(1);
       setImagePosition({ x: 0, y: 0 });
     }
   }, [images]);
 
-  // Image zoom handlers
-  const handleZoomIn = () => {
-    setImageScale(prev => Math.min(prev + 0.2, 3));
-  };
-
-  const handleZoomOut = () => {
-    setImageScale(prev => Math.max(prev - 0.2, 1));
-  };
-
-  const handleDragStart = (e) => {
-    if (imageScale <= 1) return;
-    
-    setIsDragging(true);
-    const clientX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
-    const clientY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
-    setDragStart({
-      x: clientX - imagePosition.x,
-      y: clientY - imagePosition.y
-    });
-  };
-
-  const handleDragMove = (e) => {
-    if (!isDragging || imageScale <= 1) return;
-
-    e.preventDefault();
-    const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
-    const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
-
-    setImagePosition({
-      x: clientX - dragStart.x,
-      y: clientY - dragStart.y
-    });
-  };
-
-  const handleDragEnd = () => {
-    setIsDragging(false);
-  };
-
-  // Auto-hide image controls
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    const timer = setTimeout(() => {
-      setShowImageControls(false);
-    }, 5000);
-    
-    return () => clearTimeout(timer);
-  }, [isOpen, currentImageIndex]);
-
-  const handleImageMouseMove = () => {
-    setShowImageControls(true);
-    if (!isOpen) return;
-    
-    const timer = setTimeout(() => {
-      setShowImageControls(false);
-    }, 3000);
-    
-    return () => clearTimeout(timer);
-  };
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (!isOpen) return;
-      
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'ArrowRight') {
-        nextImage();
-      } else if (e.key === 'ArrowLeft') {
-        prevImage();
-      } else if (e.key === '+' || e.key === '=') {
-        handleZoomIn();
-      } else if (e.key === '-' || e.key === '_') {
-        handleZoomOut();
-      } else if (e.key === 'i' || e.key === 'I') {
-        setShowInfo(prev => !prev);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, nextImage, prevImage]);
-
-  // Reset image position when scale changes
-  useEffect(() => {
-    if (imageScale <= 1) {
-      setImagePosition({ x: 0, y: 0 });
+  // Interaction handlers
+  const handleLike = async () => {
+    if (!authToken) {
+      alert("Please login to like posts");
+      return;
     }
-  }, [imageScale]);
 
-  // Handle sharing the post
+    try {
+      if (rating > 0) {
+        setLikeAnimation(true);
+        setTimeout(() => setLikeAnimation(false), 1000);
+      }
+      await handleLikeFromHook();
+      onLike && onLike(currentPost._id, !liked);
+    } catch (error) {
+      console.error('Error handling like:', error);
+    }
+  };
+
+  const handleBookmark = async () => {
+    if (!authToken) {
+      alert("Please login to bookmark posts");
+      return;
+    }
+
+    try {
+      await handleBookmarkFromHook();
+      onSave && onSave(currentPost._id, !bookmarked);
+    } catch (error) {
+      console.error('Error handling bookmark:', error);
+    }
+  };
+
+  const handleComment = () => {
+    setShowCommentsModal(true);
+  };
+
   const handleShare = () => {
     if (navigator.share) {
-      // Web Share API is supported
       navigator.share({
-        title: post.title,
-        text: post.description,
+        title: currentPost.title,
+        text: currentPost.description,
         url: window.location.href,
       }).catch((error) => console.log('Error sharing:', error));
     } else {
-      // Fallback: Copy link to clipboard
-      const postUrl = `${window.location.origin}/post/${post._id}`;
+      const postUrl = `${window.location.origin}/post/${currentPost._id}`;
       navigator.clipboard.writeText(postUrl).then(() => {
         alert('Post link copied to clipboard!');
-      }).catch(() => {
-        // If clipboard API fails, fallback to prompt
-        prompt('Copy this link:', postUrl);
       });
     }
   };
 
-  // Handle getting directions to the post location
   const handleGetDirections = () => {
-    if (!post.location || !post.location.latitude || !post.location.longitude) {
+    if (!currentPost.location || !currentPost.location.latitude || !currentPost.location.longitude) {
       alert('Location information is not available for this post.');
       return;
     }
     
-    // Create a Google Maps directions URL
-    const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${post.location.latitude},${post.location.longitude}`;
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${currentPost.location.latitude},${currentPost.location.longitude}`;
     window.open(directionsUrl, '_blank');
   };
 
-  // Handle rating submission
   const handleRate = async (starRating) => {
     if (!authToken) {
       alert('Please login to rate posts');
       return;
     }
 
-    if (!post?._id) {
-      console.error('Post ID is missing for rating');
-      return;
-    }
+    if (!currentPost?._id) return;
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/posts/${post._id}/ratings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({
-          rating: starRating
-        })
-      });
+      const result = await postApi.addRating(currentPost._id, { rating: starRating }, authToken);
 
-      const result = await response.json();
-
-      if (result.status === 'success') {
-        // Update the rating state to reflect the new rating
+      if (result.success) {
         setRating(starRating);
-        // Refetch average rating to update display
-        const ratingResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/posts/${post._id}/ratings`);
-        const ratingData = await ratingResponse.json();
-        
-        if (ratingData.status === 'success') {
-          setAverageRating(ratingData.averageRating || 0);
-          setTotalRatings(ratingData.totalRatings || 0);
+        // Call parent callback if provided
+        if (onRate && typeof onRate === 'function') {
+          onRate(currentPost._id, result.data?.averageRating || 0, result.data?.totalRatings || 0);
         }
-        
         alert('Thank you for rating this post!');
-      } else {
-        console.error('Error submitting rating:', result.message);
-        alert('Error submitting rating. Please try again.');
       }
     } catch (error) {
       console.error('Error submitting rating:', error);
-      alert('Error submitting rating. Please try again.');
     }
   };
 
-  if (!isOpen || !post) return null;
+  const handleAddComment = async () => {
+    if (!authToken) {
+      alert('Please login to comment');
+      return;
+    }
+
+    if (!newComment.trim() || !currentPost?._id) return;
+
+    try {
+      const response = await postApi.addComment(currentPost._id, { text: newComment }, authToken);
+
+      if (response.success) {
+        setNewComment('');
+        // Simple approach: refetch the post to get updated comments
+        if (authToken) {
+          const updatedResponse = await postApi.getPostById(currentPost._id, authToken);
+          if (updatedResponse.success && updatedResponse.data) {
+            setCurrentPost(updatedResponse.data);
+            setComments(updatedResponse.data.comments || []);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
+
+  // Simple close handler
+  const handleClose = () => {
+    onClose && onClose(); 
+  };
+
+  // If not open, return nothing
+  if (!isOpen || !currentPost) return null;
 
   return (
     <AnimatePresence>
@@ -344,47 +222,37 @@ const PostWindow = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-transparent z-50 flex items-center justify-center p-4"
-        onClick={onClose}
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[6000] flex items-center justify-center p-4"
+        onClick={handleClose}
       >
         <motion.div
-          initial={{ scale: 0.8, opacity: 0, y: 20 }}
+          initial={{ scale: 0.85, opacity: 0, y: 40 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.8, opacity: 0, y: 20 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="bg-white bg-opacity-90 backdrop-blur-sm rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+          exit={{ scale: 0.85, opacity: 0, y: 40 }}
+          transition={{ 
+            type: "spring", 
+            damping: 25, 
+            stiffness: 300,
+            duration: 0.3 
+          }}
+          className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col z-[6001] border border-gray-200/50"
           onClick={(e) => e.stopPropagation()}
           style={{ minHeight: '600px' }}
         >
           {/* Header */}
-          <div className="p-5 bg-gradient-to-r from-emerald-600/90 via-teal-600/90 to-cyan-600/90 backdrop-blur-sm text-white flex justify-between items-center shadow-lg">
-            <div className="flex items-center space-x-4">
-              {post.postedBy?.avatar ? (
-                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-md">
-                  <OptimizedImage
-                    src={post.postedBy.avatar.url}
-                    alt={post.postedBy.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-white bg-opacity-20 flex items-center justify-center border-2 border-white shadow-md">
-                  <User className="w-6 h-6" />
-                </div>
-              )}
-              <div>
-                <h3 className="font-bold text-lg">
-                  {post.postedBy?.name || "Anonymous"}
-                </h3>
-                <p className="text-sm opacity-90 flex items-center">
-                  <Calendar className="w-4 h-4 mr-1.5" />
-                  {formatDate(post.datePosted)}
-                </p>
-              </div>
+          <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center shadow-lg">
+            <div>
+              <h3 className="font-bold text-lg">
+                {typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}
+              </h3>
+              <p className="text-sm opacity-90 flex items-center">
+                <Calendar className="w-4 h-4 mr-1.5" />
+                {formatDate(currentPost.datePosted)}
+              </p>
             </div>
             <button
-              onClick={onClose}
-              className="p-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all duration-200 backdrop-blur-sm"
+              onClick={handleClose}
+              className="p-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all duration-200"
               aria-label="Close"
             >
               <X className="w-6 h-6" />
@@ -395,46 +263,14 @@ const PostWindow = ({
           <div className="flex flex-col lg:flex-row flex-1 overflow-hidden bg-white">
             {/* Image Gallery */}
             <div className="lg:w-1/2 flex flex-col">
-              <div className="relative flex-1 bg-white/20 backdrop-blur-sm">
-                {images && images.length > 0 ? (
-                  <div 
-                    className="relative w-full h-full flex items-center justify-center"
-                    onMouseMove={handleImageMouseMove}
-                  >
-                    <div 
-                      className="w-full h-full flex items-center justify-center overflow-hidden cursor-grab"
-                      onMouseDown={handleDragStart}
-                      onMouseMove={handleDragMove}
-                      onMouseUp={handleDragEnd}
-                      onMouseLeave={handleDragEnd}
-                      style={{ cursor: imageScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
-                      onTouchStart={(e) => {
-                        if (imageScale <= 1) return;
-                        setIsDragging(true);
-                        setDragStart({
-                          x: e.touches[0].clientX - imagePosition.x,
-                          y: e.touches[0].clientY - imagePosition.y
-                        });
-                      }}
-                      onTouchMove={(e) => {
-                        if (!isDragging || imageScale <= 1) return;
-                        e.preventDefault();
-                        setImagePosition({
-                          x: e.touches[0].clientX - dragStart.x,
-                          y: e.touches[0].clientY - dragStart.y
-                        });
-                      }}
-                      onTouchEnd={handleDragEnd}
-                    >
-                      <div 
-                        className="transition-transform duration-200 ease-out"
-                        style={{
-                          transform: `scale(${imageScale}) translate(${imagePosition.x}px, ${imagePosition.y}px)`,
-                        }}
-                      >
+              <div className="relative flex-1">
+                {hasImages && images.length > 0 ? (
+                  <div className="relative w-full h-80 md:h-96 lg:h-full flex items-center justify-center bg-gray-50">
+                    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+                      <div className="transition-transform duration-200 ease-out">
                         <OptimizedImage
                           src={getImageUrl(images[currentImageIndex])}
-                          alt={post.title}
+                          alt={currentPost.title || 'Post image'}
                           className="max-w-full max-h-full object-contain"
                           wrapperClassName="flex items-center justify-center"
                         />
@@ -442,68 +278,36 @@ const PostWindow = ({
                     </div>
 
                     {/* Navigation Arrows */}
-                    {images.length > 1 && showImageControls && (
+                    {images.length > 1 && (
                       <>
-                        <motion.button
-                          initial={{ x: -20, opacity: 0 }}
-                          animate={{ x: 0, opacity: 1 }}
-                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-3 transition-all shadow-lg z-10 backdrop-blur-sm border border-white border-opacity-50"
+                        <button
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-100 rounded-full p-3 transition-all shadow-lg z-10 border border-gray-200"
                           aria-label="Previous image"
                           onClick={prevImage}
                         >
                           <ChevronLeft className="w-6 h-6 text-gray-800" />
-                        </motion.button>
-                        <motion.button
-                          initial={{ x: 20, opacity: 0 }}
-                          animate={{ x: 0, opacity: 1 }}
-                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-3 transition-all shadow-lg z-10 backdrop-blur-sm border border-white border-opacity-50"
+                        </button>
+                        <button
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-100 rounded-full p-3 transition-all shadow-lg z-10 border border-gray-200"
                           aria-label="Next image"
                           onClick={nextImage}
                         >
                           <ChevronRight className="w-6 h-6 text-gray-800" />
-                        </motion.button>
+                        </button>
                       </>
-                    )}
-
-                    {/* Zoom Controls */}
-                    {showImageControls && (
-                      <motion.div
-                        initial={{ y: -20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        className="absolute top-4 right-4 flex flex-col space-y-3 z-10"
-                      >
-                        <button
-                          onClick={handleZoomIn}
-                          className="bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-3 shadow-lg transition-all backdrop-blur-sm border border-white border-opacity-50"
-                          aria-label="Zoom in"
-                        >
-                          <Plus className="w-4 h-4 text-gray-800" />
-                        </button>
-                        <button
-                          onClick={handleZoomOut}
-                          className="bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-3 shadow-lg transition-all backdrop-blur-sm border border-white border-opacity-50"
-                          aria-label="Zoom out"
-                        >
-                          <Minus className="w-4 h-4 text-gray-800" />
-                        </button>
-                      </motion.div>
                     )}
 
                     {/* Image Counter */}
                     {images.length > 1 && (
-                      <motion.div
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm"
-                      >
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/80 text-gray-800 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm border border-gray-200">
                         {currentImageIndex + 1} / {images.length}
-                      </motion.div>
+                      </div>
                     )}
                   </div>
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 p-8">
+                  <div className="w-full h-80 md:h-96 lg:h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-8">
                     <div className="text-center max-w-sm">
-                      <div className="mx-auto w-24 h-24 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+                      <div className="mx-auto w-24 h-24 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           className="h-12 w-12 text-gray-500"
@@ -529,30 +333,32 @@ const PostWindow = ({
               </div>
 
               {/* Thumbnail Gallery */}
-              {images.length > 1 && (
-                <div className="p-5 bg-white/30 backdrop-blur-sm border-t border-gray-200">
-                  <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {images.map((img, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          setCurrentImageIndex(index);
-                          setImageScale(1);
-                          setImagePosition({ x: 0, y: 0 });
-                        }}
-                        className={`flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border-3 transition-all duration-200 ${
-                          currentImageIndex === index 
-                            ? 'border-emerald-500 shadow-lg scale-105' 
-                            : 'border-transparent hover:border-gray-300'
-                        }`}
-                      >
-                        <OptimizedImage
-                          src={getImageUrl(img)}
-                          alt={`Thumbnail ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
+              {hasImages && images.length > 1 && (
+                <div className="p-5 bg-gray-50 border-t border-gray-200">
+                  <div className="flex space-x-3 overflow-x-auto pb-2">
+                    {images.map((img, index) => {
+                      const isSelected = currentImageIndex === index;
+                      
+                      return (
+                        <button
+                          key={`thumb-${index}`} 
+                          onClick={() => {
+                            setCurrentImageIndex(index);
+                          }}
+                          className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                            isSelected 
+                              ? 'border-emerald-500 shadow-lg scale-105' 
+                              : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          <OptimizedImage
+                            src={getImageUrl(img)}
+                            alt={`Thumbnail ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -560,24 +366,24 @@ const PostWindow = ({
 
             {/* Post Details */}
             <div className="lg:w-1/2 flex flex-col">
-              <div className="p-7 overflow-y-auto flex-1 bg-white/20 backdrop-blur-sm">
+              <div className="p-7 overflow-y-auto flex-1">
                 {showInfo ? (
                   <>
                     <div className="flex flex-wrap items-center justify-between mb-5">
-                      <h1 className="text-3xl font-bold text-gray-900 mb-3 lg:mb-0 lg:mr-4 leading-tight">
-                        {post.title}
+                      <h1 className="text-2xl font-bold text-gray-900 mb-3 lg:mb-0 lg:mr-4 leading-tight">
+                        {currentPost.title || 'Untitled Post'}
                       </h1>
-                      {post.category && (
-                        <span className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm px-5 py-2 rounded-full font-medium shadow-md inline-flex items-center">
-                          <span className="capitalize">{post.category}</span>
+                      {currentPost.category && (
+                        <span className="bg-emerald-100 text-emerald-800 text-sm px-3 py-1.5 rounded-full font-medium inline-flex items-center">
+                          <span className="capitalize">{currentPost.category}</span>
                         </span>
                       )}
                     </div>
 
-                    <p className="text-gray-700 mb-7 leading-relaxed text-lg">{post.description}</p>
+                    <p className="text-gray-700 mb-6 leading-relaxed">{currentPost.description || 'No description available.'}</p>
 
                     {/* Location */}
-                    {post.location?.latitude && post.location?.longitude && (
+                    {currentPost.location?.latitude && currentPost.location?.longitude && (
                       <div className="flex items-start text-gray-700 mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
                         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4 flex-shrink-0">
                           <MapPin className="w-5 h-5 text-blue-600" />
@@ -585,54 +391,82 @@ const PostWindow = ({
                         <div>
                           <p className="font-semibold text-gray-800 mb-1">Location</p>
                           <p className="text-gray-700">
-                            {post.location.latitude.toFixed(6)}, {post.location.longitude.toFixed(6)}
+                            {currentPost.location.latitude.toFixed(6)}, {currentPost.location.longitude.toFixed(6)}
                           </p>
-                          {post.location.address && (
-                            <p className="text-gray-600 text-sm mt-1">{post.location.address}</p>
+                          {currentPost.location.address && (
+                            <p className="text-gray-600 text-sm mt-1">{currentPost.location.address}</p>
                           )}
                         </div>
                       </div>
                     )}
 
                     {/* Ratings */}
-                    <div className="mb-7 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm">
+                    <div className="mb-6 p-5 bg-gray-50 rounded-2xl border border-gray-200">
                       <div className="flex flex-wrap items-center justify-between mb-3">
-                        <h3 className="font-bold text-xl text-gray-800">Ratings & Reviews</h3>
+                        <h3 className="font-bold text-lg text-gray-800">Ratings & Reviews</h3>
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
-                              key={star}
+                              key={`star-${star}`}
                               className={`w-6 h-6 cursor-pointer ${
-                                star <= (hoverRating || Math.round(averageRating)) 
+                                star <= (rating > 0 ? rating : (hoverRating || currentPost.averageRating || 0)) 
                                   ? 'text-yellow-500 fill-current' 
                                   : 'text-gray-300'
                               }`}
-                              onClick={() => handleRate(star)}
-                              onMouseEnter={() => setHoverRating(star)}
-                              onMouseLeave={() => setHoverRating(0)}
+                              onClick={() => {
+                                if (authToken) {
+                                  setRating(star);
+                                } else {
+                                  alert('Please login to rate posts');
+                                }
+                              }}
+                              onMouseEnter={() => rating === 0 && setHoverRating(star)}
+                              onMouseLeave={() => rating === 0 && setHoverRating(0)}
                             />
                           ))}
-                          <span className="ml-3 text-gray-800 font-bold text-lg">
-                            {averageRating > 0 ? averageRating.toFixed(1) : 'No ratings'}
+                          <span className="ml-3 text-gray-800 font-bold">
+                            {(currentPost.averageRating || 0).toFixed(1)}
                           </span>
                         </div>
                       </div>
-                      <p className="text-gray-600 flex items-center">
-                        <span className="font-medium">{totalRatings}</span> 
-                        <span className="mx-2">•</span>
-                        <span>{post.comments?.length || 0} {post.comments?.length === 1 ? 'comment' : 'comments'}</span>
-                      </p>
+                      <div className="mt-3 flex items-center justify-between">
+                        <p className="text-gray-600">
+                          <span className="font-medium">{currentPost.totalRatings || 0}</span> 
+                          <span className="mx-2">•</span>
+                          <span>{currentPost.comments?.length || 0} {currentPost.comments?.length === 1 ? 'comment' : 'comments'}</span>
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">Rate this:</span>
+                          <button
+                            onClick={() => {
+                              if (rating > 0) {
+                                handleRate(rating);
+                              } else {
+                                alert('Please select a rating first');
+                              }
+                            }}
+                            className={`px-4 py-2 rounded-lg transition-all ${
+                              rating > 0 
+                                ? 'bg-yellow-500 text-white hover:bg-yellow-600' 
+                                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            }`}
+                            disabled={rating === 0}
+                          >
+                            {rating > 0 ? 'Submit Rating' : 'Select Stars'}
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Additional Info */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-7">
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <p className="text-sm text-gray-500 mb-1 font-medium">Posted By</p>
-                        <p className="font-bold text-gray-800 text-lg">{post.postedBy?.name || "Anonymous"}</p>
+                        <p className="font-bold text-gray-800">{typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}</p>
                       </div>
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200">
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <p className="text-sm text-gray-500 mb-1 font-medium">Posted On</p>
-                        <p className="font-bold text-gray-800 text-lg">{formatDate(post.datePosted)}</p>
+                        <p className="font-bold text-gray-800">{formatDate(currentPost.datePosted)}</p>
                       </div>
                     </div>
                   </>
@@ -654,14 +488,14 @@ const PostWindow = ({
               </div>
 
               {/* Action Bar */}
-              <div className="p-5 border-t border-gray-200 bg-white/30 backdrop-blur-sm shadow-inner">
+              <div className="p-5 border-t border-gray-200 bg-gray-50">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center space-x-5">
+                  <div className="flex items-center space-x-4">
                     <motion.button
                       onClick={handleLike}
-                      className={`flex items-center space-x-2 px-4 py-3 rounded-xl transition-all relative ${
+                      className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all relative ${
                         liked 
-                          ? "bg-red-100 text-red-600 shadow-sm" 
+                          ? "bg-red-100 text-red-600" 
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                       whileTap={{ scale: 0.95 }}
@@ -679,23 +513,25 @@ const PostWindow = ({
                         </motion.div>
                       )}
                       <Heart className={`w-6 h-6 relative z-10 ${liked ? "fill-current" : ""}`} />
-                      <span className="font-bold relative z-10">{likeCount}</span>
+                      <span className="font-bold relative z-10">
+                        {likeCount || 0}
+                      </span>
                     </motion.button>
 
                     <motion.button
                       onClick={handleComment}
-                      className="flex items-center space-x-2 px-4 py-3 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                      className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
                       whileTap={{ scale: 0.95 }}
                     >
                       <MessageCircle className="w-6 h-6" />
-                      <span className="font-bold">{post.comments?.length || 0}</span>
+                      <span className="font-bold">{currentPost.comments?.length || 0}</span>
                     </motion.button>
 
                     <motion.button
                       onClick={handleBookmark}
-                      className={`flex items-center space-x-2 px-4 py-3 rounded-xl transition-all ${
+                      className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all ${
                         bookmarked
-                          ? "bg-yellow-100 text-yellow-600 shadow-sm"
+                          ? "bg-yellow-100 text-yellow-600"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                       whileTap={{ scale: 0.95 }}
@@ -706,10 +542,10 @@ const PostWindow = ({
                     </motion.button>
                   </div>
 
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2">
                     <motion.button
                       onClick={handleShare}
-                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-white px-5 py-3 rounded-xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
+                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-white px-4 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-all"
                       whileTap={{ scale: 0.95 }}
                     >
                       <Share className="w-5 h-5" />
@@ -717,14 +553,90 @@ const PostWindow = ({
                     </motion.button>
                     <motion.button
                       onClick={handleGetDirections}
-                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-white px-5 py-3 rounded-xl border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
+                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-white px-4 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-all"
                       whileTap={{ scale: 0.95 }}
                     >
                       <ExternalLink className="w-5 h-5" />
-                      <span className="font-medium">Get Directions</span>
+                      <span className="font-medium">Directions</span>
                     </motion.button>
                   </div>
                 </div>
+                
+                {/* Comments Modal */}
+                {showCommentsModal && (
+                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[6002] p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200">
+                      <div className="p-5 border-b border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-lg font-bold text-gray-800">Comments</h3>
+                          <button 
+                            onClick={() => setShowCommentsModal(false)}
+                            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                          >
+                            <X className="w-5 h-5 text-gray-600" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Comments List */}
+                      <div className="flex-1 overflow-y-auto max-h-96 p-5">
+                        {comments && comments.length > 0 ? (
+                          <div className="space-y-4">
+                            {comments.map((comment) => (
+                              <div key={comment._id || `comment-${Math.random()}`} className="bg-gray-50 rounded-xl p-4">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                                    {(typeof comment.user === 'object' ? comment.user.name : comment.user)?.charAt(0)?.toUpperCase() || 'A'}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <p className="font-semibold text-gray-800">{typeof comment.user === 'object' ? comment.user.name : comment.user || 'Anonymous'}</p>
+                                        <p className="text-xs text-gray-500">{new Date(comment.createdAt || comment.datePosted).toLocaleString()}</p>
+                                      </div>
+                                    </div>
+                                    <p className="mt-2 text-gray-700">{comment.text}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-500">No comments yet. Be the first to comment!</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Comment Input */}
+                      <div className="p-5 border-t border-gray-200">
+                        <div className="flex gap-3">
+                          <input
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Write your comment..."
+                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAddComment();
+                              }
+                            }}
+                          />
+                          <motion.button
+                            onClick={handleAddComment}
+                            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all"
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            Post
+                          </motion.button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 // src/components/PostCard/PostCard.jsx
-import React, { useState } from "react";
+import React from "react";
 import {
   Heart,
   MessageCircle,
@@ -11,55 +11,17 @@ import {
 import OptimizedImage from "../OptimizedImage";
 import { postApi, userApi } from "../../services/api";
 import { getImageUrl, formatDate } from "../../utils/imageUtils";
+import usePostInteractions from "../../hooks/usePostInteractions";
 
-const PostCard = ({ post, currentUser, authToken, onLike, onComment }) => {
-  const [liked, setLiked] = useState(
-    post.likes && post.likes.some((like) => like.user === currentUser?._id)
-  );
-  const [likeCount, setLikeCount] = useState(post.likesCount || 0);
-  const [bookmarked, setBookmarked] = useState(
-    currentUser?.favorites?.some((fav) => fav.post === post._id)
-  );
-
-  const handleLike = async () => {
-    if (!authToken) {
-      alert("Please login to like posts");
-      return;
-    }
-
-    const result = await (liked 
-      ? postApi.unlikePost(post._id, authToken)
-      : postApi.likePost(post._id, authToken)
-    );
-
-    if (result.success) {
-      setLiked(!liked);
-      setLikeCount(result.data.likesCount || (likeCount + (liked ? -1 : 1)));
-      onLike && onLike(post._id, !liked);
-    }
-  };
-
-  const handleBookmark = async () => {
-    if (!authToken) {
-      alert("Please login to bookmark posts");
-      return;
-    }
-
-    let result;
-    if (bookmarked) {
-      // Remove from favorites
-      result = await userApi.removeFavorite(post._id, authToken);
-      if (result.success) {
-        setBookmarked(false);
-      }
-    } else {
-      // Add to favorites
-      result = await userApi.addFavorite(post._id, authToken);
-      if (result.success) {
-        setBookmarked(true);
-      }
-    }
-  };
+const PostCard = ({ post, currentUser, authToken, isAuthenticated, onLike, onComment }) => {
+  const {
+    liked,
+    likeCount,
+    bookmarked,
+    handleLike,
+    handleBookmark,
+    refreshPostStatus
+  } = usePostInteractions(post, currentUser || null, authToken, isAuthenticated);
 
   const handleComment = () => {
     onComment && onComment(post._id);

@@ -25,6 +25,7 @@ const OptimizedImage = ({
   src, 
   alt, 
   className = '', 
+  wrapperClassName = '',
   fallbackSrc = 'https://via.placeholder.com/400x300/cccccc/666666?text=Image+Not+Loaded',
   loading = 'lazy',
   width,
@@ -105,7 +106,7 @@ const OptimizedImage = ({
   return (
     <div 
       ref={imgRef}
-      className={`relative ${className}`} 
+      className={`relative ${wrapperClassName || className}`} 
       style={{ position: 'relative' }}
     >
       {/* Always show a container with appropriate background */}

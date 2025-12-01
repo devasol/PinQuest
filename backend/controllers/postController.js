@@ -354,7 +354,13 @@ const likePost = async (req, res) => {
     );
 
     if (alreadyLiked) {
-      return sendErrorResponse(res, 400, "Post already liked");
+      // If already liked, return success response instead of error
+      return sendSuccessResponse(res, 200, {
+        postId: post._id,
+        likes: post.likes,
+        likesCount: post.likesCount,
+        message: "Post already liked"
+      });
     }
 
     // Add user to likes array
@@ -437,7 +443,13 @@ const unlikePost = async (req, res) => {
     );
 
     if (!alreadyLiked) {
-      return sendErrorResponse(res, 400, "Post has not been liked yet");
+      // If not liked, return success response instead of error
+      return sendSuccessResponse(res, 200, {
+        postId: post._id,
+        likes: post.likes,
+        likesCount: post.likesCount,
+        message: "Post was not liked"
+      });
     }
 
     // Remove user from likes array
@@ -1148,6 +1160,36 @@ const getPostsWithinArea = async (req, res) => {
   }
 };
 
+// @desc    Get ratings for a post
+// @route   GET /api/v1/posts/:id/ratings
+// @access  Private
+const getPostRatings = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Post not found",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        averageRating: post.averageRating || 0,
+        totalRatings: post.totalRatings || 0,
+        ratings: post.ratings || [],
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching ratings:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
 // @desc    Get distance between user and post
 // @route   GET /api/v1/posts/:id/distance
 // @access  Public
@@ -1287,6 +1329,7 @@ module.exports = {
   likePost,
   unlikePost,
   addOrUpdateRating,
+  getPostRatings,
   addComment,
   updateComment,
   deleteComment,

@@ -10,6 +10,7 @@ const {
   likePost,
   unlikePost,
   addOrUpdateRating,
+  getPostRatings,
   addComment,
   updateComment,
   deleteComment,
@@ -49,8 +50,10 @@ router
   .patch(protect, upload.array("images", 10), updatePost)
   .delete(protect, deletePost);
 
-// Ratings route - only for authenticated users
-router.route("/:id/ratings").post(protect, addOrUpdateRating);
+// Ratings route - POST for adding/updating rating, GET for fetching ratings
+router.route("/:id/ratings")
+  .post(protect, addOrUpdateRating)
+  .get(protect, getPostRatings);
 
 // Like/unlike routes
 router.route("/:id/like").put(protect, likePost);

@@ -67,9 +67,14 @@ const addFavorite = async (req, res) => {
     );
 
     if (alreadyFavorited) {
-      return res.status(400).json({
-        status: "fail",
+      // If already favorited, return success response
+      return res.status(200).json({
+        status: "success",
         message: "Post already favorited",
+        data: {
+          user: user._id,
+          favorites: user.favorites,
+        },
       });
     }
 
@@ -114,9 +119,14 @@ const removeFavorite = async (req, res) => {
     );
 
     if (favoriteIndex === -1) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Post is not favorited",
+      // If not favorited, return success response
+      return res.status(200).json({
+        status: "success",
+        message: "Post was not favorited",
+        data: {
+          user: user._id,
+          favorites: user.favorites,
+        },
       });
     }
 

@@ -49,13 +49,16 @@ const Header = ({ isDiscoverPage = false }) => {
           `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/unread-count`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
             },
           }
         );
         if (countResponse.ok) {
           const countData = await countResponse.json();
-          setUnreadCount(countData.data.count);
+          setUnreadCount(countData.data?.count || 0);
+        } else {
+          console.error('Failed to fetch unread count:', countResponse.status, countResponse.statusText);
         }
 
         // Fetch recent notifications to display in dropdown
@@ -63,13 +66,16 @@ const Header = ({ isDiscoverPage = false }) => {
           `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications?page=1&limit=5`,
           {
             headers: {
-              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
             },
           }
         );
         if (notifResponse.ok) {
           const notifData = await notifResponse.json();
-          setNotifications(notifData.data.notifications);
+          setNotifications(notifData.data?.notifications || []);
+        } else {
+          console.error('Failed to fetch notifications:', notifResponse.status, notifResponse.statusText);
         }
       } catch (error) {
         console.error("Error fetching notifications:", error);
