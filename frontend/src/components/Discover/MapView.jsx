@@ -261,6 +261,10 @@ const MapView = () => {
       setActivePanel(null);
     } else {
       setActivePanel(panelName);
+      // Fetch saved locations when the saved panel is opened to ensure fresh data
+      if (panelName === 'saved' && isAuthenticated) {
+        fetchSavedLocations();
+      }
     }
   };
 
