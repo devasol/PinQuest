@@ -19,12 +19,14 @@ const useCommentUserName = (userId, authToken) => {
       if (response.success && response.data && response.data.name) {
         setUserName(response.data.name);
       } else {
+        // Handle case where user doesn't exist or response is not successful
         setUserName('Anonymous');
       }
     } catch (err) {
       console.error("Error fetching user name for comment:", err);
+      // Specifically handle 404 errors (user not found) to set a default name
+      setUserName('Deleted User');
       setError(err);
-      setUserName('Anonymous');
     } finally {
       setIsLoading(false);
     }

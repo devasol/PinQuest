@@ -31,8 +31,10 @@ class ApiService {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.message || `HTTP error ${response.status}`;
       
-      // Show toast notification for errors
-      toast.error(errorMessage);
+      // Show toast notification for errors except 404 for user not found (which is common in comments)
+      if (response.status !== 404 || !response.url.includes('/users/')) {
+        toast.error(errorMessage);
+      }
       
       return { 
         success: false, 
@@ -52,7 +54,10 @@ class ApiService {
       });
       return await this.handleResponse(response);
     } catch (error) {
-      toast.error('Network error occurred');
+      // Show toast notification for network errors except when fetching user data for comments
+      if (!endpoint.includes('/users/')) {
+        toast.error('Network error occurred');
+      }
       return { success: false, error: error.message };
     }
   };
@@ -240,7 +245,10 @@ export const userApi = {
   getProfile: (authToken) => apiService.get('/users/profile', authToken),
   updateProfile: (userData, authToken) => apiService.put('/users/profile', userData, authToken),
   // Get user by ID
-  getUserById: (userId, authToken) => apiService.get(`/users/${userId}`, authToken),
+  getUserById: (userId, authToken) => {
+    // For user lookups specifically, we handle 404s more gracefully without showing toast
+    return apiService.get(`/users/${userId}`, authToken);
+  },
   
   // User authentication
   login: (credentials) => apiService.post('/auth/login', credentials),
