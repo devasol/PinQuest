@@ -40,7 +40,8 @@ const DiscoverMain = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [mapType, setMapType] = useState('street'); // street, satellite, terrain
-  const [savedLocations, setSavedLocations] = useState([]);
+  const [savedLocations, setSavedLocations] = useState([]); // For saved locations (separate from bookmarks)
+  const [favoritePosts, setFavoritePosts] = useState(new Set()); // Track which posts are bookmarked/favorited
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track which posts are liked
   const [showSavedLocationsOnMap, setShowSavedLocationsOnMap] = useState(false); // Toggle to show saved locations
   const [selectedPost, setSelectedPost] = useState(null);
@@ -113,34 +114,17 @@ const DiscoverMain = () => {
   }, [selectedPost, user]);
 
   const handlePostSave = useCallback((postId, isSaved) => {
-    // Update saved locations when a post is bookmarked/unbookmarked
-    if (isSaved) {
-      // Add to saved locations if not already there
-      setSavedLocations(prev => {
-        if (!prev.some(loc => loc.id === postId)) {
-          // Create a proper saved location object
-          const postToAdd = posts.find(p => p._id === postId);
-          if (postToAdd) {
-            return [...prev, {
-              id: postId,
-              name: postToAdd.title,
-              description: postToAdd.description,
-              position: postToAdd.position,
-              category: postToAdd.category,
-              datePosted: postToAdd.datePosted,
-              postedBy: postToAdd.postedBy
-            }];
-          } else {
-            return [...prev, { id: postId }];
-          }
-        }
-        return prev;
-      });
-    } else {
-      // Remove from saved locations
-      setSavedLocations(prev => prev.filter(loc => loc.id !== postId));
-    }
-  }, [posts]);
+    // Update favorite posts when a post is bookmarked/unbookmarked
+    setFavoritePosts(prev => {
+      const newFavorites = new Set(prev);
+      if (isSaved) {
+        newFavorites.add(postId);
+      } else {
+        newFavorites.delete(postId);
+      }
+      return newFavorites;
+    });
+  }, []);
 
   const handlePostRate = useCallback((postId, newAverageRating, newTotalRatings) => {
     // Update the posts state in DiscoverMain when ratings change
@@ -307,6 +291,35 @@ const DiscoverMain = () => {
     }
   }, [isAuthenticated, user, API_BASE_URL]);
 
+  // Fetch user's favorite posts if user is authenticated
+  const fetchUserFavoritePosts = useCallback(async () => {
+    if (isAuthenticated && user) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/users/favorites`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.status === 'success' && Array.isArray(result.data?.favorites)) {
+            // Extract post IDs from favorites to create a Set of favorite post IDs
+            const favoritePostIds = new Set(
+              result.data.favorites.map(fav => 
+                typeof fav.post === 'object' ? fav.post._id : (fav.post || fav.postId)
+              ).filter(Boolean) // Remove any null/undefined values
+            );
+            setFavoritePosts(favoritePostIds);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching user favorite posts:", err);
+      }
+    }
+  }, [isAuthenticated, user, API_BASE_URL]);
+
   // Fetch user's liked posts if user is authenticated
   const fetchUserLikedPosts = useCallback(async () => {
     if (isAuthenticated && user) {
@@ -322,10 +335,11 @@ const DiscoverMain = () => {
 
   // Initial data fetch
   useEffect(() => {
-    // Fetch saved locations in background (not blocking)
+    // Fetch saved locations and favorite posts in background (not blocking)
     if (isAuthenticated) {
       setTimeout(() => {
         fetchSavedLocations(); // Run in background to avoid blocking
+        fetchUserFavoritePosts(); // Fetch favorite posts as well
       }, 0);
     }
     
@@ -341,6 +355,7 @@ const DiscoverMain = () => {
       
       if (isAuthenticated) {
         fetchSavedLocations();
+        fetchUserFavoritePosts(); // Also refresh favorite posts periodically
       }
     }, 30000);
     
@@ -349,7 +364,7 @@ const DiscoverMain = () => {
         clearInterval(fetchIntervalRef.current);
       }
     };
-  }, [fetchPosts, fetchSavedLocations, isAuthenticated]);
+  }, [fetchPosts, fetchSavedLocations, fetchUserFavoritePosts, isAuthenticated]);
 
   // Apply filters when search query, category, or other filters change
   useEffect(() => {
@@ -496,8 +511,69 @@ const DiscoverMain = () => {
     }
   }, []);
 
-  // Save a location
-  const saveLocation = async (post) => {
+  // Toggle post bookmark/favorite status
+  const togglePostBookmark = async (post) => {
+    if (!isAuthenticated) {
+      alert('Please login to bookmark posts');
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const isBookmarked = favoritePosts.has(post.id);
+      
+      let response;
+      if (isBookmarked) {
+        // Unbookmark the post
+        response = await fetch(`${API_BASE_URL}/users/favorites/${post.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } else {
+        // Bookmark the post
+        response = await fetch(`${API_BASE_URL}/users/favorites`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            postId: post.id
+          })
+        });
+      }
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') {
+          // Update local state
+          setFavoritePosts(prev => {
+            const newFavorites = new Set(prev);
+            if (isBookmarked) {
+              newFavorites.delete(post.id);
+            } else {
+              newFavorites.add(post.id);
+            }
+            return newFavorites;
+          });
+          
+          // Call onSave callback to update parent component
+          onSave && onSave(post.id, !isBookmarked);
+          console.log(`Post ${isBookmarked ? 'un' : ''}bookmarked successfully`);
+        }
+      } else {
+        alert(`Failed to ${isBookmarked ? 'un' : ''}bookmark post`);
+      }
+    } catch (err) {
+      console.error(`Error ${isBookmarked ? 'un' : ''}bookmarking post:`, err);
+      alert(`Error ${isBookmarked ? 'un' : 'book' }marking post`);
+    }
+  };
+
+  // Save a location (separate functionality from bookmarking posts)
+  const saveLocation = async (locationData) => {
     if (!isAuthenticated) {
       alert('Please login to save locations');
       return;
@@ -505,12 +581,12 @@ const DiscoverMain = () => {
     
     try {
       const token = localStorage.getItem('token');
-      // Check if the post is already saved
-      const isAlreadySaved = savedLocations.some(loc => loc.id === post.id);
+      // Check if the location is already saved
+      const isAlreadySaved = savedLocations.some(loc => loc.id === locationData.id);
       
       if (isAlreadySaved) {
         // If already saved, remove it
-        const response = await fetch(`${API_BASE_URL}/users/saved-locations/${post.id}`, {
+        const response = await fetch(`${API_BASE_URL}/users/saved-locations/${locationData.id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -518,10 +594,8 @@ const DiscoverMain = () => {
         });
         
         if (response.ok) {
-          // Update local state
-          setSavedLocations(prev => prev.filter(loc => loc.id !== post.id));
-          // Call onSave callback to update parent component
-          onSave && onSave(post.id, false);
+          // Refresh saved locations
+          fetchSavedLocations(); // Fetch from server to ensure consistency
           console.log('Location removed from saved locations');
         } else {
           alert('Failed to remove location');
@@ -534,35 +608,14 @@ const DiscoverMain = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            id: post.id,
-            name: post.title,
-            description: post.description,
-            position: post.position,
-            category: post.category,
-            datePosted: post.datePosted,
-            postedBy: post.postedBy
-          })
+          body: JSON.stringify(locationData)
         });
         
         if (response.ok) {
           const result = await response.json();
           if (result.status === 'success') {
-            // Update local state
-            setSavedLocations(prev => [
-              ...prev,
-              {
-                id: post.id,
-                name: post.title,
-                description: post.description,
-                position: post.position,
-                category: post.category,
-                datePosted: post.datePosted,
-                postedBy: post.postedBy
-              }
-            ]);
-            // Call onSave callback to update parent component
-            onSave && onSave(post.id, true);
+            // Refresh saved locations
+            fetchSavedLocations(); // Fetch from server to ensure consistency
             console.log('Location added to saved locations');
           }
         } else {
@@ -850,14 +903,14 @@ const DiscoverMain = () => {
             );
             
             // Check if this post is also in the saved locations to avoid duplicate markers
-            const isSaved = savedLocations.some(loc => loc.id === post.id);
+            const isSaved = favoritePosts.has(post.id);
             
             return (
               <CustomMarker 
                 key={`post-${post.id}`} 
                 post={post}
                 isLiked={userHasLiked}
-                onSave={saveLocation}
+                onSave={togglePostBookmark}
                 isSaved={isSaved}
                 onGetDirections={getDirections}
                 onClick={(post) => {
@@ -1237,7 +1290,7 @@ const DiscoverMain = () => {
         {/* Saved Locations Window */}
         <div id="saved-locations-window" className="hidden absolute top-20 right-20 z-[999] w-80 bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-200 p-6 max-h-[70vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-gray-800">Saved Locations</h3>
+            <h3 className="text-lg font-bold text-gray-800">Saved Items</h3>
             <button 
               onClick={() => {
                 document.getElementById('saved-locations-window')?.classList.add('hidden');
@@ -1248,75 +1301,115 @@ const DiscoverMain = () => {
               <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
-          <div className="space-y-3">
-            {savedLocations.length > 0 ? (
-              savedLocations.map((location) => (
-                <div 
-                  key={location.id} 
-                  className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex justify-between items-start"
-                >
+          
+          {/* Saved Posts Section */}
+          <div className="mb-6">
+            <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+              <Bookmark className="h-4 w-4 mr-1.5" />
+              Saved Posts ({favoritePosts.size})
+            </h4>
+            <div className="space-y-3">
+              {posts.filter(post => favoritePosts.has(post.id)).length > 0 ? (
+                posts.filter(post => favoritePosts.has(post.id)).map((post) => (
                   <div 
-                    className="flex-1 cursor-pointer"
-                    onClick={() => {
-                      if (location.position) {
-                        flyToSavedLocation(location.position);
+                    key={`fav-${post.id}`} 
+                    className="p-3 bg-blue-50 rounded-lg border border-blue-200 flex justify-between items-start"
+                  >
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => {
+                        setSelectedPost(post);
                         document.getElementById('saved-locations-window')?.classList.add('hidden');
-                      }
-                    }}
-                  >
-                    <div className="font-semibold text-gray-800 truncate">{location.name || "Saved Location"}</div>
-                    <div className="text-sm text-gray-600 truncate">{location.description || "No description"}</div>
-                    <div className="text-xs text-gray-500 mt-1">{location.category || "general"}</div>
+                      }}
+                    >
+                      <div className="font-semibold text-gray-800 truncate">{post.title}</div>
+                      <div className="text-sm text-gray-600 truncate">{post.description?.substring(0, 50)}{post.description?.length > 50 ? '...' : ''}</div>
+                      <div className="text-xs text-gray-500 mt-1">{post.category || "general"}</div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePostBookmark(post);
+                      }}
+                      className="ml-3 p-1 rounded-full hover:bg-red-100 text-red-500"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation(); // Prevent the click from triggering the location navigation
-                      if (window.confirm(`Are you sure you want to remove "${location.name || "this location"}" from your saved locations?`)) {
-                        try {
-                          const token = localStorage.getItem('token');
-                          if (!token) {
-                            alert('Please login to manage saved locations');
-                            return;
-                          }
-                          
-                          const response = await fetch(`${API_BASE_URL}/users/saved-locations/${location.id}`, {
-                            method: 'DELETE',
-                            headers: {
-                              'Authorization': `Bearer ${token}`
-                            }
-                          });
-                          
-                          if (response.ok) {
-                            // Update the saved locations state
-                            setSavedLocations(prev => prev.filter(loc => loc.id !== location.id));
-                            
-                            // Hide the current post if it's the one being removed
-                            if (selectedPost && selectedPost._id === location.id) {
-                              setSelectedPost(null);
-                            }
-                          } else {
-                            alert('Failed to remove location');
-                          }
-                        } catch (err) {
-                          console.error('Error removing location:', err);
-                          alert('Error removing location');
-                        }
-                      }
-                    }}
-                    className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full"
-                    title="Remove from saved locations"
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-2 text-sm">No saved posts yet</p>
+              )}
+            </div>
+          </div>
+          
+          {/* Saved Locations Section */}
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+              <MapPin className="h-4 w-4 mr-1.5" />
+              Saved Locations ({savedLocations.length})
+            </h4>
+            <div className="space-y-3">
+              {savedLocations.length > 0 ? (
+                savedLocations.map((location) => (
+                  <div 
+                    key={`loc-${location.id}`} 
+                    className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex justify-between items-start"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <Bookmark className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No saved locations</h3>
-                <p className="mt-1 text-sm text-gray-500">Save locations to see them here.</p>
-              </div>
-            )}
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => {
+                        if (location.position) {
+                          flyToSavedLocation(location.position);
+                          document.getElementById('saved-locations-window')?.classList.add('hidden');
+                        }
+                      }}
+                    >
+                      <div className="font-semibold text-gray-800 truncate">{location.name || "Saved Location"}</div>
+                      <div className="text-sm text-gray-600 truncate">{location.description || "No description"}</div>
+                      <div className="text-xs text-gray-500 mt-1">{location.category || "general"}</div>
+                    </div>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation(); // Prevent the click from triggering the location navigation
+                        if (window.confirm(`Are you sure you want to remove "${location.name || "this location"}" from your saved locations?`)) {
+                          try {
+                            const token = localStorage.getItem('token');
+                            if (!token) {
+                              alert('Please login to manage saved locations');
+                              return;
+                            }
+                            
+                            const response = await fetch(`${API_BASE_URL}/users/saved-locations/${location.id}`, {
+                              method: 'DELETE',
+                              headers: {
+                                'Authorization': `Bearer ${token}`
+                              }
+                            });
+                            
+                            if (response.ok) {
+                              // Refresh saved locations
+                              fetchSavedLocations(); // Refresh to ensure consistency with server
+                            } else {
+                              alert('Failed to remove location');
+                            }
+                          } catch (err) {
+                            console.error('Error removing location:', err);
+                            alert('Error removing location');
+                          }
+                        }
+                      }}
+                      className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full"
+                      title="Remove from saved locations"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-2 text-sm">No saved locations yet</p>
+              )}
+            </div>
           </div>
           <div className="mt-4 flex gap-2">
             <button
