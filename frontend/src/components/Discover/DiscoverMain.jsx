@@ -662,13 +662,36 @@ const DiscoverMain = () => {
       },
       (error) => {
         console.error("Error getting user location:", error.message);
-        // Fallback: just center the map on the destination without routing
-        if (mapRef.current) {
-          mapRef.current.flyTo(position, 13);
-        }
-        alert('Could not get your location. Showing destination on map instead.');
-        // Still set loading to false even if there's an error
+        // Fallback: ask user for a starting location or use current map center
         setRoutingLoading(false);
+        
+        // Check if we have a user location from earlier
+        if (userLocation) {
+          // Use the last known user location as origin
+          setRoutingDestination({ origin: userLocation, destination: position });
+          setRoutingActive(true);
+          
+          // Fly to the destination to show it on the map
+          if (mapRef.current) {
+            mapRef.current.flyTo(position, 13);
+          }
+        } else {
+          // If we don't have a user location, try to use current map center
+          if (mapRef.current) {
+            const currentCenter = mapRef.current.getCenter();
+            setRoutingDestination({ origin: [currentCenter.lat, currentCenter.lng], destination: position });
+            setRoutingActive(true);
+            
+            // Fly to the destination to show it on the map
+            mapRef.current.flyTo(position, 13);
+          } else {
+            // Final fallback: just center the map on the destination without routing
+            if (mapRef.current) {
+              mapRef.current.flyTo(position, 13);
+            }
+            alert('Could not get your location. Showing destination on map instead.');
+          }
+        }
       },
       {
         enableHighAccuracy: true,
@@ -676,7 +699,7 @@ const DiscoverMain = () => {
         maximumAge: 300000, // 5 minutes
       }
     );
-  }, [flyToPost]);
+  }, [userLocation, flyToPost]);
 
   // Update user's current location manually
   const updateUserLocation = useCallback(() => {

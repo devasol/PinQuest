@@ -3,7 +3,7 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet-routing-machine';
 
-// Custom routing component that shows proper road routes using Leaflet Routing Machine
+// Custom routing component that shows proper road routes using Leaflet Routing Machine without description panel
 const MapRouting = ({ origin, destination, clearRoute }) => {
   const map = useMap();
   const routeControlRef = useRef(null);
@@ -27,7 +27,7 @@ const MapRouting = ({ origin, destination, clearRoute }) => {
       return;
     }
 
-    // Function to create routing control with proper road routes
+    // Function to create routing control with proper road routes but no panel
     const createRoutingControl = () => {
       try {
         // Remove any existing routing control first
@@ -36,19 +36,16 @@ const MapRouting = ({ origin, destination, clearRoute }) => {
         }
 
         // Create the routing control with Leaflet Routing Machine
+        // Use L.Routing.control but only show the route line, not the directions panel
         const routeControl = L.Routing.control({
           waypoints: [
             L.latLng(origin[0], origin[1]),    // origin
             L.latLng(destination[0], destination[1]) // destination
           ],
           routeWhileDragging: false,
-          showAlternatives: true,
-          altLineOptions: {
-            styles: [
-              { color: '#2563eb', opacity: 0.15, weight: 9 },
-              { color: '#2563eb', opacity: 0.8, weight: 6 }
-            ]
-          },
+          show: false, // Hide the directions panel
+          showAlternatives: false, // Only show the main route, no alternatives panel
+          collapsible: true, // Allow collapsing if needed
           lineOptions: {
             styles: [
               { color: '#2563eb', opacity: 0.15, weight: 9 },
