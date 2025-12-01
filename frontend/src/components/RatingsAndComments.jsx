@@ -131,9 +131,9 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                 processedUser = { name: comment.postedBy };
               } else {
                 // Otherwise, try to get a name from the user object
+                // If we have a populated user object but still no name, default to Anonymous
                 processedUser = {
-                  name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 
-                        (comment.user._id ? `User_${comment.user._id.substring(0, 8)}` : 'Anonymous'),
+                  name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 'Anonymous',
                   ...comment.user
                 };
               }
@@ -354,11 +354,37 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
 
       if (result.success && result.data && result.data.comment) {
         // Add the new comment to the list from response - handle different data structures
+        // Ensure the user object has proper name structure for display
+        const commentUser = result.data.comment.user;
+        let displayName = 'Anonymous';
+        
+        // Extract name from the returned user object
+        if (commentUser && typeof commentUser === 'object') {
+          if (commentUser.name) {
+            displayName = commentUser.name;
+          } else if (commentUser.displayName) {
+            displayName = commentUser.displayName;
+          } else if (commentUser.firstName && commentUser.lastName) {
+            displayName = `${commentUser.firstName} ${commentUser.lastName}`;
+          } else if (commentUser.firstName) {
+            displayName = commentUser.firstName;
+          } else if (commentUser.lastName) {
+            displayName = commentUser.lastName;
+          } else if (commentUser.email) {
+            displayName = commentUser.email.split('@')[0];
+          } else if (commentUser.username) {
+            displayName = commentUser.username;
+          }
+        }
+        
         newComment = {
           ...result.data.comment,
           _id: result.data.comment._id || result.data.comment.id,
           text: result.data.comment.text || result.data.comment.content,
-          user: result.data.comment.user || { name: user.name || user.displayName || user.email?.split('@')[0] },
+          user: { 
+            ...commentUser,
+            name: displayName 
+          },
           date: result.data.comment.date || result.data.comment.createdAt || result.data.comment.datePosted || new Date().toISOString(),
           likesCount: result.data.comment.likesCount || (result.data.comment.likes && Array.isArray(result.data.comment.likes) ? result.data.comment.likes.length : 0) || 0,
           likes: result.data.comment.likes || [],
@@ -366,10 +392,27 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
         };
       } else {
         // If submission fails, create locally
+        let displayName = 'Anonymous';
+        if (user && typeof user === 'object') {
+          if (user.name) {
+            displayName = user.name;
+          } else if (user.displayName) {
+            displayName = user.displayName;
+          } else if (user.firstName && user.lastName) {
+            displayName = `${user.firstName} ${user.lastName}`;
+          } else if (user.firstName) {
+            displayName = user.firstName;
+          } else if (user.lastName) {
+            displayName = user.lastName;
+          } else if (user.email) {
+            displayName = user.email.split('@')[0];
+          }
+        }
+        
         newComment = {
           _id: `new_comment_${Date.now()}`,
           text: comment.trim(),
-          user: { name: user.name || user.displayName || user.email?.split('@')[0] },
+          user: { name: displayName },
           date: new Date().toISOString(),
           likesCount: 0,
           likes: [],
@@ -392,10 +435,8 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
       };
       localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
       
-      // Refresh comments to get the latest from server
-      if (showCommentsModal) {
-        refreshComments();
-      }
+      // The useEffect will handle refreshing the data periodically
+      // Don't call refreshComments() immediately to avoid UI flickering
 
     } catch (err) {
       setError(err.message || 'Failed to submit comment');
@@ -477,9 +518,9 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                 processedUser = { name: comment.postedBy };
               } else {
                 // Otherwise, try to get a name from the user object
+                // If we have a populated user object but still no name, default to Anonymous
                 processedUser = {
-                  name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 
-                        (comment.user._id ? `User_${comment.user._id.substring(0, 8)}` : 'Anonymous'),
+                  name: comment.user.name || comment.user.displayName || comment.user.email?.split('@')[0] || 'Anonymous',
                   ...comment.user
                 };
               }
@@ -769,9 +810,13 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                   {comments.map((comment, index) => {
                     // Generate a simple avatar based on username - handle the different data structures
                     let username = 'Anonymous';
-                    // Check various possible locations for user name in the comment object
+                    
+                    // Only extract name from properly populated user object or other available name fields
+                    // Strictly prevent showing user ID instead of name
+                    
+                    // Check if user is properly populated object with name fields
                     if (comment.user && typeof comment.user === 'object') {
-                      // If user is an object, check for name fields
+                      // Only extract actual name fields, never ID fields
                       if (comment.user.name) {
                         username = comment.user.name;
                       } else if (comment.user.displayName) {
@@ -788,26 +833,20 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
                         username = comment.user.username;
                       }
                     }
-                    // If still anonymous, check if user is a string ID and if we have other name fields
-                    if (username === 'Anonymous' && comment.user && typeof comment.user === 'string') {
-                      // String user ID exists, check for other name fields
+                    
+                    // If still anonymous, check for other name fields in the comment object
+                    if (username === 'Anonymous') {
                       if (comment.username) {
                         username = comment.username;
                       } else if (comment.postedBy) {
                         username = comment.postedBy;
                       }
                     }
-                    // If still anonymous, try other possible name fields that might not be in user object
-                    if (username === 'Anonymous') {
-                      if (comment.username) {
-                        username = comment.username;
-                      } else if (comment.postedBy) {
-                        username = comment.postedBy;
-                      } else if (comment.user && typeof comment.user === 'object' && comment.user._id) {
-                        // As absolute last resort, if we have only an ID and no other name data, 
-                        // still keep Anonymous rather than showing the ID
-                        username = 'Anonymous';
-                      }
+                    
+                    // Final check: if user is a string ID and we still don't have a proper name, stay anonymous
+                    // This ensures we never show the user ID as the display name
+                    if (comment.user && typeof comment.user === 'string' && username === 'Anonymous') {
+                        username = 'Anonymous'; // Explicitly keep as anonymous to prevent showing user ID
                     }
                     const initials = username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                     const colorClasses = [

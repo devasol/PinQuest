@@ -196,10 +196,17 @@ const getPostsByLocation = async (req, res) => {
 
 const getPostById = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id).populate(
-      "postedBy",
-      "name email avatar"
-    ); // Populate the user data for the poster
+    // Populate user data for the poster and for all comments
+    const post = await Post.findById(req.params.id)
+      .populate("postedBy", "name email avatar")
+      .populate({
+        path: "comments.user",
+        select: "name avatar",
+      })
+      .populate({
+        path: "comments.replies.user",
+        select: "name avatar",
+      }); // Populate the user data for the poster and comments
     if (!post) {
       return sendErrorResponse(res, 404, "Post not found");
     }
@@ -757,6 +764,9 @@ const updateComment = async (req, res) => {
     // Populate the user info for the returned comment
     const populatedPost = await Post.findById(postId).populate({
       path: "comments.user",
+      select: "name avatar",
+    }).populate({
+      path: "comments.replies.user",
       select: "name avatar",
     });
 
