@@ -270,26 +270,43 @@ const DiscoverMain = () => {
 
   // Fetch saved locations if user is authenticated
   const fetchSavedLocations = useCallback(async () => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated) {
       try {
         const token = localStorage.getItem('token');
+        if (!token) {
+          console.error("No authentication token found");
+          setSavedLocations([]);
+          return;
+        }
+        
         const response = await fetch(`${API_BASE_URL}/users/saved-locations`, {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         });
         
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success' && Array.isArray(result.data?.savedLocations)) {
-            setSavedLocations(result.data.savedLocations);
-          }
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.status === 'success' && Array.isArray(result.data?.savedLocations)) {
+          setSavedLocations(result.data.savedLocations);
+        } else {
+          console.warn("Saved locations API returned unexpected format:", result);
+          setSavedLocations([]);
         }
       } catch (err) {
         console.error("Error fetching saved locations:", err);
+        setSavedLocations([]);
       }
+    } else {
+      // If not authenticated, reset to empty
+      setSavedLocations([]);
     }
-  }, [isAuthenticated, user, API_BASE_URL]);
+  }, [isAuthenticated, API_BASE_URL]);
 
   // Fetch user's favorite posts if user is authenticated
   const fetchUserFavoritePosts = useCallback(async () => {
@@ -518,9 +535,16 @@ const DiscoverMain = () => {
       return;
     }
     
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login to bookmark posts');
+      return;
+    }
+    
+    let isBookmarked;
+    
     try {
-      const token = localStorage.getItem('token');
-      const isBookmarked = favoritePosts.has(post.id);
+      isBookmarked = favoritePosts.has(post.id);
       
       let response;
       if (isBookmarked) {
@@ -559,8 +583,6 @@ const DiscoverMain = () => {
             return newFavorites;
           });
           
-          // Call onSave callback to update parent component
-          onSave && onSave(post.id, !isBookmarked);
           console.log(`Post ${isBookmarked ? 'un' : ''}bookmarked successfully`);
         }
       } else {
@@ -663,7 +685,8 @@ const DiscoverMain = () => {
     }
     
     if (savedLocations.length === 0) {
-      alert('You have no saved locations yet!');
+      // Button should be disabled when there are no saved locations,
+      // but if somehow this function is called, just return without doing anything
       return;
     }
     
@@ -1287,14 +1310,13 @@ const DiscoverMain = () => {
           </div>
         </div>
         
-        {/* Saved Locations Window */}
+        {/* Saved Posts Window */}
         <div id="saved-locations-window" className="hidden absolute top-20 right-20 z-[999] w-80 bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-200 p-6 max-h-[70vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-gray-800">Saved Items</h3>
+            <h3 className="text-lg font-bold text-gray-800">Saved Posts</h3>
             <button 
               onClick={() => {
                 document.getElementById('saved-locations-window')?.classList.add('hidden');
-                setShowSavedLocationsOnMap(false);
               }}
               className="p-1 rounded-full hover:bg-gray-100"
             >
@@ -1303,7 +1325,7 @@ const DiscoverMain = () => {
           </div>
           
           {/* Saved Posts Section */}
-          <div className="mb-6">
+          <div>
             <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
               <Bookmark className="h-4 w-4 mr-1.5" />
               Saved Posts ({favoritePosts.size})
@@ -1341,87 +1363,6 @@ const DiscoverMain = () => {
                 <p className="text-gray-500 text-center py-2 text-sm">No saved posts yet</p>
               )}
             </div>
-          </div>
-          
-          {/* Saved Locations Section */}
-          <div>
-            <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
-              <MapPin className="h-4 w-4 mr-1.5" />
-              Saved Locations ({savedLocations.length})
-            </h4>
-            <div className="space-y-3">
-              {savedLocations.length > 0 ? (
-                savedLocations.map((location) => (
-                  <div 
-                    key={`loc-${location.id}`} 
-                    className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex justify-between items-start"
-                  >
-                    <div 
-                      className="flex-1 cursor-pointer"
-                      onClick={() => {
-                        if (location.position) {
-                          flyToSavedLocation(location.position);
-                          document.getElementById('saved-locations-window')?.classList.add('hidden');
-                        }
-                      }}
-                    >
-                      <div className="font-semibold text-gray-800 truncate">{location.name || "Saved Location"}</div>
-                      <div className="text-sm text-gray-600 truncate">{location.description || "No description"}</div>
-                      <div className="text-xs text-gray-500 mt-1">{location.category || "general"}</div>
-                    </div>
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation(); // Prevent the click from triggering the location navigation
-                        if (window.confirm(`Are you sure you want to remove "${location.name || "this location"}" from your saved locations?`)) {
-                          try {
-                            const token = localStorage.getItem('token');
-                            if (!token) {
-                              alert('Please login to manage saved locations');
-                              return;
-                            }
-                            
-                            const response = await fetch(`${API_BASE_URL}/users/saved-locations/${location.id}`, {
-                              method: 'DELETE',
-                              headers: {
-                                'Authorization': `Bearer ${token}`
-                              }
-                            });
-                            
-                            if (response.ok) {
-                              // Refresh saved locations
-                              fetchSavedLocations(); // Refresh to ensure consistency with server
-                            } else {
-                              alert('Failed to remove location');
-                            }
-                          } catch (err) {
-                            console.error('Error removing location:', err);
-                            alert('Error removing location');
-                          }
-                        }
-                      }}
-                      className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full"
-                      title="Remove from saved locations"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-2 text-sm">No saved locations yet</p>
-              )}
-            </div>
-          </div>
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={showSavedLocations}
-              className={`flex-1 px-4 py-2 rounded-lg ${
-                showSavedLocationsOnMap 
-                  ? 'bg-yellow-500 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {showSavedLocationsOnMap ? 'Hide on Map' : 'Show on Map'}
-            </button>
           </div>
         </div>
         
