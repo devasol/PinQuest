@@ -200,41 +200,46 @@ const CreatePostModal = ({
   }, []);
 
   // Handle image from link
-  const handleImageLinkAdd = () => {
-    const link = prompt("Enter the image URL:");
-    if (link) {
-      if (!isValidUrl(link)) {
-        setErrors((prev) => ({
-          ...prev,
-          images: "Please enter a valid image URL"
-        }));
-        return;
-      }
+  const handleImageLinkAdd = (url) => {
+    if (!url) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "Please enter an image URL"
+      }));
+      return;
+    }
+    
+    if (!isValidUrl(url)) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "Please enter a valid image URL"
+      }));
+      return;
+    }
 
-      if ((fileImages.length + linkImages.length) >= 10) {
-        setErrors((prev) => ({
-          ...prev,
-          images: "You can only upload up to 10 images total"
-        }));
-        return;
-      }
+    if ((fileImages.length + linkImages.length) >= 10) {
+      setErrors((prev) => ({
+        ...prev,
+        images: "You can only upload up to 10 images total"
+      }));
+      return;
+    }
 
-      const newImageLink = {
-        id: Date.now() + Math.random(),
-        url: link,
-        name: `Image from Link`
-      };
+    const newImageLink = {
+      id: Date.now() + Math.random(),
+      url: url,
+      name: `Image from Link`
+    };
 
-      setLinkImages((prev) => [...prev, newImageLink]);
-      
-      // Clear any previous image errors after successful addition
-      if (errors.images) {
-        setErrors((prev) => {
-          const newErrors = { ...prev };
-          delete newErrors.images;
-          return newErrors;
-        });
-      }
+    setLinkImages((prev) => [...prev, newImageLink]);
+    
+    // Clear any previous image errors after successful addition
+    if (errors.images) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.images;
+        return newErrors;
+      });
     }
   };
 
@@ -539,10 +544,22 @@ const CreatePostModal = ({
                       type="text"
                       placeholder="Paste image URL here..."
                       className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const input = e.target;
+                          handleImageLinkAdd(input.value);
+                          input.value = '';
+                        }
+                      }}
                     />
                     <button
                       type="button"
-                      onClick={handleImageLinkAdd}
+                      onClick={(e) => {
+                        const input = e.target.parentElement.querySelector('input');
+                        handleImageLinkAdd(input.value);
+                        input.value = '';
+                      }}
                       className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
                     >
                       <Plus className="w-4 h-4" />

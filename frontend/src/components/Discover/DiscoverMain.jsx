@@ -1502,7 +1502,10 @@ const DiscoverMain = () => {
             <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Discover Page</h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <button 
-              onClick={() => fetchPosts()}
+              onClick={() => {
+                setError(null); // Clear the error state first
+                fetchPosts();
+              }}
               className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
             >
               Try Again
