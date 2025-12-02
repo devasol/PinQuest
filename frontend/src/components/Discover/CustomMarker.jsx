@@ -76,7 +76,7 @@ const createCustomMarker = (category = 'general', averageRating = 0, isSaved = f
     iconSize: [30, 42],
     iconAnchor: [15, 42],
     popupAnchor: [0, -42],
-    className: 'custom-marker'
+    className: 'custom-marker pulse'
   });
 };
 
@@ -93,9 +93,17 @@ const CustomMarker = ({ post, isLiked, onSave, isSaved, onGetDirections, onClick
       };
       
       marker.on('click', handleClick);
+      marker.on('mouseover', () => {
+        marker.getElement().classList.add('pulse');
+      });
+      marker.on('mouseout', () => {
+        marker.getElement().classList.remove('pulse');
+      });
       
       return () => {
         marker.off('click', handleClick);
+        marker.off('mouseover');
+        marker.off('mouseout');
       };
     }
   }, [onClick, post]);
