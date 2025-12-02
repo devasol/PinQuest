@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Popup } from 'react-leaflet';
 import { Star, Heart, Navigation, X, Send } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useModal } from '../../contexts/ModalContext';
 
 // API base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
@@ -65,6 +66,7 @@ const CommentInput = ({ onAddComment }) => {
 // Main popup component
 const PostPopup = ({ post, onClose, onSave, isSaved, onGetDirections, onClick }) => {
   const { isAuthenticated } = useAuth();
+  const { showModal } = useModal();
   const [userRating, setUserRating] = useState(0);
   const [comments, setComments] = useState(post.comments || []);
   const [loading, setLoading] = useState(false);
@@ -105,7 +107,12 @@ const PostPopup = ({ post, onClose, onSave, isSaved, onGetDirections, onClick })
       if (response.ok) {
         // In a real app, you would update the post with the new rating
         // For now, we'll just show a success message
-        alert('Rating submitted successfully!');
+        showModal({
+          title: "Success",
+          message: 'Rating submitted successfully!',
+          type: 'success',
+          confirmText: 'OK'
+        });
         setUserRating(0); // Reset rating after submission
       } else {
         const result = await response.json();

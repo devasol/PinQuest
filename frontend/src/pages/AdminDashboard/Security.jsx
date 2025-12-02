@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Lock, Eye, EyeOff, AlertTriangle, CheckCircle, Clock, User, Settings, AlertCircle, Loader2 } from 'lucide-react';
+import { useModal } from '../../contexts/ModalContext';
 import usePageTitle from '../../services/usePageTitle';
 import { adminAPI } from '../../services/api';
 import './Security.css';
 
 const Security = () => {
   usePageTitle("Security Settings");
+  const { showModal } = useModal();
   const [showPassword, setShowPassword] = useState(false);
   const [securitySettings, setSecuritySettings] = useState({
     twoFactorAuth: false,
@@ -98,7 +100,12 @@ const Security = () => {
 
     try {
       await adminAPI.updatePassword(passwordForm.currentPassword, passwordForm.newPassword);
-      alert('Password updated successfully!');
+      showModal({
+        title: "Success",
+        message: 'Password updated successfully!',
+        type: 'success',
+        confirmText: 'OK'
+      });
       setPasswordForm({
         currentPassword: '',
         newPassword: '',
@@ -139,7 +146,12 @@ const Security = () => {
         ...prev,
         [setting]: currentValue
       }));
-      alert('Failed to update setting: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Failed to update setting: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
       console.error('Error updating security setting:', err);
     } finally {
       setSettingsLoading(false);
@@ -173,7 +185,12 @@ const Security = () => {
         ...prev,
         autoLogout: previousValue
       }));
-      alert('Failed to update auto logout setting: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Failed to update auto logout setting: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
       console.error('Error updating auto logout setting:', err);
     } finally {
       setSettingsLoading(false);
@@ -207,7 +224,12 @@ const Security = () => {
         ...prev,
         passwordExpiry: previousValue
       }));
-      alert('Failed to update password expiry setting: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Failed to update password expiry setting: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
       console.error('Error updating password expiry setting:', err);
     } finally {
       setSettingsLoading(false);

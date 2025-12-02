@@ -101,7 +101,7 @@ const usePostInteractions = (post, currentUser, authToken, isAuthenticated, show
           confirmText: 'OK'
         });
       } else {
-        alert("Please login to like posts.");
+        console.error("showModal function not provided to usePostInteractions hook");
       }
       return;
     }
@@ -143,7 +143,7 @@ const usePostInteractions = (post, currentUser, authToken, isAuthenticated, show
           confirmText: 'OK'
         });
       } else {
-        alert('An error occurred. Please try again.');
+        console.error("showModal function not provided to usePostInteractions hook");
       }
     }
   }, [authToken, post?._id, currentUser?._id, liked, likeCount]);
@@ -158,7 +158,7 @@ const usePostInteractions = (post, currentUser, authToken, isAuthenticated, show
           confirmText: 'OK'
         });
       } else {
-        alert("Please login to bookmark posts.");
+        console.error("showModal function not provided to usePostInteractions hook");
       }
       return;
     }
@@ -193,7 +193,7 @@ const usePostInteractions = (post, currentUser, authToken, isAuthenticated, show
           confirmText: 'OK'
         });
       } else {
-        alert('An error occurred. Please try again.');
+        console.error("showModal function not provided to usePostInteractions hook");
       }
     }
   }, [authToken, post?._id, currentUser?._id, bookmarked]);

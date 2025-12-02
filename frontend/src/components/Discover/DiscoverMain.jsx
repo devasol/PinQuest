@@ -1246,7 +1246,12 @@ const DiscoverMain = () => {
   // Function to handle creating a new post
   const handleCreatePost = async (postPayload) => {
     if (!isAuthenticated) {
-      alert('Please login to create posts');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to create posts',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
 

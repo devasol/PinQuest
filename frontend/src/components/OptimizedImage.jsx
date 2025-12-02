@@ -5,20 +5,28 @@ import LoadingSpinner from './LoadingSpinner';
 const optimizeImageUrl = (src, width = null, height = null) => {
   if (!src) return src;
   
+  // Ensure src is a string before calling includes
+  const srcString = typeof src === 'string' ? src : String(src);
+  
   // If it's already an optimized image service URL, return as is
-  if (src.includes('via.placeholder.com') || src.includes('unsplash.com')) {
-    return src;
+  if (srcString.includes('via.placeholder.com') || srcString.includes('unsplash.com')) {
+    return srcString;
   }
 
   // For basic optimization, we'll add width/height params if available
   // This is a simplified version - in a production app, you'd want to use an actual image optimization service
-  const url = new URL(src, window.location.origin);
-  
-  // Add basic optimization parameters if not already present
-  if (width) url.searchParams.set('w', width);
-  if (height) url.searchParams.set('h', height);
-  
-  return url.toString();
+  try {
+    const url = new URL(srcString, window.location.origin);
+    
+    // Add basic optimization parameters if not already present
+    if (width) url.searchParams.set('w', width);
+    if (height) url.searchParams.set('h', height);
+    
+    return url.toString();
+  } catch (e) {
+    // If URL parsing fails, return the original src
+    return srcString;
+  }
 };
 
 const OptimizedImage = ({ 

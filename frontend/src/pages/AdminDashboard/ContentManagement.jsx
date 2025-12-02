@@ -97,7 +97,7 @@ const ContentManagement = () => {
   const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
 
   const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
+    setCurrentPage(Math.max(1, Math.min(pageNumber, totalPages)));
   };
 
   const handleDeletePost = async (postId) => {
@@ -107,7 +107,12 @@ const ContentManagement = () => {
         setPosts(posts.filter(post => post.id !== postId));
         setFilteredPosts(filteredPosts.filter(post => post.id !== postId));
       } catch (err) {
-        alert('Error deleting post: ' + err.message);
+        showModal({
+          title: "Error",
+          message: 'Error deleting post: ' + err.message,
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     }
   };
@@ -128,9 +133,19 @@ const ContentManagement = () => {
           : post
       ));
       
-      alert('Post approved successfully!');
+      showModal({
+        title: "Success",
+        message: 'Post approved successfully!',
+        type: 'success',
+        confirmText: 'OK'
+      });
     } catch (err) {
-      alert('Error approving post: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Error approving post: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
@@ -150,9 +165,19 @@ const ContentManagement = () => {
           : post
       ));
       
-      alert('Post rejected successfully!');
+      showModal({
+        title: "Info",
+        message: 'Post rejected successfully!',
+        type: 'info',
+        confirmText: 'OK'
+      });
     } catch (err) {
-      alert('Error rejecting post: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Error rejecting post: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
@@ -178,7 +203,12 @@ const ContentManagement = () => {
           : post
       ));
     } catch (err) {
-      alert('Error updating post: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Error updating post: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
@@ -214,9 +244,19 @@ const ContentManagement = () => {
       ));
       
       setShowEditPostModal(false);
-      alert('Post updated successfully!');
+      showModal({
+        title: "Success",
+        message: 'Post updated successfully!',
+        type: 'success',
+        confirmText: 'OK'
+      });
     } catch (err) {
-      alert('Error updating post: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Error updating post: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
@@ -519,15 +559,46 @@ const ContentManagement = () => {
             Previous
           </button>
           
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+            // Show first page, current page, and adjacent pages, and last page
+            let pageNum;
+            if (totalPages <= 5) {
+              pageNum = i + 1;
+            } else if (currentPage <= 3) {
+              // If near the beginning, show 1, 2, 3, 4, 5
+              pageNum = i + 1;
+            } else if (currentPage >= totalPages - 2) {
+              // If near the end, show totalPages-4, totalPages-3, totalPages-2, totalPages-1, totalPages
+              pageNum = totalPages - 4 + i;
+            } else {
+              // Show current page in the middle
+              pageNum = currentPage - 2 + i;
+            }
+            
+            return (
+              <button
+                key={pageNum}
+                className={`content-management-pagination-btn ${currentPage === pageNum ? 'content-management-pagination-btn-active' : ''}`}
+                onClick={() => handlePageChange(pageNum)}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+          
+          {totalPages > 5 && currentPage < totalPages - 2 && (
+            <span className="content-management-pagination-ellipsis">...</span>
+          )}
+          
+          {totalPages > 5 && currentPage < totalPages - 1 && (
             <button
-              key={page}
-              className={`content-management-pagination-btn ${currentPage === page ? 'content-management-pagination-btn-active' : ''}`}
-              onClick={() => handlePageChange(page)}
+              key={totalPages}
+              className={`content-management-pagination-btn ${currentPage === totalPages ? 'content-management-pagination-btn-active' : ''}`}
+              onClick={() => handlePageChange(totalPages)}
             >
-              {page}
+              {totalPages}
             </button>
-          ))}
+          )}
           
           <button
             className="content-management-pagination-btn"

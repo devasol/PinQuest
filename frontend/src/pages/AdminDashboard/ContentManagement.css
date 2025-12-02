@@ -146,12 +146,14 @@
   border: 1px solid #e5e7eb;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   overflow-x: auto; /* Enable horizontal scrolling on small screens */
+  margin-bottom: 1rem; /* Add consistent spacing */
 }
 
 .content-management-table {
   width: 100%;
   border-collapse: collapse;
   min-width: 800px; /* Prevent table from becoming too narrow */
+  table-layout: fixed; /* Ensure consistent column widths */
 }
 
 .content-management-table th {
@@ -163,6 +165,9 @@
   border-bottom: 2px solid #e5e7eb;
   font-size: 0.875rem;
   white-space: nowrap;
+  position: sticky; /* Keep headers visible during horizontal scroll */
+  top: 0;
+  z-index: 10;
 }
 
 .content-management-table td {
@@ -171,10 +176,28 @@
   color: #374151;
   font-size: 0.875rem;
   white-space: nowrap;
+  vertical-align: top; /* Ensure content aligns properly */
+}
+
+.content-management-table-row {
+  transition: background-color 0.2s ease; /* Smooth transition for hover effects */
 }
 
 .content-management-table-row:hover {
   background-color: #f9fafb;
+}
+
+/* Ensure consistent styling when page changes */
+.content-management-table tbody tr:nth-child(even) {
+  background-color: #f8fafc; /* Subtle alternating row colors for better readability */
+}
+
+.content-management-table tbody tr:nth-child(odd) {
+  background-color: white;
+}
+
+.content-management-table tbody tr:hover {
+  background-color: #f3f4f6 !important; /* Ensure hover state works consistently */
 }
 
 .content-management-post-info {
@@ -298,6 +321,11 @@
   align-items: center;
   gap: 0.5rem;
   margin-top: 1.5rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   flex-wrap: wrap;
   gap: 0.25rem; /* Reduce gap on mobile */
 }
@@ -312,22 +340,39 @@
   border-radius: 6px;
   transition: all 0.2s;
   min-width: 40px; /* Ensure buttons are touch-friendly */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .content-management-pagination-btn:hover:not(:disabled) {
   background: #f3f4f6;
   border-color: #9ca3af;
+  transform: translateY(-1px); /* Add subtle lift effect */
 }
 
 .content-management-pagination-btn-active {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border-color: transparent;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
 }
 
 .content-management-pagination-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
+}
+
+.content-management-pagination-ellipsis {
+  padding: 0.5rem 0.75rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
 }
 
 /* Responsive Design */

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, Edit, Trash2, Filter, Download, Eye, AlertTriangle } from 'lucide-react';
+import { useModal } from '../../contexts/ModalContext';
 import usePageTitle from '../../services/usePageTitle';
 import { adminAPI } from '../../services/api';
 import './UserManagement.css';
 
 const UserManagement = () => {
   usePageTitle("User Management");
+  const { showModal } = useModal();
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -139,9 +141,19 @@ const UserManagement = () => {
         setFilteredUsers(formattedUsers);
       }
       
-      alert('User created successfully!');
+      showModal({
+        title: "Success",
+        message: 'User created successfully!',
+        type: 'success',
+        confirmText: 'OK'
+      });
     } catch (err) {
-      alert('Error creating user: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Error creating user: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
@@ -223,9 +235,19 @@ const UserManagement = () => {
         setFilteredUsers(formattedUsers);
       }
       
-      alert('User updated successfully!');
+      showModal({
+        title: "Success",
+        message: 'User updated successfully!',
+        type: 'success',
+        confirmText: 'OK'
+      });
     } catch (err) {
-      alert('Error updating user: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Error updating user: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
@@ -251,7 +273,12 @@ const UserManagement = () => {
         setUsers(users.filter(user => user.id !== userId));
         setFilteredUsers(filteredUsers.filter(user => user.id !== userId));
       } catch (err) {
-        alert('Error deleting user: ' + err.message);
+        showModal({
+          title: "Error",
+          message: 'Error deleting user: ' + err.message,
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     }
   };
@@ -261,7 +288,12 @@ const UserManagement = () => {
       // Find the user to get current status
       const user = users.find(u => u.id === userId);
       if (!user) {
-        alert('User not found');
+        showModal({
+          title: "Error",
+          message: 'User not found',
+          type: 'error',
+          confirmText: 'OK'
+        });
         return;
       }
       
@@ -284,9 +316,19 @@ const UserManagement = () => {
           : user
       ));
       
-      alert(`User ${shouldBan ? 'banned' : 'unbanned'} successfully!`);
+      showModal({
+        title: "Success",
+        message: `User ${shouldBan ? 'banned' : 'unbanned'} successfully!`,
+        type: 'success',
+        confirmText: 'OK'
+      });
     } catch (err) {
-      alert('Error updating user status: ' + err.message);
+      showModal({
+        title: "Error",
+        message: 'Error updating user status: ' + err.message,
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 

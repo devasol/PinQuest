@@ -520,7 +520,12 @@ const PostWindow = ({
                                 if (authToken) {
                                   setRating(star);
                                 } else {
-                                  alert('Please login to rate posts');
+                                  showModal({
+                                    title: "Authentication Required",
+                                    message: 'Please login to rate posts',
+                                    type: 'info',
+                                    confirmText: 'OK'
+                                  });
                                 }
                               }}
                               onMouseEnter={() => rating === 0 && setHoverRating(star)}

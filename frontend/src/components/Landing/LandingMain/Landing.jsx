@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MapPin,
   Compass,
@@ -12,10 +13,19 @@ import {
   Sparkles,
 } from "lucide-react";
 import MapComponent from "../MapComponent/MapComponent";
+import { postApi } from "../../../services/api";
 
 const Landing = () => {
   const [currentFeature, setCurrentFeature] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const [stats, setStats] = useState([
+    { number: "50K+", label: "Active Explorers" },
+    { number: "1M+", label: "Pinned Locations" },
+    { number: "150+", label: "Countries Covered" },
+    { number: "4.9", label: "Rating" },
+  ]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setIsVisible(true);
@@ -23,6 +33,34 @@ const Landing = () => {
       setCurrentFeature((prev) => (prev + 1) % features.length);
     }, 4000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Fetch real statistics from the API
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Use a health endpoint or posts endpoint to get stats
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/health`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'success' && data.counts) {
+            setStats([
+              { number: data.counts.users > 10000 ? `${Math.floor(data.counts.users/1000)}K+` : data.counts.users, label: "Active Explorers" },
+              { number: data.counts.posts > 10000 ? `${Math.floor(data.counts.posts/1000)}K+` : data.counts.posts, label: "Pinned Locations" },
+              { number: "150+", label: "Countries Covered" }, // We can get real data for this too if available
+              { number: "4.9", label: "Rating" },
+            ]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+        // Keep default stats if API call fails
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
   }, []);
 
   const features = [
@@ -42,13 +80,6 @@ const Landing = () => {
       title: "Join Communities",
       description: "Connect with fellow travelers and local experts",
     },
-  ];
-
-  const stats = [
-    { number: "50K+", label: "Active Explorers" },
-    { number: "1M+", label: "Pinned Locations" },
-    { number: "150+", label: "Countries Covered" },
-    { number: "4.9", label: "Rating" },
   ];
 
   return (
@@ -103,12 +134,22 @@ const Landing = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-            <button className="group relative bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25">
+            <button 
+              className="group relative bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 cursor-pointer"
+              onClick={() => navigate('/discover')}
+            >
               Start Exploring Free
               <ArrowRight className="inline ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </button>
 
-            <button className="group flex items-center gap-3 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:bg-white/10">
+            <button 
+              className="group flex items-center gap-3 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:bg-white/10 cursor-pointer"
+              onClick={() => {
+                // For demo, we can redirect to the discover page or show a video
+                // For now, let's take to discover page
+                navigate('/discover');
+              }}
+            >
               <div className="flex items-center justify-center w-12 h-12 bg-white/10 rounded-full group-hover:bg-white/20 transition-colors">
                 <Play className="h-5 w-5 ml-1" />
               </div>
@@ -121,9 +162,19 @@ const Landing = () => {
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="text-3xl sm:text-4xl font-bold text-white mb-2">
-                  {stat.number}
+                  {loading ? (
+                    <div className="w-16 h-8 bg-white/20 rounded animate-pulse mx-auto"></div>
+                  ) : (
+                    stat.number
+                  )}
                 </div>
-                <div className="text-gray-400 font-medium">{stat.label}</div>
+                <div className="text-gray-400 font-medium">
+                  {loading ? (
+                    <div className="w-12 h-4 bg-white/20 rounded animate-pulse mx-auto"></div>
+                  ) : (
+                    stat.label
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -236,10 +287,16 @@ const Landing = () => {
               world.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl">
+              <button 
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer"
+                onClick={() => navigate('/discover')}
+              >
                 Create Account Free
               </button>
-              <button className="border border-gray-300 text-gray-700 bg-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:bg-gray-50">
+              <button 
+                className="border border-gray-300 text-gray-700 bg-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 hover:bg-gray-50 cursor-pointer"
+                onClick={() => navigate('/discover')}
+              >
                 Learn More
               </button>
             </div>
