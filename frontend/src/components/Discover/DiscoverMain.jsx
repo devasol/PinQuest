@@ -47,7 +47,8 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
 const DiscoverMain = () => {
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -73,6 +74,8 @@ const DiscoverMain = () => {
   const [showCreatePostModal, setShowCreatePostModal] = useState(false); // Track if create post modal is open
   const [selectedMapPosition, setSelectedMapPosition] = useState(null); // Store selected position for post creation
   const [createPostLoading, setCreatePostLoading] = useState(false); // Track if post creation is in progress
+  const [locationLoading, setLocationLoading] = useState(false); // Track if updating user location is in progress
+  const [bookmarkLoading, setBookmarkLoading] = useState(null); // Track which post is being bookmarked/unbookmarked
   
   // Memoized search suggestions
   const searchSuggestions = useMemo(() => {
@@ -587,8 +590,16 @@ const DiscoverMain = () => {
       }, 0);
     }
     
-    // Fetch posts without blocking the UI - start loading data in background
-    fetchPosts(null, 50); // Fetch limited posts initially
+    // Fetch posts with initial loading indicator
+    const initialFetch = async () => {
+      try {
+        await fetchPosts(null, 50); // Fetch limited posts initially
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    
+    initialFetch();
 
     // Set up periodic refresh every 30 seconds
     fetchIntervalRef.current = setInterval(() => {
@@ -770,6 +781,9 @@ const DiscoverMain = () => {
       return;
     }
     
+    // Set loading state for this specific post
+    setBookmarkLoading(post.id);
+    
     let isBookmarked;
     
     try {
@@ -820,6 +834,9 @@ const DiscoverMain = () => {
     } catch (err) {
       console.error(`Error ${isBookmarked ? 'un' : ''}bookmarking post:`, err);
       alert(`Error ${isBookmarked ? 'un' : 'book' }marking post`);
+    } finally {
+      // Reset loading state for this post
+      setBookmarkLoading(null);
     }
   };
 
@@ -1014,6 +1031,9 @@ const DiscoverMain = () => {
       return;
     }
 
+    // Set loading state
+    setLocationLoading(true);
+
     // Show a loading indicator or message while requesting location
     const geoOptions = {
       enableHighAccuracy: true,
@@ -1034,6 +1054,9 @@ const DiscoverMain = () => {
         setMapCenter(userPos);
         setMapZoom(15);
       }
+      
+      // Reset loading state
+      setLocationLoading(false);
     };
 
     const errorCallback = (error) => {
@@ -1056,6 +1079,9 @@ const DiscoverMain = () => {
       }
       
       alert(errorMessage);
+      
+      // Reset loading state in case of error too
+      setLocationLoading(false);
     };
 
     navigator.geolocation.getCurrentPosition(successCallback, errorCallback, geoOptions);
@@ -1370,6 +1396,21 @@ const DiscoverMain = () => {
     );
   }
 
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <Header isDiscoverPage={true} />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-xl font-medium text-gray-700">Loading map data...</p>
+            <p className="text-sm text-gray-500 mt-2">Discovering amazing places near you</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
       <Header isDiscoverPage={true} />
@@ -1663,8 +1704,15 @@ const DiscoverMain = () => {
               onClick={updateUserLocation}
               className="sidebar-control modern-btn"
               title="My Location"
+              disabled={locationLoading}
             >
-              <Navigation className="h-6 w-6 text-gray-700" />
+              {locationLoading ? (
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700"></div>
+                </div>
+              ) : (
+                <Navigation className="h-6 w-6 text-gray-700" />
+              )}
             </motion.button>
           )}
         </motion.div>
@@ -2124,8 +2172,15 @@ const DiscoverMain = () => {
                         togglePostBookmark(post);
                       }}
                       className="ml-2 p-2 rounded-full hover:bg-red-100 text-red-500 transition-colors"
+                      disabled={bookmarkLoading === post.id}
                     >
-                      <X className="h-4 w-4" />
+                      {bookmarkLoading === post.id ? (
+                        <div className="h-4 w-4 flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                        </div>
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
                     </motion.button>
                   </motion.div>
                 ))
@@ -2314,11 +2369,18 @@ const DiscoverMain = () => {
                                   whileTap={{ scale: 0.9 }}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    saveLocation(post);
+                                    togglePostBookmark(post);
                                   }}
                                   className="text-red-500 hover:text-red-700 transition-colors"
+                                  disabled={bookmarkLoading === post.id}
                                 >
-                                  <Heart className="w-4 h-4" />
+                                  {bookmarkLoading === post.id ? (
+                                    <div className="w-4 h-4 flex items-center justify-center">
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                                    </div>
+                                  ) : (
+                                    <Heart className={`w-4 h-4 ${favoritePosts.has(post.id) ? 'fill-current' : ''}`} />
+                                  )}
                                 </motion.button>
                               )}
                             </div>
@@ -2401,11 +2463,18 @@ const DiscoverMain = () => {
                                         whileTap={{ scale: 0.9 }}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          saveLocation(suggestion.post);
+                                          togglePostBookmark(suggestion.post);
                                         }}
                                         className="text-red-500 hover:text-red-700 transition-colors"
+                                        disabled={bookmarkLoading === suggestion.post.id}
                                       >
-                                        <Heart className="w-4 h-4" />
+                                        {bookmarkLoading === suggestion.post.id ? (
+                                          <div className="w-4 h-4 flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                                          </div>
+                                        ) : (
+                                          <Heart className={`w-4 h-4 ${favoritePosts.has(suggestion.post.id) ? 'fill-current' : ''}`} />
+                                        )}
                                       </motion.button>
                                     )}
                                   </div>

@@ -355,7 +355,7 @@ const MapView = () => {
     return (
       <div className="min-h-screen bg-gray-900">
         <Header isDiscoverPage={true} />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
             <p className="text-xl font-medium text-white">Loading map data...</p>
@@ -369,7 +369,7 @@ const MapView = () => {
     return (
       <div className="min-h-screen bg-gray-900">
         <Header isDiscoverPage={true} />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
           <div className="text-center p-6 bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 max-w-md">
             <h2 className="text-xl font-bold text-red-400 mb-2">Error Loading Map</h2>
             <p className="text-gray-300 mb-4">{error}</p>
@@ -386,11 +386,12 @@ const MapView = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex">
+    <div className="min-h-screen bg-gray-900">
       <Header isDiscoverPage={true} />
       
-      {/* Icon-only Sidebar */}
-      <div className="w-20 bg-white/90 backdrop-blur-lg shadow-xl border-r border-gray-200 z-10 flex flex-col items-center py-6">
+      <div className="flex pt-32">
+        {/* Icon-only Sidebar */}
+        <div className="w-20 bg-white/90 backdrop-blur-lg shadow-xl border-r border-gray-200 z-10 flex flex-col items-center py-6 pt-16">
         <button
           className={`p-3 rounded-xl mb-2 transition-all duration-200 ${
             activePanel === 'posts' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
@@ -456,7 +457,7 @@ const MapView = () => {
       
       {/* Panel Content - Appears beside the sidebar when active */}
       {activePanel && (
-        <div className="w-80 bg-white/90 backdrop-blur-lg shadow-xl border-r border-gray-200 z-10 flex flex-col h-full max-h-screen overflow-hidden">
+        <div className="w-80 bg-white/90 backdrop-blur-lg shadow-xl border-r border-gray-200 z-10 flex flex-col h-full max-h-screen overflow-hidden fixed top-32">
           {/* Panel Header */}
           <div className="p-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white flex justify-between items-center">
             <h2 className="text-xl font-bold capitalize">
@@ -679,7 +680,7 @@ const MapView = () => {
           zoom={2}
           minZoom={2}
           maxZoom={18}
-          style={{ height: '100%', width: '100%' }}
+          style={{ height: 'calc(100vh - 8rem)', width: '100%' }}
           ref={mapRef}
         >
           <TileLayer

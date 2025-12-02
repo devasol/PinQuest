@@ -44,23 +44,55 @@
   transform: translateX(100%);
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
+/* Responsive adjustments for Post Window */
+@media (max-width: 1024px) {
   .post-window-container {
     max-width: 95%;
     margin: 0.5rem;
+  }
+}
+
+@media (max-height: 800px) {
+  .post-window-image-container {
+    max-height: 30vh !important;
   }
   
   .post-window-content {
     padding: 1rem;
   }
-  
-  .post-window-actions {
-    flex-direction: column;
-    gap: 0.5rem;
+}
+
+@media (max-height: 600px) {
+  .post-window-image-container {
+    max-height: 25vh !important;
+    height: 200px;
   }
   
-  .post-window-actions div {
-    width: 100%;
+  .post-window-content {
+    padding: 0.75rem;
+  }
+}
+
+/* Extra small height devices */
+@media (max-height: 450px) {
+  .post-window-image-container {
+    max-height: 20vh !important;
+    height: 150px;
+  }
+  
+  .post-window-container {
+    max-height: 95vh;
+  }
+  
+  .post-window-content {
+    padding: 0.5rem;
+  }
+  
+  .post-window-title {
+    font-size: 1.5rem;
+  }
+  
+  .post-window-actions {
+    padding: 0.5rem;
   }
 }

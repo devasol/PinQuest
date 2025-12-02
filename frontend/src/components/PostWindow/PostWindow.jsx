@@ -272,7 +272,7 @@ const PostWindow = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-gradient-to-br from-black/70 to-black/60 backdrop-blur-xl z-[6000] flex items-center justify-center p-4"
+        className="fixed inset-0 bg-gradient-to-br from-black/70 to-black/60 backdrop-blur-xl z-[6000] flex items-center justify-center p-4 min-h-full"
         onClick={handleClose}
       >
         <motion.div
@@ -285,9 +285,9 @@ const PostWindow = ({
             stiffness: 300,
             duration: 0.3 
           }}
-          className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col z-[6001] border border-white/20 backdrop-blur-md"
+          className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col z-[6001] border border-white/20 backdrop-blur-md"
           onClick={(e) => e.stopPropagation()}
-          style={{ minHeight: '600px' }}
+          style={{ minHeight: '400px' }}
         >
           {/* Header */}
           <div className="p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center shadow-xl">
@@ -310,12 +310,12 @@ const PostWindow = ({
           </div>
 
           {/* Content */}
-          <div className="flex flex-col lg:flex-row flex-1 overflow-hidden bg-gray-50">
+          <div className="post-window-container flex flex-col flex-1 overflow-y-auto bg-gray-50">
             {/* Image Gallery */}
-            <div className="lg:w-1/2 flex flex-col">
-              <div className="relative flex-1">
+            <div className="w-full">
+              <div className="relative">
                 {hasImages && images.length > 0 ? (
-                  <div className="relative w-full h-80 md:h-96 lg:h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                  <div className="post-window-image-container relative w-full h-60 sm:h-80 md:h-96 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
                     <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
                       <div className="transition-transform duration-300 ease-out">
                         <OptimizedImage
@@ -355,7 +355,7 @@ const PostWindow = ({
                     )}
                   </div>
                 ) : (
-                  <div className="w-full h-80 md:h-96 lg:h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-8">
+                  <div className="w-full h-60 sm:h-80 md:h-96 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-8">
                     <div className="text-center max-w-sm">
                       <div className="mx-auto w-24 h-24 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
                         <svg
@@ -384,8 +384,8 @@ const PostWindow = ({
 
               {/* Thumbnail Gallery */}
               {hasImages && images.length > 1 && (
-                <div className="p-5 bg-white/90 border-t border-gray-200 backdrop-blur-sm">
-                  <div className="flex space-x-3 overflow-x-auto pb-2">
+                <div className="p-5 bg-white/90 border-t border-gray-200 backdrop-blur-sm overflow-x-auto">
+                  <div className="flex space-x-3 pb-2">
                     {images.map((img, index) => {
                       const isSelected = currentImageIndex === index;
                       
@@ -415,12 +415,12 @@ const PostWindow = ({
             </div>
 
             {/* Post Details */}
-            <div className="lg:w-1/2 flex flex-col">
-              <div className="p-7 overflow-y-auto flex-1 bg-white">
+            <div className="bg-white">
+              <div className="post-window-content p-7">
                 {showInfo ? (
                   <>
                     <div className="flex flex-wrap items-center justify-between mb-5">
-                      <h1 className="text-2xl font-bold text-gray-900 mb-3 lg:mb-0 lg:mr-4 leading-tight">
+                      <h1 className="post-window-title text-2xl font-bold text-gray-900 mb-3 leading-tight">
                         {currentPost.title || 'Untitled Post'}
                       </h1>
                       {currentPost.category && (
@@ -538,7 +538,7 @@ const PostWindow = ({
               </div>
 
               {/* Action Bar */}
-              <div className="p-6 border-t border-gray-200 bg-white shadow-lg">
+              <div className="post-window-actions p-6 border-t border-gray-200 bg-white shadow-lg">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center space-x-3">
                     <motion.button

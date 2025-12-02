@@ -7,15 +7,15 @@ const createUserLocationIcon = () => {
   return L.divIcon({
     html: `
       <div class="relative">
-        <div class="w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center animate-pulse">
-          <div class="w-2 h-2 bg-white rounded-full"></div>
+        <div class="w-8 h-8 bg-blue-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center animate-pulse">
+          <div class="w-3 h-3 bg-white rounded-full"></div>
         </div>
-        <div class="absolute inset-0 w-6 h-6 bg-blue-400 rounded-full opacity-30 animate-ping"></div>
+        <div class="absolute inset-0 w-8 h-8 bg-blue-400 rounded-full opacity-30 animate-ping"></div>
       </div>
     `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12],
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
     className: 'current-location-marker'
   });
 };

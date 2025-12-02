@@ -39,6 +39,15 @@
 }
 
 .leaflet-marker-icon.custom-marker:hover {
+  transform: scale(1.05);
+}
+
+/* Current location marker styling */
+.leaflet-marker-icon.current-location-marker {
+  transition: transform 0.3s ease;
+}
+
+.leaflet-marker-icon.current-location-marker:hover {
   transform: scale(1.1);
 }
 
