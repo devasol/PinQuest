@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -11,6 +11,7 @@ import MapRouting from './MapRouting';
 import CreatePostModal from './CreatePostModal';
 import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import './DiscoverMain.css';
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
@@ -23,7 +24,11 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
       
       // If user is authenticated, allow them to create a post at the clicked location
       if (onMapPositionSelected) {
-        onMapPositionSelected(e.latlng);
+        // Convert the Leaflet LatLng object to a simple position object
+        onMapPositionSelected({
+          lat: e.latlng.lat,
+          lng: e.latlng.lng
+        });
       }
       
       // Hide all control windows when clicking on map
@@ -68,6 +73,208 @@ const DiscoverMain = () => {
   const [showCreatePostModal, setShowCreatePostModal] = useState(false); // Track if create post modal is open
   const [selectedMapPosition, setSelectedMapPosition] = useState(null); // Store selected position for post creation
   const [createPostLoading, setCreatePostLoading] = useState(false); // Track if post creation is in progress
+  
+  // Memoized search suggestions
+  const searchSuggestions = useMemo(() => {
+    if (!searchQuery || searchQuery.trim().length === 0) return [];
+    
+    const searchTerms = searchQuery.toLowerCase().split(/\s+/).filter(term => term.length > 0);
+    if (searchTerms.length === 0) return [];
+    
+    // Create a set to store unique suggestions
+    const suggestions = new Set();
+    
+    // Look for posts that have similar terms or related content
+    posts.forEach(post => {
+      // Check title for similar terms
+      if (post.title && typeof post.title === 'string') {
+        const title = post.title.toLowerCase();
+        searchTerms.forEach(term => {
+          if (title.includes(term) && !title.includes(searchQuery.toLowerCase())) {
+            suggestions.add({
+              id: `title-suggestion-${post.id}`,
+              type: 'title-matching-term',
+              title: post.title,
+              description: post.description,
+              post: post,
+              relevance: 'related'
+            });
+          }
+        });
+      }
+      
+      // Check description for similar terms
+      if (post.description && typeof post.description === 'string') {
+        const description = post.description.toLowerCase();
+        searchTerms.forEach(term => {
+          if (description.includes(term) && !description.includes(searchQuery.toLowerCase())) {
+            suggestions.add({
+              id: `desc-suggestion-${post.id}`,
+              type: 'description-matching-term',
+              title: post.title,
+              description: post.description,
+              post: post,
+              relevance: 'related'
+            });
+          }
+        });
+      }
+      
+      // Check category for similar terms
+      if (post.category && typeof post.category === 'string') {
+        const category = post.category.toLowerCase();
+        searchTerms.forEach(term => {
+          if (category.includes(term) && !category.includes(searchQuery.toLowerCase())) {
+            suggestions.add({
+              id: `cat-suggestion-${post.id}`,
+              type: 'category-matching-term',
+              title: post.title,
+              description: post.description,
+              post: post,
+              relevance: 'related'
+            });
+          }
+        });
+      }
+      
+      // Check tags for similar terms
+      if (Array.isArray(post.tags)) {
+        post.tags.forEach(tag => {
+          if (typeof tag === 'string') {
+            const tagLower = tag.toLowerCase();
+            searchTerms.forEach(term => {
+              if (tagLower.includes(term) && !tagLower.includes(searchQuery.toLowerCase())) {
+                suggestions.add({
+                  id: `tag-suggestion-${post.id}`,
+                  type: 'tag-matching-term',
+                  title: post.title,
+                  description: post.description,
+                  post: post,
+                  relevance: 'related'
+                });
+              }
+            });
+          }
+        });
+      }
+      
+      // Check poster name for similar terms
+      if (post.postedBy) {
+        const posterName = typeof post.postedBy === 'string' 
+          ? post.postedBy.toLowerCase() 
+          : (post.postedBy.name || post.postedBy.email || '').toLowerCase();
+        searchTerms.forEach(term => {
+          if (posterName.includes(term) && !posterName.includes(searchQuery.toLowerCase())) {
+            suggestions.add({
+              id: `poster-suggestion-${post.id}`,
+              type: 'poster-matching-term',
+              title: post.title,
+              description: post.description,
+              post: post,
+              relevance: 'related'
+            });
+          }
+        });
+      }
+    });
+    
+    // Also include popular posts as suggestions
+    const popularPosts = [...posts]
+      .sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0))
+      .slice(0, 3)
+      .map(post => ({
+        id: `popular-${post.id}`,
+        type: 'popular',
+        title: post.title,
+        description: post.description,
+        post: post,
+        relevance: 'popular'
+      }));
+    
+    // Convert to array and limit results
+    const allSuggestions = [
+      ...Array.from(suggestions),
+      ...popularPosts.filter(pop => !Array.from(suggestions).some(sugg => sugg.post._id === pop.post._id))
+    ];
+    
+    return allSuggestions.slice(0, 5); // Return top 5 suggestions
+  }, [searchQuery, posts]);
+  
+  // State for geocoding search results
+  const [geocodingResults, setGeocodingResults] = useState([]);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  
+  // Simple debounce function
+  const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  };
+  
+  // Debounced geocoding function
+  const debouncedGeocode = useCallback(
+    debounce(async (query) => {
+      if (!query || query.trim().length < 3) {
+        setGeocodingResults([]);
+        return;
+      }
+
+      // Only perform geocoding if the query doesn't match any existing posts
+      const hasMatchingPost = posts.some(post => 
+        post.title.toLowerCase().includes(query.toLowerCase()) || 
+        post.description.toLowerCase().includes(query.toLowerCase()) ||
+        (typeof post.postedBy === 'string' ? post.postedBy.toLowerCase() : 
+         (typeof post.postedBy === 'object' && post.postedBy.name ? post.postedBy.name.toLowerCase() : '')
+        ).includes(query.toLowerCase()) ||
+        post.category.toLowerCase().includes(query.toLowerCase()) ||
+        post.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
+      );
+
+      // If we have matching posts, don't geocode (let the existing search handle it)
+      if (hasMatchingPost) {
+        setGeocodingResults([]);
+        return;
+      }
+
+      setIsGeocoding(true);
+      try {
+        const result = await geocodeAddress(query);
+        setGeocodingResults([{
+          id: 'geocoded-result',
+          type: 'geocoded-location',
+          title: result.displayName,
+          description: `Location: ${result.latitude.toFixed(6)}, ${result.longitude.toFixed(6)}`,
+          location: {
+            latitude: result.latitude,
+            longitude: result.longitude
+          },
+          relevance: 'geocoded'
+        }]);
+      } catch (error) {
+        setGeocodingResults([]);
+        console.log('Geocoding failed, this is normal for non-location queries'); // Not an error we need to report
+      } finally {
+        setIsGeocoding(false);
+      }
+    }, 500), // 500ms debounce
+    [posts]
+  );
+
+  // Update geocoding when search query changes
+  useEffect(() => {
+    if (searchQuery && searchQuery.trim().length > 0) {
+      debouncedGeocode(searchQuery);
+    } else {
+      setGeocodingResults([]);
+    }
+  }, [searchQuery, debouncedGeocode]);
+  
   const mapRef = useRef();
   const fetchIntervalRef = useRef(null);
   const { isAuthenticated, user } = useAuth();
@@ -840,13 +1047,43 @@ const DiscoverMain = () => {
     setRoutingLoading(false); // Also reset loading state
   }, []);
 
+  // Function to geocode an address and find coordinates
+  const geocodeAddress = async (address) => {
+    try {
+      // Use OpenStreetMap Nominatim API for geocoding
+      const encodedAddress = encodeURIComponent(address);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Geocoding request failed');
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const location = data[0];
+        return {
+          latitude: parseFloat(location.lat),
+          longitude: parseFloat(location.lon),
+          displayName: location.display_name
+        };
+      } else {
+        throw new Error('Location not found');
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      throw error;
+    }
+  };
+
   // Function to toggle windows - closes previous window and opens new one
   const toggleWindow = (windowId) => {
     // Get all window IDs
     const allWindowIds = [
       'search-window', 
       'category-window', 
-      'filter-window', 
       'view-mode-window', 
       'map-type-window', 
       'saved-locations-window'
@@ -1309,19 +1546,19 @@ const DiscoverMain = () => {
         
 
         
-        {/* Left Sidebar with Icons - Clean and minimal design */}
+        {/* Left Sidebar with Icons - Modern design */}
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="absolute top-16 left-4 z-[1000] flex flex-col gap-3"
         >
-          {/* Search and Filter control icons with clean styling */}
+          {/* Search and Filter control icons with modern styling */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('search-window')}
-            className="w-14 h-14 bg-white/90 backdrop-blur-sm rounded-xl shadow-md border border-gray-200 hover:bg-white transition-all flex items-center justify-center group modern-btn"
+            className="sidebar-control modern-btn"
             title="Search"
           >
             <Search className="h-6 w-6 text-gray-700" />
@@ -1331,27 +1568,19 @@ const DiscoverMain = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('category-window')}
-            className="w-14 h-14 bg-white/90 backdrop-blur-sm rounded-xl shadow-md border border-gray-200 hover:bg-white transition-all flex items-center justify-center group modern-btn"
+            className="sidebar-control modern-btn"
             title="Categories"
           >
             <MapPin className="h-6 w-6 text-gray-700" />
           </motion.button>
           
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => toggleWindow('filter-window')}
-            className="w-14 h-14 bg-white/90 backdrop-blur-sm rounded-xl shadow-md border border-gray-200 hover:bg-white transition-all flex items-center justify-center group modern-btn"
-            title="Filters"
-          >
-            <SlidersHorizontal className="h-6 w-6 text-gray-700" />
-          </motion.button>
+
           
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('view-mode-window')}
-            className="w-14 h-14 bg-white/90 backdrop-blur-sm rounded-xl shadow-md border border-gray-200 hover:bg-white transition-all flex items-center justify-center group modern-btn"
+            className="sidebar-control modern-btn"
             title="View Mode"
           >
             <Grid3X3 className="h-6 w-6 text-gray-700" />
@@ -1361,7 +1590,7 @@ const DiscoverMain = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('map-type-window')}
-            className="w-14 h-14 bg-white/90 backdrop-blur-sm rounded-xl shadow-md border border-gray-200 hover:bg-white transition-all flex items-center justify-center group modern-btn"
+            className="sidebar-control modern-btn"
             title="Map Type"
           >
             <MapPin className="h-6 w-6 text-gray-700" />
@@ -1371,10 +1600,10 @@ const DiscoverMain = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('saved-locations-window')}
-            className={`w-14 h-14 rounded-xl shadow-md border transition-all flex items-center justify-center modern-btn ${
+            className={`sidebar-control modern-btn ${
               showSavedLocationsOnMap 
                 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white border-yellow-500' 
-                : 'bg-white/90 backdrop-blur-sm border-gray-200 hover:bg-white'
+                : ''
             }`}
             title={isAuthenticated ? `${showSavedLocationsOnMap ? 'Hide' : 'Show'} saved locations` : 'Login to view saved locations'}
           >
@@ -1386,7 +1615,7 @@ const DiscoverMain = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={updateUserLocation}
-              className="w-14 h-14 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all flex items-center justify-center modern-btn"
+              className="sidebar-control modern-btn bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
               title="My Location"
             >
               <Navigation className="h-6 w-6" />
@@ -1397,7 +1626,7 @@ const DiscoverMain = () => {
         {/* Search Window */}
         <motion.div 
           id="search-window" 
-          className="hidden absolute top-16 left-20 z-[999] w-64 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 p-5 glass-effect"
+          className="hidden absolute top-16 left-20 z-[999] sidebar-window search-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -1408,35 +1637,116 @@ const DiscoverMain = () => {
             duration: 0.4 
           }}
         >
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-bold text-gray-800">Search</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-800">Search</h3>
             <button 
               onClick={() => document.getElementById('search-window')?.classList.add('hidden')}
-              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
-              <X className="h-4 w-4 text-gray-600" />
+              <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
                 placeholder="Search for locations, categories, or keywords..."
-                className="w-full pl-10 pr-4 py-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all modern-input focus-ring"
+                className="w-full pl-12 pr-4 py-3 rounded-xl modern-input focus-ring text-base"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                 }}
               />
             </div>
+            
+            {/* Search Results - Show both post matches and geocoded locations */}
+            {(searchQuery && (searchSuggestions.length > 0 || geocodingResults.length > 0)) && (
+              <div className="border-t border-gray-200 pt-4 max-h-[60vh] overflow-y-auto">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Search Results</h4>
+                <div className="space-y-2">
+                  {/* Geocoded locations first */}
+                  {geocodingResults.map((result) => (
+                    <motion.div
+                      key={result.id}
+                      whileHover={{ scale: 1.02 }}
+                      className="p-4 bg-white/70 rounded-xl border border-gray-200 cursor-pointer hover:bg-white transition-colors flex items-start gap-3"
+                      onClick={() => {
+                        // Set the map to the geocoded location and open the create post modal
+                        if (mapRef.current) {
+                          mapRef.current.flyTo([result.location.latitude, result.location.longitude], 15);
+                        }
+                        // Pass the location in the correct format expected by CreatePostModal
+                        setSelectedMapPosition({
+                          lat: result.location.latitude,
+                          lng: result.location.longitude
+                        });
+                        setShowCreatePostModal(true);
+                        // Close the search window
+                        document.getElementById('search-window')?.classList.add('hidden');
+                      }}
+                    >
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-800">{result.title}</div>
+                        <div className="text-sm text-gray-600 mt-1">{result.description}</div>
+                      </div>
+                      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs px-3 py-1.5 rounded-full font-medium flex items-center">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        Location
+                      </div>
+                    </motion.div>
+                  ))}
+                  
+                  {/* Post suggestions */}
+                  {searchSuggestions.map((suggestion) => (
+                    <motion.div
+                      key={suggestion.id}
+                      whileHover={{ scale: 1.02 }}
+                      className="p-4 bg-white/70 rounded-xl border border-gray-200 cursor-pointer hover:bg-white transition-colors flex items-start gap-3"
+                      onClick={() => {
+                        setSelectedPost(suggestion.post);
+                        flyToPost(suggestion.post.position);
+                        // Close the search window
+                        document.getElementById('search-window')?.classList.add('hidden');
+                      }}
+                    >
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-800">{suggestion.title}</div>
+                        <div className="text-sm text-gray-600 line-clamp-1 mt-1">{suggestion.description}</div>
+                      </div>
+                      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs px-3 py-1.5 rounded-full font-medium flex items-center">
+                        <Bookmark className="w-3 h-3 mr-1" />
+                        Post
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Show loading indicator when geocoding */}
+            {isGeocoding && (
+              <div className="flex items-center justify-center py-3">
+                <div className="flex items-center text-gray-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                  <span className="text-sm">Searching location...</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Show "no results" when search has no matches */}
+            {searchQuery && searchQuery.trim().length > 0 && searchSuggestions.length === 0 && geocodingResults.length === 0 && !isGeocoding && (
+              <div className="pt-4 text-center text-gray-500 text-sm">
+                No matches found for "{searchQuery}"
+              </div>
+            )}
           </div>
         </motion.div>
         
         {/* Category Window */}
         <motion.div 
           id="category-window" 
-          className="hidden absolute top-16 left-20 z-[999] w-64 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 p-5 glass-effect max-h-[60vh] overflow-y-auto"
+          className="hidden absolute top-16 left-20 z-[999] sidebar-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -1447,13 +1757,13 @@ const DiscoverMain = () => {
             duration: 0.4 
           }}
         >
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-bold text-gray-800">Categories</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-800">Categories</h3>
             <button 
               onClick={() => document.getElementById('category-window')?.classList.add('hidden')}
-              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
-              <X className="h-4 w-4 text-gray-600" />
+              <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
           <div className="space-y-2">
@@ -1471,104 +1781,26 @@ const DiscoverMain = () => {
                     setSelectedCategory(category.id);
                     document.getElementById('category-window')?.classList.add('hidden');
                   }}
-                  className={`w-full text-left p-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                  className={`w-full text-left p-4 rounded-xl font-medium transition-all flex items-center gap-3 category-btn ${
                     selectedCategory === category.id
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
+                      : 'bg-white/70 text-gray-800 hover:bg-white/90'
                   }`}
                 >
-                  <IconComponent className="h-5 w-5" />
-                  <span>{category.name}</span>
+                  <IconComponent className="h-6 w-6 flex-shrink-0" />
+                  <span className="text-base font-semibold">{category.name}</span>
                 </motion.button>
               );
             })}
           </div>
         </motion.div>
         
-        {/* Control Windows - Clean and minimal design - Updated positions for new left sidebar */}
-        {/* Filter Window */}
-        <motion.div 
-          id="filter-window" 
-          className="hidden absolute top-16 left-20 z-[999] w-64 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 p-5 glass-effect"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ 
-            type: "spring", 
-            damping: 20, 
-            stiffness: 300,
-            duration: 0.4 
-          }}
-        >
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-bold text-gray-800">Filters</h3>
-            <button 
-              onClick={() => document.getElementById('filter-window')?.classList.add('hidden')}
-              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <X className="h-4 w-4 text-gray-600" />
-            </button>
-          </div>
-          <div className="space-y-4">
-            <div className="fade-in-up">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Sort By</label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm modern-input focus-ring"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="rating">Highest Rated</option>
-                <option value="popular">Most Popular</option>
-              </select>
-            </div>
-            
-            <div className="fade-in-up" style={{ animationDelay: '0.1s' }}>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Min Rating</label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm modern-input focus-ring"
-                value={rating}
-                onChange={(e) => setRating(Number(e.target.value))}
-              >
-                <option value="0">Any Rating</option>
-                <option value="1">1 Star & Up</option>
-                <option value="2">2 Stars & Up</option>
-                <option value="3">3 Stars & Up</option>
-                <option value="4">4 Stars & Up</option>
-              </select>
-            </div>
-            
-            <div className="fade-in-up" style={{ animationDelay: '0.2s' }}>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Price Range</label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm modern-input focus-ring"
-                value={priceRange}
-                onChange={(e) => setPriceRange(e.target.value)}
-              >
-                <option value="all">All Prices</option>
-                <option value="free">Free</option>
-                <option value="low">Under $10</option>
-                <option value="medium">$10 - $50</option>
-                <option value="high">Over $50</option>
-              </select>
-            </div>
-            
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => document.getElementById('filter-window')?.classList.add('hidden')}
-              className="w-full px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all text-sm modern-btn"
-            >
-              Apply Filters
-            </motion.button>
-          </div>
-        </motion.div>
+
         
         {/* View Mode Window */}
         <motion.div 
           id="view-mode-window" 
-          className="hidden absolute top-16 left-20 z-[999] w-64 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 p-5 glass-effect"
+          className="hidden absolute top-16 left-20 z-[999] sidebar-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -1579,13 +1811,13 @@ const DiscoverMain = () => {
             duration: 0.4 
           }}
         >
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-bold text-gray-800">View Mode</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-800">View Mode</h3>
             <button 
               onClick={() => document.getElementById('view-mode-window')?.classList.add('hidden')}
-              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
-              <X className="h-4 w-4 text-gray-600" />
+              <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
           <div className="space-y-3">
@@ -1595,16 +1827,16 @@ const DiscoverMain = () => {
                 document.getElementById('view-mode-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-xl border flex items-center gap-2 transition-all modern-btn ${
+              className={`w-full p-4 rounded-2xl transition-all modern-btn flex items-start gap-4 ${
                 viewMode === 'grid' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-200 hover:bg-gray-100'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
               }`}
             >
-              <Grid3X3 className="h-5 w-5 text-gray-700" />
-              <div className="text-left">
-                <div className="font-medium text-gray-800 text-sm">Grid View</div>
-                <div className="text-xs text-gray-600">Display posts in a grid layout</div>
+              <Grid3X3 className="h-6 w-6 flex-shrink-0 mt-0.5" />
+              <div className="text-left flex-1">
+                <div className="font-bold text-base mb-1">Grid View</div>
+                <div className="text-sm opacity-90">Display posts in a grid layout</div>
               </div>
             </motion.button>
             
@@ -1614,16 +1846,16 @@ const DiscoverMain = () => {
                 document.getElementById('view-mode-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-xl border flex items-center gap-2 transition-all modern-btn ${
+              className={`w-full p-4 rounded-2xl transition-all modern-btn flex items-start gap-4 ${
                 viewMode === 'list' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-200 hover:bg-gray-100'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
               }`}
             >
-              <ThumbsUp className="h-5 w-5 text-gray-700" />
-              <div className="text-left">
-                <div className="font-medium text-gray-800 text-sm">List View</div>
-                <div className="text-xs text-gray-600">Display posts in a list layout</div>
+              <ThumbsUp className="h-6 w-6 flex-shrink-0 mt-0.5" />
+              <div className="text-left flex-1">
+                <div className="font-bold text-base mb-1">List View</div>
+                <div className="text-sm opacity-90">Display posts in a list layout</div>
               </div>
             </motion.button>
           </div>
@@ -1632,7 +1864,7 @@ const DiscoverMain = () => {
         {/* Map Type Window */}
         <motion.div 
           id="map-type-window" 
-          className="hidden absolute top-16 left-20 z-[999] w-64 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 p-5 glass-effect"
+          className="hidden absolute top-16 left-20 z-[999] sidebar-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -1643,30 +1875,30 @@ const DiscoverMain = () => {
             duration: 0.4 
           }}
         >
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-bold text-gray-800">Map Type</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-800">Map Type</h3>
             <button 
               onClick={() => document.getElementById('map-type-window')?.classList.add('hidden')}
-              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
-              <X className="h-4 w-4 text-gray-600" />
+              <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <motion.button
               onClick={() => {
                 setMapType('street');
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-xl border transition-all modern-btn ${
+              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
                 mapType === 'street' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-200 hover:bg-gray-100'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
               }`}
             >
-              <div className="font-medium text-gray-800 text-sm">Street Map</div>
-              <div className="text-xs text-gray-600">Standard road map view</div>
+              <div className="font-bold text-base mb-1">Street Map</div>
+              <div className="text-sm opacity-90">Standard road map view</div>
             </motion.button>
             
             <motion.button
@@ -1675,14 +1907,14 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-xl border transition-all modern-btn ${
+              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
                 mapType === 'satellite' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-200 hover:bg-gray-100'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
               }`}
             >
-              <div className="font-medium text-gray-800 text-sm">Satellite View</div>
-              <div className="text-xs text-gray-600">Satellite imagery view</div>
+              <div className="font-bold text-base mb-1">Satellite View</div>
+              <div className="text-sm opacity-90">Satellite imagery view</div>
             </motion.button>
             
             <motion.button
@@ -1691,14 +1923,14 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-xl border transition-all modern-btn ${
+              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
                 mapType === 'terrain' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-200 hover:bg-gray-100'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
               }`}
             >
-              <div className="font-medium text-gray-800 text-sm">Terrain View</div>
-              <div className="text-xs text-gray-600">Topographical view</div>
+              <div className="font-bold text-base mb-1">Terrain View</div>
+              <div className="text-sm opacity-90">Topographical view</div>
             </motion.button>
           </div>
         </motion.div>
@@ -1706,7 +1938,7 @@ const DiscoverMain = () => {
         {/* Saved Posts Window */}
         <motion.div 
           id="saved-locations-window" 
-          className="hidden absolute top-16 left-20 z-[999] w-64 bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 p-5 max-h-[60vh] overflow-y-auto glass-effect"
+          className="hidden absolute top-16 left-20 z-[999] sidebar-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -1717,25 +1949,25 @@ const DiscoverMain = () => {
             duration: 0.4 
           }}
         >
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-bold text-gray-800">Saved Posts</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-800">Saved Posts</h3>
             <button 
               onClick={() => {
                 document.getElementById('saved-locations-window')?.classList.add('hidden');
               }}
-              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
             >
-              <X className="h-4 w-4 text-gray-600" />
+              <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
           
           {/* Saved Posts Section */}
           <div>
-            <h4 className="font-medium text-gray-700 mb-2 flex items-center text-sm">
-              <Bookmark className="h-4 w-4 mr-2" />
+            <h4 className="font-semibold text-gray-700 mb-3 flex items-center text-base">
+              <Bookmark className="h-5 w-5 mr-2.5" />
               Saved Posts ({favoritePosts.size})
             </h4>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {posts.filter(post => favoritePosts.has(post.id)).length > 0 ? (
                 posts.filter(post => favoritePosts.has(post.id)).map((post, index) => (
                   <motion.div 
@@ -1743,7 +1975,7 @@ const DiscoverMain = () => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="p-3 bg-white/70 rounded-xl border border-gray-200 flex justify-between items-start text-sm glass-effect"
+                    className="p-4 bg-white/70 rounded-2xl flex justify-between items-start glass-effect cursor-pointer hover:bg-white/90 transition-colors border border-gray-100"
                   >
                     <div 
                       className="flex-1 cursor-pointer"
@@ -1752,9 +1984,11 @@ const DiscoverMain = () => {
                         document.getElementById('saved-locations-window')?.classList.add('hidden');
                       }}
                     >
-                      <div className="font-medium text-gray-800 truncate">{post.title}</div>
-                      <div className="text-xs text-gray-600 truncate">{post.description?.substring(0, 40)}{post.description?.length > 40 ? '...' : ''}</div>
-                      <div className="text-xs text-gray-500 mt-1">{post.category || "general"}</div>
+                      <div className="font-bold text-gray-800 mb-1.5">{post.title}</div>
+                      <div className="text-sm text-gray-600 line-clamp-2 mb-2">{post.description?.substring(0, 60)}{post.description?.length > 60 ? '...' : ''}</div>
+                      <div className="inline-block px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                        {post.category || "general"}
+                      </div>
                     </div>
                     <motion.button
                       whileHover={{ scale: 1.1 }}
@@ -1763,9 +1997,9 @@ const DiscoverMain = () => {
                         e.stopPropagation();
                         togglePostBookmark(post);
                       }}
-                      className="ml-2 p-1 rounded-full hover:bg-red-100 text-red-500 transition-colors"
+                      className="ml-2 p-2 rounded-full hover:bg-red-100 text-red-500 transition-colors"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-4 w-4" />
                     </motion.button>
                   </motion.div>
                 ))
@@ -1773,7 +2007,7 @@ const DiscoverMain = () => {
                 <motion.p 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-gray-500 text-center py-3 text-sm"
+                  className="text-gray-500 text-center py-6 text-base"
                 >
                   No saved posts yet
                 </motion.p>
@@ -1968,15 +2202,139 @@ const DiscoverMain = () => {
                     </motion.div>
                   ))
                 ) : (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center py-8"
-                  >
-                    <MapPin className="mx-auto h-10 w-10 text-gray-300" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No places found</h3>
-                    <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
-                  </motion.div>
+                  // Show search suggestions when search query exists but no results found
+                  searchQuery ? (
+                    <div className="space-y-4">
+                      <div className="text-center py-4">
+                        <MapPin className="mx-auto h-10 w-10 text-gray-300" />
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No places match your search</h3>
+                        <p className="mt-1 text-xs text-gray-500">Here are some suggestions based on your search:</p>
+                      </div>
+                      
+                      {/* Search suggestions */}
+                      {searchSuggestions.length > 0 ? (
+                        <div className="space-y-3">
+                          {searchSuggestions.map((suggestion, index) => (
+                            <motion.div
+                              key={suggestion.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 15 }}
+                              whileHover={{ y: -2, scale: 1.01 }}
+                              className="bg-white/70 backdrop-blur-sm rounded-xl shadow-sm overflow-hidden cursor-pointer border border-gray-100 smooth-transition discover-card glass-effect p-3"
+                              onClick={() => {
+                                setSelectedPost(suggestion.post);
+                                flyToPost(suggestion.post.position);
+                                setShowListings(false); // Close the panel after selection
+                                // Clear the search query to show the selected post
+                                setSearchQuery('');
+                              }}
+                            >
+                              <div className="flex items-start gap-3">
+                                {suggestion.post.image && (
+                                  <div className="relative">
+                                    <img
+                                      src={suggestion.post.image}
+                                      alt={suggestion.post.title}
+                                      className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg"></div>
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-medium text-gray-900 truncate text-sm">{suggestion.post.title}</h3>
+                                  <p className="text-xs text-gray-600 line-clamp-2 mt-1">{suggestion.post.description}</p>
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <div className="flex items-center">
+                                      {[...Array(5)].map((_, i) => (
+                                        <Star
+                                          key={i}
+                                          className={`w-3 h-3 ${
+                                            i < Math.floor(suggestion.post.averageRating)
+                                              ? 'text-yellow-400 fill-current'
+                                              : 'text-gray-300'
+                                          }`}
+                                        />
+                                      ))}
+                                      <span className="ml-1 text-xs text-gray-600">
+                                        {suggestion.post.averageRating.toFixed(1)} ({suggestion.post.totalRatings})
+                                      </span>
+                                    </div>
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                                      {suggestion.post.category}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center mt-1">
+                                    <span className="text-xs text-gray-500">by {typeof suggestion.post.postedBy === 'string' ? suggestion.post.postedBy : (suggestion.post.postedBy?.name || suggestion.post.postedBy?.email || 'Unknown')}</span>
+                                    {isAuthenticated && (
+                                      <motion.button
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          saveLocation(suggestion.post);
+                                        }}
+                                        className="text-red-500 hover:text-red-700 transition-colors"
+                                      >
+                                        <Heart className="w-4 h-4" />
+                                      </motion.button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <MapPin className="mx-auto h-10 w-10 text-gray-300" />
+                          <h3 className="mt-2 text-sm font-medium text-gray-900">No places match your search</h3>
+                          <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
+                          
+                          {/* Show popular posts as fallback */}
+                          <div className="mt-6">
+                            <h4 className="text-xs font-medium text-gray-700 mb-3">Popular locations you might like:</h4>
+                            <div className="space-y-2">
+                              {posts
+                                .sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0))
+                                .slice(0, 3)
+                                .map((post, index) => (
+                                  <motion.div
+                                    key={`popular-${post.id}`}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.05 }}
+                                    className="text-left bg-white/50 rounded-lg p-2 cursor-pointer hover:bg-white/70 transition-colors"
+                                    onClick={() => {
+                                      setSelectedPost(post);
+                                      flyToPost(post.position);
+                                      setShowListings(false);
+                                    }}
+                                  >
+                                    <div className="text-xs font-medium text-gray-800 truncate">{post.title}</div>
+                                    <div className="text-xs text-gray-600">{post.totalRatings || 0} ratings</div>
+                                  </motion.div>
+                                ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Original "no places found" message when no search query
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center py-8"
+                    >
+                      <MapPin className="mx-auto h-10 w-10 text-gray-300" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No places found</h3>
+                      <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
+                    </motion.div>
+                  )
                 )}
               </div>
             </motion.div>

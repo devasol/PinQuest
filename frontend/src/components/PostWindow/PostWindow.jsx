@@ -272,7 +272,7 @@ const PostWindow = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[6000] flex items-center justify-center p-4"
+        className="fixed inset-0 bg-gradient-to-br from-black/70 to-black/60 backdrop-blur-xl z-[6000] flex items-center justify-center p-4"
         onClick={handleClose}
       >
         <motion.div
@@ -285,12 +285,12 @@ const PostWindow = ({
             stiffness: 300,
             duration: 0.3 
           }}
-          className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col z-[6001] border border-gray-200/50"
+          className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col z-[6001] border border-white/20 backdrop-blur-md"
           onClick={(e) => e.stopPropagation()}
           style={{ minHeight: '600px' }}
         >
           {/* Header */}
-          <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center shadow-lg">
+          <div className="p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center shadow-xl">
             <div>
               <h3 className="font-bold text-lg">
                 {typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}
@@ -302,26 +302,26 @@ const PostWindow = ({
             </div>
             <button
               onClick={handleClose}
-              className="p-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all duration-200"
+              className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-200 backdrop-blur-sm"
               aria-label="Close"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="flex flex-col lg:flex-row flex-1 overflow-hidden bg-white">
+          <div className="flex flex-col lg:flex-row flex-1 overflow-hidden bg-gray-50">
             {/* Image Gallery */}
             <div className="lg:w-1/2 flex flex-col">
               <div className="relative flex-1">
                 {hasImages && images.length > 0 ? (
-                  <div className="relative w-full h-80 md:h-96 lg:h-full flex items-center justify-center bg-gray-50">
+                  <div className="relative w-full h-80 md:h-96 lg:h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
                     <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-                      <div className="transition-transform duration-200 ease-out">
+                      <div className="transition-transform duration-300 ease-out">
                         <OptimizedImage
                           src={getImageUrl(images[currentImageIndex])}
                           alt={currentPost.title || 'Post image'}
-                          className="max-w-full max-h-full object-contain"
+                          className="max-w-full max-h-full object-cover"
                           wrapperClassName="flex items-center justify-center"
                         />
                       </div>
@@ -331,25 +331,25 @@ const PostWindow = ({
                     {images.length > 1 && (
                       <>
                         <button
-                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-100 rounded-full p-3 transition-all shadow-lg z-10 border border-gray-200"
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-3 transition-all shadow-lg z-10 border border-gray-200 backdrop-blur-sm"
                           aria-label="Previous image"
                           onClick={prevImage}
                         >
-                          <ChevronLeft className="w-6 h-6 text-gray-800" />
+                          <ChevronLeft className="w-5 h-5 text-gray-800" />
                         </button>
                         <button
-                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-100 rounded-full p-3 transition-all shadow-lg z-10 border border-gray-200"
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-3 transition-all shadow-lg z-10 border border-gray-200 backdrop-blur-sm"
                           aria-label="Next image"
                           onClick={nextImage}
                         >
-                          <ChevronRight className="w-6 h-6 text-gray-800" />
+                          <ChevronRight className="w-5 h-5 text-gray-800" />
                         </button>
                       </>
                     )}
 
                     {/* Image Counter */}
                     {images.length > 1 && (
-                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/80 text-gray-800 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm border border-gray-200">
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-sm">
                         {currentImageIndex + 1} / {images.length}
                       </div>
                     )}
@@ -384,7 +384,7 @@ const PostWindow = ({
 
               {/* Thumbnail Gallery */}
               {hasImages && images.length > 1 && (
-                <div className="p-5 bg-gray-50 border-t border-gray-200">
+                <div className="p-5 bg-white/90 border-t border-gray-200 backdrop-blur-sm">
                   <div className="flex space-x-3 overflow-x-auto pb-2">
                     {images.map((img, index) => {
                       const isSelected = currentImageIndex === index;
@@ -395,7 +395,7 @@ const PostWindow = ({
                           onClick={() => {
                             setCurrentImageIndex(index);
                           }}
-                          className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                          className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
                             isSelected 
                               ? 'border-emerald-500 shadow-lg scale-105' 
                               : 'border-gray-200 hover:border-gray-400'
@@ -416,7 +416,7 @@ const PostWindow = ({
 
             {/* Post Details */}
             <div className="lg:w-1/2 flex flex-col">
-              <div className="p-7 overflow-y-auto flex-1">
+              <div className="p-7 overflow-y-auto flex-1 bg-white">
                 {showInfo ? (
                   <>
                     <div className="flex flex-wrap items-center justify-between mb-5">
@@ -424,23 +424,23 @@ const PostWindow = ({
                         {currentPost.title || 'Untitled Post'}
                       </h1>
                       {currentPost.category && (
-                        <span className="bg-emerald-100 text-emerald-800 text-sm px-3 py-1.5 rounded-full font-medium inline-flex items-center">
+                        <span className="bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800 text-sm px-4 py-2 rounded-full font-semibold inline-flex items-center shadow-sm border border-emerald-200">
                           <span className="capitalize">{currentPost.category}</span>
                         </span>
                       )}
                     </div>
 
-                    <p className="text-gray-700 mb-6 leading-relaxed">{currentPost.description || 'No description available.'}</p>
+                    <p className="text-gray-700 mb-6 leading-relaxed text-base">{currentPost.description || 'No description available.'}</p>
 
                     {/* Location */}
                     {currentPost.location?.latitude && currentPost.location?.longitude && (
-                      <div className="flex items-start text-gray-700 mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4 flex-shrink-0">
-                          <MapPin className="w-5 h-5 text-blue-600" />
+                      <div className="flex items-start text-gray-700 mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-sm">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-100 to-indigo-100 flex items-center justify-center mr-4 flex-shrink-0 shadow-sm">
+                          <MapPin className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-800 mb-1">Location</p>
-                          <p className="text-gray-700">
+                          <p className="font-bold text-gray-800 mb-1 text-base">Location</p>
+                          <p className="text-gray-700 text-base">
                             {currentPost.location.latitude.toFixed(6)}, {currentPost.location.longitude.toFixed(6)}
                           </p>
                           {currentPost.location.address && (
@@ -451,7 +451,7 @@ const PostWindow = ({
                     )}
 
                     {/* Ratings */}
-                    <div className="mb-6 p-5 bg-gray-50 rounded-2xl border border-gray-200">
+                    <div className="mb-6 p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200 shadow-sm">
                       <div className="flex flex-wrap items-center justify-between mb-3">
                         <h3 className="font-bold text-lg text-gray-800">Ratings & Reviews</h3>
                         <div className="flex items-center">
@@ -474,19 +474,19 @@ const PostWindow = ({
                               onMouseLeave={() => rating === 0 && setHoverRating(0)}
                             />
                           ))}
-                          <span className="ml-3 text-gray-800 font-bold">
+                          <span className="ml-3 text-gray-800 font-bold text-lg">
                             {(currentPost.averageRating || 0).toFixed(1)}
                           </span>
                         </div>
                       </div>
                       <div className="mt-3 flex items-center justify-between">
                         <p className="text-gray-600">
-                          <span className="font-medium">{currentPost.totalRatings || 0}</span> 
-                          <span className="mx-2">•</span>
+                          <span className="font-medium text-gray-800">{currentPost.totalRatings || 0}</span> 
+                          <span className="mx-2 text-gray-400">•</span>
                           <span>{currentPost.comments?.length || 0} {currentPost.comments?.length === 1 ? 'comment' : 'comments'}</span>
                         </p>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">Rate this:</span>
+                          <span className="text-sm text-gray-700 font-medium">Rate this:</span>
                           <button
                             onClick={() => {
                               if (rating > 0) {
@@ -495,9 +495,9 @@ const PostWindow = ({
                                 alert('Please select a rating first');
                               }
                             }}
-                            className={`px-4 py-2 rounded-lg transition-all ${
+                            className={`px-4 py-2.5 rounded-xl transition-all font-medium ${
                               rating > 0 
-                                ? 'bg-yellow-500 text-white hover:bg-yellow-600' 
+                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md hover:shadow-lg' 
                                 : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                             }`}
                             disabled={rating === 0}
@@ -510,26 +510,26 @@ const PostWindow = ({
 
                     {/* Additional Info */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                        <p className="text-sm text-gray-500 mb-1 font-medium">Posted By</p>
-                        <p className="font-bold text-gray-800">{typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}</p>
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
+                        <p className="text-sm text-gray-600 mb-1 font-semibold">Posted By</p>
+                        <p className="font-bold text-gray-800 text-base">{typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}</p>
                       </div>
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                        <p className="text-sm text-gray-500 mb-1 font-medium">Posted On</p>
-                        <p className="font-bold text-gray-800">{formatDate(currentPost.datePosted)}</p>
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-2xl border border-gray-200 shadow-sm">
+                        <p className="text-sm text-gray-600 mb-1 font-semibold">Posted On</p>
+                        <p className="font-bold text-gray-800 text-base">{formatDate(currentPost.datePosted)}</p>
                       </div>
                     </div>
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-                    <div className="mb-6 p-4 bg-gray-100 rounded-full">
+                    <div className="mb-6 p-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full">
                       <MapPin className="w-12 h-12 text-gray-600" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">Information Hidden</h3>
                     <p className="text-gray-600 mb-4">Press 'I' key or close the window to show details again</p>
                     <button 
                       onClick={() => setShowInfo(true)}
-                      className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
+                      className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md font-medium"
                     >
                       Show Information
                     </button>
@@ -538,32 +538,30 @@ const PostWindow = ({
               </div>
 
               {/* Action Bar */}
-              <div className="p-5 border-t border-gray-200 bg-gray-50">
+              <div className="p-6 border-t border-gray-200 bg-white shadow-lg">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center space-x-4">
-
-
+                  <div className="flex items-center space-x-3">
                     <motion.button
                       onClick={handleComment}
-                      className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                      className="flex items-center space-x-2 px-4 py-3 rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 transition-all shadow-sm"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <MessageCircle className="w-6 h-6" />
-                      <span className="font-bold">{currentPost.comments?.length || 0}</span>
+                      <MessageCircle className="w-5 h-5" />
+                      <span className="font-semibold">{currentPost.comments?.length || 0}</span>
                     </motion.button>
 
                     <motion.button
                       onClick={handleBookmark}
                       disabled={loading} // Disable button when loading
-                      className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all ${
+                      className={`flex items-center space-x-2 px-4 py-3 rounded-xl transition-all shadow-sm ${
                         bookmarked
-                          ? "bg-yellow-100 text-yellow-600"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      } ${loading ? 'cursor-not-allowed' : ''}`}
+                          ? "bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-700"
+                          : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300"
+                      } ${loading ? 'cursor-not-allowed opacity-70' : ''}`}
                       whileTap={{ scale: 0.95 }}
                     >
                       <Bookmark
-                        className={`w-6 h-6 ${bookmarked ? "fill-current" : ""}`}
+                        className={`w-5 h-5 ${bookmarked ? "fill-current" : ""}`}
                       />
                     </motion.button>
                   </div>
@@ -571,28 +569,28 @@ const PostWindow = ({
                   <div className="flex items-center space-x-2">
                     <motion.button
                       onClick={handleShare}
-                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-white px-4 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-all"
+                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-gradient-to-r from-white to-gray-50 px-4 py-3 rounded-xl border border-gray-200 hover:shadow-sm transition-all font-medium"
                       whileTap={{ scale: 0.95 }}
                     >
                       <Share className="w-5 h-5" />
-                      <span className="font-medium">Share</span>
+                      <span>Share</span>
                     </motion.button>
                     <motion.button
                       onClick={handleGetDirections}
-                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-white px-4 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-all"
+                      className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 bg-gradient-to-r from-white to-gray-50 px-4 py-3 rounded-xl border border-gray-200 hover:shadow-sm transition-all font-medium"
                       whileTap={{ scale: 0.95 }}
                     >
                       <ExternalLink className="w-5 h-5" />
-                      <span className="font-medium">Directions</span>
+                      <span>Directions</span>
                     </motion.button>
                   </div>
                 </div>
                 
                 {/* Comments Modal */}
                 {showCommentsModal && (
-                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[6002] p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-200">
-                      <div className="p-5 border-b border-gray-200">
+                  <div className="fixed inset-0 bg-gradient-to-br from-black/60 to-black/50 backdrop-blur-lg flex items-center justify-center z-[6002] p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-white/20 backdrop-blur-sm">
+                      <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 rounded-t-2xl">
                         <div className="flex justify-between items-center">
                           <h3 className="text-lg font-bold text-gray-800">Comments</h3>
                           <button 
@@ -625,14 +623,14 @@ const PostWindow = ({
                       </div>
                       
                       {/* Comment Input */}
-                      <div className="p-5 border-t border-gray-200">
+                      <div className="p-5 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 rounded-b-2xl">
                         <div className="flex gap-3">
                           <input
                             type="text"
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}
                             placeholder="Write your comment..."
-                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            className="flex-1 px-4 py-3 bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm"
                             onKeyPress={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
@@ -642,7 +640,7 @@ const PostWindow = ({
                           />
                           <motion.button
                             onClick={handleAddComment}
-                            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all"
+                            className="px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all font-medium shadow-md"
                             whileTap={{ scale: 0.95 }}
                           >
                             Post
