@@ -570,9 +570,19 @@ const DiscoverMain = () => {
           if (result.status === 'success' && Array.isArray(result.data?.favorites)) {
             // Extract post IDs from favorites to create a Set of favorite post IDs
             const favoritePostIds = new Set(
-              result.data.favorites.map(fav => 
-                typeof fav.post === 'object' ? fav.post._id : (fav.post || fav.postId)
-              ).filter(Boolean) // Remove any null/undefined values
+              result.data.favorites
+                .map(fav => {
+                  // Handle different possible structures of favorite objects
+                  if (fav.post && typeof fav.post === 'object' && fav.post._id) {
+                    return fav.post._id;
+                  } else if (fav.postId) {
+                    return fav.postId;
+                  } else if (typeof fav.post === 'string') {
+                    return fav.post;
+                  }
+                  return null;
+                })
+                .filter(id => id !== null) // Remove any null/undefined values
             );
             setFavoritePosts(favoritePostIds);
           }
@@ -1492,7 +1502,7 @@ const DiscoverMain = () => {
             <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Discover Page</h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <button 
-              onClick={() => window.location.reload()}
+              onClick={() => fetchPosts()}
               className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
             >
               Try Again

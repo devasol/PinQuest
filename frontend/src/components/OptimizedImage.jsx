@@ -119,10 +119,14 @@ const OptimizedImage = ({
     >
       {/* Always show a container with appropriate background */}
       <div className="w-full h-full relative">
-        {/* Show loading spinner when initially loading and image hasn't been set yet */}
+        {/* Show loading placeholder with gradient animation */}
         {showPlaceholder && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded">
-            <LoadingSpinner size="sm" className="!absolute" />
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 via-gray-200 to-gray-100 animate-pulse">
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="flex flex-col items-center">
+                <LoadingSpinner size="sm" className="!absolute" />
+              </div>
+            </div>
           </div>
         )}
         
@@ -131,7 +135,7 @@ const OptimizedImage = ({
           <img
             src={imgSrc}
             alt={alt}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
+            className={`w-full h-full object-cover transition-opacity duration-500 ${
               isLoading ? 'opacity-0' : 'opacity-100'
             }`}
             loading={priority ? 'eager' : loading}

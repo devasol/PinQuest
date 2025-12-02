@@ -78,6 +78,11 @@ const CreatePostModal = ({
       return;
     }
 
+    if (!selectedPosition || !selectedPosition.lat || !selectedPosition.lng) {
+      setErrors({ submit: "Location is required. Please select a location on the map." });
+      return;
+    }
+    
     const postPayload = {
       ...formData,
       location: {
@@ -402,7 +407,9 @@ const CreatePostModal = ({
               <div className="relative">
                 <input
                   type="text"
-                  value={selectedPosition ? `Lat: ${selectedPosition.lat.toFixed(6)}, Lng: ${selectedPosition.lng.toFixed(6)}` : "Location not selected"}
+                  value={selectedPosition && selectedPosition.lat && selectedPosition.lng ? 
+                    `Lat: ${selectedPosition.lat.toFixed(6)}, Lng: ${selectedPosition.lng.toFixed(6)}` : 
+                    "Location not selected"}
                   readOnly
                   className="w-full px-4 py-3 pl-12 border-2 border-emerald-200 rounded-xl bg-gray-100 shadow-sm"
                   placeholder="Location set from map click"

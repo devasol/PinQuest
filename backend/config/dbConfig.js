@@ -8,16 +8,13 @@ const dbConnect = async () => {
     
     // Add secure connection options
     const conn = await mongoose.connect(db, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      useCreateIndex: true,
-      useFindAndModify: false,
-      // Add security options
+      // Remove deprecated options
       maxPoolSize: 10, // Maintain up to 10 socket connections
-      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+      serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
       socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-      // If using MongoDB Atlas or other cloud service, enable SSL
-      ssl: db.includes('mongodb+srv') || db.includes('cluster') || process.env.NODE_ENV === 'production'
+      // Use new recommended options for MongoDB Atlas
+      retryWrites: true,
+      w: 'majority'
     });
     
     console.log(`Database connected successfully to: ${conn.connection.name}`);

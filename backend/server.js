@@ -62,15 +62,37 @@ app.use(limiter);
 const speedLimiter = require("express-slow-down")({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 50, // Begin slowing down after 50 requests
-  delayMs: 500, // Slow down by 500ms
+  delayMs: () => 500, // Slow down by 500ms (using new format)
 });
 app.use(speedLimiter);
 
 // Compression
 app.use(compression());
 
-// Data sanitization
-app.use(mongoSanitize());
+// Data sanitization against NoSQL query injection
+// Using alternative approach due to compatibility issues with Express 5.x
+app.use((req, res, next) => {
+  // Sanitize query parameters to prevent NoSQL injection
+  if (req.query) {
+    for (let key in req.query) {
+      if (key.startsWith('$')) {
+        delete req.query[key];
+      }
+    }
+  }
+  
+  // Sanitize URL parameters
+  if (req.params) {
+    for (let key in req.params) {
+      if (key.startsWith('$')) {
+        delete req.params[key];
+      }
+    }
+  }
+  
+  next();
+});
+
 app.use((req, res, next) => {
   // Sanitize user inputs to prevent XSS
   if (req.body) {

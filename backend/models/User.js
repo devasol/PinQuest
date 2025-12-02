@@ -196,8 +196,6 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 };
 
 // Create indexes
-userSchema.index({ email: 1 });
-userSchema.index({ googleId: 1 });
 userSchema.index({ isBanned: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ resetPasswordToken: 1 });

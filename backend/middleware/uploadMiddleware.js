@@ -2,7 +2,6 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const validator = require('validator');
-const validator = require('validator');
 
 // Directory where uploaded files will be stored
 const UPLOADS_DIR = path.join(__dirname, "..", "uploads");

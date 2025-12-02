@@ -44,6 +44,7 @@ const createPost = async (req, res) => {
       }
     }
 
+    let lat, lng; // Declare variables outside the conditional block
     // Check if location is provided and validate if it exists
     if (parsedLocation) {
       if (
@@ -54,8 +55,8 @@ const createPost = async (req, res) => {
       }
 
       // Validate coordinates are real numbers within valid ranges
-      const lat = parseFloat(parsedLocation.latitude);
-      const lng = parseFloat(parsedLocation.longitude);
+      lat = parseFloat(parsedLocation.latitude);
+      lng = parseFloat(parsedLocation.longitude);
       if (
         isNaN(lat) || 
         isNaN(lng) || 
