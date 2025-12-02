@@ -1481,7 +1481,7 @@ const DiscoverMain = () => {
             <motion.div 
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              className="absolute top-20 right-20 z-[1000]"
+              className="absolute top-[65px] right-20 z-[1000]"
             >
               <button
                 onClick={clearRouting}
@@ -1498,7 +1498,7 @@ const DiscoverMain = () => {
             <motion.div 
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              className="absolute top-20 right-20 z-[1000]"
+              className="absolute top-[65px] right-20 z-[1000]"
             >
               <div className="px-3 py-2 bg-blue-500 text-white rounded-lg shadow-md flex items-center gap-2 text-sm">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -1614,7 +1614,7 @@ const DiscoverMain = () => {
           <motion.div 
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-20 right-20 z-[999]"
+            className="absolute top-[65px] right-20 z-[999]"
           >
             <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2 px-3 rounded-lg shadow-md flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
@@ -1638,7 +1638,7 @@ const DiscoverMain = () => {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="absolute top-16 left-4 z-[1000] flex flex-col gap-3"
+          className="absolute top-[65px] left-4 z-[1000] flex flex-col gap-3"
         >
           {/* Search and Filter control icons with modern styling */}
           <motion.button
@@ -1720,7 +1720,7 @@ const DiscoverMain = () => {
         {/* Search Window */}
         <motion.div 
           id="search-window" 
-          className="hidden absolute top-16 left-20 z-[999] sidebar-window search-window"
+          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window search-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -1840,7 +1840,7 @@ const DiscoverMain = () => {
         {/* Category Window */}
         <motion.div 
           id="category-window" 
-          className="hidden absolute top-16 left-20 z-[999] sidebar-window"
+          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -1894,7 +1894,7 @@ const DiscoverMain = () => {
         {/* View Mode Window */}
         <motion.div 
           id="view-mode-window" 
-          className="hidden absolute top-16 left-20 z-[999] sidebar-window"
+          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -1958,7 +1958,7 @@ const DiscoverMain = () => {
         {/* Map Type Window */}
         <motion.div 
           id="map-type-window" 
-          className="hidden absolute top-16 left-20 z-[999] sidebar-window"
+          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2112,7 +2112,7 @@ const DiscoverMain = () => {
         {/* Saved Posts Window */}
         <motion.div 
           id="saved-locations-window" 
-          className="hidden absolute top-16 left-20 z-[999] sidebar-window"
+          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}

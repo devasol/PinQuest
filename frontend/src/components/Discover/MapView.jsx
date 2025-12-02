@@ -391,7 +391,7 @@ const MapView = () => {
       
       <div className="flex pt-32">
         {/* Icon-only Sidebar */}
-        <div className="w-20 bg-white/90 backdrop-blur-lg shadow-xl border-r border-gray-200 z-10 flex flex-col items-center py-6 pt-16">
+        <div className="w-20 bg-white/90 backdrop-blur-lg shadow-xl border-r border-gray-200 z-0 flex flex-col items-center py-6 pt-16">
         <button
           className={`p-3 rounded-xl mb-2 transition-all duration-200 ${
             activePanel === 'posts' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
@@ -457,7 +457,7 @@ const MapView = () => {
       
       {/* Panel Content - Appears beside the sidebar when active */}
       {activePanel && (
-        <div className="w-80 bg-white/90 backdrop-blur-lg shadow-xl border-r border-gray-200 z-10 flex flex-col h-full max-h-screen overflow-hidden fixed top-32">
+        <div className="w-80 bg-white/90 backdrop-blur-lg shadow-xl border-r border-gray-200 z-0 flex flex-col h-full max-h-screen overflow-hidden fixed top-32">
           {/* Panel Header */}
           <div className="p-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white flex justify-between items-center">
             <h2 className="text-xl font-bold capitalize">
@@ -674,7 +674,7 @@ const MapView = () => {
       )}
       
       {/* Main Map Area */}
-      <div className={`${activePanel ? 'w-1/2' : 'w-full'} flex-1 relative`}>
+      <div className={`${activePanel ? 'w-1/2' : 'w-full'} flex-1 relative z-0`}>
         <MapContainer
           center={[20, 0]} // Default to world view
           zoom={2}

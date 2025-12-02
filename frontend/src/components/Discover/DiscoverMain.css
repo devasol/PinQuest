@@ -184,10 +184,10 @@
     left: 16px !important;
     right: 16px !important;
     position: fixed !important;
-    top: 70px !important; /* Position below header (header is typically ~64px) */
+    top: 80px !important; /* Position below header (header is typically ~64px) */
     transform: none !important; /* Remove centering transform */
     margin: 0 !important; /* Reset any margin */
-    z-index: 6000 !important; /* Ensure it appears above other elements */
+    z-index: 5999 !important; /* Ensure it appears above other elements but below header */
   }
   
   .sidebar-control {
@@ -279,12 +279,12 @@
     width: calc(100% - 20px) !important;
     padding: 16px !important;
     max-height: 80vh !important;
-    top: 70px !important; /* Position below header for small screens too */
+    top: 80px !important; /* Position below header for small screens too */
     left: 10px !important;
     right: 10px !important;
     position: fixed !important;
     transform: none !important;
-    z-index: 6000 !important; /* Ensure it appears above other elements */
+    z-index: 5999 !important; /* Ensure it appears above other elements but below header */
   }
   
   .sidebar-control {
