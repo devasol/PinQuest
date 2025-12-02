@@ -326,7 +326,7 @@ const PostWindow = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-gradient-to-br from-black/70 to-black/60 backdrop-blur-xl z-[6000] flex items-center justify-center p-4 min-h-full"
+        className="fixed inset-0 bg-gradient-to-br from-black/70 to-black/60 backdrop-blur-xl z-[6000] flex items-center justify-center p-4 sm:p-6 min-h-full"
         onClick={handleClose}
       >
         <motion.div
@@ -339,9 +339,8 @@ const PostWindow = ({
             stiffness: 300,
             duration: 0.3 
           }}
-          className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col z-[6001] border border-white/20 backdrop-blur-md"
+          className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col z-[6001] border border-white/20 backdrop-blur-md"
           onClick={(e) => e.stopPropagation()}
-          style={{ minHeight: '400px' }}
         >
           {/* Header */}
           <div className="p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center shadow-xl">

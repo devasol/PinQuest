@@ -73,6 +73,27 @@
   }
 }
 
+/* Responsive adjustments for Post Window on large screens */
+@media (min-width: 1024px) {
+  .post-window-image-container {
+    height: 250px;
+  }
+  
+  .post-window-content {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .post-window-image-container {
+    height: 280px;
+  }
+  
+  .post-window-content {
+    padding: 1.25rem;
+  }
+}
+
 /* Extra small height devices */
 @media (max-height: 450px) {
   .post-window-image-container {
