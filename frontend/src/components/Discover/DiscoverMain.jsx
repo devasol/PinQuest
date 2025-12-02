@@ -1009,35 +1009,56 @@ const DiscoverMain = () => {
   // Update user's current location manually
   const updateUserLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
+      // Fallback for browsers that don't support geolocation
+      alert('Geolocation is not supported by your browser. Please enable location services or try a different browser.');
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const userPos = [latitude, longitude];
-        setUserLocation(userPos);
-        
-        // Center the map on the new location
-        if (mapRef.current) {
-          mapRef.current.flyTo(userPos, 15);
-        } else {
-          // If map isn't ready yet, update the state so it centers when map loads
-          setMapCenter(userPos);
-          setMapZoom(15);
-        }
-      },
-      (error) => {
-        console.error("Error getting user location:", error.message);
-        alert('Could not get your current location. Make sure location services are enabled and you have allowed location access.');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+    // Show a loading indicator or message while requesting location
+    const geoOptions = {
+      enableHighAccuracy: true,
+      timeout: 15000, // Increased timeout to 15 seconds
+      maximumAge: 30000, // Accept cached position up to 30 seconds old
+    };
+
+    const successCallback = (position) => {
+      const { latitude, longitude } = position.coords;
+      const userPos = [latitude, longitude];
+      setUserLocation(userPos);
+      
+      // Center the map on the new location
+      if (mapRef.current) {
+        mapRef.current.flyTo(userPos, 15);
+      } else {
+        // If map isn't ready yet, update the state so it centers when map loads
+        setMapCenter(userPos);
+        setMapZoom(15);
       }
-    );
+    };
+
+    const errorCallback = (error) => {
+      console.error("Geolocation error:", error);
+      let errorMessage = "Could not get your current location. ";
+      
+      switch(error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage += "Please allow location access in your browser settings.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage += "Location information is unavailable.";
+          break;
+        case error.TIMEOUT:
+          errorMessage += "The request to get your location timed out. Please try again.";
+          break;
+        default:
+          errorMessage += "Please make sure location services are enabled and you have allowed location access. For local development, try opening this site over HTTPS.";
+          break;
+      }
+      
+      alert(errorMessage);
+    };
+
+    navigator.geolocation.getCurrentPosition(successCallback, errorCallback, geoOptions);
   }, []);
 
   // Clear the routing state
@@ -1296,11 +1317,23 @@ const DiscoverMain = () => {
   // Get the appropriate tile layer URL based on map type
   const getTileLayerUrl = () => {
     switch (mapType) {
+      case 'street':
+        return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
       case 'satellite':
         return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
       case 'terrain':
         return "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
-      default: // street
+      case 'dark':
+        return "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+      case 'light':
+        return "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+      case 'topographic':
+        return "https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}";
+      case 'navigation':
+        return "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png";
+      case 'cycle':
+        return "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png";
+      default: // street as fallback
         return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
     }
   };
@@ -1356,7 +1389,20 @@ const DiscoverMain = () => {
           className="z-0"
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution={mapType === 'satellite' 
+              ? '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' 
+              : mapType === 'terrain'
+              ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles courtesy of <a href="https://opentopomap.org/">OpenTopoMap</a>'
+              : mapType === 'dark' || mapType === 'light'
+              ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              : mapType === 'topographic'
+              ? '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Esri, DeLorme, NAVTEQ'
+              : mapType === 'navigation'
+              ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://hot.opentreetmap.org/">Humanitarian OpenStreetMap Team</a>'
+              : mapType === 'cycle'
+              ? 'CyclOSM &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }
             url={getTileLayerUrl()}
           />
           
@@ -1615,10 +1661,10 @@ const DiscoverMain = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={updateUserLocation}
-              className="sidebar-control modern-btn bg-gradient-to-r from-blue-500 to-indigo-600 text-white"
+              className="sidebar-control modern-btn"
               title="My Location"
             >
-              <Navigation className="h-6 w-6" />
+              <Navigation className="h-6 w-6 text-gray-700" />
             </motion.button>
           )}
         </motion.div>
@@ -1884,7 +1930,7 @@ const DiscoverMain = () => {
               <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-2">
             <motion.button
               onClick={() => {
                 setMapType('street');
@@ -1931,6 +1977,86 @@ const DiscoverMain = () => {
             >
               <div className="font-bold text-base mb-1">Terrain View</div>
               <div className="text-sm opacity-90">Topographical view</div>
+            </motion.button>
+            
+            <motion.button
+              onClick={() => {
+                setMapType('dark');
+                document.getElementById('map-type-window')?.classList.add('hidden');
+              }}
+              whileHover={{ scale: 1.02 }}
+              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+                mapType === 'dark' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+              }`}
+            >
+              <div className="font-bold text-base mb-1">Dark Theme</div>
+              <div className="text-sm opacity-90">High contrast dark map</div>
+            </motion.button>
+            
+            <motion.button
+              onClick={() => {
+                setMapType('light');
+                document.getElementById('map-type-window')?.classList.add('hidden');
+              }}
+              whileHover={{ scale: 1.02 }}
+              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+                mapType === 'light' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+              }`}
+            >
+              <div className="font-bold text-base mb-1">Light Theme</div>
+              <div className="text-sm opacity-90">Clean light map style</div>
+            </motion.button>
+            
+            <motion.button
+              onClick={() => {
+                setMapType('topographic');
+                document.getElementById('map-type-window')?.classList.add('hidden');
+              }}
+              whileHover={{ scale: 1.02 }}
+              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+                mapType === 'topographic' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+              }`}
+            >
+              <div className="font-bold text-base mb-1">Topographic</div>
+              <div className="text-sm opacity-90">Detailed topographical map</div>
+            </motion.button>
+            
+            <motion.button
+              onClick={() => {
+                setMapType('navigation');
+                document.getElementById('map-type-window')?.classList.add('hidden');
+              }}
+              whileHover={{ scale: 1.02 }}
+              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+                mapType === 'navigation' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+              }`}
+            >
+              <div className="font-bold text-base mb-1">Navigation</div>
+              <div className="text-sm opacity-90">Humanitarian/hot map style</div>
+            </motion.button>
+            
+            <motion.button
+              onClick={() => {
+                setMapType('cycle');
+                document.getElementById('map-type-window')?.classList.add('hidden');
+              }}
+              whileHover={{ scale: 1.02 }}
+              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+                mapType === 'cycle' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+              }`}
+            >
+              <div className="font-bold text-base mb-1">Cycle Map</div>
+              <div className="text-sm opacity-90">Cycling-specific map features</div>
             </motion.button>
           </div>
         </motion.div>
