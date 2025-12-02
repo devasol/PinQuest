@@ -1,6 +1,8 @@
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const validator = require('validator');
+const validator = require('validator');
 
 // Directory where uploaded files will be stored
 const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
@@ -16,18 +18,29 @@ const storage = multer.diskStorage({
     cb(null, UPLOADS_DIR);
   },
   filename: function (req, file, cb) {
-    // keep original name but prefix with timestamp to avoid collisions
-    const safeName = file.originalname.replace(/\s+/g, "_");
+    // Sanitize filename to prevent path traversal
+    const sanitizedOriginalname = validator.escape(file.originalname);
+    const safeName = sanitizedOriginalname.replace(/[^a-zA-Z0-9._-]/g, "_"); // Only allow safe characters
     cb(null, Date.now() + "-" + safeName);
   },
 });
 
-// Simple file filter to allow common image types
+// Enhanced file filter to allow common image types with better validation
 function fileFilter(req, file, cb) {
-  const allowed = /jpeg|jpg|png|gif|webp/;
-  const mimetype = allowed.test(file.mimetype.toLowerCase());
-  const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-  if (mimetype && ext) {
+  // Check file extension and MIME type
+  const allowedExtensions = /jpeg|jpg|png|gif|webp/i;
+  const allowedMimeTypes = [
+    'image/jpeg',
+    'image/jpg', 
+    'image/png',
+    'image/gif',
+    'image/webp'
+  ];
+
+  const extName = allowedExtensions.test(path.extname(file.originalname).toLowerCase());
+  const mimeType = allowedMimeTypes.includes(file.mimetype);
+
+  if (mimeType && extName) {
     cb(null, true);
   } else {
     cb(new Error("Only image files are allowed (jpeg, jpg, png, gif, webp)"));
@@ -36,7 +49,10 @@ function fileFilter(req, file, cb) {
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
+  limits: { 
+    fileSize: 5 * 1024 * 1024, // 5MB per file
+    files: 5 // Maximum number of files
+  },
   fileFilter,
 });
 

@@ -25,13 +25,14 @@ const {
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
+const { apiLimiter } = require("../middleware/rateLimiters");
 const router = express.Router();
 
 // Public routes
-router.route("/").get(getAllUsers);
+router.route("/").get(apiLimiter, getAllUsers);
 
 // Specific routes that should come before the general /:id route to avoid conflicts
-router.route("/:id/posts").get(getUserPosts);
+router.route("/:id/posts").get(apiLimiter, getUserPosts);
 router.route("/saved-locations").post(protect, addSavedLocation).get(protect, getSavedLocations);
 router.route("/saved-locations/:locationId").delete(protect, removeSavedLocation);
 router.route("/recent-locations").post(protect, addRecentLocation).get(protect, getRecentLocations);
@@ -42,7 +43,7 @@ router.route("/preferences").get(protect, getUserPreferences).put(protect, updat
 
 // General user routes - these need to be grouped together
 router.route("/:id")
-  .get(getUserById)
+  .get(apiLimiter, getUserById)
   .put(protect, upload.single('avatar'), updateUser)
   .delete(protect, deleteOwnAccount);
 

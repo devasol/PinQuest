@@ -5,6 +5,7 @@ const logger = require("../utils/logger");
 const fs = require("fs");
 const path = require("path");
 const crypto = require('crypto');
+const validator = require('validator');
 const generateTokenUtil = require("../utils/generateToken"); // Changed variable name to avoid conflicts
 
 const generateToken = (id) => {
@@ -29,12 +30,38 @@ const registerUser = async (req, res) => {
       });
     }
 
-    logger.info("Registration attempt", { email });
+    // Input sanitization and validation
+    const sanitizedEmail = validator.normalizeEmail(email.toLowerCase());
+    if (!validator.isEmail(sanitizedEmail)) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Please provide a valid email address",
+      });
+    }
+
+    if (!validator.isLength(name, { min: 2, max: 50 })) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Name must be between 2 and 50 characters",
+      });
+    }
+
+    if (!validator.isLength(password, { min: 6, max: 128 })) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Password must be at least 6 characters long",
+      });
+    }
+
+    // Sanitize name
+    const sanitizedName = validator.escape(validator.trim(name));
+
+    logger.info("Registration attempt", { sanitizedEmail });
 
     // Check if user already exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: sanitizedEmail });
     if (userExists) {
-      logger.warn("Registration failed - user already exists", { email });
+      logger.warn("Registration failed - user already exists", { sanitizedEmail });
       return res.status(400).json({
         status: "fail",
         message: "User already exists with this email",
@@ -43,8 +70,8 @@ const registerUser = async (req, res) => {
 
     // Create new user without verification (verification is now disabled)
     const user = await User.create({
-      name,
-      email,
+      name: sanitizedName,
+      email: sanitizedEmail,
       password,
       isVerified: true, // User is immediately verified
     });
@@ -87,7 +114,7 @@ const registerUser = async (req, res) => {
         },
       });
     } else {
-      logger.error("Failed to create user", { name, email });
+      logger.error("Failed to create user", { sanitizedName, sanitizedEmail });
       res.status(400).json({
         status: "fail",
         message: "Invalid user data",
@@ -132,15 +159,37 @@ const loginUser = async (req, res) => {
       });
     }
 
-    logger.info("Login attempt", { email });
+    // Input sanitization
+    const sanitizedEmail = validator.normalizeEmail(email.toLowerCase());
+    if (!validator.isEmail(sanitizedEmail)) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Please provide a valid email address",
+      });
+    }
+
+    logger.info("Login attempt", { sanitizedEmail });
 
     // Check if user exists & password is correct
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email: sanitizedEmail }).select("+password");
     if (!user) {
-      logger.warn("Login failed - user not found", { email });
+      logger.warn("Login failed - user not found", { sanitizedEmail });
+      // To prevent user enumeration, use same message as for wrong password
       return res.status(401).json({
         status: "fail",
         message: "Invalid email or password",
+      });
+    }
+
+    // Check if user is banned
+    if (user.isBanned) {
+      logger.warn("Login failed - user is banned", { 
+        userId: user._id, 
+        email: user.email 
+      });
+      return res.status(401).json({
+        status: "fail",
+        message: "Account is banned",
       });
     }
 
@@ -150,7 +199,7 @@ const loginUser = async (req, res) => {
     if (!isMatch) {
       logger.warn("Login failed - invalid password", {
         userId: user._id,
-        email,
+        email: user.email,
       });
       return res.status(401).json({
         status: "fail",
@@ -312,18 +361,39 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    // Check if email is being updated and already exists for another user
-    if (req.body.email && req.body.email !== user.email) {
-      const emailExists = await User.findOne({ email: req.body.email });
-      if (emailExists) {
-        return res.status(400).json({
-          status: "fail",
-          message: "Email already in use",
-        });
+    // Sanitize and validate updates
+    let updateError = false;
+    for (const update of updates) {
+      if (update === 'email') {
+        const sanitizedEmail = validator.normalizeEmail(req.body[update].toLowerCase());
+        if (!validator.isEmail(sanitizedEmail)) {
+          return res.status(400).json({
+            status: "fail",
+            message: "Please provide a valid email address",
+          });
+        }
+        // Check if email is being updated and already exists for another user
+        if (sanitizedEmail !== user.email) {
+          const emailExists = await User.findOne({ email: sanitizedEmail });
+          if (emailExists) {
+            return res.status(400).json({
+              status: "fail",
+              message: "Email already in use",
+            });
+          }
+        }
+        user[update] = sanitizedEmail;
+      } else if (update === 'name') {
+        if (!validator.isLength(req.body[update], { min: 2, max: 50 })) {
+          return res.status(400).json({
+            status: "fail",
+            message: "Name must be between 2 and 50 characters",
+          });
+        }
+        user[update] = validator.escape(validator.trim(req.body[update]));
       }
     }
 
-    updates.forEach((update) => (user[update] = req.body[update]));
     await user.save();
 
     res.status(200).json({

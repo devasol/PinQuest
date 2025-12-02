@@ -24,28 +24,29 @@ const {
 } = require("../controllers/postController");
 const { protect } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
+const { createPostLimiter, apiLimiter } = require("../middleware/rateLimiters");
 
 // Routes
 router
   .route("/")
   // Accept up to 10 images uploaded with field name 'images'
-  .post(protect, upload.array("images", 10), createPost)
-  .get(getAllPosts); // Get all posts should be public
+  .post(protect, createPostLimiter, upload.array("images", 10), createPost)
+  .get(apiLimiter, getAllPosts); // Apply API rate limiter to public endpoint
 
 // Search route
-router.route("/search").get(searchPosts);
+router.route("/search").get(apiLimiter, searchPosts);
 
 // Route to get posts by location
-router.get("/by-location", getPostsByLocation);
+router.get("/by-location", apiLimiter, getPostsByLocation);
 
 // Geolocation-based routes
-router.get("/nearby", getNearbyPosts);
-router.get("/within", getPostsWithinArea);
-router.get("/:id/distance", getPostDistance);
+router.get("/nearby", apiLimiter, getNearbyPosts);
+router.get("/within", apiLimiter, getPostsWithinArea);
+router.get("/:id/distance", apiLimiter, getPostDistance);
 
 router
   .route("/:id")
-  .get(getPostById)
+  .get(apiLimiter, getPostById)
   // For updates accept multiple images as well (field name 'images')
   .patch(protect, upload.array("images", 10), updatePost)
   .delete(protect, deletePost);

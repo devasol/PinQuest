@@ -136,4 +136,13 @@ postSchema.pre("save", function (next) {
   next();
 });
 
+// Create indexes
+postSchema.index({ category: 1 });
+postSchema.index({ status: 1 });
+postSchema.index({ postedBy: 1 });
+postSchema.index({ datePosted: -1 });
+postSchema.index({ likesCount: -1 });
+postSchema.index({ averageRating: -1 });
+postSchema.index({ location: "2dsphere" }); // For geospatial queries
+
 module.exports = mongoose.model("Post", postSchema);

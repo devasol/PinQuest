@@ -6,14 +6,23 @@ const dbConnect = async () => {
   try {
     const db = process.env.MONGODB_URL || process.env.MONGODB_URI || "mongodb://localhost:27017/pin_quest";
     
-    // Add connection options for better handling
+    // Add secure connection options
     const conn = await mongoose.connect(db, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      useCreateIndex: true,
+      useFindAndModify: false,
+      // Add security options
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      // If using MongoDB Atlas or other cloud service, enable SSL
+      ssl: db.includes('mongodb+srv') || db.includes('cluster') || process.env.NODE_ENV === 'production'
     });
     
     console.log(`Database connected successfully to: ${conn.connection.name}`);
     console.log(`Database host: ${conn.connection.host}`);
+    console.log(`Database port: ${conn.connection.port}`);
     
     // Create default admin user if none exists
     await createDefaultAdmin();
@@ -25,6 +34,11 @@ const dbConnect = async () => {
     
     mongoose.connection.on('disconnected', () => {
       console.log('MongoDB disconnected');
+    });
+    
+    // Add additional security event listeners
+    mongoose.connection.on('reconnected', () => {
+      console.log('MongoDB reconnected');
     });
     
     process.on('SIGINT', async () => {

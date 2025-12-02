@@ -5,16 +5,17 @@ const { forgotPassword, resetPassword, updatePassword, validateResetToken } = re
 const { registerUserWithVerification, verifyEmail, resendVerificationCode } = require('../controllers/verificationController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
+const { authLimiter } = require('../middleware/rateLimiters');
 const router = express.Router();
 
-router.route('/register').post(registerUser);
-router.route('/register-with-verification').post(registerUserWithVerification);
-router.route('/login').post(loginUser);
-router.route('/verify-email').post(verifyEmail);
-router.route('/resend-verification').post(resendVerificationCode);
-router.route('/logout').post(logoutUser);
+router.route('/register').post(authLimiter, registerUser);
+router.route('/register-with-verification').post(authLimiter, registerUserWithVerification);
+router.route('/login').post(authLimiter, loginUser);
+router.route('/verify-email').post(authLimiter, verifyEmail);
+router.route('/resend-verification').post(authLimiter, resendVerificationCode);
+router.route('/logout').post(protect, logoutUser);
 router.route('/profile').get(protect, getProfile).put(protect, upload.single('avatar'), updateProfile);
-router.route('/forgot-password').post(forgotPassword);
+router.route('/forgot-password').post(authLimiter, forgotPassword);
 router.route('/reset-password/:resetToken').put(resetPassword);
 router.route('/reset-password/:resetToken').get(validateResetToken);
 router.route('/update-password').put(protect, updatePassword);

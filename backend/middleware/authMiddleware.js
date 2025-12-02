@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const validator = require('validator');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 const { sendErrorResponse } = require('../utils/errorHandler');
@@ -12,6 +13,12 @@ const protect = async (req, res, next) => {
     logger.debug('Token received for verification', { tokenPrefix: token.substring(0, 20) + '...' });
 
     try {
+      // Validate token length (should be reasonable length for JWTs)
+      if (token.length < 100) {
+        logger.warn('Token length too short, likely invalid', { tokenLength: token.length });
+        return sendErrorResponse(res, 401, 'Invalid token format');
+      }
+
       // First, try to verify as a JWT token (for traditional login)
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -23,6 +30,12 @@ const protect = async (req, res, next) => {
         if (!req.user) {
           logger.warn('User not found for traditional JWT token ID', { userId: decoded.id });
           return sendErrorResponse(res, 401, 'Not authorized, user not found');
+        }
+
+        // Check if user is banned
+        if (req.user.isBanned) {
+          logger.warn('Banned user attempted to access protected route', { userId: req.user._id });
+          return sendErrorResponse(res, 401, 'Account is banned');
         }
 
         logger.info('User authenticated successfully with traditional JWT', { 
@@ -127,6 +140,12 @@ const protect = async (req, res, next) => {
               return sendErrorResponse(res, 401, 'User not found in database');
             }
 
+            // Check if user is banned
+            if (user.isBanned) {
+              logger.warn('Banned user attempted to access protected route with Firebase token', { userId: user._id });
+              return sendErrorResponse(res, 401, 'Account is banned');
+            }
+
             // Attach user to request object
             req.user = user;
             logger.info('User authenticated successfully via Firebase token', { 
@@ -202,6 +221,12 @@ const protect = async (req, res, next) => {
                         return sendErrorResponse(res, 401, 'User not found in database');
                       }
 
+                      // Check if user is banned
+                      if (user.isBanned) {
+                        logger.warn('Banned user attempted to access protected route with development Firebase token', { userId: user._id });
+                        return sendErrorResponse(res, 401, 'Account is banned');
+                      }
+
                       // Attach user to request object
                       req.user = user;
                       logger.info('User authenticated via development fallback after Firebase verification failure', { 
@@ -272,6 +297,12 @@ const protect = async (req, res, next) => {
                       email: email 
                     });
                     return sendErrorResponse(res, 401, 'User not found in database');
+                  }
+
+                  // Check if user is banned
+                  if (user.isBanned) {
+                    logger.warn('Banned user attempted to access protected route with development Firebase token', { userId: user._id });
+                    return sendErrorResponse(res, 401, 'Account is banned');
                   }
 
                   // Attach user to request object

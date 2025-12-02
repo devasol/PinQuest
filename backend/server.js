@@ -2,6 +2,12 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const slowDown = require("express-slow-down");
+const compression = require("compression");
+const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss");
 const passport = require("passport");
 const path = require("path");
 const fs = require("fs");
@@ -22,6 +28,61 @@ require("./config/passport");
 
 const app = express();
 const server = http.createServer(app);
+
+// Security Headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
+      scriptSrc: ["'self'", "https://*.cloudinary.com", "https://*.googleapis.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+      connectSrc: ["'self'", "https://*.cloudinary.com", "wss:", "ws:"],
+    },
+  },
+  referrerPolicy: { policy: 'no-referrer' },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  }
+}));
+
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+app.use(limiter);
+
+// Slow down requests
+const speedLimiter = require("express-slow-down")({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  delayAfter: 50, // Begin slowing down after 50 requests
+  delayMs: 500, // Slow down by 500ms
+});
+app.use(speedLimiter);
+
+// Compression
+app.use(compression());
+
+// Data sanitization
+app.use(mongoSanitize());
+app.use((req, res, next) => {
+  // Sanitize user inputs to prevent XSS
+  if (req.body) {
+    for (let key in req.body) {
+      if (typeof req.body[key] === 'string') {
+        req.body[key] = xss(req.body[key]);
+      }
+    }
+  }
+  next();
+});
+
 const io = socketIo(server, {
   cors: {
     origin: process.env.CLIENT_URL || "http://localhost:5173",
@@ -50,9 +111,13 @@ app.use(
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        callback(null, true); // For development, allow all origins
-        // In production, you should return an error:
-        // callback(new Error('Not allowed by CORS'));
+        // In production, return an error:
+        if (process.env.NODE_ENV === 'production') {
+          callback(new Error('Not allowed by CORS'));
+        } else {
+          // For development, allow all origins temporarily
+          callback(null, true);
+        }
       }
     },
     credentials: true, // Allow cookies and credentials

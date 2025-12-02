@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const validator = require('validator');
 const { sendPasswordResetEmail } = require('../utils/email');
 
 // @desc    Request password reset
@@ -17,7 +18,16 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email });
+    // Validate and sanitize email
+    const sanitizedEmail = validator.normalizeEmail(email.toLowerCase());
+    if (!validator.isEmail(sanitizedEmail)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide a valid email address'
+      });
+    }
+
+    const user = await User.findOne({ email: sanitizedEmail });
     if (!user) {
       // Return success response even if user doesn't exist to prevent email enumeration
       return res.status(200).json({
@@ -35,8 +45,8 @@ const forgotPassword = async (req, res) => {
       .update(resetToken)
       .digest('hex');
     
-    // Set token expiration (10 minutes)
-    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    // Set token expiration (1 hour - more reasonable than 10 minutes)
+    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
 
     await user.save({ validateBeforeSave: false });
 
@@ -92,7 +102,8 @@ const forgotPassword = async (req, res) => {
     try {
       const { email } = req.body;
       if (email) {
-        const user = await User.findOne({ email });
+        const sanitizedEmail = validator.normalizeEmail(email.toLowerCase());
+        const user = await User.findOne({ email: sanitizedEmail });
         if (user && user.resetPasswordToken) {
           user.resetPasswordToken = undefined;
           user.resetPasswordExpires = undefined;
@@ -125,6 +136,14 @@ const resetPassword = async (req, res) => {
       });
     }
 
+    // Validate password strength
+    if (!validator.isLength(password, { min: 6, max: 128 })) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
     // Hash the incoming token to compare with stored token
     const hashedToken = crypto
       .createHash('sha256')
@@ -153,7 +172,7 @@ const resetPassword = async (req, res) => {
 
     // Generate new JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '30d'
+      expiresIn: process.env.JWT_EXPIRE || '30d'
     });
 
     res.status(200).json({
@@ -188,6 +207,14 @@ const updatePassword = async (req, res) => {
       });
     }
 
+    // Validate new password strength
+    if (!validator.isLength(newPassword, { min: 6, max: 128 })) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
     // Get user from token (populated by protect middleware)
     const user = await User.findById(req.user._id).select('+password');
 
@@ -204,6 +231,15 @@ const updatePassword = async (req, res) => {
       return res.status(401).json({
         status: 'fail',
         message: 'Current password is incorrect'
+      });
+    }
+
+    // Prevent new password from being same as current password
+    const isNewSameAsCurrent = await user.comparePassword(newPassword);
+    if (isNewSameAsCurrent) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'New password cannot be the same as current password'
       });
     }
 
@@ -239,6 +275,14 @@ const adminUpdateUserPassword = async (req, res) => {
       });
     }
 
+    // Validate new password strength
+    if (!validator.isLength(newPassword, { min: 6, max: 128 })) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
     // Check if user is admin
     if (req.user.role !== 'admin') {
       return res.status(403).json({
@@ -255,6 +299,17 @@ const adminUpdateUserPassword = async (req, res) => {
         status: 'fail',
         message: 'User not found'
       });
+    }
+
+    // Prevent admin from setting same password as current if exists
+    if (user.password) {
+      const isSameAsCurrent = await user.comparePassword(newPassword);
+      if (isSameAsCurrent) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'New password cannot be the same as current password'
+        });
+      }
     }
 
     // Update the user's password

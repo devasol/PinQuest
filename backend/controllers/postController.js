@@ -1,5 +1,7 @@
 const Post = require("../models/posts");
 const Activity = require("../models/Activity");
+const validator = require('validator');
+const cache = require('../utils/cache');
 const {
   createLikeNotification,
   createCommentNotification,
@@ -12,6 +14,25 @@ const path = require("path");
 const createPost = async (req, res) => {
   try {
     const { title, description, postedBy, location, category } = req.body;
+
+    // Validation
+    if (!title || !description) {
+      return sendErrorResponse(res, 400, "Title and description are required");
+    }
+
+    // Sanitize inputs
+    const sanitizedTitle = validator.escape(validator.trim(title));
+    const sanitizedDescription = validator.escape(validator.trim(description));
+    const sanitizedCategory = category ? validator.escape(validator.trim(category)) : "general";
+
+    // Validate inputs
+    if (!validator.isLength(sanitizedTitle, { min: 1, max: 200 })) {
+      return sendErrorResponse(res, 400, "Title must be between 1 and 200 characters");
+    }
+
+    if (!validator.isLength(sanitizedDescription, { min: 1, max: 10000 })) {
+      return sendErrorResponse(res, 400, "Description must be between 1 and 10000 characters");
+    }
 
     // Parse location if it's a JSON string (FormData sends strings)
     let parsedLocation = location;
@@ -30,6 +51,18 @@ const createPost = async (req, res) => {
         typeof parsedLocation.longitude === "undefined"
       ) {
         return sendErrorResponse(res, 400, "Location with latitude and longitude is required");
+      }
+
+      // Validate coordinates are real numbers within valid ranges
+      const lat = parseFloat(parsedLocation.latitude);
+      const lng = parseFloat(parsedLocation.longitude);
+      if (
+        isNaN(lat) || 
+        isNaN(lng) || 
+        lat < -90 || lat > 90 || 
+        lng < -180 || lng > 180
+      ) {
+        return sendErrorResponse(res, 400, "Invalid latitude or longitude values");
       }
     }
 
@@ -51,12 +84,12 @@ const createPost = async (req, res) => {
     // Use authenticated user ID for postedBy (from middleware)
     // This ensures security by preventing users from impersonating others
     const postFields = {
-      title,
-      description,
+      title: sanitizedTitle,
+      description: sanitizedDescription,
       image,
       images: imagesArr,
       postedBy: req.user._id, // Use the authenticated user ID
-      category: category || "general",
+      category: sanitizedCategory,
     };
 
     // Add location if provided
@@ -64,8 +97,8 @@ const createPost = async (req, res) => {
       postFields.location = {
         type: "Point",
         coordinates: [
-          parseFloat(parsedLocation.longitude),
-          parseFloat(parsedLocation.latitude),
+          lng, // longitude first in GeoJSON format
+          lat, // latitude second in GeoJSON format
         ],
       };
     }
@@ -94,6 +127,13 @@ const createPost = async (req, res) => {
     } catch (activityError) {
       console.error('Error saving activity:', activityError);
       // Don't fail the main request if activity logging fails
+    }
+
+    // Clear related caches - invalidate all posts pages since new post changes the list
+    for (const key of cache.cache.keys()) {
+      if (key.startsWith('posts_page_')) {
+        cache.delete(key);
+      }
     }
 
     // Populate the postedBy field before sending response to include user info
@@ -135,14 +175,70 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
   try {
-    const posts = await Post.find()
+    // Pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50); // Max 50 items per page
+    const skip = (page - 1) * limit;
+
+    // Filtering options
+    const filter = { status: 'published' }; // Only show published posts by default
+    
+    // Add category filter if provided
+    if (req.query.category) {
+      filter.category = validator.escape(validator.trim(req.query.category));
+    }
+    
+    // Add search filter if provided
+    if (req.query.search) {
+      const search = validator.escape(validator.trim(req.query.search));
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Create cache key based on query parameters
+    const cacheKey = `posts_page_${page}_limit_${limit}_category_${filter.category || 'all'}_search_${req.query.search || 'none'}`;
+
+    // Try to get from cache first
+    const cachedResult = cache.get(cacheKey);
+    if (cachedResult) {
+      console.log(`Serving posts from cache: ${cacheKey}`);
+      return res.status(200).json(cachedResult);
+    }
+
+    // Create query with filters
+    const query = Post.find(filter)
       .populate("postedBy", "name email avatar") // Populate the user data for the poster
-      .sort({ datePosted: -1 });
-    console.log(`Fetched ${posts.length} posts from database`);
-    res.status(200).json({
+      .sort({ datePosted: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const posts = await query;
+
+    // Count total posts for pagination metadata
+    const total = await Post.countDocuments(filter);
+
+    const response = {
       status: "success",
       data: posts,
-    });
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalPosts: total,
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      }
+    };
+
+    console.log(`Fetched ${posts.length} posts from database, total matching: ${total}`);
+    
+    // Cache the result for 5 minutes (300 seconds) for non-search queries
+    if (!req.query.search) {
+      cache.set(cacheKey, response, 300); // Cache for 5 minutes
+    }
+    
+    res.status(200).json(response);
   } catch (error) {
     console.error("Error fetching posts:", error);
     console.error("Error details:", error.message, error.code, error.name);
@@ -281,6 +377,14 @@ const updatePost = async (req, res) => {
       }
     ).populate("postedBy", "name email avatar"); // Populate user data for response
 
+    // Clear related caches
+    // Invalidation: Remove any posts cache that might contain this updated post
+    for (const key of cache.cache.keys()) {
+      if (key.startsWith('posts_page_')) {
+        cache.delete(key);
+      }
+    }
+
     console.log("Post updated successfully:", updatedPost._id);
 
     sendSuccessResponse(res, 200, updatedPost);
@@ -320,6 +424,14 @@ const deletePost = async (req, res) => {
     }
 
     await Post.findByIdAndDelete(req.params.id);
+
+    // Clear related caches
+    // Invalidation: Remove any posts cache that might contain this deleted post
+    for (const key of cache.cache.keys()) {
+      if (key.startsWith('posts_page_')) {
+        cache.delete(key);
+      }
+    }
 
     console.log("Post deleted successfully:", req.params.id);
 
