@@ -12,6 +12,7 @@ import CreatePostModal from './CreatePostModal';
 import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './DiscoverMain.css';
+import { useModal } from '../../contexts/ModalContext';
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
@@ -47,8 +48,8 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
 const DiscoverMain = () => {
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Don't block initial render
+  const [initialLoading, setInitialLoading] = useState(false); // Don't block initial render
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -76,6 +77,8 @@ const DiscoverMain = () => {
   const [createPostLoading, setCreatePostLoading] = useState(false); // Track if post creation is in progress
   const [locationLoading, setLocationLoading] = useState(false); // Track if updating user location is in progress
   const [bookmarkLoading, setBookmarkLoading] = useState(null); // Track which post is being bookmarked/unbookmarked
+  
+  const { showModal } = useModal();
   
   // Memoized search suggestions
   const searchSuggestions = useMemo(() => {
@@ -382,10 +385,21 @@ const DiscoverMain = () => {
   }, [selectedPost]);
 
   // Fetch posts from the backend API
-  const fetchPosts = useCallback(async (preserveSelectedPost = null, limit = null) => {
+  const fetchPosts = useCallback(async (preserveSelectedPost = null, limit = 50) => {
     try {
-      // Fetch all posts
-      const response = await fetch(`${API_BASE_URL}/posts`);
+      // Fetch posts with a default limit to improve initial load time
+      let url = `${API_BASE_URL}/posts`;
+      if (limit) {
+        url += `?limit=${limit}`;
+      }
+      
+      // Set loading state for posts
+      setLoading(true);
+      
+      const response = await fetch(url, {
+        // Use cache to improve performance
+        cache: 'default'
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -495,6 +509,8 @@ const DiscoverMain = () => {
       setError("Failed to load posts: " + err.message);
       setPosts([]);
       setFilteredPosts([]);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -580,8 +596,11 @@ const DiscoverMain = () => {
     }
   }, [isAuthenticated, user]);
 
-  // Initial data fetch
+  // Initial data fetch - non-blocking
   useEffect(() => {
+    // Immediately show the map without waiting for data
+    setInitialLoading(false);
+    
     // Fetch saved locations and favorite posts in background (not blocking)
     if (isAuthenticated) {
       setTimeout(() => {
@@ -590,16 +609,8 @@ const DiscoverMain = () => {
       }, 0);
     }
     
-    // Fetch posts with initial loading indicator
-    const initialFetch = async () => {
-      try {
-        await fetchPosts(null, 50); // Fetch limited posts initially
-      } finally {
-        setInitialLoading(false);
-      }
-    };
-    
-    initialFetch();
+    // Fetch posts in background
+    fetchPosts(null, 50); // Fetch limited posts initially
 
     // Set up periodic refresh every 30 seconds
     fetchIntervalRef.current = setInterval(() => {
@@ -681,12 +692,17 @@ const DiscoverMain = () => {
     setFilteredPosts(result);
   }, [searchQuery, selectedCategory, rating, priceRange, sortBy, posts]);
 
-  // Get user location for initial centering
+  // Get user location for initial centering - non-blocking
   useEffect(() => {
     let watchId;
     
+    // Set a quick default location immediately to avoid world view
+    const defaultLocation = [20.5937, 78.9629]; // India coordinates as a default
+    setMapCenter(defaultLocation);
+    setMapZoom(2); // Start with a reasonable zoom level immediately
+    
     if (navigator.geolocation) {
-      // Try to get initial position
+      // Try to get initial position with reduced timeout for faster response
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -695,29 +711,24 @@ const DiscoverMain = () => {
           
           // Center the map on the user's location when page loads with a nice zoom level
           if (mapRef.current) {
-            mapRef.current.setView(userPos, 15); // More zoomed in initially
+            mapRef.current.setView(userPos, 13); // Use zoom 13 for better initial experience
           } else {
             // If map isn't ready yet, update the state
             setMapCenter(userPos);
-            setMapZoom(15);
+            setMapZoom(13);
           }
         },
         (error) => {
           console.log("Geolocation error:", error.message);
-          // Default to a reasonable view if geolocation fails
-          // Using a default location (like a general city center) instead of [20, 0] (world view)
-          const defaultLocation = [20.5937, 78.9629]; // India coordinates as a default
+          // Fallback to default location with better zoom
           if (mapRef.current) {
             mapRef.current.setView(defaultLocation, 3);
-          } else {
-            setMapCenter(defaultLocation);
-            setMapZoom(3);
           }
         },
         {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 600000, // 10 minutes
+          enableHighAccuracy: false, // Changed to false for faster response
+          timeout: 5000, // Reduced timeout to 5 seconds
+          maximumAge: 300000, // 5 minutes
         }
       );
       
@@ -735,21 +746,17 @@ const DiscoverMain = () => {
           console.log("Geolocation watch error:", error.message);
         },
         {
-          enableHighAccuracy: true,
-          maximumAge: 30000, // 30 seconds
-          timeout: 27000, // 27 seconds
+          enableHighAccuracy: false, // Changed to false for faster response
+          maximumAge: 60000, // 1 minute
+          timeout: 10000, // 10 seconds
         }
       );
     } else {
       // Geolocation is not supported
       console.log("Geolocation is not supported by this browser");
       // Use a default location
-      const defaultLocation = [20.5937, 78.9629]; // India coordinates as a default
       if (mapRef.current) {
         mapRef.current.setView(defaultLocation, 3);
-      } else {
-        setMapCenter(defaultLocation);
-        setMapZoom(3);
       }
     }
     
@@ -771,13 +778,23 @@ const DiscoverMain = () => {
   // Toggle post bookmark/favorite status
   const togglePostBookmark = async (post) => {
     if (!isAuthenticated) {
-      alert('Please login to bookmark posts');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to bookmark posts',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
     
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('Please login to bookmark posts');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to bookmark posts',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
     
@@ -829,11 +846,21 @@ const DiscoverMain = () => {
           console.log(`Post ${isBookmarked ? 'un' : ''}bookmarked successfully`);
         }
       } else {
-        alert(`Failed to ${isBookmarked ? 'un' : ''}bookmark post`);
+        showModal({
+          title: "Error",
+          message: `Failed to ${isBookmarked ? 'un' : ''}bookmark post`,
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     } catch (err) {
       console.error(`Error ${isBookmarked ? 'un' : ''}bookmarking post:`, err);
-      alert(`Error ${isBookmarked ? 'un' : 'book' }marking post`);
+      showModal({
+        title: "Error",
+        message: `Error ${isBookmarked ? 'un' : 'book' }marking post`,
+        type: 'error',
+        confirmText: 'OK'
+      });
     } finally {
       // Reset loading state for this post
       setBookmarkLoading(null);
@@ -843,7 +870,12 @@ const DiscoverMain = () => {
   // Save a location (separate functionality from bookmarking posts)
   const saveLocation = async (locationData) => {
     if (!isAuthenticated) {
-      alert('Please login to save locations');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to save locations',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
     
@@ -866,7 +898,12 @@ const DiscoverMain = () => {
           fetchSavedLocations(); // Fetch from server to ensure consistency
           console.log('Location removed from saved locations');
         } else {
-          alert('Failed to remove location');
+          showModal({
+            title: "Error",
+            message: 'Failed to remove location',
+            type: 'error',
+            confirmText: 'OK'
+          });
         }
       } else {
         // If not saved, add it
@@ -887,19 +924,34 @@ const DiscoverMain = () => {
             console.log('Location added to saved locations');
           }
         } else {
-          alert('Failed to save location');
+          showModal({
+            title: "Error",
+            message: 'Failed to save location',
+            type: 'error',
+            confirmText: 'OK'
+          });
         }
       }
     } catch (err) {
       console.error('Error saving location:', err);
-      alert('Error saving location');
+      showModal({
+        title: "Error",
+        message: 'Error saving location',
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
   // Remove a saved location
   const removeSavedLocation = async (locationId) => {
     if (!isAuthenticated) {
-      alert('Please login to manage saved locations');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to manage saved locations',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
     
@@ -915,18 +967,33 @@ const DiscoverMain = () => {
       if (response.ok) {
         fetchSavedLocations(); // Refresh saved locations
       } else {
-        alert('Failed to remove location');
+        showModal({
+          title: "Error",
+          message: 'Failed to remove location',
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     } catch (err) {
       console.error('Error removing location:', err);
-      alert('Error removing location');
+      showModal({
+        title: "Error",
+        message: 'Error removing location',
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
   // Function to show saved locations on the map
   const showSavedLocations = () => {
     if (!isAuthenticated) {
-      alert('Please login to view saved locations');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to view saved locations',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
     
@@ -949,13 +1016,23 @@ const DiscoverMain = () => {
   // Get directions to a location - now shows directions in the map itself
   const getDirections = useCallback((position) => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
+      showModal({
+        title: "Geolocation Not Supported",
+        message: 'Geolocation is not supported by your browser',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
 
     // Validate the destination position before attempting to get user location
     if (!position || !Array.isArray(position) || position.length < 2) {
-      alert('Invalid destination position provided');
+      showModal({
+        title: "Invalid Position",
+        message: 'Invalid destination position provided',
+        type: 'error',
+        confirmText: 'OK'
+      });
       return;
     }
 
@@ -1011,7 +1088,12 @@ const DiscoverMain = () => {
             if (mapRef.current) {
               mapRef.current.flyTo(position, 13);
             }
-            alert('Could not get your location. Showing destination on map instead.');
+            showModal({
+              title: "Location Error",
+              message: 'Could not get your location. Showing destination on map instead.',
+              type: 'info',
+              confirmText: 'OK'
+            });
           }
         }
       },
@@ -1027,7 +1109,12 @@ const DiscoverMain = () => {
   const updateUserLocation = useCallback(() => {
     if (!navigator.geolocation) {
       // Fallback for browsers that don't support geolocation
-      alert('Geolocation is not supported by your browser. Please enable location services or try a different browser.');
+      showModal({
+        title: "Geolocation Not Supported",
+        message: 'Geolocation is not supported by your browser. Please enable location services or try a different browser.',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
 
@@ -1078,7 +1165,12 @@ const DiscoverMain = () => {
           break;
       }
       
-      alert(errorMessage);
+      showModal({
+        title: "Location Error",
+        message: errorMessage,
+        type: 'error',
+        confirmText: 'OK'
+      });
       
       // Reset loading state in case of error too
       setLocationLoading(false);
@@ -1328,13 +1420,23 @@ const DiscoverMain = () => {
         setShowCreatePostModal(false);
         setSelectedMapPosition(null);
         
-        alert('Post created successfully!');
+        showModal({
+          title: "Success",
+          message: 'Post created successfully!',
+          type: 'success',
+          confirmText: 'OK'
+        });
       } else {
         throw new Error(result.message || 'Failed to create post');
       }
     } catch (error) {
       console.error('Error creating post:', error);
-      alert(error.message || 'An error occurred while creating the post');
+      showModal({
+        title: "Error",
+        message: error.message || 'An error occurred while creating the post',
+        type: 'error',
+        confirmText: 'OK'
+      });
     } finally {
       setCreatePostLoading(false);
     }
@@ -1396,21 +1498,6 @@ const DiscoverMain = () => {
     );
   }
 
-  if (initialLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <Header isDiscoverPage={true} />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-xl font-medium text-gray-700">Loading map data...</p>
-            <p className="text-sm text-gray-500 mt-2">Discovering amazing places near you</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
       <Header isDiscoverPage={true} />
@@ -1425,6 +1512,12 @@ const DiscoverMain = () => {
           zoom={mapZoom}
           minZoom={2}
           maxZoom={18}
+          zoomControl={false} // We'll use our own controls
+          doubleClickZoom={true}
+          scrollWheelZoom={true}
+          dragging={true}
+          animate={true}
+          easeLinearity={0.35}
           style={{ height: '100vh', width: '100vw' }}
           ref={mapRef}
           className="z-0"
@@ -1445,6 +1538,16 @@ const DiscoverMain = () => {
               : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }
             url={getTileLayerUrl()}
+            maxZoom={18}
+            minZoom={2}
+            tileSize={256}
+            zoomOffset={0}
+            detectRetina={true}
+            updateWhenIdle={true}
+            updateWhenZooming={false}
+            unloadInvisibleTiles={true}
+            reuseTiles={true}
+            keepBuffer={2}
           />
           
           <MapClickHandler 
@@ -1460,7 +1563,12 @@ const DiscoverMain = () => {
                 // If routing is active, just clear the routing and don't open the create post modal
                 clearRouting();
               } else if (!isAuthenticated) {
-                alert('Please login to create posts');
+                showModal({
+                  title: "Authentication Required",
+                  message: 'Please login to create posts',
+                  type: 'info',
+                  confirmText: 'OK'
+                });
               }
             }}
           />
@@ -1538,6 +1646,17 @@ const DiscoverMain = () => {
               );
             })}
           </AnimatePresence>
+          
+          {/* Loading overlay for posts */}
+          {loading && filteredPosts.length === 0 && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[9999] flex items-center justify-center">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                <p className="text-xl font-medium text-gray-700">Loading map data...</p>
+                <p className="text-sm text-gray-500 mt-2">Discovering amazing places near you</p>
+              </div>
+            </div>
+          )}
           
           {/* Render markers for saved locations when toggle is enabled */}
           {isAuthenticated && showSavedLocationsOnMap && savedLocations.map((savedLocation, index) => {

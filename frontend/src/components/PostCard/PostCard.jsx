@@ -12,8 +12,10 @@ import OptimizedImage from "../OptimizedImage";
 import { postApi, userApi } from "../../services/api";
 import { getImageUrl, formatDate } from "../../utils/imageUtils";
 import usePostInteractions from "../../hooks/usePostInteractions";
+import { useModal } from "../../contexts/ModalContext";
 
 const PostCard = ({ post, currentUser, authToken, isAuthenticated, onLike, onComment }) => {
+  const { showModal } = useModal();
   const {
     liked,
     likeCount,
@@ -21,7 +23,7 @@ const PostCard = ({ post, currentUser, authToken, isAuthenticated, onLike, onCom
     handleLike,
     handleBookmark,
     refreshPostStatus
-  } = usePostInteractions(post, currentUser || null, authToken, isAuthenticated);
+  } = usePostInteractions(post, currentUser || null, authToken, isAuthenticated, showModal);
 
   const handleComment = () => {
     onComment && onComment(post._id);

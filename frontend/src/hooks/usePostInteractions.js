@@ -3,7 +3,7 @@ import { postApi, userApi } from '../services/api';
 import { getInteractionState, updateInteractionState } from '../utils/interactionCache';
 
 // Custom hook to manage post interactions (likes, bookmarks) with server synchronization
-const usePostInteractions = (post, currentUser, authToken, isAuthenticated) => {
+const usePostInteractions = (post, currentUser, authToken, isAuthenticated, showModal) => {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post?.likesCount || 0);
   const [bookmarked, setBookmarked] = useState(false);
@@ -93,7 +93,16 @@ const usePostInteractions = (post, currentUser, authToken, isAuthenticated) => {
 
   const handleLike = useCallback(async () => {
     if (!authToken || !post?._id || !currentUser?._id) {
-      alert("Please login to like posts.");
+      if (showModal) {
+        showModal({
+          title: "Authentication Required",
+          message: "Please login to like posts.",
+          type: 'info',
+          confirmText: 'OK'
+        });
+      } else {
+        alert("Please login to like posts.");
+      }
       return;
     }
 
@@ -126,13 +135,31 @@ const usePostInteractions = (post, currentUser, authToken, isAuthenticated) => {
       setLiked(originalState.liked);
       setLikeCount(originalState.likeCount);
       updateInteractionState(currentUser._id, post._id, { liked: originalState.liked, likeCount: originalState.likeCount });
-      alert('An error occurred. Please try again.');
+      if (showModal) {
+        showModal({
+          title: "Error",
+          message: 'An error occurred. Please try again.',
+          type: 'error',
+          confirmText: 'OK'
+        });
+      } else {
+        alert('An error occurred. Please try again.');
+      }
     }
   }, [authToken, post?._id, currentUser?._id, liked, likeCount]);
 
   const handleBookmark = useCallback(async () => {
     if (!authToken || !post?._id || !currentUser?._id) {
-      alert("Please login to bookmark posts.");
+      if (showModal) {
+        showModal({
+          title: "Authentication Required",
+          message: "Please login to bookmark posts.",
+          type: 'info',
+          confirmText: 'OK'
+        });
+      } else {
+        alert("Please login to bookmark posts.");
+      }
       return;
     }
 
@@ -158,7 +185,16 @@ const usePostInteractions = (post, currentUser, authToken, isAuthenticated) => {
       // Revert on failure
       setBookmarked(originalBookmarked);
       updateInteractionState(currentUser._id, post._id, { bookmarked: originalBookmarked });
-      alert('An error occurred. Please try again.');
+      if (showModal) {
+        showModal({
+          title: "Error",
+          message: 'An error occurred. Please try again.',
+          type: 'error',
+          confirmText: 'OK'
+        });
+      } else {
+        alert('An error occurred. Please try again.');
+      }
     }
   }, [authToken, post?._id, currentUser?._id, bookmarked]);
 

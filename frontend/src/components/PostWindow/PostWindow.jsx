@@ -18,6 +18,7 @@ import OptimizedImage from "../OptimizedImage";
 import { postApi, userApi } from "../../services/api.js";
 import { getImageUrl, formatDate } from "../../utils/imageUtils";
 import CommentItem from './CommentItem'; // Import the new CommentItem component
+import { useModal } from "../../contexts/ModalContext";
 import { connectSocket } from "../../services/socketService";
 import './PostWindow.css';
 
@@ -44,13 +45,19 @@ const PostWindow = ({
 
 
   // Initialize bookmark state
+  const { showModal } = useModal();
   const [bookmarked, setBookmarked] = useState(post?.bookmarked || false);
   const [loading, setLoading] = useState(false);
 
   // Simple local bookmark functionality
   const handleBookmarkFromHook = async () => {
     if (!authToken) {
-      alert("Please login to bookmark posts");
+      showModal({
+        title: "Authentication Required",
+        message: "Please login to bookmark posts",
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
 
@@ -71,7 +78,12 @@ const PostWindow = ({
       }
     } catch (error) {
       console.error('Error handling bookmark:', error);
-      alert('An error occurred. Please try again.');
+      showModal({
+        title: "Error",
+        message: 'An error occurred. Please try again.',
+        type: 'error',
+        confirmText: 'OK'
+      });
     } finally {
       setLoading(false);
     }
@@ -159,7 +171,12 @@ const PostWindow = ({
 
   const handleBookmark = async () => {
     if (!authToken) {
-      alert("Please login to bookmark posts");
+      showModal({
+        title: "Authentication Required",
+        message: "Please login to bookmark posts",
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
 
@@ -188,14 +205,24 @@ const PostWindow = ({
     } else {
       const postUrl = `${window.location.origin}/post/${currentPost._id}`;
       navigator.clipboard.writeText(postUrl).then(() => {
-        alert('Post link copied to clipboard!');
+        showModal({
+          title: "Success",
+          message: 'Post link copied to clipboard!',
+          type: 'success',
+          confirmText: 'OK'
+        });
       });
     }
   };
 
   const handleGetDirections = () => {
     if (!currentPost.location || !currentPost.location.latitude || !currentPost.location.longitude) {
-      alert('Location information is not available for this post.');
+      showModal({
+        title: "Location Not Available",
+        message: 'Location information is not available for this post.',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
     
@@ -209,7 +236,12 @@ const PostWindow = ({
 
   const handleRate = async (starRating) => {
     if (!authToken) {
-      alert('Please login to rate posts');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to rate posts',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
 
@@ -224,16 +256,32 @@ const PostWindow = ({
         if (onRate && typeof onRate === 'function') {
           onRate(currentPost._id, result.data?.averageRating || 0, result.data?.totalRatings || 0);
         }
-        alert('Thank you for rating this post!');
+        showModal({
+          title: "Rating Submitted",
+          message: 'Thank you for rating this post!',
+          type: 'success',
+          confirmText: 'OK'
+        });
       }
     } catch (error) {
       console.error('Error submitting rating:', error);
+      showModal({
+        title: "Error",
+        message: 'An error occurred while rating. Please try again.',
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
   const handleAddComment = async () => {
     if (!authToken) {
-      alert('Please login to comment');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to comment',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
 
@@ -255,6 +303,12 @@ const PostWindow = ({
       }
     } catch (error) {
       console.error('Error adding comment:', error);
+      showModal({
+        title: "Error",
+        message: 'An error occurred while adding comment. Please try again.',
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
@@ -492,7 +546,12 @@ const PostWindow = ({
                               if (rating > 0) {
                                 handleRate(rating);
                               } else {
-                                alert('Please select a rating first');
+                                showModal({
+                                  title: "Select a Rating",
+                                  message: 'Please select a rating first',
+                                  type: 'info',
+                                  confirmText: 'OK'
+                                });
                               }
                             }}
                             className={`px-4 py-2.5 rounded-xl transition-all font-medium ${

@@ -81,8 +81,8 @@ const createCustomMarker = (category = 'general', averageRating = 0, isSaved = f
 };
 
 // Simple marker component that wraps react-leaflet Marker
-const CustomMarker = ({ post, isLiked, onSave, isSaved, onGetDirections, onClick }) => {
-  const markerIcon = createCustomMarker(post.category, post.averageRating, isSaved, isLiked);
+const CustomMarker = React.memo(({ post, isLiked, onSave, isSaved, onGetDirections, onClick }) => {
+  const markerIcon = React.useMemo(() => createCustomMarker(post.category, post.averageRating, isSaved, isLiked), [post.category, post.averageRating, isSaved, isLiked]);
   const markerRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -116,6 +116,6 @@ const CustomMarker = ({ post, isLiked, onSave, isSaved, onGetDirections, onClick
     >
     </Marker>
   );
-};
+});
 
 export default CustomMarker;

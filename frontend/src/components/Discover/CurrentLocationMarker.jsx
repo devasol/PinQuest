@@ -20,7 +20,7 @@ const createUserLocationIcon = () => {
   });
 };
 
-const CurrentLocationMarker = ({ position, onClick }) => {
+const CurrentLocationMarker = React.memo(({ position, onClick }) => {
   const [markerIcon, setMarkerIcon] = useState(null);
   const map = useMap();
 
@@ -46,6 +46,6 @@ const CurrentLocationMarker = ({ position, onClick }) => {
     >
     </Marker>
   );
-};
+});
 
 export default CurrentLocationMarker;

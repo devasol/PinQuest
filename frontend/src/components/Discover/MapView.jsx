@@ -5,6 +5,7 @@ import './MapView.css';
 import CustomMarker from './CustomMarker';
 import Header from '../Landing/Header/Header';
 import { useAuth } from '../../contexts/AuthContext';
+import { useModal } from '../../contexts/ModalContext';
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
@@ -12,7 +13,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000
 const MapView = () => {
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Don't block initial render
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -25,10 +26,21 @@ const MapView = () => {
   const { isAuthenticated, user } = useAuth();
 
   // Fetch posts from the backend API
-  const fetchPosts = useCallback(async (preserveSelectedPost = null, limit = null) => {
+  const fetchPosts = useCallback(async (preserveSelectedPost = null, limit = 50) => {
     try {
-      // Fetch all posts
-      const response = await fetch(`${API_BASE_URL}/posts`);
+      // Set loading state for posts
+      setLoading(true);
+      
+      // Fetch posts with a default limit to improve initial load time
+      let url = `${API_BASE_URL}/posts`;
+      if (limit) {
+        url += `?limit=${limit}`;
+      }
+      
+      const response = await fetch(url, {
+        // Use cache to improve performance
+        cache: 'default'
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -123,6 +135,8 @@ const MapView = () => {
       setError("Failed to load posts: " + err.message);
       setPosts([]);
       setFilteredPosts([]);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -151,36 +165,18 @@ const MapView = () => {
 
   // Initial data fetch
   useEffect(() => {
-    const initialFetch = async () => {
-      setLoading(true);
-      
-      // Fetch saved locations in background (not blocking)
-      if (isAuthenticated) {
-        setTimeout(() => {
-          fetchSavedLocations(); // Run in background to avoid blocking
-        }, 0);
-      }
-      
-      // Fetch posts with a timeout mechanism
-      const postsPromise = fetchPosts(null, 50); // Fetch limited posts initially
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), 8000) // 8 second timeout for posts
-      );
-      
-      try {
-        await Promise.race([postsPromise, timeoutPromise]);
-      } catch (error) {
-        if (error.message === 'Timeout') {
-          console.warn('Posts fetch timed out, showing interface while loading continues');
-        } else {
-          console.error('Error fetching posts:', error);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Start showing the map immediately without waiting for data
+    setLoading(false);
     
-    initialFetch();
+    // Fetch saved locations in background (not blocking)
+    if (isAuthenticated) {
+      setTimeout(() => {
+        fetchSavedLocations(); // Run in background to avoid blocking
+      }, 0);
+    }
+    
+    // Fetch posts in background
+    fetchPosts(null, 50); // Fetch limited posts initially
 
     // Set up periodic refresh every 30 seconds
     fetchIntervalRef.current = setInterval(() => {
@@ -268,10 +264,17 @@ const MapView = () => {
     }
   };
 
+  const { showModal } = useModal();
+  
   // Save a location
   const saveLocation = async (post) => {
     if (!isAuthenticated) {
-      alert('Please login to save locations');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to save locations',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
     
@@ -298,21 +301,41 @@ const MapView = () => {
         const result = await response.json();
         if (result.status === 'success') {
           fetchSavedLocations(); // Refresh saved locations
-          alert('Location saved successfully!');
+          showModal({
+            title: "Success",
+            message: 'Location saved successfully!',
+            type: 'success',
+            confirmText: 'OK'
+          });
         }
       } else {
-        alert('Failed to save location');
+        showModal({
+          title: "Error",
+          message: 'Failed to save location',
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     } catch (err) {
       console.error('Error saving location:', err);
-      alert('Error saving location');
+      showModal({
+        title: "Error",
+        message: 'Error saving location',
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
   // Remove a saved location
   const removeSavedLocation = async (locationId) => {
     if (!isAuthenticated) {
-      alert('Please login to manage saved locations');
+      showModal({
+        title: "Authentication Required",
+        message: 'Please login to manage saved locations',
+        type: 'info',
+        confirmText: 'OK'
+      });
       return;
     }
     
@@ -327,13 +350,28 @@ const MapView = () => {
       
       if (response.ok) {
         fetchSavedLocations(); // Refresh saved locations
-        alert('Location removed successfully!');
+        showModal({
+          title: "Success",
+          message: 'Location removed successfully!',
+          type: 'success',
+          confirmText: 'OK'
+        });
       } else {
-        alert('Failed to remove location');
+        showModal({
+          title: "Error",
+          message: 'Failed to remove location',
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     } catch (err) {
       console.error('Error removing location:', err);
-      alert('Error removing location');
+      showModal({
+        title: "Error",
+        message: 'Error removing location',
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
@@ -351,19 +389,7 @@ const MapView = () => {
 
   const categories = ['all', 'nature', 'culture', 'shopping', 'food', 'event', 'general'];
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900">
-        <Header isDiscoverPage={true} />
-        <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-xl font-medium text-white">Loading map data...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   if (error) {
     return (
@@ -701,6 +727,17 @@ const MapView = () => {
               onSave={saveLocation}
             />
           ))}
+          
+          {/* Loading overlay for posts */}
+          {loading && filteredPosts.length === 0 && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[9999] flex items-center justify-center">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                <p className="text-xl font-medium text-gray-700">Loading map data...</p>
+                <p className="text-sm text-gray-500 mt-2">Discovering amazing places near you</p>
+              </div>
+            </div>
+          )}
         </MapContainer>
       </div>
     </div>

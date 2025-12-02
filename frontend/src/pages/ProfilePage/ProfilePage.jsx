@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useModal } from '../../contexts/ModalContext';
 import { User, MapPin, Star, Bookmark, Activity, Calendar, Image } from 'lucide-react';
 import OptimizedImage from '../../components/OptimizedImage';
 import usePageTitle from '../../services/usePageTitle';
@@ -8,6 +9,7 @@ import './ProfilePage.css';
 const ProfilePage = () => {
   usePageTitle("Profile");
   const { user, isAuthenticated, loading, updatePassword } = useAuth();
+  const { showModal } = useModal();
   const [activeTab, setActiveTab] = useState('profile');
   const [userData, setUserData] = useState(user || {});
   const [isEditing, setIsEditing] = useState(false);
@@ -259,11 +261,21 @@ const ProfilePage = () => {
       } else {
         const errorData = await response.json();
         console.error('Error updating profile:', errorData);
-        alert('Failed to update profile: ' + errorData.message);
+        showModal({
+          title: "Error",
+          message: 'Failed to update profile: ' + errorData.message,
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('An error occurred while updating your profile');
+      showModal({
+        title: "Error",
+        message: 'An error occurred while updating your profile',
+        type: 'error',
+        confirmText: 'OK'
+      });
     } finally {
       setLoadingData(false);
     }
@@ -309,11 +321,21 @@ const ProfilePage = () => {
       } else {
         const errorData = await response.json();
         console.error('Delete saved location error:', errorData);
-        alert('Failed to remove saved location: ' + (errorData.message || 'Please try again.'));
+        showModal({
+          title: "Error",
+          message: 'Failed to remove saved location: ' + (errorData.message || 'Please try again.'),
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     } catch (error) {
       console.error('Error removing saved location:', error);
-      alert('An error occurred while removing the saved location. Please try again.');
+      showModal({
+        title: "Error",
+        message: 'An error occurred while removing the saved location. Please try again.',
+        type: 'error',
+        confirmText: 'OK'
+      });
     } finally {
       setDeleting(null);
     }
@@ -346,11 +368,21 @@ const ProfilePage = () => {
       } else {
         const errorData = await response.json();
         console.error('Delete post error:', errorData);
-        alert('Failed to delete post: ' + (errorData.message || 'Please try again.'));
+        showModal({
+          title: "Error",
+          message: 'Failed to delete post: ' + (errorData.message || 'Please try again.'),
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     } catch (error) {
       console.error('Error deleting post:', error);
-      alert('An error occurred while deleting the post. Please try again.');
+      showModal({
+        title: "Error",
+        message: 'An error occurred while deleting the post. Please try again.',
+        type: 'error',
+        confirmText: 'OK'
+      });
     } finally {
       setDeleting(null);
     }
@@ -399,11 +431,21 @@ const ProfilePage = () => {
       } else {
         const errorData = await response.json();
         console.error('Update post error:', errorData);
-        alert('Failed to update post: ' + (errorData.message || 'Please try again.'));
+        showModal({
+          title: "Error",
+          message: 'Failed to update post: ' + (errorData.message || 'Please try again.'),
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     } catch (error) {
       console.error('Error updating post:', error);
-      alert('An error occurred while updating the post. Please try again.');
+      showModal({
+        title: "Error",
+        message: 'An error occurred while updating the post. Please try again.',
+        type: 'error',
+        confirmText: 'OK'
+      });
     } finally {
       setDeleting(null);
     }
@@ -457,7 +499,12 @@ const ProfilePage = () => {
       
       if (result.success) {
         // Success - show success message and reset form
-        alert('Password changed successfully!');
+        showModal({
+          title: "Success",
+          message: 'Password changed successfully!',
+          type: 'success',
+          confirmText: 'OK'
+        });
         setPasswordData({
           currentPassword: '',
           newPassword: '',
