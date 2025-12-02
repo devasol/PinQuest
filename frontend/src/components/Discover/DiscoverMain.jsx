@@ -1495,10 +1495,10 @@ const DiscoverMain = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 fixed inset-0 z-[9999]">
         <Header isDiscoverPage={true} />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="text-center p-6 bg-white rounded-xl shadow-xl max-w-md">
+          <div className="text-center p-6 bg-white rounded-xl shadow-xl max-w-md z-[10000] relative">
             <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Discover Page</h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <button 
@@ -1506,7 +1506,7 @@ const DiscoverMain = () => {
                 setError(null); // Clear the error state first
                 fetchPosts();
               }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors cursor-pointer z-[10001]"
             >
               Try Again
             </button>

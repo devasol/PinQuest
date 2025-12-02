@@ -80,7 +80,49 @@ const createPost = async (req, res) => {
     );
 
     // Process uploaded images using utility
-    const { image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host"));
+    let { image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host"));
+    
+    // Add image links if provided in the request body
+    if (req.body.imageLinks) {
+      try {
+        // Parse imageLinks if it's a string (happens with FormData)
+        let imageLinks = req.body.imageLinks;
+        if (typeof imageLinks === 'string') {
+          try {
+            imageLinks = JSON.parse(imageLinks);
+          } catch (e) {
+            // If it's not JSON, try to parse as comma-separated string or just wrap in an array
+            if (imageLinks.startsWith('http')) {
+              imageLinks = [imageLinks];
+            } else {
+              imageLinks = imageLinks.split(',').map(link => link.trim()).filter(link => link);
+            }
+          }
+        }
+        
+        // Convert image links to proper format and add to imagesArr
+        if (Array.isArray(imageLinks) && imageLinks.length > 0) {
+          const imageLinkObjects = imageLinks
+            .filter(link => typeof link === 'string' && link.startsWith('http'))
+            .map(link => ({ 
+              url: link, 
+              publicId: null,
+              source: 'url' // Mark as URL source
+            }));
+          
+          // Add image links to the images array
+          imagesArr = [...imagesArr, ...imageLinkObjects];
+          
+          // If image is null and we have image links, set the first one as the main image
+          if (!image && imageLinkObjects.length > 0) {
+            image = imageLinkObjects[0];
+          }
+        }
+      } catch (error) {
+        console.error("Error processing image links:", error);
+        // Continue without image links if there's an error
+      }
+    }
 
     // Use authenticated user ID for postedBy (from middleware)
     // This ensures security by preventing users from impersonating others
@@ -340,7 +382,49 @@ const updatePost = async (req, res) => {
     }
 
     // Process uploaded images using utility
-    const { image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host"));
+    let { image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host"));
+    
+    // Add image links if provided in the request body
+    if (req.body.imageLinks) {
+      try {
+        // Parse imageLinks if it's a string (happens with FormData)
+        let imageLinks = req.body.imageLinks;
+        if (typeof imageLinks === 'string') {
+          try {
+            imageLinks = JSON.parse(imageLinks);
+          } catch (e) {
+            // If it's not JSON, try to parse as comma-separated string or just wrap in an array
+            if (imageLinks.startsWith('http')) {
+              imageLinks = [imageLinks];
+            } else {
+              imageLinks = imageLinks.split(',').map(link => link.trim()).filter(link => link);
+            }
+          }
+        }
+        
+        // Convert image links to proper format and add to imagesArr
+        if (Array.isArray(imageLinks) && imageLinks.length > 0) {
+          const imageLinkObjects = imageLinks
+            .filter(link => typeof link === 'string' && link.startsWith('http'))
+            .map(link => ({ 
+              url: link, 
+              publicId: null,
+              source: 'url' // Mark as URL source
+            }));
+          
+          // Add image links to the images array
+          imagesArr = [...imagesArr, ...imageLinkObjects];
+          
+          // If image is null and we have image links, set the first one as the main image
+          if (!image && imageLinkObjects.length > 0) {
+            image = imageLinkObjects[0];
+          }
+        }
+      } catch (error) {
+        console.error("Error processing image links in update:", error);
+        // Continue without image links if there's an error
+      }
+    }
 
     // Prepare the update object
     // Don't allow changing the postedBy field - it should always remain as the original creator
