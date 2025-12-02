@@ -238,7 +238,17 @@ const DiscoverMain = () => {
               comments: post.comments || [],
               likes: post.likes || [], // Add likes array
               likesCount: post.likesCount || 0, // Add likes count
-              location: post.location || {}, // Preserve full location object
+              location: {
+                // Ensure location has proper latitude and longitude for the directions feature
+                latitude: post.location?.latitude || 
+                         (post.location?.coordinates && post.location.coordinates[1]) || 
+                         (position && position[0]), // fallback to position[0] if available
+                longitude: post.location?.longitude || 
+                          (post.location?.coordinates && post.location.coordinates[0]) || 
+                          (position && position[1]), // fallback to position[1] if available
+                // Preserve other location properties if they exist
+                ...post.location
+              },
             };
           });
         
@@ -462,13 +472,13 @@ const DiscoverMain = () => {
           const userPos = [latitude, longitude];
           setUserLocation(userPos);
           
-          // Center the map on the user's location when page loads
+          // Center the map on the user's location when page loads with a nice zoom level
           if (mapRef.current) {
-            mapRef.current.setView(userPos, 13);
+            mapRef.current.setView(userPos, 15); // More zoomed in initially
           } else {
             // If map isn't ready yet, update the state
             setMapCenter(userPos);
-            setMapZoom(13);
+            setMapZoom(15);
           }
         },
         (error) => {
@@ -799,14 +809,18 @@ const DiscoverMain = () => {
         const userPos = [latitude, longitude];
         setUserLocation(userPos);
         
-        // Optionally animate to the new location
+        // Center the map on the new location
         if (mapRef.current) {
           mapRef.current.flyTo(userPos, 15);
+        } else {
+          // If map isn't ready yet, update the state so it centers when map loads
+          setMapCenter(userPos);
+          setMapZoom(15);
         }
       },
       (error) => {
         console.error("Error getting user location:", error.message);
-        alert('Could not get your current location. Make sure location services are enabled.');
+        alert('Could not get your current location. Make sure location services are enabled and you have allowed location access.');
       },
       {
         enableHighAccuracy: true,
@@ -876,18 +890,123 @@ const DiscoverMain = () => {
       const result = await response.json();
 
       if (response.ok && result.status === 'success') {
-        // Add the new post to our local state
+        // Add the new post to our local state with the same structure as API-transformed posts
+        // Start with the response data and ensure position is in the right format [lat, lng] for Leaflet
+        let position;
+        if (result.data.location?.coordinates && Array.isArray(result.data.location.coordinates) 
+            && result.data.location.coordinates.length === 2) {
+          // Convert from [longitude, latitude] (GeoJSON) to [latitude, longitude] (Leaflet)
+          position = [result.data.location.coordinates[1], result.data.location.coordinates[0]];
+        } 
+        else if (typeof result.data.location?.latitude === 'number' && 
+                 typeof result.data.location?.longitude === 'number') {
+          position = [result.data.location.latitude, result.data.location.longitude];
+        }
+        else {
+          // Fallback to the original payload if API doesn't return location properly
+          position = [postPayload.location.latitude, postPayload.location.longitude];
+        }
+        
         const newPost = {
-          ...result.data,
+          _id: result.data._id,
           id: result.data._id,
-          position: [postPayload.location.latitude, postPayload.location.longitude],
-          likes: [],
-          likesCount: 0,
-          comments: [],
+          title: result.data.title || postPayload.title,
+          description: result.data.description || postPayload.description,
+          image: result.data.image || null, // Use image from response if available
+          images: result.data.images || [],
+          averageRating: result.data.averageRating || 0,
+          totalRatings: result.data.totalRatings || 0,
+          postedBy: result.data.postedBy?.name || user?.name || user?.email || "Anonymous",
+          category: result.data.category || postPayload.category,
+          datePosted: result.data.datePosted || new Date().toISOString(),
+          position: position,
+          price: result.data.price || 0,
+          tags: result.data.tags || [],
+          comments: result.data.comments || [],
+          likes: result.data.likes || [], // Use likes from response if available
+          likesCount: result.data.likesCount || 0,
+          location: {
+            // Ensure location has proper latitude and longitude for the directions feature
+            latitude: result.data.location?.latitude || 
+                      (result.data.location?.coordinates && result.data.location.coordinates[1]) || 
+                      postPayload.location.latitude,
+            longitude: result.data.location?.longitude || 
+                       (result.data.location?.coordinates && result.data.location.coordinates[0]) || 
+                       postPayload.location.longitude,
+            // Preserve other location properties if they exist
+            ...result.data.location
+          },
         };
         
         setPosts(prev => [newPost, ...prev]);
-        setFilteredPosts(prev => [newPost, ...prev]);
+        
+        // Apply current filters to determine if the new post should be in the filtered list
+        let shouldIncludeInFiltered = true;
+        
+        // Apply search filter
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          shouldIncludeInFiltered = 
+            newPost.title.toLowerCase().includes(query) || 
+            newPost.description.toLowerCase().includes(query) ||
+            newPost.postedBy.toLowerCase().includes(query) ||
+            newPost.category.toLowerCase().includes(query) ||
+            newPost.tags.some(tag => tag.toLowerCase().includes(query));
+        }
+        
+        // Apply category filter
+        if (selectedCategory !== 'all' && shouldIncludeInFiltered) {
+          shouldIncludeInFiltered = newPost.category.toLowerCase() === selectedCategory.toLowerCase();
+        }
+        
+        // Apply rating filter
+        if (rating > 0 && shouldIncludeInFiltered) {
+          shouldIncludeInFiltered = newPost.averageRating >= rating;
+        }
+        
+        // Apply price range filter
+        if (priceRange !== 'all' && shouldIncludeInFiltered) {
+          if (priceRange === 'free') {
+            shouldIncludeInFiltered = newPost.price === 0;
+          } else if (priceRange === 'low') {
+            shouldIncludeInFiltered = newPost.price > 0 && newPost.price <= 10;
+          } else if (priceRange === 'medium') {
+            shouldIncludeInFiltered = newPost.price > 10 && newPost.price <= 50;
+          } else if (priceRange === 'high') {
+            shouldIncludeInFiltered = newPost.price > 50;
+          }
+        }
+        
+        // Only add to filtered posts if it passes all current filters
+        if (shouldIncludeInFiltered) {
+          setFilteredPosts(prev => {
+            // Add new post and sort according to current sort setting
+            const updatedList = [newPost, ...prev];
+            
+            // Apply sorting based on current sort setting
+            updatedList.sort((a, b) => {
+              switch (sortBy) {
+                case 'newest':
+                  return new Date(b.datePosted) - new Date(a.datePosted);
+                case 'oldest':
+                  return new Date(a.datePosted) - new Date(b.datePosted);
+                case 'rating':
+                  return b.averageRating - a.averageRating;
+                case 'popular':
+                  return b.totalRatings - a.totalRatings;
+                default:
+                  return 0;
+              }
+            });
+            
+            return updatedList;
+          });
+          
+          // Fly to the new post location to show it on the map
+          setTimeout(() => {
+            flyToPost(newPost.position);
+          }, 300); // Small delay to ensure the post is rendered
+        }
         
         // Close the modal
         setShowCreatePostModal(false);
@@ -951,15 +1070,15 @@ const DiscoverMain = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
       <Header isDiscoverPage={true} />
       
-      {/* Full Screen Map Container - Positioned below header */}
-      <div className="relative w-full h-[100vh] pt-16"> {/* pt-16 adds padding equal to header height */}
+      {/* Full Screen Map Container - Takes full viewport */}
+      <div className="relative w-screen h-screen overflow-hidden">
         {/* Map */}
         <MapContainer
           center={mapCenter}
           zoom={mapZoom}
           minZoom={2}
           maxZoom={18}
-          style={{ height: '100%', width: '100%' }}
+          style={{ height: '100vh', width: '100vw' }}
           ref={mapRef}
           className="z-0"
         >
@@ -973,11 +1092,14 @@ const DiscoverMain = () => {
               // Handle map click
             }} 
             onMapPositionSelected={(position) => {
-              // Only allow authenticated users to create posts
-              if (isAuthenticated) {
+              // Only allow authenticated users to create posts and only when routing is not active
+              if (isAuthenticated && !routingActive) {
                 setSelectedMapPosition(position);
                 setShowCreatePostModal(true);
-              } else {
+              } else if (isAuthenticated && routingActive) {
+                // If routing is active, just clear the routing and don't open the create post modal
+                clearRouting();
+              } else if (!isAuthenticated) {
                 alert('Please login to create posts');
               }
             }}
@@ -1136,7 +1258,7 @@ const DiscoverMain = () => {
         )}
         
         {/* Top Controls Overlay - Positioned below header */}
-        <div className="absolute top-20 left-4 right-4 z-[1000] max-w-4xl mx-auto flex flex-col gap-4">
+        <div className="absolute top-16 left-4 right-4 z-[1000] max-w-4xl mx-auto flex flex-col gap-4">
           {/* Search Bar */}
           <div className="relative flex flex-col sm:flex-row gap-3 items-center">
             <div className="relative w-full">
@@ -1185,7 +1307,7 @@ const DiscoverMain = () => {
         </div>
         
         {/* Sidebar with icons */}
-        <div className="absolute top-20 right-4 z-[1000] flex flex-col gap-2">
+        <div className="absolute top-16 right-4 z-[1000] flex flex-col gap-2">
           {/* Main control icons */}
           <button
             onClick={() => document.getElementById('filter-window')?.classList.toggle('hidden')}
@@ -1236,23 +1358,7 @@ const DiscoverMain = () => {
             </button>
           )}
           
-          {isAuthenticated && (
-            <button
-              onClick={() => {
-                // For now, we'll use a default position if user hasn't selected one
-                // In a real implementation, you might want to prompt to select a location first
-                if (mapRef.current) {
-                  const center = mapRef.current.getCenter();
-                  setSelectedMapPosition(center);
-                }
-                setShowCreatePostModal(true);
-              }}
-              className="w-14 h-14 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl shadow-lg hover:from-emerald-600 hover:to-teal-600 transition-colors flex items-center justify-center"
-              title="Create New Post"
-            >
-              <Plus className="h-6 w-6" />
-            </button>
-          )}
+
         </div>
         
         {/* Control Windows - Positioned next to sidebar */}
@@ -1488,7 +1594,7 @@ const DiscoverMain = () => {
         
         {/* Listing Panel - Side Panel on Desktop, Bottom Panel on Mobile */}
         {showListings && (
-          <div className="absolute top-16 right-0 h-[calc(100vh-4rem)] w-full sm:w-96 bg-white/95 backdrop-blur-sm shadow-2xl z-[999] transform transition-transform duration-300 overflow-y-auto">
+          <div className="absolute top-16 right-0 h-screen w-full sm:w-96 bg-white/95 backdrop-blur-sm shadow-2xl z-[999] transform transition-transform duration-300 overflow-y-auto">
             <div className="p-4 border-b border-gray-200 sticky top-0 bg-white/90 backdrop-blur-sm z-10 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800">Discoveries ({filteredPosts.length})</h2>
               <button 

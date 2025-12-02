@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MapPin, Image as ImageIcon, Plus, Upload, Camera, Link, Trash2, Check, AlertCircle } from 'lucide-react';
 
@@ -15,6 +15,13 @@ const CreatePostModal = ({
     category: "general",
   });
   const [selectedPosition, setSelectedPosition] = useState(initialPosition);
+  
+  // Update selectedPosition when initialPosition prop changes
+  useEffect(() => {
+    if (initialPosition) {
+      setSelectedPosition(initialPosition);
+    }
+  }, [initialPosition]);
   const [fileImages, setFileImages] = useState([]); // For uploaded files
   const [linkImages, setLinkImages] = useState([]); // For image links
   const [errors, setErrors] = useState({});
@@ -83,6 +90,11 @@ const CreatePostModal = ({
 
     try {
       await onCreatePost(postPayload);
+      // Reset form on successful post creation, let parent handle closing modal
+      setFormData({ title: "", description: "", category: "general" });
+      setFileImages([]);
+      setLinkImages([]);
+      setErrors({});
     } catch (error) {
       console.error("Error creating post:", error);
       setErrors({ submit: error.message || "An error occurred while creating the post" });
