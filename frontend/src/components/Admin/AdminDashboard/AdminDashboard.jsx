@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
-import { 
-  Home, 
-  Users, 
-  MapPin, 
-  Settings, 
-  LogOut, 
-  Menu, 
-  X, 
+import React, { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate, Outlet } from "react-router-dom";
+import {
+  Home,
+  Users,
+  MapPin,
+  Settings,
+  LogOut,
+  Menu,
+  X,
   BarChart3,
   Shield,
-  User
-} from 'lucide-react';
-import NotificationBell from '../../NotificationBell/NotificationBell';
-import './AdminDashboard.css';
+  User,
+  Bell,
+} from "lucide-react";
+import NotificationBell from "../../NotificationBell/NotificationBell";
+import "./AdminDashboard.css";
 
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -23,60 +24,65 @@ const AdminDashboard = () => {
 
   // Load user data from localStorage
   useEffect(() => {
-    const userData = localStorage.getItem('user');
+    const userData = localStorage.getItem("user");
     if (userData) {
       try {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
       } catch (e) {
-        console.error('Error parsing user data:', e);
+        console.error("Error parsing user data:", e);
         // If parsing fails, redirect to login
-        navigate('/admin/login');
+        navigate("/admin/login");
       }
     } else {
       // If no user data, redirect to admin login
-      navigate('/admin/login');
+      navigate("/admin/login");
     }
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('isAdmin');
-    navigate('/admin/login');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("isAdmin");
+    navigate("/admin/login");
   };
 
   const sidebarItems = [
     {
       icon: Home,
-      label: 'Dashboard',
-      path: '/admin/dashboard'
+      label: "Dashboard",
+      path: "/admin/dashboard",
     },
     {
       icon: BarChart3,
-      label: 'Analytics',
-      path: '/admin/analytics'
+      label: "Analytics",
+      path: "/admin/analytics",
     },
     {
       icon: Users,
-      label: 'Users',
-      path: '/admin/users'
+      label: "Users",
+      path: "/admin/users",
     },
     {
       icon: MapPin,
-      label: 'Posts',
-      path: '/admin/posts'
+      label: "Posts",
+      path: "/admin/posts",
     },
+    // {
+    //   icon: Bell,
+    //   label: 'Notifications',
+    //   path: '/admin/notifications'
+    // },
     {
       icon: Shield,
-      label: 'Security',
-      path: '/admin/security'
+      label: "Security",
+      path: "/admin/security",
     },
     {
       icon: Settings,
-      label: 'Settings',
-      path: '/admin/settings'
-    }
+      label: "Settings",
+      path: "/admin/settings",
+    },
   ];
 
   if (!user) {
@@ -90,10 +96,17 @@ const AdminDashboard = () => {
   return (
     <div className="admin-dashboard">
       {/* Sidebar */}
-      <aside className={`admin-sidebar ${sidebarOpen ? 'admin-sidebar-open' : 'admin-sidebar-closed'}`}>
+      <aside
+        className={`admin-sidebar ${
+          sidebarOpen ? "admin-sidebar-open" : "admin-sidebar-closed"
+        }`}
+      >
         <div className="admin-sidebar-header">
           <div className="admin-sidebar-logo">
-            <div className="admin-logo-icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
+            <div
+              className="admin-logo-icon"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
               <Shield className="admin-logo-icon-svg" />
             </div>
             <span className="admin-logo-text">Admin Panel</span>
@@ -107,9 +120,11 @@ const AdminDashboard = () => {
               const isActive = location.pathname === item.path;
               return (
                 <li key={index} className="admin-sidebar-menu-item">
-                  <Link 
-                    to={item.path} 
-                    className={`admin-sidebar-menu-link ${isActive ? 'active' : ''}`}
+                  <Link
+                    to={item.path}
+                    className={`admin-sidebar-menu-link ${
+                      isActive ? "active" : ""
+                    }`}
                     onClick={() => {
                       if (window.innerWidth <= 768) {
                         setSidebarOpen(false); // Close sidebar on mobile when clicking a link
@@ -118,7 +133,9 @@ const AdminDashboard = () => {
                     }}
                   >
                     <Icon className="admin-sidebar-menu-icon" />
-                    <span className="admin-sidebar-menu-label">{item.label}</span>
+                    <span className="admin-sidebar-menu-label">
+                      {item.label}
+                    </span>
                   </Link>
                 </li>
               );
@@ -127,10 +144,7 @@ const AdminDashboard = () => {
         </nav>
 
         <div className="admin-sidebar-footer">
-          <button 
-            onClick={handleLogout}
-            className="admin-sidebar-logout"
-          >
+          <button onClick={handleLogout} className="admin-sidebar-logout">
             <LogOut className="admin-sidebar-menu-icon" />
             <span className="admin-sidebar-menu-label">Logout</span>
           </button>
@@ -138,8 +152,10 @@ const AdminDashboard = () => {
       </aside>
 
       {/* Mobile Sidebar Overlay */}
-      <div 
-        className={`admin-sidebar-overlay ${sidebarOpen ? 'admin-sidebar-overlay-visible' : ''}`}
+      <div
+        className={`admin-sidebar-overlay ${
+          sidebarOpen ? "admin-sidebar-overlay-visible" : ""
+        }`}
         onClick={() => setSidebarOpen(false)}
       ></div>
 
@@ -147,21 +163,29 @@ const AdminDashboard = () => {
       <main className="admin-main">
         {/* Header */}
         <header className="admin-header">
-          <button 
+          <button
             className="admin-menu-toggle"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label={sidebarOpen ? "Close menu" : "Open menu"}
           >
-            {sidebarOpen ? <X className="admin-menu-icon" /> : <Menu className="admin-menu-icon" />}
+            {sidebarOpen ? (
+              <X className="admin-menu-icon" />
+            ) : (
+              <Menu className="admin-menu-icon" />
+            )}
           </button>
 
           <div className="admin-header-content">
             <h1 className="admin-header-title">
-              {location.pathname.includes('/users') ? 'User Management' :
-               location.pathname.includes('/posts') ? 'Content Management' :
-               location.pathname.includes('/security') ? 'Security Settings' :
-               location.pathname.includes('/analytics') ? 'Analytics Dashboard' :
-               'Dashboard'}
+              {location.pathname.includes("/users")
+                ? "User Management"
+                : location.pathname.includes("/posts")
+                ? "Content Management"
+                : location.pathname.includes("/security")
+                ? "Security Settings"
+                : location.pathname.includes("/analytics")
+                ? "Analytics Dashboard"
+                : "Dashboard"}
             </h1>
             <div className="admin-header-actions">
               <Link to="/" className="admin-home-button">
@@ -173,10 +197,13 @@ const AdminDashboard = () => {
                   <User className="admin-user-icon" />
                 </div>
                 <div className="admin-user-info">
-                  <span className="admin-user-name">{user.name || user.email || 'Admin User'}</span>
-                  <span className="admin-user-role">{user.role || 'Administrator'}</span>
+                  <span className="admin-user-name">
+                    {user.name || user.email || "Admin User"}
+                  </span>
+                  <span className="admin-user-role">
+                    {user.role || "Administrator"}
+                  </span>
                 </div>
-                <NotificationBell userId={user._id || user.id} authToken={localStorage.getItem('token')} />
               </div>
             </div>
           </div>

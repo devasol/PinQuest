@@ -219,10 +219,6 @@ const Landing = () => {
               <div className="aspect-square rounded-3xl bg-gradient-to-br from-blue-100 to-purple-100 border border-gray-200 p-4">
                 <MapComponent className="rounded-2xl" />
               </div>
-
-              {/* Floating Elements */}
-              <div className="absolute -top-4 -right-4 w-8 h-8 bg-yellow-400 rounded-full animate-pulse"></div>
-              <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-blue-400 rounded-full animate-pulse delay-1000"></div>
             </div>
           </div>
         </div>

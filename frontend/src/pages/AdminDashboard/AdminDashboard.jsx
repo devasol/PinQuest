@@ -260,9 +260,6 @@ const AdminDashboard = () => {
             </button>
           </div>
         </div>
-        <div className="admin-dashboard-header-actions">
-          <AdminNotifications />
-        </div>
       </div>
 
       {/* Dashboard Content based on active section */}
@@ -384,18 +381,46 @@ const AdminDashboard = () => {
                 {platformGrowthData.length > 0 ? (
                   <>
                     <div className="analytics-chart-y-axis">
-                      <span>{Math.max(...platformGrowthData.map(d => d.total || d.userCount + d.postCount || d.count))}</span>
-                      <span>{Math.max(...platformGrowthData.map(d => d.total || d.userCount + d.postCount || d.count)) / 2 | 0}</span>
-                      <span>0</span>
+                      {(() => {
+                        const dataValues = platformGrowthData.map(d => {
+                          if (d.total !== undefined && d.total !== null) return d.total;
+                          if (d.userCount !== undefined && d.userCount !== null && d.postCount !== undefined && d.postCount !== null) {
+                            return d.userCount + d.postCount;
+                          }
+                          if (d.count !== undefined && d.count !== null) return d.count;
+                          return 0; // Default to 0 if none of the above are valid
+                        });
+                        const maxValue = Math.max(...dataValues) || 1;
+                        return (
+                          <>
+                            <span>{maxValue}</span>
+                            <span>{Math.floor(maxValue / 2)}</span>
+                            <span>0</span>
+                          </>
+                        );
+                      })()}
                     </div>
                     <div className="analytics-chart-content">
                       <svg className="analytics-line-chart" viewBox={`0 0 600 ${200}`} preserveAspectRatio="none">
                         {platformGrowthData.length > 1 && 
                           (() => {
-                            const maxValue = Math.max(...platformGrowthData.map(d => d.total || d.userCount + d.postCount || d.count)) || 1;
+                            const dataValues = platformGrowthData.map(d => {
+                              if (d.total !== undefined && d.total !== null) return d.total;
+                              if (d.userCount !== undefined && d.userCount !== null && d.postCount !== undefined && d.postCount !== null) {
+                                return d.userCount + d.postCount;
+                              }
+                              if (d.count !== undefined && d.count !== null) return d.count;
+                              return 0; // Default to 0 if none of the above are valid
+                            });
+                            const maxValue = Math.max(...dataValues) || 1;
                             const points = platformGrowthData.slice(0, 7).map((dataPoint, i) => {
                               const x = (i * 600) / Math.max(platformGrowthData.slice(0, 7).length - 1, 1);
-                              const y = 200 - (dataPoint.total || dataPoint.userCount + dataPoint.postCount || dataPoint.count) * 200 / maxValue;
+                              const value = dataPoint.total !== undefined && dataPoint.total !== null ? dataPoint.total :
+                                         (dataPoint.userCount !== undefined && dataPoint.userCount !== null && 
+                                          dataPoint.postCount !== undefined && dataPoint.postCount !== null) ? 
+                                         (dataPoint.userCount + dataPoint.postCount) :
+                                         (dataPoint.count !== undefined && dataPoint.count !== null) ? dataPoint.count : 0;
+                              const y = 200 - value * 200 / maxValue;
                               return `${x},${y}`;
                             }).join(' ');
                             
@@ -412,9 +437,22 @@ const AdminDashboard = () => {
                           })()
                         }
                         {platformGrowthData.slice(0, 7).map((dataPoint, i) => {
-                          const maxValue = Math.max(...platformGrowthData.map(d => d.total || d.userCount + d.postCount || d.count)) || 1;
+                          const dataValues = platformGrowthData.map(d => {
+                            if (d.total !== undefined && d.total !== null) return d.total;
+                            if (d.userCount !== undefined && d.userCount !== null && d.postCount !== undefined && d.postCount !== null) {
+                              return d.userCount + d.postCount;
+                            }
+                            if (d.count !== undefined && d.count !== null) return d.count;
+                            return 0; // Default to 0 if none of the above are valid
+                          });
+                          const maxValue = Math.max(...dataValues) || 1;
                           const x = (i * 600) / Math.max(platformGrowthData.slice(0, 7).length - 1, 1);
-                          const y = 200 - (dataPoint.total || dataPoint.userCount + dataPoint.postCount || dataPoint.count) * 200 / maxValue;
+                          const value = dataPoint.total !== undefined && dataPoint.total !== null ? dataPoint.total :
+                                     (dataPoint.userCount !== undefined && dataPoint.userCount !== null && 
+                                      dataPoint.postCount !== undefined && dataPoint.postCount !== null) ? 
+                                     (dataPoint.userCount + dataPoint.postCount) :
+                                     (dataPoint.count !== undefined && dataPoint.count !== null) ? dataPoint.count : 0;
+                          const y = 200 - value * 200 / maxValue;
                           
                           return (
                             <g key={i}>
@@ -426,7 +464,7 @@ const AdminDashboard = () => {
                                 stroke="white"
                                 strokeWidth="2"
                               />
-                              <title>{new Date(dataPoint.date).toLocaleDateString()} - {dataPoint.total || dataPoint.userCount + dataPoint.postCount || dataPoint.count}</title>
+                              <title>{new Date(dataPoint.date).toLocaleDateString()} - {value}</title>
                             </g>
                           );
                         })}

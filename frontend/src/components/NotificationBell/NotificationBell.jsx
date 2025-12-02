@@ -92,17 +92,17 @@ const NotificationBell = ({ userId, authToken }) => {
     <div className="relative">
       <button
         onClick={toggleDropdown}
-        className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
+        className="relative p-2 rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center"
         aria-label="Notifications"
       >
         {unreadCount > 0 ? (
           <Bell className="w-6 h-6 text-blue-600" />
         ) : (
-          <BellOff className="w-6 h-6 text-gray-400" />
+          <BellOff className="w-6 h-6 text-gray-600" />
         )}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            {unreadCount}
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[1.25rem]">
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
