@@ -56,7 +56,7 @@ const Sidebar = ({
     {
       id: 'map-type',
       label: 'Map Type',
-      icon: MapPin,
+      icon: Settings,
       path: '/discover',
       requiresAuth: false,
       action: () => toggleWindow('map-type-window'),
