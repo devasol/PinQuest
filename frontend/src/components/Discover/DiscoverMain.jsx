@@ -77,6 +77,7 @@ const DiscoverMain = () => {
   const [createPostLoading, setCreatePostLoading] = useState(false); // Track if post creation is in progress
   const [locationLoading, setLocationLoading] = useState(false); // Track if updating user location is in progress
   const [bookmarkLoading, setBookmarkLoading] = useState(null); // Track which post is being bookmarked/unbookmarked
+  const [followUser, setFollowUser] = useState(false); // Track if map should follow user's movement
   
   const { showModal } = useModal();
   
@@ -458,6 +459,12 @@ const DiscoverMain = () => {
       clearTimeout(timeoutId);
       
       if (!response.ok) {
+        // Handle 429 specifically to avoid UI spam
+        if (response.status === 429) {
+          console.log("Rate limit exceeded. Slowing down requests...");
+          // Don't set error for rate limit to avoid spamming the UI
+          return;
+        }
         throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
       }
       
@@ -577,7 +584,9 @@ const DiscoverMain = () => {
       } else if (err.message.includes('Failed to fetch')) {
         setError("Unable to connect to the server. The server may be down or unreachable. Please make sure the backend server is running.");
       } else if (err.message.includes('Too many requests')) {
-        setError("Rate limit exceeded. Please wait a moment and try again. The server may have rate limiting enabled.");
+        // Don't show rate limit error as it will be repetitive (handled in try block)
+        console.log("Rate limit exceeded. Slowing down requests...");
+        // Don't set error for rate limit to avoid spamming the UI
       } else {
         setError("Failed to load posts: " + err.message);
       }
@@ -618,6 +627,10 @@ const DiscoverMain = () => {
         });
         
         if (!response.ok) {
+          if (response.status === 429) {
+            console.log("Rate limit exceeded for saved locations API. Skipping this request...");
+            return;
+          }
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
@@ -631,7 +644,9 @@ const DiscoverMain = () => {
         }
       } catch (err) {
         console.error("Error fetching saved locations:", err);
-        setSavedLocations([]);
+        if (!err.message.includes('Too many requests')) {
+          setSavedLocations([]);
+        }
       } finally {
         fetchSavedLocationsRef.current = false;
       }
@@ -666,71 +681,80 @@ const DiscoverMain = () => {
           }
         });
         
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success' && Array.isArray(result.data?.favorites)) {
-            // Extract post IDs from favorites to create a Set of favorite post IDs
-            const favoritePostIds = new Set(
-              result.data.favorites
-                .map(fav => {
-                  // Handle different possible structures of favorite objects
-                  if (fav.post && typeof fav.post === 'object' && fav.post._id) {
-                    return fav.post._id;
-                  } else if (fav.postId) {
-                    return fav.postId;
-                  } else if (typeof fav.post === 'string') {
-                    return fav.post;
-                  }
-                  return null;
-                })
-                .filter(id => id !== null) // Remove any null/undefined values
-            );
-            setFavoritePosts(favoritePostIds);
-            
-            // Update the posts array to mark them as bookmarked
-            setPosts(prevPosts => 
-              prevPosts.map(post => {
-                if (post && post._id) {
-                  return {
-                    ...post,
-                    bookmarked: favoritePostIds.has(post._id),
-                    saved: favoritePostIds.has(post._id)
-                  };
+        if (!response.ok) {
+          if (response.status === 429) {
+            console.log("Rate limit exceeded for favorites API. Skipping this request...");
+            return;
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.status === 'success' && Array.isArray(result.data?.favorites)) {
+          // Extract post IDs from favorites to create a Set of favorite post IDs
+          const favoritePostIds = new Set(
+            result.data.favorites
+              .map(fav => {
+                // Handle different possible structures of favorite objects
+                if (fav.post && typeof fav.post === 'object' && fav.post._id) {
+                  return fav.post._id;
+                } else if (fav.postId) {
+                  return fav.postId;
+                } else if (typeof fav.post === 'string') {
+                  return fav.post;
                 }
-                return post;
+                return null;
               })
-            );
-            
-            // Also update filtered posts
-            setFilteredPosts(prevFilteredPosts => 
-              prevFilteredPosts.map(post => {
-                if (post && post._id) {
-                  return {
-                    ...post,
-                    bookmarked: favoritePostIds.has(post._id),
-                    saved: favoritePostIds.has(post._id)
-                  };
-                }
-                return post;
-              })
-            );
-            
-            // Also update selected post if it exists
-            if (selectedPost && selectedPost._id) {
-              setSelectedPost(prev => {
-                // Check if prev is null to avoid the error
-                if (!prev || !prev._id) return prev;
+              .filter(id => id !== null) // Remove any null/undefined values
+          );
+          setFavoritePosts(favoritePostIds);
+          
+          // Update the posts array to mark them as bookmarked
+          setPosts(prevPosts => 
+            prevPosts.map(post => {
+              if (post && post._id) {
                 return {
-                  ...prev,
-                  bookmarked: favoritePostIds.has(prev._id),
-                  saved: favoritePostIds.has(prev._id)
+                  ...post,
+                  bookmarked: favoritePostIds.has(post._id),
+                  saved: favoritePostIds.has(post._id)
                 };
-              });
-            }
+              }
+              return post;
+            })
+          );
+          
+          // Also update filtered posts
+          setFilteredPosts(prevFilteredPosts => 
+            prevFilteredPosts.map(post => {
+              if (post && post._id) {
+                return {
+                  ...post,
+                  bookmarked: favoritePostIds.has(post._id),
+                  saved: favoritePostIds.has(post._id)
+                };
+              }
+              return post;
+            })
+          );
+          
+          // Also update selected post if it exists
+          if (selectedPost && selectedPost._id) {
+            setSelectedPost(prev => {
+              // Check if prev is null to avoid the error
+              if (!prev || !prev._id) return prev;
+              return {
+                ...prev,
+                bookmarked: favoritePostIds.has(prev._id),
+                saved: favoritePostIds.has(prev._id)
+              };
+            });
           }
         }
       } catch (err) {
         console.error("Error fetching user favorite posts:", err);
+        if (!err.message.includes('Too many requests')) {
+          // Don't reduce favorites if it's a rate limit error
+        }
       } finally {
         fetchUserFavoritePostsRef.current = false;
       }
@@ -812,7 +836,7 @@ const DiscoverMain = () => {
     // Fetch posts in background
     fetchPosts(null, 50); // Fetch limited posts initially
 
-    // Set up periodic refresh every 60 seconds to reduce load
+    // Set up periodic refresh every 120 seconds to reduce load and avoid rate limiting
     fetchIntervalRef.current = setInterval(() => {
       // Preserve the selected post if it exists before refreshing
       // Use ref to get the current value instead of closure value
@@ -823,7 +847,7 @@ const DiscoverMain = () => {
         setTimeout(() => fetchSavedLocations(), 500);
         setTimeout(() => fetchUserFavoritePosts(), 1000);
       }
-    }, 60000); // Changed from 30 to 60 seconds
+    }, 120000); // Changed from 60 to 120 seconds to avoid rate limiting
     
     return () => {
       if (fetchIntervalRef.current) {
@@ -926,29 +950,31 @@ const DiscoverMain = () => {
           }
         },
         {
-          enableHighAccuracy: false, // Changed to false for faster response
-          timeout: 5000, // Reduced timeout to 5 seconds
-          maximumAge: 300000, // 5 minutes
+          enableHighAccuracy: true, // Changed back to true for accurate location
+          timeout: 30000, // Increased timeout to 30 seconds to allow for GPS acquisition
+          maximumAge: 0, // Do not use cached location - get fresh location
         }
       );
       
-      // Watch for position updates
+      // Watch for position updates to track user movement in real-time
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           const userPos = [latitude, longitude];
           setUserLocation(userPos);
           
-          // Optionally update map to follow user if they've enabled it
-          // (not automatically following to avoid disrupting user experience)
+          // Update map to follow user if they've enabled follow mode
+          if (followUser && mapRef.current) {
+            mapRef.current.setView(userPos, 15); // Use zoom level 15 for better focus on current location
+          }
         },
         (error) => {
           console.log("Geolocation watch error:", error.message);
         },
         {
-          enableHighAccuracy: false, // Changed to false for faster response
-          maximumAge: 60000, // 1 minute
-          timeout: 10000, // 10 seconds
+          enableHighAccuracy: true, // Changed back to true for accurate location
+          maximumAge: 0, // Do not use cached location - get fresh location
+          timeout: 30000, // 30 seconds to allow for GPS acquisition
         }
       );
     } else {
@@ -967,6 +993,44 @@ const DiscoverMain = () => {
       }
     };
   }, []); // Run once when component mounts
+  
+  // Always request location when component mounts to ensure permission is requested
+  useEffect(() => {
+    // Only request location if user location doesn't exist yet
+    if (!userLocation && navigator.geolocation) {
+      const requestLocation = async () => {
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              resolve,
+              reject,
+              {
+                enableHighAccuracy: true,
+                timeout: 30000, // 30 seconds to allow for GPS acquisition
+                maximumAge: 0 // Don't use cached position - get fresh location
+              }
+            );
+          });
+          
+          const { latitude, longitude } = position.coords;
+          const userPos = [latitude, longitude];
+          setUserLocation(userPos);
+          
+          // Center the map on the user's location
+          if (mapRef.current) {
+            mapRef.current.setView(userPos, 13);
+          } else {
+            setMapCenter(userPos);
+            setMapZoom(13);
+          }
+        } catch (error) {
+          console.log("Location permission denied or unavailable:", error.message);
+        }
+      };
+      
+      requestLocation();
+    }
+  }, [userLocation]);
 
   // Fly to a post's location on the map
   const flyToPost = useCallback((position) => {
@@ -1312,7 +1376,7 @@ const DiscoverMain = () => {
   }, [userLocation, flyToPost]);
 
   // Update user's current location manually
-  const updateUserLocation = useCallback(() => {
+  const updateUserLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       // Fallback for browsers that don't support geolocation
       showModal({
@@ -1327,14 +1391,17 @@ const DiscoverMain = () => {
     // Set loading state
     setLocationLoading(true);
 
-    // Show a loading indicator or message while requesting location
-    const geoOptions = {
-      enableHighAccuracy: true,
-      timeout: 15000, // Increased timeout to 15 seconds
-      maximumAge: 30000, // Accept cached position up to 30 seconds old
-    };
+    try {
+      const position = await new Promise((resolve, reject) => {
+        const geoOptions = {
+          enableHighAccuracy: true,
+          timeout: 30000, // Increased timeout to 30 seconds to allow for GPS acquisition
+          maximumAge: 0, // Do not use any cached position - force fresh location reading
+        };
 
-    const successCallback = (position) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, geoOptions);
+      });
+
       const { latitude, longitude } = position.coords;
       const userPos = [latitude, longitude];
       setUserLocation(userPos);
@@ -1348,23 +1415,21 @@ const DiscoverMain = () => {
         setMapZoom(15);
       }
       
-      // Reset loading state
-      setLocationLoading(false);
-    };
-
-    const errorCallback = (error) => {
+      // Show success message to confirm location update
+      console.log(`Location updated to: [${latitude}, ${longitude}]`);
+    } catch (error) {
       console.error("Geolocation error:", error);
       let errorMessage = "Could not get your current location. ";
       
       switch(error.code) {
         case error.PERMISSION_DENIED:
-          errorMessage += "Please allow location access in your browser settings.";
+          errorMessage += "Location access was denied. Please allow location access in your browser settings.";
           break;
         case error.POSITION_UNAVAILABLE:
           errorMessage += "Location information is unavailable.";
           break;
         case error.TIMEOUT:
-          errorMessage += "The request to get your location timed out. Please try again.";
+          errorMessage += "The request to get your location timed out. This might happen if you're indoors, underground, or have a weak GPS signal. Try moving to an area with better satellite visibility, or ensure Wi-Fi and location services are enabled on your device.";
           break;
         default:
           errorMessage += "Please make sure location services are enabled and you have allowed location access. For local development, try opening this site over HTTPS.";
@@ -1377,12 +1442,10 @@ const DiscoverMain = () => {
         type: 'error',
         confirmText: 'OK'
       });
-      
-      // Reset loading state in case of error too
+    } finally {
+      // Reset loading state in all cases
       setLocationLoading(false);
-    };
-
-    navigator.geolocation.getCurrentPosition(successCallback, errorCallback, geoOptions);
+    }
   }, []);
 
   // Clear the routing state
@@ -1801,6 +1864,10 @@ const DiscoverMain = () => {
               onClick={(position) => {
                 // Optional: Add click functionality for user location marker
                 console.log('User location marker clicked');
+                // Center the map on the user's location when marker is clicked
+                if (mapRef.current) {
+                  mapRef.current.flyTo(position, 15);
+                }
               }}
             />
           )}
@@ -1980,6 +2047,25 @@ const DiscoverMain = () => {
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="absolute top-[65px] left-4 z-[1000] flex flex-col gap-3"
         >
+          {/* Location Permission Prompt */}
+          {!userLocation && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="sidebar-control modern-btn bg-blue-500 text-white flex items-center gap-2 px-3 cursor-pointer"
+              onClick={() => {
+                updateUserLocation().then(() => {
+                  setFollowUser(true); // Turn on follow mode after getting location
+                });
+              }}
+              title="Enable location services to see your current location"
+            >
+              <Navigation className="h-5 w-5" />
+              <span className="text-sm">Enable Location</span>
+            </motion.div>
+          )}
           {/* Search and Filter control icons with modern styling */}
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -2037,24 +2123,33 @@ const DiscoverMain = () => {
             <Bookmark className={`h-6 w-6 ${showSavedLocationsOnMap ? 'fill-current' : ''}`} />
           </motion.button>
           
-          {userLocation && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={updateUserLocation}
-              className="sidebar-control modern-btn"
-              title="My Location"
-              disabled={locationLoading}
-            >
-              {locationLoading ? (
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700"></div>
-                </div>
-              ) : (
-                <Navigation className="h-6 w-6 text-gray-700" />
-              )}
-            </motion.button>
-          )}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (followUser) {
+                // If currently following, just update location without zooming
+                updateUserLocation();
+                setFollowUser(false); // Turn off follow mode
+              } else {
+                // If not following, update and enable follow mode
+                updateUserLocation().then(() => {
+                  setFollowUser(true); // Turn on follow mode after getting location
+                });
+              }
+            }}
+            className={`sidebar-control modern-btn ${followUser ? 'bg-blue-500 text-white' : ''}`}
+            title={followUser ? "Stop Following Location" : (userLocation ? "Update Current Location" : "Show My Location")}
+            disabled={locationLoading}
+          >
+            {locationLoading ? (
+              <div className="w-6 h-6 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              </div>
+            ) : (
+              <Navigation className={`h-6 w-6 ${followUser ? 'text-white' : 'text-gray-700'}`} />
+            )}
+          </motion.button>
         </motion.div>
         
         {/* Search Window */}
