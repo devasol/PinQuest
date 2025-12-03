@@ -82,15 +82,26 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      const result = await googleLogin();
-      if (result.success) {
-        setSuccess("Google login successful! Redirecting...");
-        setTimeout(() => {
-          navigate("/"); // Redirect to home page after successful login
-        }, 1500);
-      } else {
-        setError(result.error || "Google login failed");
-      }
+      setSuccess("");
+      setError("Attempting to open Google authentication. If nothing happens, please check your popup blocker.");
+      
+      // Small delay to ensure error message shows
+      setTimeout(async () => {
+        const result = await googleLogin();
+        if (result.success) {
+          if (result.redirectRequired) {
+            setSuccess(result.message);
+            // Don't redirect here since we're waiting for the redirect
+            return;
+          }
+          setSuccess("Google login successful! Redirecting...");
+          setTimeout(() => {
+            navigate("/"); // Redirect to home page after successful login
+          }, 1500);
+        } else {
+          setError(result.error || "Google login failed");
+        }
+      }, 500);
     } catch (err) {
       setError(err.message || "An error occurred during Google login");
     }

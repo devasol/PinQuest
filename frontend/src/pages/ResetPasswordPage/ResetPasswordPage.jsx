@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
-import Header from "../../components/Landing/Header/Header";
 
 const ResetPasswordPage = () => {
   const { resetToken } = useParams();
@@ -90,7 +89,6 @@ const ResetPasswordPage = () => {
   if (isValidToken === false) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
-        <Header />
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
             <div className="text-red-500 mb-4">
@@ -116,7 +114,6 @@ const ResetPasswordPage = () => {
     // Loading state while validating token
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
-        <Header />
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
             <div className="flex justify-center mb-4">
@@ -131,7 +128,6 @@ const ResetPasswordPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <Header />
       <div className="flex-1 flex items-center justify-center p-4 pt-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

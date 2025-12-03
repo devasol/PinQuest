@@ -1,9 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 
-import HomePage from "../pages/HomePage/HomePage";
 import DiscoverPage from "../pages/DiscoverPage/DiscoverPage";
 import LoginPage from "../pages/LoginPage/LoginPage";
-import CategoriesPage from "../pages/CategoriesPage/CategoriesPage";
 import ProfilePage from "../pages/ProfilePage/ProfilePage";
 import AddPost from "../pages/AddPost/AddPost";
 import AdminLogin from "../pages/AdminLogin/AdminLogin";
@@ -20,7 +18,7 @@ import ResetPasswordPage from "../pages/ResetPasswordPage/ResetPasswordPage";
 
 const router = createBrowserRouter([
   {
-    element: <HomePage />,
+    element: <DiscoverPage />,
     path: "/",
     // error:</>
   },
@@ -42,11 +40,6 @@ const router = createBrowserRouter([
   {
     element: <ProfilePage />,
     path: "/dashboard",
-    // error:</>
-  },
-  {
-    element: <CategoriesPage />,
-    path: "/categories",
     // error:</>
   },
 

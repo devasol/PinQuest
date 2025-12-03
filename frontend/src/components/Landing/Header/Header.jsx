@@ -218,9 +218,7 @@ const Header = ({ isDiscoverPage = false }) => {
   }, [isNotificationOpen]);
 
   const navigationItems = [
-    { name: "Home", to: "/" },
-    { name: "Discover", to: "/discover" },
-    { name: "Categories", to: "/categories" },
+    { name: "Discover", to: "/" },
   ];
 
   const toggleMobileMenu = () => {
@@ -268,7 +266,7 @@ const Header = ({ isDiscoverPage = false }) => {
                   to={item.to}
                   className={({ isActive }) =>
                     `text-gray-700 font-medium transition-all duration-300 ${
-                      isActive
+                      isActive || (item.to === "/" && (window.location.pathname === "/" || window.location.pathname === "/discover"))
                         ? "text-blue-600 pb-1 border-b-2 border-blue-600"
                         : "hover:text-blue-600"
                     }`
@@ -502,7 +500,7 @@ const Header = ({ isDiscoverPage = false }) => {
                   to={item.to}
                   className={({ isActive }) =>
                     `block px-3 py-3 font-medium transition-all duration-300 ${
-                      isActive
+                      isActive || (item.to === "/" && (window.location.pathname === "/" || window.location.pathname === "/discover"))
                         ? "text-blue-600 bg-blue-50 rounded-lg border-l-4 border-blue-600"
                         : "text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                     }`

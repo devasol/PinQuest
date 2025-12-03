@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/api.jsx';
 import { directAuthApi } from '../services/authApi';
+import { getRedirectResult } from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 const AuthContext = createContext();
 
@@ -17,24 +19,105 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is logged in on initial load
+  // Check if user is logged in on initial load and handle redirect results
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Get user from localStorage if available
-      const storedUser = localStorage.getItem('firebaseUser');
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.error('Error parsing stored user:', error);
+    // Check for redirect result from Firebase OAuth
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          // User successfully authenticated via redirect
+          const firebaseIdToken = await result.user.getIdToken();
+          
+          // Exchange Firebase token for backend JWT token
+          const tokenExchangeResult = await exchangeFirebaseToken(firebaseIdToken);
+          if (tokenExchangeResult.success) {
+            // Store token and user data
+            localStorage.setItem('token', tokenExchangeResult.token);
+            const userInfo = {
+              _id: tokenExchangeResult.user._id,
+              email: tokenExchangeResult.user.email,
+              name: tokenExchangeResult.user.name,
+              isVerified: tokenExchangeResult.user.isVerified,
+              role: tokenExchangeResult.user.role
+            };
+            localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
+            setUser(userInfo);
+            setIsAuthenticated(true);
+          }
+        } else {
+          // If no redirect result, check for stored token
+          const token = localStorage.getItem('token');
+          if (token) {
+            // Get user from localStorage if available
+            const storedUser = localStorage.getItem('firebaseUser');
+            if (storedUser) {
+              try {
+                const parsedUser = JSON.parse(storedUser);
+                setUser(parsedUser);
+                setIsAuthenticated(true);
+              } catch (error) {
+                console.error('Error parsing stored user:', error);
+              }
+            }
+          }
         }
+      } catch (error) {
+        console.error('Error handling redirect result:', error);
+        // Fallback to checking stored token if redirect result fails
+        const token = localStorage.getItem('token');
+        if (token) {
+          const storedUser = localStorage.getItem('firebaseUser');
+          if (storedUser) {
+            try {
+              const parsedUser = JSON.parse(storedUser);
+              setUser(parsedUser);
+              setIsAuthenticated(true);
+            } catch (error) {
+              console.error('Error parsing stored user:', error);
+            }
+          }
+        }
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    handleRedirectResult();
   }, []);
+
+  // Helper function to exchange Firebase token for backend JWT token
+  const exchangeFirebaseToken = async (firebaseToken) => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/firebase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ firebaseToken }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.status === 'success') {
+        return {
+          success: true,
+          user: data.data,
+          token: data.data.token
+        };
+      } else {
+        throw new Error(data.message || 'Token exchange failed');
+      }
+    } catch (error) {
+      console.error('Firebase token exchange error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  };
 
   const login = async (email, password) => {
     try {
@@ -157,6 +240,12 @@ export const AuthProvider = ({ children }) => {
     try {
       // Google login must continue to use Firebase OAuth
       const data = await authService.googleLogin();
+      
+      // If redirect was required, return early to let the page handle it
+      if (data.redirectRequired) {
+        return { success: true, redirectRequired: true, message: data.message };
+      }
+      
       if (data.success) {
         // Store token and user data after successful Google login
         localStorage.setItem('token', data.token);

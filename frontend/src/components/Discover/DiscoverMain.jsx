@@ -3,16 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
-import Header from '../Landing/Header/Header';
 import CustomMarker from './CustomMarker';
 import PostWindow from '../PostWindow/PostWindow';
 import CurrentLocationMarker from './CurrentLocationMarker';
 import MapRouting from './MapRouting';
 import CreatePostModal from './CreatePostModal';
-import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users, Bell, User, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './DiscoverMain.css';
 import { useModal } from '../../contexts/ModalContext';
+import { connectSocket } from '../../services/socketService';
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
@@ -46,6 +47,7 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
 };
 
 const DiscoverMain = () => {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
   const [loading, setLoading] = useState(false); // Don't block initial render
@@ -79,8 +81,20 @@ const DiscoverMain = () => {
   const [bookmarkLoading, setBookmarkLoading] = useState(null); // Track which post is being bookmarked/unbookmarked
   const [followUser, setFollowUser] = useState(false); // Track if map should follow user's movement
   
-  const { showModal } = useModal();
+  // Notification states
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationRef = useRef();
   
+  const { showModal } = useModal();
+  const { logout: authLogout } = useAuth(); // Get logout from auth context
+  
+  const handleLogout = () => {
+    authLogout(); // Clear authentication state
+    navigate("/"); // Redirect to home page after logout
+  };
+
   // Memoized search suggestions
   const searchSuggestions = useMemo(() => {
     if (!searchQuery || searchQuery.trim().length === 0) return [];
@@ -224,6 +238,102 @@ const DiscoverMain = () => {
     };
   };
   
+  // Function to mark a notification as read
+  const markNotificationAsRead = async (notificationId) => {
+    if (!isAuthenticated) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch(
+        `${API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/${notificationId}/read`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        // Update local state
+        setNotifications(prev => 
+          prev.map(notif => 
+            notif._id === notificationId ? { ...notif, read: true } : notif
+          )
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  // Function to mark all notifications as read
+  const markAllAsRead = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch(
+        `${API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/read-all`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        // Update local state
+        setNotifications(prev => 
+          prev.map(notif => ({ ...notif, read: true }))
+        );
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
+  // Format notification date
+  const formatNotificationDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Today';
+    if (diffDays === 2) return 'Yesterday';
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+    
+    return date.toLocaleDateString();
+  };
+
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        const notificationButton = event.target.closest('button[aria-label="Notifications"]');
+        
+        if (isNotificationOpen && !notificationButton) {
+          setIsNotificationOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotificationOpen]);
+  
   // Debounced geocoding function
   const debouncedGeocode = useCallback(
     debounce(async (query) => {
@@ -291,6 +401,87 @@ const DiscoverMain = () => {
   useEffect(() => {
     selectedPostRef.current = selectedPost;
   }, [selectedPost]);
+  
+  // Fetch notifications when user is authenticated and set up socket connection
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    // Connect to socket
+    const socket = connectSocket(token);
+
+    // Fetch notifications on mount and periodically
+    const fetchNotifications = async () => {
+      try {
+        // Fetch unread count
+        const countResponse = await fetch(
+          `${API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/unread-count`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+        if (countResponse.ok) {
+          const countData = await countResponse.json();
+          setUnreadCount(countData.data?.count || 0);
+        } else {
+          console.error('Failed to fetch unread count:', countResponse.status, countResponse.statusText);
+        }
+
+        // Fetch recent notifications to display in dropdown
+        const notifResponse = await fetch(
+          `${API_BASE_URL || "http://localhost:5000/api/v1"}/notifications?page=1&limit=5`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+        if (notifResponse.ok) {
+          const notifData = await notifResponse.json();
+          setNotifications(notifData.data?.notifications || []);
+        } else {
+          console.error('Failed to fetch notifications:', notifResponse.status, notifResponse.statusText);
+        }
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      }
+    };
+
+    // Initial fetch
+    fetchNotifications();
+
+    // Set up socket listeners for real-time notifications
+    socket.on('newNotification', (newNotification) => {
+      setNotifications(prev => [newNotification, ...prev.slice(0, 4)]); // Add new notification, keep only 5 most recent
+      setUnreadCount(prev => prev + 1);
+    });
+
+    socket.on('notificationRead', (data) => {
+      // Update local state when a notification is marked as read from elsewhere
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif._id === data.notificationId ? { ...notif, read: true } : notif
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    });
+
+    // Set up polling as backup if socket fails
+    const interval = setInterval(fetchNotifications, 30000);
+
+    // Cleanup function
+    return () => {
+      socket.off('newNotification');
+      socket.off('notificationRead');
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, user, API_BASE_URL]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handlePostLike = useCallback((postId, isLiked) => {
@@ -1758,7 +1949,6 @@ const DiscoverMain = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 fixed inset-0 z-[50000]">
-        <Header isDiscoverPage={true} />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center p-6 bg-white rounded-xl shadow-xl max-w-md z-[50001] relative">
             <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Discover Page</h2>
@@ -1779,12 +1969,161 @@ const DiscoverMain = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
-      <Header isDiscoverPage={true} />
+    <div className="min-h-screen bg-white relative">
+      {/* Search bar at the top center of the map */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4">
+        <div className="relative flex items-center">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+          <input
+            type="text"
+            placeholder="Search for places, locations, categories..."
+            className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                // You can add search handling here if needed
+              }
+            }}
+          />
+        </div>
+      </div>
       
+      {/* Top-right user controls positioned above the map */}
+      <div className="absolute top-4 right-4 z-[1000] flex items-center gap-3">
+        {/* User controls - login, notifications, name */}
+        {isAuthenticated ? (
+          <div className="flex items-center gap-3 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-md border border-gray-200">
+            {/* Notifications */}
+            <div className="relative">
+              <button 
+                className="p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-full hover:bg-gray-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsNotificationOpen(!isNotificationOpen);
+                }}
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center text-xs bg-red-500 text-white rounded-full">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              {/* Notification Dropdown */}
+              {isNotificationOpen && (
+                <div 
+                  ref={notificationRef}
+                  className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-[7001]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-semibold text-gray-800">Notifications</h3>
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markAllAsRead();
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length > 0 ? (
+                      <div className="divide-y divide-gray-100">
+                        {notifications.map((notification) => (
+                          <div 
+                            key={notification._id} 
+                            className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                              !notification.read ? "bg-blue-50" : ""
+                            }`}
+                            onClick={() => {
+                              markNotificationAsRead(notification._id);
+                              // Navigate to the relevant post
+                              if (notification.post) {
+                                navigate(`/discover#${notification.post}`);
+                              }
+                            }}
+                          >
+                            <div className="flex items-start">
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-gray-800`}>
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {formatNotificationDate(notification.date)}
+                                </p>
+                              </div>
+                              {!notification.read && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markNotificationAsRead(notification._id);
+                                  }}
+                                  className="ml-2 text-gray-400 hover:text-blue-600"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-6 text-center">
+                        <Bell className="mx-auto h-10 w-10 text-gray-300" />
+                        <h3 className="mt-2 font-medium text-gray-900">No notifications</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          You'll see notifications here when they arrive.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
+            {/* User profile */}
+            <div className="flex items-center space-x-2">
+              <Link
+                to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
+                className="flex items-center space-x-2 px-3 py-2 text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-medium max-w-[100px] truncate">
+                  {user?.name ||
+                    (user?.role === "admin" ? "Admin" : "Profile")}
+                </span>
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="px-3 py-2 text-sm text-gray-700 hover:text-red-600 transition-colors rounded-lg hover:bg-gray-100"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Login button for unauthenticated users
+          <Link
+            to="/login"
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+          >
+            <span className="text-sm font-medium">Login</span>
+            <User className="h-4 w-4" />
+          </Link>
+        )}
+      </div>
       
-      {/* Full Screen Map Container - Takes full viewport */}
+      {/* Map and results area */}
       <div className="relative w-screen h-screen overflow-hidden">
         {/* Map */}
         <MapContainer
@@ -1792,7 +2131,7 @@ const DiscoverMain = () => {
           zoom={mapZoom}
           minZoom={2}
           maxZoom={18}
-          zoomControl={false} // We'll use our own controls
+          zoomControl={true} // Let's use Leaflet's default controls
           doubleClickZoom={true}
           scrollWheelZoom={true}
           dragging={true}
@@ -1880,7 +2219,7 @@ const DiscoverMain = () => {
             <motion.div 
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              className="absolute top-[65px] right-20 z-[1000]"
+              className="absolute top-20 right-20 z-[1000]"
             >
               <button
                 onClick={clearRouting}
@@ -1897,7 +2236,7 @@ const DiscoverMain = () => {
             <motion.div 
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              className="absolute top-[65px] right-20 z-[1000]"
+              className="absolute top-20 right-20 z-[1000]"
             >
               <div className="px-3 py-2 bg-blue-500 text-white rounded-lg shadow-md flex items-center gap-2 text-sm">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -2024,7 +2363,7 @@ const DiscoverMain = () => {
           <motion.div 
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-[65px] right-20 z-[999]"
+            className="absolute top-20 right-4 z-[999]"
           >
             <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2 px-3 rounded-lg shadow-md flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
@@ -2043,32 +2382,32 @@ const DiscoverMain = () => {
         
 
         
-        {/* Left Sidebar with Icons - Modern design */}
+        {/* Left Sidebar with Icons - Google-like design */}
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="absolute top-[65px] left-4 z-[1000] flex flex-col gap-3"
+          className="absolute top-20 left-4 z-[1000] flex flex-col gap-2"
         >
           {/* Search and Filter control icons with modern styling */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('search-window')}
-            className="sidebar-control modern-btn"
+            className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow"
             title="Search"
           >
-            <Search className="h-6 w-6 text-gray-700" />
+            <Search className="h-5 w-5 text-gray-700" />
           </motion.button>
           
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('category-window')}
-            className="sidebar-control modern-btn"
+            className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow"
             title="Categories"
           >
-            <MapPin className="h-6 w-6 text-gray-700" />
+            <MapPin className="h-5 w-5 text-gray-700" />
           </motion.button>
           
 
@@ -2077,34 +2416,34 @@ const DiscoverMain = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('view-mode-window')}
-            className="sidebar-control modern-btn"
+            className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow"
             title="View Mode"
           >
-            <Grid3X3 className="h-6 w-6 text-gray-700" />
+            <Grid3X3 className="h-5 w-5 text-gray-700" />
           </motion.button>
           
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('map-type-window')}
-            className="sidebar-control modern-btn"
+            className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow"
             title="Map Type"
           >
-            <MapPin className="h-6 w-6 text-gray-700" />
+            <MapPin className="h-5 w-5 text-gray-700" />
           </motion.button>
           
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => toggleWindow('saved-locations-window')}
-            className={`sidebar-control modern-btn ${
+            className={`w-10 h-10 rounded-full backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow ${
               showSavedLocationsOnMap 
                 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white border-yellow-500' 
-                : ''
+                : 'bg-white/90'
             }`}
             title={isAuthenticated ? `${showSavedLocationsOnMap ? 'Hide' : 'Show'} saved locations` : 'Login to view saved locations'}
           >
-            <Bookmark className={`h-6 w-6 ${showSavedLocationsOnMap ? 'fill-current' : ''}`} />
+            <Bookmark className={`h-5 w-5 ${showSavedLocationsOnMap ? 'fill-current' : ''}`} />
           </motion.button>
           
           <motion.button
@@ -2122,16 +2461,18 @@ const DiscoverMain = () => {
                 });
               }
             }}
-            className={`sidebar-control modern-btn ${followUser ? 'bg-blue-500 text-white' : ''}`}
+            className={`w-10 h-10 rounded-full backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow ${
+              followUser ? 'bg-blue-500 text-white' : 'bg-white/90'
+            }`}
             title={followUser ? "Stop Following Location" : (userLocation ? "Update Current Location" : "Show My Location")}
             disabled={locationLoading}
           >
             {locationLoading ? (
-              <div className="w-6 h-6 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <div className="w-5 h-5 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
               </div>
             ) : (
-              <Navigation className={`h-6 w-6 ${followUser ? 'text-white' : 'text-gray-700'}`} />
+              <Navigation className={`h-5 w-5 ${followUser ? 'text-white' : 'text-gray-700'}`} />
             )}
           </motion.button>
         </motion.div>
@@ -2139,7 +2480,7 @@ const DiscoverMain = () => {
         {/* Search Window */}
         <motion.div 
           id="search-window" 
-          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window search-window"
+          className="hidden absolute top-20 left-20 z-[999] sidebar-window search-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2259,7 +2600,7 @@ const DiscoverMain = () => {
         {/* Category Window */}
         <motion.div 
           id="category-window" 
-          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window"
+          className="hidden absolute top-20 left-20 z-[999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2294,10 +2635,10 @@ const DiscoverMain = () => {
                     setSelectedCategory(category.id);
                     document.getElementById('category-window')?.classList.add('hidden');
                   }}
-                  className={`w-full text-left p-4 rounded-xl font-medium transition-all flex items-center gap-3 category-btn ${
+                  className={`w-full text-left p-3 rounded-lg font-medium transition-all flex items-center gap-3 ${
                     selectedCategory === category.id
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg'
-                      : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                      ? 'bg-blue-500 text-white border border-blue-500'
+                      : 'bg-white text-gray-800 border border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   <IconComponent className="h-6 w-6 flex-shrink-0" />
@@ -2313,7 +2654,7 @@ const DiscoverMain = () => {
         {/* View Mode Window */}
         <motion.div 
           id="view-mode-window" 
-          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window"
+          className="hidden absolute top-20 left-20 z-[999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2340,10 +2681,10 @@ const DiscoverMain = () => {
                 document.getElementById('view-mode-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn flex items-start gap-4 ${
+              className={`w-full p-3 rounded-lg transition-all flex items-start gap-4 border ${
                 viewMode === 'grid' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <Grid3X3 className="h-6 w-6 flex-shrink-0 mt-0.5" />
@@ -2359,10 +2700,10 @@ const DiscoverMain = () => {
                 document.getElementById('view-mode-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn flex items-start gap-4 ${
+              className={`w-full p-3 rounded-lg transition-all flex items-start gap-4 border ${
                 viewMode === 'list' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <ThumbsUp className="h-6 w-6 flex-shrink-0 mt-0.5" />
@@ -2377,7 +2718,7 @@ const DiscoverMain = () => {
         {/* Map Type Window */}
         <motion.div 
           id="map-type-window" 
-          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window"
+          className="hidden absolute top-20 left-20 z-[999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2404,10 +2745,10 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+              className={`w-full p-3 rounded-lg transition-all border ${
                 mapType === 'google' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <div className="font-bold text-base mb-1">Google Maps</div>
@@ -2420,10 +2761,10 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+              className={`w-full p-3 rounded-lg transition-all border ${
                 mapType === 'street' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <div className="font-bold text-base mb-1">Street Map</div>
@@ -2436,10 +2777,10 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+              className={`w-full p-3 rounded-lg transition-all border ${
                 mapType === 'satellite' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <div className="font-bold text-base mb-1">Satellite View</div>
@@ -2452,10 +2793,10 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+              className={`w-full p-3 rounded-lg transition-all border ${
                 mapType === 'terrain' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <div className="font-bold text-base mb-1">Terrain View</div>
@@ -2468,10 +2809,10 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+              className={`w-full p-3 rounded-lg transition-all border ${
                 mapType === 'dark' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <div className="font-bold text-base mb-1">Dark Theme</div>
@@ -2484,10 +2825,10 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+              className={`w-full p-3 rounded-lg transition-all border ${
                 mapType === 'light' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <div className="font-bold text-base mb-1">Light Theme</div>
@@ -2500,10 +2841,10 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+              className={`w-full p-3 rounded-lg transition-all border ${
                 mapType === 'topographic' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <div className="font-bold text-base mb-1">Topographic</div>
@@ -2516,10 +2857,10 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+              className={`w-full p-3 rounded-lg transition-all border ${
                 mapType === 'navigation' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <div className="font-bold text-base mb-1">Navigation</div>
@@ -2532,10 +2873,10 @@ const DiscoverMain = () => {
                 document.getElementById('map-type-window')?.classList.add('hidden');
               }}
               whileHover={{ scale: 1.02 }}
-              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+              className={`w-full p-3 rounded-lg transition-all border ${
                 mapType === 'cycle' 
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
-                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+                  ? 'bg-blue-500 text-white border-blue-500' 
+                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
               }`}
             >
               <div className="font-bold text-base mb-1">Cycle Map</div>
@@ -2547,7 +2888,7 @@ const DiscoverMain = () => {
         {/* Saved Posts Window */}
         <motion.div 
           id="saved-locations-window" 
-          className="hidden absolute top-[65px] left-20 z-[999] sidebar-window"
+          className="hidden absolute top-20 left-20 z-[999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2584,7 +2925,7 @@ const DiscoverMain = () => {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="p-4 bg-white/70 rounded-2xl flex justify-between items-start glass-effect cursor-pointer hover:bg-white/90 transition-colors border border-gray-100"
+                    className="p-3 bg-white rounded-lg flex justify-between items-start cursor-pointer hover:bg-gray-50 transition-colors border border-gray-200"
                   >
                     <div 
                       className="flex-1 cursor-pointer"
@@ -2640,15 +2981,15 @@ const DiscoverMain = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="absolute top-0 right-0 h-screen w-full max-md:w-full max-md:inset-0 max-md:absolute bg-white/95 backdrop-blur-sm shadow-2xl z-[999] overflow-y-auto"
+              className="absolute top-20 right-4 bottom-4 w-96 bg-white rounded-xl shadow-2xl z-[999] overflow-y-auto border border-gray-200"
             >
-              <div className="p-4 border-b border-gray-200 sticky top-0 bg-white/90 backdrop-blur-sm z-10 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-800">Discoveries ({filteredPosts.length})</h2>
+              <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10 flex justify-between items-center">
+                <h2 className="text-lg font-bold text-gray-800">Results ({filteredPosts.length})</h2>
                 <motion.button 
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setShowListings(false)}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <X className="h-5 w-5 text-gray-600" />
                 </motion.button>
@@ -2721,7 +3062,7 @@ const DiscoverMain = () => {
                   [...Array(5)].map((_, index) => (
                     <div 
                       key={index} 
-                      className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 skeleton"
+                      className="bg-white rounded-lg overflow-hidden border border-gray-200 skeleton"
                     >
                       <div className="p-3">
                         <div className="flex items-start gap-3">
@@ -2751,7 +3092,7 @@ const DiscoverMain = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 15 }}
                       whileHover={{ y: -2, scale: 1.01 }}
-                      className="bg-white/70 backdrop-blur-sm rounded-xl shadow-sm overflow-hidden cursor-pointer border border-gray-100 smooth-transition discover-card glass-effect"
+                      className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer border border-gray-200 smooth-transition discover-card"
                       onClick={() => {
                         setSelectedPost(post);
                         flyToPost(post.position);
@@ -2844,7 +3185,7 @@ const DiscoverMain = () => {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 15 }}
                               whileHover={{ y: -2, scale: 1.01 }}
-                              className="bg-white/70 backdrop-blur-sm rounded-xl shadow-sm overflow-hidden cursor-pointer border border-gray-100 smooth-transition discover-card glass-effect p-3"
+                              className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer border border-gray-200 smooth-transition discover-card p-3"
                               onClick={() => {
                                 setSelectedPost(suggestion.post);
                                 flyToPost(suggestion.post.position);
@@ -2937,7 +3278,7 @@ const DiscoverMain = () => {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.05 }}
-                                    className="text-left bg-white/50 rounded-lg p-2 cursor-pointer hover:bg-white/70 transition-colors"
+                                    className="text-left bg-white rounded-lg p-2 cursor-pointer hover:bg-gray-50 transition-colors border border-gray-100"
                                     onClick={() => {
                                       setSelectedPost(post);
                                       flyToPost(post.position);

@@ -3,7 +3,7 @@ import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapView.css';
 import CustomMarker from './CustomMarker';
-import Header from '../Landing/Header/Header';
+
 import { useAuth } from '../../contexts/AuthContext';
 import { useModal } from '../../contexts/ModalContext';
 
@@ -397,7 +397,6 @@ const MapView = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-900">
-        <Header isDiscoverPage={true} />
         <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
           <div className="text-center p-6 bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 max-w-md">
             <h2 className="text-xl font-bold text-red-400 mb-2">Error Loading Map</h2>
@@ -416,7 +415,6 @@ const MapView = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <Header isDiscoverPage={true} />
       
       <div className="flex pt-32">
         {/* Icon-only Sidebar */}

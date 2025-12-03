@@ -2,7 +2,6 @@ import React, { useState, useRef } from "react";
 import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import { useNavigate } from "react-router-dom";
 import { MapPin, X, Image as ImageIcon, Plus, Upload } from "lucide-react";
-import Header from "../../components/Landing/Header/Header";
 import { useAuth } from "../../contexts/AuthContext";
 import usePageTitle from "../../services/usePageTitle";
 import { postApi } from "../../services/api";
@@ -228,7 +227,6 @@ const AddPost = () => {
 
   return (
     <div className="min-h-screen bg-red-600">
-      <Header />
       <div className="max-w-4xl mx-auto px-4 py-8 pt-24">
         {" "}
         {/* Changed max-width for better focus on form */}

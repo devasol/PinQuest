@@ -142,8 +142,7 @@ export const firebaseAuthService = {
         prompt: 'select_account' // Forces account selection
       });
 
-      // Check if popup operations are allowed in the current context
-      // This helps with the Cross-Origin-Opener-Policy error
+      // Use popup method for Google login
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       const firebaseIdToken = await user.getIdToken();
@@ -175,10 +174,10 @@ export const firebaseAuthService = {
           success: false,
           error: 'Popup was closed by the user'
         };
-      } else if (error.code === 'auth/cancelled-popup-request' || error.message.includes('window.closed')) {
+      } else if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request' || error.message.includes('popup') || error.message.includes('window.closed')) {
         return {
           success: false,
-          error: 'Authentication popup was interrupted. This may be due to browser security policies.'
+          error: 'Authentication popup was blocked. Please ensure popups are allowed for this site. For mobile devices, try using the mobile app version.'
         };
       }
       return {
