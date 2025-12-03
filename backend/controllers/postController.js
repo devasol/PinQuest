@@ -1,7 +1,7 @@
 const Post = require("../models/posts");
 const Activity = require("../models/Activity");
 const validator = require('validator');
-const { get: getCache, set: setCache, del: delCache } = require('../utils/redis'); // Using Redis cache
+const cache = require('../utils/cache'); // Using enhanced cache (Redis with memory fallback)
 const {
   createLikeNotification,
   createCommentNotification,
@@ -173,9 +173,9 @@ const createPost = async (req, res) => {
     }
 
     // Clear related caches - invalidate all posts pages since new post changes the list
-    const postCacheKeys = await require('../utils/redis').keys('posts_page_*');
+    const postCacheKeys = await cache.keys('posts_page_*');
     for (const key of postCacheKeys) {
-      await require('../utils/redis').del(key);
+      await cache.del(key);
     }
 
     // Populate the postedBy field before sending response to include user info
@@ -243,7 +243,7 @@ const getAllPosts = async (req, res) => {
     const cacheKey = `posts_page_${page}_limit_${limit}_category_${filter.category || 'all'}_search_${req.query.search || 'none'}`;
 
     // Try to get from cache first
-    const cachedResult = await getCache(cacheKey);
+    const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
       console.log(`Serving posts from cache: ${cacheKey}`);
       return res.status(200).json(cachedResult);
@@ -277,7 +277,7 @@ const getAllPosts = async (req, res) => {
     
     // Cache the result for 5 minutes (300 seconds) for non-search queries
     if (!req.query.search) {
-      await setCache(cacheKey, response, 300); // Cache for 5 minutes
+      await cache.set(cacheKey, response, 300); // Cache for 5 minutes
     }
     
     res.status(200).json(response);
@@ -463,9 +463,9 @@ const updatePost = async (req, res) => {
 
     // Clear related caches
     // Invalidation: Remove any posts cache that might contain this updated post
-    const postCacheKeys = await require('../utils/redis').keys('posts_page_*');
+    const postCacheKeys = await cache.keys('posts_page_*');
     for (const key of postCacheKeys) {
-      await require('../utils/redis').del(key);
+      await cache.del(key);
     }
 
     console.log("Post updated successfully:", updatedPost._id);
@@ -510,9 +510,9 @@ const deletePost = async (req, res) => {
 
     // Clear related caches
     // Invalidation: Remove any posts cache that might contain this deleted post
-    const postCacheKeys = await require('../utils/redis').keys('posts_page_*');
+    const postCacheKeys = await cache.keys('posts_page_*');
     for (const key of postCacheKeys) {
-      await require('../utils/redis').del(key);
+      await cache.del(key);
     }
 
     console.log("Post deleted successfully:", req.params.id);

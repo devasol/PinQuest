@@ -1,43 +1,35 @@
-// Simple in-memory cache implementation
-class InMemoryCache {
+// Simple in-memory cache as fallback when Redis is not available
+class MemoryCache {
   constructor() {
     this.cache = new Map();
-    this.timeouts = new Map(); // Store timeout references for expiration
+    this.timeouts = new Map();
   }
 
-  // Set a value in cache with optional expiration (in seconds)
-  set(key, value, ttl = 300) { // Default TTL: 5 minutes
+  async set(key, value, expiration = 300) { // Default to 5 minutes
     // Clear any existing timeout for this key
     if (this.timeouts.has(key)) {
       clearTimeout(this.timeouts.get(key));
       this.timeouts.delete(key);
     }
 
-    // Set the value
+    // Store the value
     this.cache.set(key, value);
 
-    // Set expiration if TTL is provided
-    if (ttl > 0) {
+    // Set timeout to remove the key after expiration
+    if (expiration > 0) {
       const timeout = setTimeout(() => {
-        this.delete(key);
-      }, ttl * 1000);
+        this.cache.delete(key);
+      }, expiration * 1000);
 
       this.timeouts.set(key, timeout);
     }
   }
 
-  // Get a value from cache
-  get(key) {
-    return this.cache.get(key);
+  async get(key) {
+    return this.cache.has(key) ? this.cache.get(key) : null;
   }
 
-  // Check if a key exists in cache
-  has(key) {
-    return this.cache.has(key);
-  }
-
-  // Delete a value from cache
-  delete(key) {
+  async del(key) {
     if (this.timeouts.has(key)) {
       clearTimeout(this.timeouts.get(key));
       this.timeouts.delete(key);
@@ -45,22 +37,52 @@ class InMemoryCache {
     return this.cache.delete(key);
   }
 
-  // Clear all cache
-  clear() {
-    for (const timeout of this.timeouts.values()) {
-      clearTimeout(timeout);
-    }
-    this.timeouts.clear();
-    this.cache.clear();
-  }
-
-  // Get cache size
-  size() {
-    return this.cache.size;
+  async keys(pattern) {
+    const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+    return Array.from(this.cache.keys()).filter(key => regex.test(key));
   }
 }
 
-// Create a singleton instance
-const cache = new InMemoryCache();
+const memoryCache = new MemoryCache();
 
-module.exports = cache;
+// Enhanced cache manager that uses Redis when available, otherwise falls back to memory
+const getCache = async (key) => {
+  const redisUtils = require('./redis');
+  if (redisUtils.isRedisConnected()) {
+    return await redisUtils.get(key);
+  }
+  return await memoryCache.get(key);
+};
+
+const setCache = async (key, value, expiration = 300) => {
+  const redisUtils = require('./redis');
+  if (redisUtils.isRedisConnected()) {
+    await redisUtils.set(key, value, expiration);
+  } else {
+    await memoryCache.set(key, value, expiration);
+  }
+};
+
+const delCache = async (key) => {
+  const redisUtils = require('./redis');
+  if (redisUtils.isRedisConnected()) {
+    await redisUtils.del(key);
+  } else {
+    await memoryCache.del(key);
+  }
+};
+
+const keysCache = async (pattern) => {
+  const redisUtils = require('./redis');
+  if (redisUtils.isRedisConnected()) {
+    return await redisUtils.keys(pattern);
+  }
+  return await memoryCache.keys(pattern);
+};
+
+module.exports = {
+  get: getCache,
+  set: setCache,
+  del: delCache,
+  keys: keysCache
+};
