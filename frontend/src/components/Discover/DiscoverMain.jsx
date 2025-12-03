@@ -89,6 +89,22 @@ const DiscoverMain = () => {
   const [locationLoading, setLocationLoading] = useState(false); // Track if updating user location is in progress
   const [bookmarkLoading, setBookmarkLoading] = useState(null); // Track which post is being bookmarked/unbookmarked
   const [followUser, setFollowUser] = useState(false); // Track if map should follow user's movement
+
+  // Handle responsive sidebar for mobile
+  const [screenWidth, setScreenWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenWidth(window.innerWidth);
+      // On mobile, ensure sidebar is collapsed
+      if (window.innerWidth < 768) {
+        setIsSidebarExpanded(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Notification states
   const [notifications, setNotifications] = useState([]);
@@ -232,6 +248,51 @@ const DiscoverMain = () => {
   
   // State for enhanced search results
   const [enhancedSearchResults, setEnhancedSearchResults] = useState([]);
+  
+  // State for responsive search bar functionality
+  const searchContainerRef = useRef(null);
+  const [isSearchBarVisible, setIsSearchBarVisible] = useState(window.innerWidth >= 640); // Show full search bar on larger screens by default
+  
+  // Effect to handle responsive search bar visibility
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 640) {
+        // On small screens, hide the search bar if it was open
+        setIsSearchBarVisible(false);
+      } else {
+        // On larger screens, show the search bar
+        setIsSearchBarVisible(true);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Clean up event listener
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+  
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        if (searchFocused) {
+          setSearchFocused(false);
+        }
+        if (!isSearchBarVisible && searchQuery) {
+          // On mobile, when clicking outside, clear search query to avoid showing results
+          setSearchQuery('');
+          setEnhancedSearchResults([]);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [searchFocused, isSearchBarVisible, searchQuery]);
   
   
   // State for geocoding search results
@@ -2003,12 +2064,12 @@ const DiscoverMain = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white relative">
+    <div className="min-h-screen bg-white relative overflow-hidden">
       {/* Top-right user controls positioned above the map (adjusted for sidebar) */}
-      <div className="top-right-controls absolute top-4 z-[1000] flex items-center gap-3" style={{ right: isSidebarExpanded ? '1rem' : '4rem' }}>
+      <div className="top-right-controls absolute top-4 z-[5980] flex flex-wrap items-center gap-2 sm:gap-3" style={{ right: isSidebarExpanded && window.innerWidth >= 768 ? '4rem' : '1rem' }}>
         {/* User controls - login, notifications, name */}
         {isAuthenticated ? (
-          <div className="flex items-center gap-3 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-md border border-gray-200">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-white/90 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 shadow-md border border-gray-200">
             {/* Notifications */}
             <div className="relative">
               <button 
@@ -2031,31 +2092,31 @@ const DiscoverMain = () => {
               {isNotificationOpen && (
                 <div 
                   ref={notificationRef}
-                  className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-[7001]"
+                  className="absolute right-0 mt-2 w-72 max-w-[90vw] sm:w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-[5981]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-semibold text-gray-800">Notifications</h3>
+                    <h3 className="font-semibold text-gray-800 text-sm sm:text-base">Notifications</h3>
                     {notifications.length > 0 && (
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
                           markAllAsRead();
                         }}
-                        className="text-sm text-blue-600 hover:text-blue-800"
+                        className="text-xs sm:text-sm text-blue-600 hover:text-blue-800"
                       >
                         Mark all as read
                       </button>
                     )}
                   </div>
                   
-                  <div className="max-h-96 overflow-y-auto">
+                  <div className="max-h-64 sm:max-h-96 overflow-y-auto">
                     {notifications.length > 0 ? (
                       <div className="divide-y divide-gray-100">
                         {notifications.map((notification) => (
                           <div 
                             key={notification._id} 
-                            className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                            className={`p-3 sm:p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
                               !notification.read ? "bg-blue-50" : ""
                             }`}
                             onClick={() => {
@@ -2068,7 +2129,7 @@ const DiscoverMain = () => {
                           >
                             <div className="flex items-start">
                               <div className="flex-1 min-w-0">
-                                <p className={`text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-gray-800`}>
+                                <p className={`text-xs sm:text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-gray-800`}>
                                   {notification.message}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">
@@ -2091,10 +2152,10 @@ const DiscoverMain = () => {
                         ))}
                       </div>
                     ) : (
-                      <div className="p-6 text-center">
-                        <Bell className="mx-auto h-10 w-10 text-gray-300" />
-                        <h3 className="mt-2 font-medium text-gray-900">No notifications</h3>
-                        <p className="text-sm text-gray-500 mt-1">
+                      <div className="p-4 sm:p-6 text-center">
+                        <Bell className="mx-auto h-8 w-8 sm:h-10 sm:w-10 text-gray-300" />
+                        <h3 className="mt-2 font-medium text-gray-900 text-sm">No notifications</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 mt-1">
                           You'll see notifications here when they arrive.
                         </p>
                       </div>
@@ -2104,101 +2165,123 @@ const DiscoverMain = () => {
               )}
             </div>
 
-            {/* User profile */}
-            <div className="flex items-center space-x-2">
+            {/* User profile - logout button removed */}
+            <div className="flex flex-wrap items-center gap-1 sm:gap-2">
               <Link
                 to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
-                className="flex items-center space-x-2 px-3 py-2 text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
               >
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <User className="h-4 w-4 text-white" />
+                <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
                 </div>
-                <span className="text-sm font-medium max-w-[100px] truncate">
+                <span className="text-xs hidden sm:block font-medium max-w-[60px) sm:max-w-[100px] truncate">
                   {user?.name ||
                     (user?.role === "admin" ? "Admin" : "Profile")}
                 </span>
               </Link>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-2 text-sm text-gray-700 hover:text-red-600 transition-colors rounded-lg hover:bg-gray-100"
-              >
-                Logout
-              </button>
+              {/* Logout button removed from top bar */}
             </div>
           </div>
         ) : (
           // Login button for unauthenticated users
           <Link
             to="/login"
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+            className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
           >
-            <span className="text-sm font-medium">Login</span>
-            <User className="h-4 w-4" />
+            <span className="text-xs sm:text-sm font-medium">Login</span>
+            <User className="h-3 w-3 sm:h-4 sm:w-4" />
           </Link>
         )}
       </div>
       
       {/* Map and results area - adjust to account for sidebar */}
-      <div className="map-container" style={{ marginLeft: isSidebarExpanded ? '16rem' : '5rem' }}>
-        {/* Search Bar with Results Window */}
-        <div className="top-search-bar absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4">
-          <div className="relative">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search for places, locations, categories..."
-                className="w-full pl-12 pr-10 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base bg-white"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => {
-                  // Only hide the results window after a short delay to allow clicks on results
-                  setTimeout(() => setSearchFocused(false), 200);
-                }}
-              />
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setEnhancedSearchResults([]);
+      <div className={`map-container transition-all duration-300 ease-in-out ${isSidebarExpanded && window.innerWidth >= 768 ? 'ml-[16rem]' : 'ml-0'}`} style={{ marginLeft: isSidebarExpanded && window.innerWidth >= 768 ? '16rem' : '0' }}>
+        {/* Responsive search bar: icon on mobile, full bar on larger screens */}
+        <div className="top-search-bar absolute top-4 sm:top-16 left-1/2 transform -translate-x-1/2 z-[6000] w-full px-4">
+          <div className="max-w-2xl mx-auto relative" ref={searchContainerRef}>
+            {isSearchBarVisible ? ( // Only show the full search bar when isSearchBarVisible is true
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search for places, locations, categories..."
+                  className="w-full pl-12 pr-10 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base bg-white"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => {
+                    // Only hide the results window after a short delay to allow clicks on results
+                    setTimeout(() => setSearchFocused(false), 200);
                   }}
-                  className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <X className="h-4 w-4 text-gray-500" />
-                </button>
-              )}
-              
-              {/* Close button for the search bar itself */}
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setEnhancedSearchResults([]);
-                  setSearchFocused(false); // Also hide the results window
-                }}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <X className="h-4 w-4 text-gray-500" />
-              </button>
-            </div>
-            
-            {/* Search Results Window - appears when search bar is focused or has results */}
-            {searchFocused && (
-              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-[1001] max-h-96 overflow-y-auto">
-                {/* Close button for the results window */}
+                  autoFocus
+                />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setEnhancedSearchResults([]);
+                    }}
+                    className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                  >
+                    <X className="h-4 w-4 text-gray-500" />
+                  </button>
+                )}
+                
+                {/* Close button for the search bar itself */}
                 <button
                   onClick={() => {
                     setSearchQuery('');
                     setEnhancedSearchResults([]);
                     setSearchFocused(false); // Also hide the results window
+                    setIsSearchBarVisible(false); // Hide the search bar
                   }}
-                  className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 transition-colors z-[1002]"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
                 >
                   <X className="h-4 w-4 text-gray-500" />
                 </button>
+              </div>
+            ) : (
+              // Show search icon when search bar is not visible (mobile view)
+              <div className="flex items-center justify-center">
+                <button
+                  onClick={() => {
+                    setIsSearchBarVisible(true);
+                    setTimeout(() => {
+                      // Focus the search input after it appears
+                      const searchInput = document.querySelector('.top-search-bar input');
+                      if (searchInput) {
+                        searchInput.focus();
+                      }
+                    }, 100);
+                  }}
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl border border-gray-200 bg-white shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors"
+                  aria-label="Open search"
+                >
+                  <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
+                </button>
+              </div>
+            )}
+            
+            {/* Search Results Window - appears when search bar is focused or has results (for both mobile and desktop) */}
+            {searchFocused && (
+              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-full ${isSearchBarVisible ? 'max-w-2xl' : 'max-w-[calc(100vw-2rem)] sm:max-w-2xl'} mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-[6001] max-h-64 sm:max-h-96 overflow-y-auto`}>
+                {/* Close button for the results window (only when search bar is visible) */}
+                {isSearchBarVisible && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setEnhancedSearchResults([]);
+                      setSearchFocused(false); // Also hide the results window
+                      setIsSearchBarVisible(false); // Hide the search bar as well
+                    }}
+                    className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 transition-colors z-[6002]"
+                  >
+                    <X className="h-4 w-4 text-gray-500" />
+                  </button>
+                )}
                 
-                <div className="p-3 pt-8 space-y-2"> {/* Added pt-8 to make space for close button */}
+                <div className={`p-3 ${isSearchBarVisible ? 'pt-8' : ''} space-y-2`}> {/* Added pt-8 to make space for close button when search bar is visible */}
                   {searchLoading ? (
                     <div className="flex items-center justify-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
@@ -2214,26 +2297,28 @@ const DiscoverMain = () => {
                           setSearchQuery(''); // Clear search after selection
                           setEnhancedSearchResults([]); // Clear results after selection
                           setSearchFocused(false); // Hide the results window after selection
+                          setIsSearchBarVisible(false); // Hide the search bar
                         }}
                       >
-                        <div className="font-medium text-gray-900">{post.title}</div>
-                        <div className="text-sm text-gray-600 truncate">{post.description}</div>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="font-medium text-gray-900 text-sm">{post.title}</div>
+                        <div className="text-xs text-gray-600 truncate mt-1">{post.description}</div>
+                        <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                             {post.category}
                           </span>
-                          <span className="text-xs text-gray-500">
-                            {post.averageRating?.toFixed(1) || '0.0'} ★
+                          <span className="text-xs text-gray-500 flex items-center">
+                            <Star className="h-3 w-3 mr-0.5" />
+                            {post.averageRating?.toFixed(1) || '0.0'}
                           </span>
                         </div>
                       </div>
                     ))
                   ) : searchQuery ? (
-                    <div className="text-center py-4 text-gray-500">
+                    <div className="text-center py-4 text-gray-500 text-sm">
                       No results found for "{searchQuery}"
                     </div>
                   ) : (
-                    <div className="text-center py-4 text-gray-500">
+                    <div className="text-center py-4 text-gray-500 text-sm">
                       Enter a search term to find locations
                     </div>
                   )}
@@ -2256,7 +2341,7 @@ const DiscoverMain = () => {
           easeLinearity={0.35}
           style={{ height: '100vh', width: '100%' }}
           ref={mapRef}
-          className="z-0"
+          className="z-0 w-full"
           maxBounds={[
             [-90, -180], // Southwest coordinates (bottom-left)
             [90, 180]    // Northeast coordinates (top-right)
@@ -2264,6 +2349,12 @@ const DiscoverMain = () => {
           maxBoundsViscosity={0.75}
           worldCopyJump={true}
           attributionControl={true}
+          whenCreated={(map) => {
+            // Ensure the map handles resize events properly on mobile
+            window.addEventListener('resize', () => {
+              setTimeout(() => map.invalidateSize(), 100); // Small delay to ensure DOM is updated
+            });
+          }}
         >
           <TileLayer
             attribution={mapType === 'satellite' 
@@ -2336,7 +2427,7 @@ const DiscoverMain = () => {
             <motion.div 
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              className="absolute top-20 right-20 z-[1000]"
+              className="absolute top-20 right-4 z-[5993] sm:right-20"
             >
               <button
                 onClick={clearRouting}
@@ -2353,7 +2444,7 @@ const DiscoverMain = () => {
             <motion.div 
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              className="absolute top-20 right-20 z-[1000]"
+              className="absolute top-20 right-4 z-[5992] sm:right-20"
             >
               <div className="px-3 py-2 bg-blue-500 text-white rounded-lg shadow-md flex items-center gap-2 text-sm">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -2485,7 +2576,7 @@ const DiscoverMain = () => {
           <motion.div 
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-20 right-4 z-[999]"
+            className="absolute top-20 right-4 z-[5994] sm:right-20"
           >
             <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2 px-3 rounded-lg shadow-md flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
@@ -2515,12 +2606,20 @@ const DiscoverMain = () => {
           toggleSidebar={toggleSidebar}
         />
         
+        {/* Mobile-friendly overlay when sidebar is expanded on smaller screens */}
+        {isSidebarExpanded && screenWidth < 768 && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-[4999] backdrop-blur-sm transition-opacity duration-300"
+            onClick={toggleSidebar}
+          ></div>
+        )}
+        
 
         
         {/* Category Window */}
         <motion.div 
           id="category-window" 
-          className="hidden absolute top-20 left-20 z-[999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
+          className="hidden absolute top-20 left-4 z-[5999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2574,7 +2673,7 @@ const DiscoverMain = () => {
         {/* View Mode Window */}
         <motion.div 
           id="view-mode-window" 
-          className="hidden absolute top-20 left-20 z-[999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
+          className="hidden absolute top-20 left-4 z-[5998] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2638,7 +2737,7 @@ const DiscoverMain = () => {
         {/* Map Type Window */}
         <motion.div 
           id="map-type-window" 
-          className="hidden absolute top-20 left-20 z-[999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
+          className="hidden absolute top-20 left-4 z-[5997] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2808,7 +2907,7 @@ const DiscoverMain = () => {
         {/* Saved Posts Window */}
         <motion.div 
           id="saved-locations-window" 
-          className="hidden absolute top-20 left-20 z-[999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
+          className="hidden absolute top-20 left-4 z-[5996] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2901,7 +3000,7 @@ const DiscoverMain = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="absolute top-20 right-4 bottom-4 w-96 bg-white rounded-xl shadow-2xl z-[999] overflow-y-auto border border-gray-200"
+              className="absolute top-20 right-4 bottom-4 w-96 bg-white rounded-xl shadow-2xl z-[5995] overflow-y-auto border border-gray-200"
             >
               <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10 flex justify-between items-center">
                 <h2 className="text-lg font-bold text-gray-800">Results ({filteredPosts.length})</h2>

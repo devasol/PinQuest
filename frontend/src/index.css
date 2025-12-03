@@ -1,6 +1,25 @@
 @import "tailwindcss";
 @import 'leaflet/dist/leaflet.css';
 
+/* Responsive base styles */
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+/* Ensure 100% height for the app */
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
 /* Custom Scrollbar Styles - Beautiful & Modern Design */
 ::-webkit-scrollbar {
   width: 10px;
@@ -102,4 +121,240 @@ html {
 .overflow-x-auto {
   scrollbar-width: thin;
   scrollbar-color: #c7d2e0 #f1f5f9;
+}
+
+/* Responsive container fixes */
+.container {
+  width: 100%;
+  padding-right: 0.5rem;
+  padding-left: 0.5rem;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+/* Responsive image handling */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Media queries for responsive adjustments */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
+}
+
+/* Responsive fixes for mobile devices */
+@media (max-width: 768px) {
+  .min-h-screen {
+    min-height: 100vh;
+  }
+  
+  /* Ensure mobile-friendly inputs */
+  input, select, textarea {
+    font-size: 16px; /* Prevents zoom on iOS when focusing inputs */
+  }
+}
+
+/* Fix for mobile touch targets */
+button, a {
+  touch-action: manipulation;
+}
+
+/* Responsive font sizes */
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-base { font-size: 1rem; line-height: 1.5rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+
+@media (max-width: 768px) {
+  .text-xs { font-size: 0.7rem; line-height: 0.9rem; }
+  .text-sm { font-size: 0.8rem; line-height: 1.1rem; }
+  .text-base { font-size: 0.9rem; line-height: 1.3rem; }
+  .text-lg { font-size: 1.0rem; line-height: 1.4rem; }
+  .text-xl { font-size: 1.1rem; line-height: 1.5rem; }
+  .text-2xl { font-size: 1.25rem; line-height: 1.6rem; }
+  .text-3xl { font-size: 1.5rem; line-height: 1.8rem; }
+}
+
+/* Additional responsive utility classes */
+.responsive-padding {
+  padding: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-padding {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-padding {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-padding {
+    padding: 2rem;
+  }
+}
+
+.responsive-margin {
+  margin: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .responsive-margin {
+    margin: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-margin {
+    margin: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-margin {
+    margin: 2rem;
+  }
+}
+
+/* Responsive width classes */
+.full-width-mobile {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .full-width-mobile {
+    width: 300px;
+  }
+}
+
+@media (min-width: 768px) {
+  .full-width-mobile {
+    width: 400px;
+  }
+}
+
+/* Responsive max-width adjustments */
+.max-w-responsive {
+  max-width: 100%;
+}
+
+@media (min-width: 768px) {
+  .max-w-responsive {
+    max-width: calc(100% - 2rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .max-w-responsive {
+    max-width: 1200px;
+  }
+}
+
+/* Mobile-first responsive adjustments */
+.mobile-center {
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .mobile-center {
+    text-align: left;
+  }
+}
+
+/* Responsive spacing for flex elements */
+.flex-responsive {
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .flex-responsive {
+    flex-direction: row;
+  }
+}
+
+.gap-responsive {
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .gap-responsive {
+    gap: 1rem;
+  }
+}
+
+/* Landscape mode fixes */
+@media (orientation: landscape) and (max-height: 500px) {
+  .min-h-screen {
+    min-height: calc(100vh - 10px);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .bg-white {
+    background-color: #ffffff !important;
+  }
+  
+  .text-gray-900 {
+    color: #000000 !important;
+  }
+  
+  .border-gray-200 {
+    border-color: #000000 !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Prevent layout shift during loading */
+.loading-container {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive container for content */
+.content-container {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.5rem;
+  margin: 0 auto;
+}
+
+@media (min-width: 640px) {
+  .content-container {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .content-container {
+    padding: 2rem;
+    max-width: 1200px;
+  }
 }

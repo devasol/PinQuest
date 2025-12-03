@@ -282,40 +282,40 @@ const CreatePostModal = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[99998] flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[99998] flex items-center justify-center p-2 sm:p-4"
         onClick={closeAndReset}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col z-[99999]"
+          className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-full sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col z-[99999]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white">
-            <div className="flex items-center justify-between">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 sm:p-6 text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 p-2 rounded-lg">
-                  <Plus className="w-6 h-6" />
+                  <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">Create New Post</h2>
-                  <p className="text-emerald-100">Share your discovery with the community</p>
+                  <h2 className="text-xl sm:text-2xl font-bold">Create New Post</h2>
+                  <p className="text-emerald-100 text-sm">Share your discovery with the community</p>
                 </div>
               </div>
               <button
                 onClick={closeAndReset}
-                className="p-2 rounded-full hover:bg-white/20 transition-colors"
+                className="p-2 rounded-full hover:bg-white/20 transition-colors self-start sm:self-auto"
                 aria-label="Close"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
           </div>
 
           {/* Form Content */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6">
             {/* Title Field */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -327,7 +327,7 @@ const CreatePostModal = ({
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 pl-12 border-2 rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 ${
+                  className={`w-full px-4 py-2.5 sm:py-3 pl-12 border-2 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 ${
                     errors.title
                       ? "border-red-300 focus:border-red-500 focus:ring-red-200"
                       : "border-emerald-200 focus:border-emerald-500"
@@ -341,7 +341,7 @@ const CreatePostModal = ({
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-1">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-1 gap-1">
                 {errors.title && (
                   <p className="text-red-500 text-sm flex items-center gap-1">
                     <AlertCircle className="w-4 h-4" />
@@ -349,7 +349,7 @@ const CreatePostModal = ({
                   </p>
                 )}
                 <p
-                  className={`text-xs ml-auto ${
+                  className={`text-xs sm:text-xs ml-auto ${
                     formData.title.length > 90
                       ? "text-red-500"
                       : "text-gray-500"
@@ -361,7 +361,7 @@ const CreatePostModal = ({
             </div>
 
             {/* Description Field */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Description *
               </label>
@@ -371,7 +371,7 @@ const CreatePostModal = ({
                   value={formData.description}
                   onChange={handleInputChange}
                   rows="4"
-                  className={`w-full px-4 py-3 pl-12 border-2 rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 resize-none ${
+                  className={`w-full px-4 py-2.5 sm:py-3 pl-12 border-2 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 resize-none ${
                     errors.description
                       ? "border-red-300 focus:border-red-500 focus:ring-red-200"
                       : "border-emerald-200 focus:border-emerald-500"
@@ -385,7 +385,7 @@ const CreatePostModal = ({
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-1">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-1 gap-1">
                 {errors.description && (
                   <p className="text-red-500 text-sm flex items-center gap-1">
                     <AlertCircle className="w-4 h-4" />
@@ -393,7 +393,7 @@ const CreatePostModal = ({
                   </p>
                 )}
                 <p
-                  className={`text-xs ml-auto ${
+                  className={`text-xs sm:text-xs ml-auto ${
                     formData.description.length > 450
                       ? "text-red-500"
                       : "text-gray-500"
@@ -435,7 +435,7 @@ const CreatePostModal = ({
             </div>
 
             {/* Category Field */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Category *
               </label>
@@ -444,7 +444,7 @@ const CreatePostModal = ({
                   name="category"
                   value={formData.category}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 pl-12 pr-10 border-2 border-emerald-200 rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 bg-gray-50 focus:bg-white appearance-none shadow-sm"
+                  className="w-full px-4 py-2.5 sm:py-3 pl-12 pr-10 border-2 border-emerald-200 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 bg-gray-50 focus:bg-white appearance-none shadow-sm"
                 >
                   {categories.map((cat) => (
                     <option key={cat.value} value={cat.value}>
@@ -458,7 +458,7 @@ const CreatePostModal = ({
                   </div>
                 </div>
                 <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
@@ -472,33 +472,35 @@ const CreatePostModal = ({
               </label>
 
               {/* Tabs for upload vs link */}
-              <div className="flex border-b border-gray-200 mb-4">
+              <div className="flex border-b border-gray-200 mb-3 sm:mb-4">
                 <button
                   type="button"
                   onClick={() => setActiveTab('upload')}
-                  className={`px-4 py-2 font-medium text-sm ${
+                  className={`px-3 py-2 font-medium text-xs sm:text-sm ${
                     activeTab === 'upload'
                       ? 'text-emerald-600 border-b-2 border-emerald-600'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Upload className="w-4 h-4" />
-                    Upload
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Upload</span>
+                    <span className="sm:hidden">Upload</span>
                   </div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('link')}
-                  className={`px-4 py-2 font-medium text-sm ${
+                  className={`px-3 py-2 font-medium text-xs sm:text-sm ${
                     activeTab === 'link'
                       ? 'text-emerald-600 border-b-2 border-emerald-600'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Link className="w-4 h-4" />
-                    From Link
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Link className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">From Link</span>
+                    <span className="sm:hidden">Link</span>
                   </div>
                 </button>
               </div>
@@ -507,7 +509,7 @@ const CreatePostModal = ({
                 <div>
                   {/* Upload area */}
                   <div
-                    className={`border-2 border-dashed rounded-xl transition-all duration-300 cursor-pointer ${
+                    className={`border-2 border-dashed rounded-lg sm:rounded-xl transition-all duration-300 cursor-pointer ${
                       dragActive
                         ? 'border-emerald-400 bg-emerald-50'
                         : 'border-emerald-300 hover:border-emerald-400 hover:bg-emerald-50'
@@ -518,12 +520,12 @@ const CreatePostModal = ({
                     onDrop={handleDrop}
                     onClick={() => (fileImages.length + linkImages.length) < 10 && fileInputRef.current?.click()}
                   >
-                    <div className="p-6 text-center">
-                      <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Upload className="w-6 h-6 text-emerald-600" />
+                    <div className="p-4 sm:p-6 text-center">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3">
+                        <Upload className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
                       </div>
-                      <p className="text-emerald-800 font-medium mb-1">Click to upload or drag and drop</p>
-                      <p className="text-sm text-emerald-600">JPG, PNG, GIF up to 5MB each</p>
+                      <p className="text-emerald-800 font-medium text-sm mb-1">Click to upload or drag and drop</p>
+                      <p className="text-xs sm:text-sm text-emerald-600">JPG, PNG, GIF up to 5MB each</p>
                       <p className="text-xs text-emerald-500 mt-1">Max 10 images</p>
                     </div>
                   </div>
@@ -539,11 +541,11 @@ const CreatePostModal = ({
                 </div>
               ) : (
                 <div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <input
                       type="text"
                       placeholder="Paste image URL here..."
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 text-sm"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -560,10 +562,11 @@ const CreatePostModal = ({
                         handleImageLinkAdd(input.value);
                         input.value = '';
                       }}
-                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 text-sm"
                     >
                       <Plus className="w-4 h-4" />
-                      Add
+                      <span className="hidden sm:inline">Add</span>
+                      <span className="sm:hidden">+</span>
                     </button>
                   </div>
                 </div>
@@ -577,12 +580,12 @@ const CreatePostModal = ({
               )}
 
               {/* Progress bar */}
-              <div className="mt-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <div className="mt-3 sm:mt-4">
+                <div className="flex flex-col sm:flex-row justify-between text-xs sm:text-sm text-gray-600 mb-1 gap-1">
                   <span>Progress</span>
                   <span>{(fileImages.length + linkImages.length)}/10</span>
                 </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="w-full h-1.5 sm:h-2 bg-gray-200 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
                     initial={{ width: 0 }}
@@ -598,21 +601,21 @@ const CreatePostModal = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
+                className="mb-6 sm:mb-8"
               >
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 gap-2">
                   <h3 className="text-sm font-semibold text-gray-700">Your Images ({fileImages.length + linkImages.length})</h3>
                   <button
                     type="button"
                     onClick={clearAllImages}
-                    className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1"
+                    className="text-red-500 hover:text-red-700 text-xs sm:text-sm flex items-center gap-1 justify-center sm:justify-start"
                   >
-                    <Trash2 className="w-4 h-4" />
-                    Clear all
+                    <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span>Clear all</span>
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                   {[...fileImages, ...linkImages].map((image, index) => (
                     <motion.div
                       key={image.id}
@@ -639,8 +642,8 @@ const CreatePostModal = ({
                                 e.target.nextSibling.style.display = 'flex';
                               }}
                             />
-                            <div className="fallback absolute inset-0 flex items-center justify-center text-gray-500 text-sm">
-                              <Link className="w-6 h-6 mr-2" />
+                            <div className="fallback absolute inset-0 flex items-center justify-center text-gray-500 text-xs sm:text-sm">
+                              <Link className="w-4 h-4 sm:w-6 sm:h-6 mr-1 sm:mr-2" />
                               {image.name}
                             </div>
                           </div>
@@ -650,9 +653,9 @@ const CreatePostModal = ({
                           <button
                             type="button"
                             onClick={() => removeImage(image.id)}
-                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all duration-300"
+                            className="bg-red-500 text-white p-1.5 sm:p-2 rounded-full hover:bg-red-600 transition-all duration-300"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       </div>
@@ -660,9 +663,9 @@ const CreatePostModal = ({
                       <button
                         type="button"
                         onClick={() => removeImage(image.id)}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-all duration-300 shadow-lg z-10"
+                        className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 bg-red-500 text-white p-1 rounded-full sm:p-1.5 hover:bg-red-600 transition-all duration-300 shadow-lg z-10"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                       </button>
                     </motion.div>
                   ))}
@@ -671,18 +674,18 @@ const CreatePostModal = ({
             )}
 
             {/* Form Actions */}
-            <div className="flex gap-4 pt-4 border-t border-gray-200">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-gray-200">
               <button
                 type="button"
                 onClick={closeAndReset}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 bg-white rounded-xl hover:bg-gray-50 transition-all duration-300 font-medium"
+                className="flex-1 px-4 py-2.5 sm:px-6 sm:py-3 border-2 border-gray-300 text-gray-700 bg-white rounded-lg sm:rounded-xl hover:bg-gray-50 transition-all duration-300 font-medium text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
+                className="flex-1 px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg sm:rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden text-sm sm:text-base"
               >
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   {loading ? (
@@ -691,12 +694,14 @@ const CreatePostModal = ({
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Creating...
+                      <span className="hidden sm:inline">Creating...</span>
+                      <span className="sm:hidden">Creating...</span>
                     </>
                   ) : (
                     <>
                       <Plus className="w-5 h-5" />
-                      Create Post
+                      <span className="hidden sm:inline">Create Post</span>
+                      <span className="sm:hidden">Post</span>
                     </>
                   )}
                 </span>

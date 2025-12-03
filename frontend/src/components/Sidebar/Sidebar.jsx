@@ -90,7 +90,7 @@ const Sidebar = ({
     : sidebarItems.filter(item => !item.requiresAuth);
 
   return (
-    <div className={`z-[1000] h-screen fixed left-0 top-0 ${isSidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
+    <div className={`z-[5000] h-screen fixed left-0 top-0 ${isSidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
       {/* Full-height container with scroll for overflow */}
       <div className="h-full flex flex-col justify-start">
         <div className="sidebar-container flex-grow">

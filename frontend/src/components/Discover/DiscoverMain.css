@@ -13,6 +13,7 @@
   align-items: center !important;
   justify-content: center !important;
   cursor: pointer !important;
+  min-width: 40px !important;
 }
 
 .sidebar-control:hover {
@@ -156,6 +157,18 @@
   .sidebar-control {
     width: 36px !important;
     height: 36px !important;
+    min-width: 36px !important;
+  }
+  
+  /* Improve mobile search bar visibility */
+  .top-search-bar {
+    width: calc(100% - 2rem) !important;
+    padding: 0 !important;
+  }
+  
+  /* Adjust map container for mobile */
+  .map-container {
+    margin-left: 2rem !important;
   }
 }
 
@@ -228,7 +241,85 @@
   .sidebar-control {
     width: 32px !important;
     height: 32px !important;
+    min-width: 32px !important;
+  }
+  
+  /* Adjust mobile layout */
+  .top-search-bar {
+    width: calc(100% - 1rem) !important;
+    padding: 0 !important;
+  }
+  
+  .map-container {
+    margin-left: 1rem !important;
   }
 }
 
+/* Extra small device adjustments */
+@media (max-width: 360px) {
+  .sidebar-window {
+    width: calc(100% - 12px) !important;
+    padding: 10px !important;
+    top: 80px !important;
+    left: 6px !important;
+    right: 6px !important;
+  }
+  
+  .sidebar-control {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+  }
+}
 
+/* Extra small screen improvements */
+@media (max-width: 320px) {
+  .sidebar-window {
+    width: calc(100% - 8px) !important;
+    padding: 8px !important;
+    top: 70px !important;
+    left: 4px !important;
+    right: 4px !important;
+  }
+  
+  .sidebar-control {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+  }
+}
+
+/* Additional responsive fixes */
+@media (max-width: 1024px) {
+  .map-container {
+    margin-left: 3rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .discover-card {
+    margin: 0.25rem !important;
+  }
+  
+  /* Improve mobile touch targets */
+  button, .interactive-element {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+/* Landscape mobile adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .sidebar-window {
+    max-height: 40vh !important;
+  }
+}
+
+/* High DPI display fixes */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .discover-card, .sidebar-window {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+}
