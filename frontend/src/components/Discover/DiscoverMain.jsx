@@ -251,7 +251,7 @@ const DiscoverMain = () => {
   
   // State for responsive search bar functionality
   const searchContainerRef = useRef(null);
-  const [isSearchBarVisible, setIsSearchBarVisible] = useState(window.innerWidth >= 640); // Show full search bar on larger screens by default
+  const [isSearchBarVisible, setIsSearchBarVisible] = useState(false); // Start with search bar hidden, will be shown by default on larger screens through CSS
   
   // Effect to handle responsive search bar visibility
   useEffect(() => {
@@ -2101,11 +2101,62 @@ const DiscoverMain = () => {
       
       {/* Map and results area - adjust to account for sidebar */}
       <div className={`map-container transition-all duration-300 ease-in-out ${isSidebarExpanded && window.innerWidth >= 768 ? 'ml-[16rem]' : 'ml-0'}`} style={{ marginLeft: isSidebarExpanded && window.innerWidth >= 768 ? '16rem' : '0' }}>
-        {/* Responsive search bar: icon on mobile, full bar on larger screens */}
+        {/* Responsive search bar: show full bar on bigger screens, icon only on mobile */}
         <div className="top-search-bar absolute top-4 sm:top-16 left-1/2 transform -translate-x-1/2 z-[6000] w-full px-4">
           <div className="max-w-2xl mx-auto relative" ref={searchContainerRef}>
-            {isSearchBarVisible ? ( // Only show the full search bar when isSearchBarVisible is true
-              <div className="relative">
+            {/* Always show search bar on bigger screens, only icon on mobile */}
+            <div className="relative sm:block hidden"> {/* Only show full bar on screens >= small */}
+              <input
+                type="text"
+                placeholder="Search for places, locations, categories..."
+                className="w-full pl-12 pr-10 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base bg-white"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => {
+                  // Only hide the results window after a short delay to allow clicks on results
+                  setTimeout(() => setSearchFocused(false), 200);
+                }}
+                autoFocus
+              />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setEnhancedSearchResults([]);
+                  }}
+                  className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="h-4 w-4 text-gray-500" />
+                </button>
+              )}
+            </div>
+            
+            {/* Show search icon when on mobile screens */}
+            <div className="sm:hidden flex items-center justify-center">
+              <button
+                onClick={() => {
+                  setIsSearchBarVisible(!isSearchBarVisible);
+                  setTimeout(() => {
+                    // Focus the search input after it appears
+                    const searchInput = document.querySelector('.top-search-bar input');
+                    if (searchInput) {
+                      searchInput.focus();
+                    }
+                  }, 100);
+                }}
+                className="w-10 h-10 rounded-lg border border-gray-200 bg-white shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors"
+                aria-label="Open search"
+              >
+                <Search className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+            
+            {/* Conditional search bar for mobile when icon is clicked */}
+            {isSearchBarVisible && window.innerWidth < 640 && (
+              <div className="relative sm:hidden mt-2">
                 <input
                   type="text"
                   placeholder="Search for places, locations, categories..."
@@ -2117,7 +2168,6 @@ const DiscoverMain = () => {
                     // Only hide the results window after a short delay to allow clicks on results
                     setTimeout(() => setSearchFocused(false), 200);
                   }}
-                  autoFocus
                 />
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                 
@@ -2146,47 +2196,12 @@ const DiscoverMain = () => {
                   <X className="h-4 w-4 text-gray-500" />
                 </button>
               </div>
-            ) : (
-              // Show search icon when search bar is not visible (mobile view)
-              <div className="flex items-center justify-center">
-                <button
-                  onClick={() => {
-                    setIsSearchBarVisible(true);
-                    setTimeout(() => {
-                      // Focus the search input after it appears
-                      const searchInput = document.querySelector('.top-search-bar input');
-                      if (searchInput) {
-                        searchInput.focus();
-                      }
-                    }, 100);
-                  }}
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl border border-gray-200 bg-white shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  aria-label="Open search"
-                >
-                  <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
-                </button>
-              </div>
             )}
             
-            {/* Search Results Window - appears when search bar is focused or has results (for both mobile and desktop) */}
-            {searchFocused && (
-              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-full ${isSearchBarVisible ? 'max-w-2xl' : 'max-w-[calc(100vw-2rem)] sm:max-w-2xl'} mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-[6001] max-h-64 sm:max-h-96 overflow-y-auto`}>
-                {/* Close button for the results window (only when search bar is visible) */}
-                {isSearchBarVisible && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setEnhancedSearchResults([]);
-                      setSearchFocused(false); // Also hide the results window
-                      setIsSearchBarVisible(false); // Hide the search bar as well
-                    }}
-                    className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 transition-colors z-[6002]"
-                  >
-                    <X className="h-4 w-4 text-gray-500" />
-                  </button>
-                )}
-                
-                <div className={`p-3 ${isSearchBarVisible ? 'pt-8' : ''} space-y-2`}> {/* Added pt-8 to make space for close button when search bar is visible */}
+            {/* Search Results Window - only appears when search query exists AND search is focused (for both mobile and desktop) */}
+            {searchFocused && searchQuery && (
+              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-full max-w-2xl mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-[6001] max-h-64 sm:max-h-96 overflow-y-auto`}>
+                <div className="p-3 space-y-2">
                   {searchLoading ? (
                     <div className="flex items-center justify-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
