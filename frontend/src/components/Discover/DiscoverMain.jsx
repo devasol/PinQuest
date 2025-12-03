@@ -2470,7 +2470,7 @@ const DiscoverMain = () => {
         {/* Search Window with Enhanced Search */}
         <motion.div 
           id="search-window" 
-          className="hidden absolute top-20 left-20 z-[999] sidebar-window search-window bg-white rounded-xl shadow-xl p-6 max-w-lg w-full backdrop-blur-sm border border-gray-200"
+          className="hidden absolute top-[56px] left-20 z-[999] sidebar-window search-window bg-white rounded-xl shadow-xl p-6 max-w-lg w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
