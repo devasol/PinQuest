@@ -2288,7 +2288,7 @@ const DiscoverMain = () => {
           zoom={mapZoom}
           minZoom={2}
           maxZoom={18}
-          zoomControl={true} // Let's use Leaflet's default controls
+          zoomControl={false} // Disable default zoom controls
           doubleClickZoom={true}
           scrollWheelZoom={true}
           dragging={true}
