@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import Modal from '../components/Modal';
+import Modal from './Modal';
 
 const ModalContext = createContext();
 
@@ -112,3 +112,5 @@ export const ModalProvider = ({ children }) => {
     </ModalContext.Provider>
   );
 };
+
+export default ModalContext;

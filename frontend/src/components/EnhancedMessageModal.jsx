@@ -1,13 +1,13 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import './Modal.css';
+import { CheckCircle, AlertCircle, AlertTriangle, Info, X, RotateCcw } from 'lucide-react';
 
-const Modal = ({ 
+const EnhancedMessageModal = ({ 
   isOpen, 
   onClose, 
   title, 
-  children, 
-  type = 'default', // 'default', 'success', 'error', 'warning', 'info', 'confirmation'
+  message, 
+  type = 'info', // 'success', 'error', 'warning', 'info', 'loading'
   onConfirm,
   confirmText = 'OK',
   cancelText = 'Cancel',
@@ -21,133 +21,82 @@ const Modal = ({
   variant = 'solid', // 'solid', 'outline', 'elevated'
   closable = true,
   backdrop = true,
-  animationType = 'scale' // 'scale', 'slide', 'fade'
+  animationType = 'scale', // 'scale', 'slide', 'fade'
+  showProgressBar = true,
+  customIcon = null,
+  actions = [], // Array of custom action buttons
+  showRetryButton = false,
+  onRetry = null
 }) => {
-  useEffect(() => {
-    let timer;
-    
-    const handleEscape = (e) => {
-      if (e.key === 'Escape' && closable && onClose) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden'; // Prevent background scrolling
-      
-      // Auto-close functionality
-      if (autoClose > 0) {
-        timer = setTimeout(() => {
-          onClose();
-        }, autoClose);
-      }
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset'; // Reset background scrolling
-      if (timer) clearTimeout(timer);
-    };
-  }, [isOpen, onClose, closable, autoClose]);
-
   if (!isOpen) return null;
 
-  const getTypeColor = () => {
+  const getTypeConfig = () => {
     switch (type) {
       case 'success':
         return {
+          icon: CheckCircle,
           bg: 'bg-emerald-50',
           border: 'border-emerald-200',
           text: 'text-emerald-800',
-          icon: 'text-emerald-500',
-          accent: 'border-emerald-500'
+          iconColor: 'text-emerald-500',
+          accent: 'bg-emerald-500',
+          buttonColor: 'bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-500/50'
         };
       case 'error':
         return {
+          icon: AlertCircle,
           bg: 'bg-red-50',
           border: 'border-red-200',
           text: 'text-red-800',
-          icon: 'text-red-500',
-          accent: 'border-red-500'
+          iconColor: 'text-red-500',
+          accent: 'bg-red-500',
+          buttonColor: 'bg-red-500 hover:bg-red-600 focus:ring-red-500/50'
         };
       case 'warning':
         return {
+          icon: AlertTriangle,
           bg: 'bg-amber-50',
           border: 'border-amber-200',
           text: 'text-amber-800',
-          icon: 'text-amber-500',
-          accent: 'border-amber-500'
+          iconColor: 'text-amber-500',
+          accent: 'bg-amber-500',
+          buttonColor: 'bg-amber-500 hover:bg-amber-600 focus:ring-amber-500/50'
         };
       case 'info':
         return {
+          icon: Info,
           bg: 'bg-blue-50',
           border: 'border-blue-200',
           text: 'text-blue-800',
-          icon: 'text-blue-500',
-          accent: 'border-blue-500'
+          iconColor: 'text-blue-500',
+          accent: 'bg-blue-500',
+          buttonColor: 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500/50'
         };
-      case 'confirmation':
+      case 'loading':
         return {
-          bg: 'bg-purple-50',
-          border: 'border-purple-200',
-          text: 'text-purple-800',
-          icon: 'text-purple-500',
-          accent: 'border-purple-500'
-        };
-      default:
-        return {
+          icon: null,
           bg: 'bg-gray-50',
           border: 'border-gray-200',
           text: 'text-gray-800',
-          icon: 'text-gray-500',
-          accent: 'border-gray-500'
+          iconColor: 'text-gray-500',
+          accent: 'bg-gray-500',
+          buttonColor: 'bg-gray-500 hover:bg-gray-600 focus:ring-gray-500/50'
+        };
+      default:
+        return {
+          icon: Info,
+          bg: 'bg-gray-50',
+          border: 'border-gray-200',
+          text: 'text-gray-800',
+          iconColor: 'text-gray-500',
+          accent: 'bg-gray-500',
+          buttonColor: 'bg-gray-500 hover:bg-gray-600 focus:ring-gray-500/50'
         };
     }
   };
 
-  const getColor = getTypeColor();
-
-  const getIcon = () => {
-    switch (type) {
-      case 'success':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-          </svg>
-        );
-      case 'error':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        );
-      case 'warning':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.364 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-        );
-      case 'info':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      case 'confirmation':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      default:
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        );
-    }
-  };
+  const config = getTypeConfig();
+  const IconComponent = customIcon || config.icon;
 
   // Animation variants
   const modalVariants = {
@@ -247,6 +196,12 @@ const Modal = ({
     onClose();
   };
 
+  const handleRetry = () => {
+    if (onRetry) {
+      onRetry();
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -266,7 +221,7 @@ const Modal = ({
             onClick={closable ? onClose : undefined}
           >
             <motion.div
-              className={`${sizeClasses[size]} ${variantClasses[variant]} rounded-2xl overflow-hidden ${getColor.bg} ${getColor.border} ${variant === 'outline' ? '' : 'border'}`}
+              className={`${sizeClasses[size]} ${variantClasses[variant]} rounded-2xl overflow-hidden ${config.bg} ${config.border} ${variant === 'outline' ? '' : 'border'}`}
               variants={modalVariants[animationType]}
               initial="hidden"
               animate="visible"
@@ -274,37 +229,35 @@ const Modal = ({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className={`flex items-center justify-between p-6 border-b ${getColor.border} relative`}>
+              <div className={`flex items-center justify-between p-6 border-b ${config.border} relative`}>
                 <div className="flex items-center space-x-3">
-                  {showIcon && (
-                    <div className={`p-2 rounded-full ${getColor.icon} bg-opacity-10 ${getColor.bg}`}>
-                      {getIcon()}
+                  {showIcon && IconComponent && (
+                    <div className={`p-2 rounded-full ${config.iconColor} bg-opacity-10 ${config.bg}`}>
+                      <IconComponent className="w-6 h-6" />
                     </div>
                   )}
                   {title && (
-                    <h2 className={`text-xl font-semibold ${getColor.text}`}>
+                    <h2 className={`text-xl font-semibold ${config.text}`}>
                       {title}
                     </h2>
                   )}
                 </div>
                 {showCloseButton && (
                   <button
-                    className={`p-1 rounded-full hover:bg-gray-200 transition-colors ${getColor.text}`}
+                    className={`p-1 rounded-full hover:bg-gray-200 transition-colors ${config.text}`}
                     onClick={onClose}
                     aria-label="Close modal"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X className="w-5 h-5" />
                   </button>
                 )}
               </div>
 
               {/* Progress bar for auto-close modals */}
-              {autoClose > 0 && (
+              {autoClose > 0 && showProgressBar && (
                 <div className="h-1 w-full bg-gray-200">
                   <motion.div 
-                    className={`h-full ${getColor.accent}`}
+                    className={`h-full ${config.accent.replace('bg-', 'bg-')}`}
                     initial={{ width: '100%' }}
                     animate={{ width: '0%' }}
                     transition={{ duration: autoClose / 1000, ease: "linear" }}
@@ -312,13 +265,41 @@ const Modal = ({
                 </div>
               )}
 
+              {/* Loading spinner for loading type */}
+              {type === 'loading' && (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+              )}
+
               {/* Modal Body */}
-              <motion.div 
-                className="p-6"
-                variants={contentVariants}
-              >
-                {children}
-              </motion.div>
+              {!['loading'].includes(type) && (
+                <motion.div 
+                  className="p-6"
+                  variants={contentVariants}
+                >
+                  {message && (
+                    <p className={`text-gray-700 ${config.text}`}>
+                      {message}
+                    </p>
+                  )}
+                  
+                  {/* Custom actions */}
+                  {actions.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {actions.map((action, index) => (
+                        <button
+                          key={index}
+                          className={`px-3 py-1.5 text-sm rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${action.buttonColor || 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500/50 text-white'}`}
+                          onClick={action.onClick}
+                        >
+                          {action.text}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
 
               {/* Modal Footer */}
               <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50/30">
@@ -330,21 +311,20 @@ const Modal = ({
                     {cancelText}
                   </button>
                 )}
+                
+                {showRetryButton && onRetry && (
+                  <button
+                    className="px-4 py-2 text-gray-700 bg-yellow-100 border border-yellow-300 rounded-lg hover:bg-yellow-200 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-300 flex items-center space-x-2"
+                    onClick={handleRetry}
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Retry</span>
+                  </button>
+                )}
+                
                 {showConfirmButton && (
                   <button
-                    className={`px-4 py-2 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                      type === 'error' 
-                        ? 'bg-red-500 hover:bg-red-600 focus:ring-red-500/50' 
-                        : type === 'success'
-                        ? 'bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-500/50'
-                        : type === 'warning'
-                        ? 'bg-amber-500 hover:bg-amber-600 focus:ring-amber-500/50'
-                        : type === 'info'
-                        ? 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500/50'
-                        : type === 'confirmation'
-                        ? 'bg-purple-500 hover:bg-purple-600 focus:ring-purple-500/50'
-                        : 'bg-gray-500 hover:bg-gray-600 focus:ring-gray-500/50'
-                    }`}
+                    className={`px-4 py-2 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${config.buttonColor}`}
                     onClick={handleConfirmClick}
                   >
                     {confirmText}
@@ -359,4 +339,4 @@ const Modal = ({
   );
 };
 
-export default Modal;
+export default EnhancedMessageModal;
