@@ -18,20 +18,16 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // Split vendor chunks for better caching
-          'react-vendor': ['react', 'react-dom'],
-          'router-vendor': ['react-router-dom'],
-          'map-vendor': ['leaflet', 'react-leaflet'],
-          'ui-vendor': ['react-toastify', 'lucide-react'],
-          'firebase-vendor': ['firebase'],
+          // Split vendor chunks for better caching - avoid firebase-specific chunks that cause issues
+          vendor: ['react', 'react-dom', 'react-router-dom'],
         },
       },
     },
     chunkSizeWarningLimit: 1000, // Increase limit to avoid warnings for large chunks
   },
   define: {
-    // Define environment variables for production
-    'process.env': process.env,
+    // Only define specific environment variables needed, not the entire process.env
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
   },
   server: {
     open: true, // Automatically open browser on dev start
@@ -50,6 +46,14 @@ export default defineConfig({
     host: true,
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom'],
+    include: [
+      'react', 
+      'react-dom', 
+      'react-router-dom',
+      'leaflet', 
+      'react-leaflet',
+      'react-toastify',
+      'lucide-react'
+    ],
   }
 });
