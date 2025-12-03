@@ -17,6 +17,7 @@
   width: 5rem; /* w-20 */
   flex: 0 0 5rem; /* Don't grow, don't shrink, base width of 5rem */
   transition: width 0.3s ease;
+  z-index: 6001 !important;
 }
 
 /* Expanded sidebar width when text is shown */
@@ -24,6 +25,7 @@
   width: 16rem; /* w-64 */
   flex: 0 0 16rem; /* Don't grow, don't shrink, base width of 16rem */
   transition: width 0.3s ease;
+  z-index: 6001 !important;
 }
 
 /* Sidebar button styling */

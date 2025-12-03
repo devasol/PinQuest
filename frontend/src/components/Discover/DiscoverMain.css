@@ -1,4 +1,4 @@
-/* Google-like styling for Discover page controls and windows */
+/* Enhanced Google-like styling for Discover page controls and windows */
 
 /* Simple sidebar buttons */
 .sidebar-control {
@@ -31,19 +31,62 @@
   box-shadow: 0 2px 6px rgba(66, 133, 244, 0.3) !important;
 }
 
-/* Clean windows */
+/* Enhanced sidebar windows */
 .sidebar-window {
   background: white !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  border: none !important;
-  padding: 16px !important;
-  max-height: 80vh !important;
+  border-radius: 0px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #e5e7eb !important;
+  padding: 24px !important;
+  height: 100vh !important;
   overflow-y: auto !important;
-  animation: slideInLeft 0.2s ease !important;
-  width: 320px !important;
-  position: absolute !important;
+  animation: slideInLeft 0.3s ease-out !important;
+  width: 380px !important;
+  position: fixed !important;
   z-index: 6000 !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  transition: all 0.3s ease !important;
+  top: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Enhanced header for sidebar windows */
+.sidebar-window-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 20px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+.sidebar-window-header h2 {
+  margin: 0 !important;
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
+
+.sidebar-window-header button {
+  padding: 6px !important;
+  border-radius: 8px !important;
+  background: #f3f4f6 !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.sidebar-window-header button:hover {
+  background: #e5e7eb !important;
+}
+
+/* Enhanced content area for sidebar windows */
+.sidebar-window-content {
+  height: calc(100vh - 100px) !important;
+  overflow-y: auto !important;
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
 }
 
 /* Inputs inside sidebar windows */
@@ -51,14 +94,25 @@
 .sidebar-window input {
   color: #202124 !important;
   background: white !important;
-  border: 1px solid #dadce0 !important;
-  border-radius: 4px !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+  transition: all 0.2s ease !important;
+}
+
+.sidebar-window select:focus,
+.sidebar-window input:focus {
+  border-color: #4285f4 !important;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2) !important;
+  outline: none !important;
 }
 
 .sidebar-window label {
-  color: #5f6368 !important;
+  color: #374151 !important;
   font-weight: 500 !important;
   font-size: 14px !important;
+  margin-bottom: 8px !important;
+  display: block !important;
 }
 
 .sidebar-window option {
@@ -69,8 +123,9 @@
 /* Headers in sidebar windows */
 .sidebar-window h3,
 .sidebar-window h4 {
-  color: #202124 !important;
+  color: #1f2937 !important;
   margin-bottom: 16px !important;
+  font-weight: 600 !important;
 }
 
 /* Specific style for search window */
@@ -79,14 +134,108 @@
   overflow-y: auto !important;
 }
 
+/* Enhanced sidebar buttons inside window */
+.sidebar-window-button {
+  width: 100% !important;
+  padding: 14px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  background: white !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  margin-bottom: 8px !important;
+  text-align: left !important;
+}
+
+.sidebar-window-button:hover {
+  background: #f9fafb !important;
+  border-color: #d1d5db !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.sidebar-window-button.active {
+  background: #dbeafe !important;
+  border-color: #3b82f6 !important;
+  color: #1d4ed8 !important;
+}
+
+.sidebar-window-button:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Enhanced icon styling */
+.sidebar-window-button-icon {
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.sidebar-window-button-content {
+  flex: 1 !important;
+}
+
+.sidebar-window-button-title {
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+  margin: 0 0 4px 0 !important;
+}
+
+.sidebar-window-button-description {
+  font-size: 0.85rem !important;
+  color: #6b7280 !important;
+  margin: 0 !important;
+}
+
+/* Smooth expand/collapse animation */
 @keyframes slideInLeft {
   from {
     opacity: 0;
-    transform: translateX(-10px);
+    transform: translateX(-20px);
   }
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Slide up animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide down animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -152,6 +301,21 @@
     top: 90px !important;
     margin: 0 !important;
     z-index: 5999 !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+  
+  .sidebar-window-header {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  
+  .sidebar-window-content {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  
+  .sidebar-window-button {
+    padding: 12px !important;
   }
   
   .sidebar-control {
@@ -169,6 +333,62 @@
   /* Adjust map container for mobile */
   .map-container {
     margin-left: 2rem !important;
+  }
+}
+
+/* Enhance mobile experience for sidebar windows */
+@media (max-width: 480px) {
+  .sidebar-window {
+    width: calc(100% - 16px) !important;
+    left: 8px !important;
+    right: 8px !important;
+    top: 80px !important;
+    max-height: 45vh !important;
+    padding: 16px !important;
+    border-radius: 12px !important;
+  }
+  
+  .sidebar-window-header {
+    padding-bottom: 8px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .sidebar-window-header h2 {
+    font-size: 1.1rem !important;
+  }
+  
+  .sidebar-window-button {
+    padding: 12px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+  
+  .sidebar-window-button-icon {
+    align-self: center !important;
+  }
+  
+  .sidebar-window-button-title {
+    font-size: 0.95rem !important;
+  }
+  
+  .sidebar-window-button-description {
+    font-size: 0.8rem !important;
+  }
+  
+  .enhanced-sidebar-window-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 5998 !important;
+    display: none !important;
+  }
+  
+  .enhanced-sidebar-window-overlay.mobile-open {
+    display: block !important;
   }
 }
 

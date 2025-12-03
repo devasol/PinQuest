@@ -8,6 +8,7 @@ import PostWindow from '../PostWindow/PostWindow';
 import CurrentLocationMarker from './CurrentLocationMarker';
 import MapRouting from './MapRouting';
 import CreatePostModal from './CreatePostModal';
+import EnhancedSidebarWindows from './EnhancedSidebarWindows';
 
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users, Bell, User, Check } from 'lucide-react';
@@ -76,6 +77,12 @@ const DiscoverMain = () => {
   const [mapZoom, setMapZoom] = useState(2);
   const [userLocation, setUserLocation] = useState(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [showWindows, setShowWindows] = useState({
+    'category-window': false,
+    'view-mode-window': false,
+    'map-type-window': false,
+    'saved-locations-window': false
+  });
 
   const toggleSidebar = () => {
     setIsSidebarExpanded(!isSidebarExpanded);
@@ -1724,31 +1731,45 @@ const DiscoverMain = () => {
     setRoutingLoading(false); // Also reset loading state
   }, []);
 
+  // Close all windows using ESC key
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        // Close all windows if any are open
+        if (Object.values(showWindows).some(open => open)) {
+          setShowWindows({
+            'category-window': false,
+            'view-mode-window': false,
+            'map-type-window': false,
+            'saved-locations-window': false
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showWindows]);
+
 
 
   // Function to toggle windows - closes previous window and opens new one
   const toggleWindow = (windowId) => {
-    // Get all window IDs
-    const allWindowIds = [
-      'category-window', 
-      'view-mode-window', 
-      'map-type-window', 
-      'saved-locations-window'
-    ];
-    
     // Close all windows first
-    allWindowIds.forEach(id => {
-      const element = document.getElementById(id);
-      if (element && !element.classList.contains('hidden')) {
-        element.classList.add('hidden');
-      }
+    setShowWindows({
+      'category-window': false,
+      'view-mode-window': false,
+      'map-type-window': false,
+      'saved-locations-window': false
     });
     
     // Then toggle the requested window
-    const targetWindow = document.getElementById(windowId);
-    if (targetWindow) {
-      targetWindow.classList.remove('hidden');
-    }
+    setShowWindows(prev => ({
+      ...prev,
+      [windowId]: true
+    }));
   };
 
   // Function to handle creating a new post
@@ -2099,8 +2120,20 @@ const DiscoverMain = () => {
         )}
       </div>
       
-      {/* Map and results area - adjust to account for sidebar */}
-      <div className={`map-container transition-all duration-300 ease-in-out ${isSidebarExpanded && window.innerWidth >= 768 ? 'ml-[16rem]' : 'ml-0'}`} style={{ marginLeft: isSidebarExpanded && window.innerWidth >= 768 ? '16rem' : '0' }}>
+      {/* Map and results area - adjust to account for sidebar and windows */}
+      <div className={`map-container transition-all duration-300 ease-in-out ${
+        (isSidebarExpanded && window.innerWidth >= 768) || Object.values(showWindows).some(open => open) ?
+          (Object.values(showWindows).some(open => open) ? 
+            (isSidebarExpanded && window.innerWidth >= 768 ? 'ml-[calc(16rem+380px)]' : 'ml-[calc(5rem+380px)]') 
+            : 'ml-[16rem]') 
+          : 'ml-[5rem]'
+      }`} style={{ 
+        marginLeft: (isSidebarExpanded && window.innerWidth >= 768) || Object.values(showWindows).some(open => open) ?
+          (Object.values(showWindows).some(open => open) ? 
+            (isSidebarExpanded && window.innerWidth >= 768 ? 'calc(16rem + 380px)' : 'calc(5rem + 380px)') 
+            : '16rem') 
+          : '5rem'
+      }}>
         {/* Responsive search bar: show full bar on bigger screens, icon only on mobile */}
         <div className="top-search-bar absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-[6000] w-full px-4">
           <div className="max-w-2xl mx-auto relative" ref={searchContainerRef}>
@@ -2534,383 +2567,27 @@ const DiscoverMain = () => {
           ></div>
         )}
         
-
-        
-        {/* Category Window */}
-        <motion.div 
-          id="category-window" 
-          className="hidden absolute top-20 left-4 z-[5999] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ 
-            type: "spring", 
-            damping: 20, 
-            stiffness: 300,
-            duration: 0.4 
-          }}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Categories</h3>
-            <button 
-              onClick={() => document.getElementById('category-window')?.classList.add('hidden')}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <X className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-          <div className="space-y-2">
-            {categories.map((category, index) => {
-              const IconComponent = category.icon;
-              return (
-                <motion.button
-                  key={category.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05, duration: 0.3, ease: "easeOut" }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setSelectedCategory(category.id);
-                    document.getElementById('category-window')?.classList.add('hidden');
-                  }}
-                  className={`w-full text-left p-3 rounded-lg font-medium transition-all flex items-center gap-3 ${
-                    selectedCategory === category.id
-                      ? 'bg-blue-500 text-white border border-blue-500'
-                      : 'bg-white text-gray-800 border border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  <IconComponent className="h-6 w-6 flex-shrink-0" />
-                  <span className="text-base font-semibold">{category.name}</span>
-                </motion.button>
-              );
-            })}
-          </div>
-        </motion.div>
-        
-
-        
-        {/* View Mode Window */}
-        <motion.div 
-          id="view-mode-window" 
-          className="hidden absolute top-20 left-4 z-[5998] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ 
-            type: "spring", 
-            damping: 20, 
-            stiffness: 300,
-            duration: 0.4 
-          }}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">View Mode</h3>
-            <button 
-              onClick={() => document.getElementById('view-mode-window')?.classList.add('hidden')}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <X className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-          <div className="space-y-3">
-            <motion.button
-              onClick={() => {
-                setViewMode('grid');
-                document.getElementById('view-mode-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all flex items-start gap-4 border ${
-                viewMode === 'grid' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <Grid3X3 className="h-6 w-6 flex-shrink-0 mt-0.5" />
-              <div className="text-left flex-1">
-                <div className="font-bold text-base mb-1">Grid View</div>
-                <div className="text-sm opacity-90">Display posts in a grid layout</div>
-              </div>
-            </motion.button>
-            
-            <motion.button
-              onClick={() => {
-                setViewMode('list');
-                document.getElementById('view-mode-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all flex items-start gap-4 border ${
-                viewMode === 'list' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <ThumbsUp className="h-6 w-6 flex-shrink-0 mt-0.5" />
-              <div className="text-left flex-1">
-                <div className="font-bold text-base mb-1">List View</div>
-                <div className="text-sm opacity-90">Display posts in a list layout</div>
-              </div>
-            </motion.button>
-          </div>
-        </motion.div>
-        
-        {/* Map Type Window */}
-        <motion.div 
-          id="map-type-window" 
-          className="hidden absolute top-20 left-4 z-[5997] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ 
-            type: "spring", 
-            damping: 20, 
-            stiffness: 300,
-            duration: 0.4 
-          }}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Map Type</h3>
-            <button 
-              onClick={() => document.getElementById('map-type-window')?.classList.add('hidden')}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <X className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-          <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-2">
-            <motion.button
-              onClick={() => {
-                setMapType('google');
-                document.getElementById('map-type-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all border ${
-                mapType === 'google' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className="font-bold text-base mb-1">Google Maps</div>
-              <div className="text-sm opacity-90">Classic Google Maps style</div>
-            </motion.button>
-            
-            <motion.button
-              onClick={() => {
-                setMapType('street');
-                document.getElementById('map-type-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all border ${
-                mapType === 'street' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className="font-bold text-base mb-1">Street Map</div>
-              <div className="text-sm opacity-90">Standard road map view</div>
-            </motion.button>
-            
-            <motion.button
-              onClick={() => {
-                setMapType('satellite');
-                document.getElementById('map-type-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all border ${
-                mapType === 'satellite' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className="font-bold text-base mb-1">Satellite View</div>
-              <div className="text-sm opacity-90">Satellite imagery view</div>
-            </motion.button>
-            
-            <motion.button
-              onClick={() => {
-                setMapType('terrain');
-                document.getElementById('map-type-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all border ${
-                mapType === 'terrain' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className="font-bold text-base mb-1">Terrain View</div>
-              <div className="text-sm opacity-90">Topographical view</div>
-            </motion.button>
-            
-            <motion.button
-              onClick={() => {
-                setMapType('dark');
-                document.getElementById('map-type-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all border ${
-                mapType === 'dark' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className="font-bold text-base mb-1">Dark Theme</div>
-              <div className="text-sm opacity-90">High contrast dark map</div>
-            </motion.button>
-            
-            <motion.button
-              onClick={() => {
-                setMapType('light');
-                document.getElementById('map-type-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all border ${
-                mapType === 'light' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className="font-bold text-base mb-1">Light Theme</div>
-              <div className="text-sm opacity-90">Clean light map style</div>
-            </motion.button>
-            
-            <motion.button
-              onClick={() => {
-                setMapType('topographic');
-                document.getElementById('map-type-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all border ${
-                mapType === 'topographic' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className="font-bold text-base mb-1">Topographic</div>
-              <div className="text-sm opacity-90">Detailed topographical map</div>
-            </motion.button>
-            
-            <motion.button
-              onClick={() => {
-                setMapType('navigation');
-                document.getElementById('map-type-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all border ${
-                mapType === 'navigation' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className="font-bold text-base mb-1">Navigation</div>
-              <div className="text-sm opacity-90">Humanitarian/hot map style</div>
-            </motion.button>
-            
-            <motion.button
-              onClick={() => {
-                setMapType('cycle');
-                document.getElementById('map-type-window')?.classList.add('hidden');
-              }}
-              whileHover={{ scale: 1.02 }}
-              className={`w-full p-3 rounded-lg transition-all border ${
-                mapType === 'cycle' 
-                  ? 'bg-blue-500 text-white border-blue-500' 
-                  : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <div className="font-bold text-base mb-1">Cycle Map</div>
-              <div className="text-sm opacity-90">Cycling-specific map features</div>
-            </motion.button>
-          </div>
-        </motion.div>
-        
-        {/* Saved Posts Window */}
-        <motion.div 
-          id="saved-locations-window" 
-          className="hidden absolute top-20 left-4 z-[5996] sidebar-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ 
-            type: "spring", 
-            damping: 20, 
-            stiffness: 300,
-            duration: 0.4 
-          }}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Saved Posts</h3>
-            <button 
-              onClick={() => {
-                document.getElementById('saved-locations-window')?.classList.add('hidden');
-              }}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <X className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-          
-          {/* Saved Posts Section */}
-          <div>
-            <h4 className="font-semibold text-gray-700 mb-3 flex items-center text-base">
-              <Bookmark className="h-5 w-5 mr-2.5" />
-              Saved Posts ({favoritePosts.size})
-            </h4>
-            <div className="space-y-3">
-              {posts.filter(post => post.id && favoritePosts.has(post.id)).length > 0 ? (
-                posts.filter(post => post.id && favoritePosts.has(post.id)).map((post, index) => (
-                  <motion.div 
-                    key={`fav-${post.id}`} 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="p-3 bg-white rounded-lg flex justify-between items-start cursor-pointer hover:bg-gray-50 transition-colors border border-gray-200"
-                  >
-                    <div 
-                      className="flex-1 cursor-pointer"
-                      onClick={() => {
-                        setSelectedPost(post);
-                        document.getElementById('saved-locations-window')?.classList.add('hidden');
-                      }}
-                    >
-                      <div className="font-bold text-gray-800 mb-1.5">{post.title}</div>
-                      <div className="text-sm text-gray-600 line-clamp-2 mb-2">{post.description?.substring(0, 60)}{post.description?.length > 60 ? '...' : ''}</div>
-                      <div className="inline-block px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                        {post.category || "general"}
-                      </div>
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        togglePostBookmark(post);
-                      }}
-                      className="ml-2 p-2 rounded-full hover:bg-red-100 text-red-500 transition-colors"
-                      disabled={bookmarkLoading === post.id}
-                    >
-                      {bookmarkLoading === post.id ? (
-                        <div className="h-4 w-4 flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                        </div>
-                      ) : (
-                        <X className="h-4 w-4" />
-                      )}
-                    </motion.button>
-                  </motion.div>
-                ))
-              ) : (
-                <motion.p 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-gray-500 text-center py-6 text-base"
-                >
-                  No saved posts yet
-                </motion.p>
-              )}
-            </div>
-          </div>
-        </motion.div>
+        {/* Enhanced Sidebar Windows */}
+        <EnhancedSidebarWindows
+          showWindows={showWindows}
+          setShowWindows={setShowWindows}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          mapType={mapType}
+          setMapType={setMapType}
+          favoritePosts={favoritePosts}
+          posts={posts}
+          togglePostBookmark={togglePostBookmark}
+          bookmarkLoading={bookmarkLoading}
+          showSavedLocationsOnMap={showSavedLocationsOnMap}
+          setShowSavedLocationsOnMap={setShowSavedLocationsOnMap}
+          user={user}
+          updateUserLocation={updateUserLocation}
+          followUser={followUser}
+          isSidebarExpanded={isSidebarExpanded}
+        />
         
         {/* Listing Panel - Side Panel on Desktop, Bottom Panel on Mobile */}
         <AnimatePresence>
