@@ -17,7 +17,7 @@ const MapView = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [mapType, setMapType] = useState('street'); // street, satellite, terrain
+  const [mapType, setMapType] = useState('google'); // street, satellite, terrain, google
   const [savedLocations, setSavedLocations] = useState([]);
   const [activePanel, setActivePanel] = useState(null); // null, 'posts', 'search', 'filters', 'map', 'saved'
   const [selectedPost, setSelectedPost] = useState(null);
@@ -382,6 +382,9 @@ const MapView = () => {
         return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
       case 'terrain':
         return "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
+      case 'google':
+        // Google Maps-like style using Stadia Maps (Alidade)
+        return "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png";
       default: // street
         return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
     }
@@ -619,6 +622,7 @@ const MapView = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Map Type</label>
                   <div className="space-y-2">
                     {[
+                      { id: 'google', label: 'Google Maps' },
                       { id: 'street', label: 'Street Map' },
                       { id: 'satellite', label: 'Satellite View' },
                       { id: 'terrain', label: 'Terrain View' }

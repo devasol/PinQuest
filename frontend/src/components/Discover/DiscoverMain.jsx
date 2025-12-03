@@ -53,7 +53,7 @@ const DiscoverMain = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [mapType, setMapType] = useState('street'); // street, satellite, terrain
+  const [mapType, setMapType] = useState('google'); // street, satellite, terrain, dark, light, topographic, navigation, cycle, google
   const [savedLocations, setSavedLocations] = useState([]); // For saved locations (separate from bookmarks)
   const [favoritePosts, setFavoritePosts] = useState(new Set()); // Track which posts are bookmarked/favorited
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track which posts are liked
@@ -1719,6 +1719,9 @@ const DiscoverMain = () => {
   // Get the appropriate tile layer URL based on map type
   const getTileLayerUrl = () => {
     switch (mapType) {
+      case 'google':
+        // Google Maps-like style using Stadia Maps (Alidade)
+        return "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png";
       case 'street':
         return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
       case 'satellite':
@@ -1735,8 +1738,8 @@ const DiscoverMain = () => {
         return "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png";
       case 'cycle':
         return "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png";
-      default: // street as fallback
-        return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+      default: // google as fallback
+        return "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png";
     }
   };
 
@@ -2395,6 +2398,22 @@ const DiscoverMain = () => {
             </button>
           </div>
           <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-2">
+            <motion.button
+              onClick={() => {
+                setMapType('google');
+                document.getElementById('map-type-window')?.classList.add('hidden');
+              }}
+              whileHover={{ scale: 1.02 }}
+              className={`w-full p-4 rounded-2xl transition-all modern-btn ${
+                mapType === 'google' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg' 
+                  : 'bg-white/70 text-gray-800 hover:bg-white/90'
+              }`}
+            >
+              <div className="font-bold text-base mb-1">Google Maps</div>
+              <div className="text-sm opacity-90">Classic Google Maps style</div>
+            </motion.button>
+            
             <motion.button
               onClick={() => {
                 setMapType('street');
