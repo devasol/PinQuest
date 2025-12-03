@@ -231,6 +231,22 @@ export const postApi = {
   searchPosts: (query, category, limit = 10, page = 1) => 
     apiService.get(`/posts/search?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&limit=${limit}&page=${page}`),
   
+  // Advanced search that includes all locations with fuzzy matching
+  advancedSearch: (query, category, limit = 20, page = 1, sortBy = 'relevance', latitude, longitude, radius = 50, tags) => {
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (category) params.append('category', category);
+    params.append('limit', limit);
+    params.append('page', page);
+    params.append('sortBy', sortBy);
+    if (latitude) params.append('latitude', latitude);
+    if (longitude) params.append('longitude', longitude);
+    params.append('radius', radius);
+    if (tags) params.append('tags', tags);
+    
+    return apiService.get(`/posts/advanced-search?${params.toString()}`);
+  },
+  
   // Get posts by location
   getPostsByLocation: (latitude, longitude, radius = 50) => 
     apiService.get(`/posts/by-location?latitude=${latitude}&longitude=${longitude}&radius=${radius}`),

@@ -108,6 +108,11 @@ const CustomMarker = React.memo(({ post, isLiked, onSave, isSaved, onGetDirectio
     }
   }, [onClick, post]);
 
+  // Skip rendering if position is not defined
+  if (!post.position || !Array.isArray(post.position) || post.position.length < 2) {
+    return null;
+  }
+
   return (
     <Marker 
       position={post.position} 

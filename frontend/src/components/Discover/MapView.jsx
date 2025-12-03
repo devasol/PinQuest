@@ -717,18 +717,24 @@ const MapView = () => {
           />
           
           {/* Render custom markers for each post */}
-          {filteredPosts.map((post) => (
-            <CustomMarker 
-              key={`post-${post.id}`} 
-              post={post}
-              onClick={(post) => {
-                setSelectedPost(post);
-                // Handle click on marker
-                console.log('Marker clicked for post:', post.title);
-              }}
-              onSave={saveLocation}
-            />
-          ))}
+          {filteredPosts.map((post) => {
+            // Only render markers if the post has valid position data and a valid id
+            if (!post.position || !Array.isArray(post.position) || post.position.length < 2 || !post.id) {
+              return null;
+            }
+            return (
+              <CustomMarker 
+                key={`post-${post.id}`} 
+                post={post}
+                onClick={(post) => {
+                  setSelectedPost(post);
+                  // Handle click on marker
+                  console.log('Marker clicked for post:', post.title);
+                }}
+                onSave={saveLocation}
+              />
+            );
+          })}
           
           {/* Loading overlay for posts */}
           {loading && filteredPosts.length === 0 && (

@@ -1202,56 +1202,190 @@ const replyToComment = async (req, res) => {
   }
 };
 
-// @desc    Search posts
+// @desc    Search posts with enhanced functionality
 // @route   GET /api/v1/posts/search
 // @access  Public
 const searchPosts = async (req, res) => {
   try {
-    const { q, category, limit = 10, page = 1 } = req.query;
+    const { q, category, limit = 10, page = 1, sortBy = 'relevance', radius = 50, latitude, longitude } = req.query;
+    
+    // Validate and convert parameters
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const radiusNum = parseFloat(radius) || 50;
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
 
     // Build search query
-    let query = {};
+    let query = { status: 'published' }; // Only published posts
 
-    // Text search in title and description
+    // Text search in title, description, category, and tags with fuzzy matching
     if (q) {
-      query.$or = [
-        { title: { $regex: q, $options: "i" } },
-        { description: { $regex: q, $options: "i" } },
-      ];
+      // Use MongoDB text search for better performance and relevance
+      query.$text = { $search: q };
     }
 
     // Filter by category if provided
-    if (category) {
+    if (category && category !== 'all') {
       query.category = { $regex: category, $options: "i" };
     }
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
+    // Location-based search if coordinates provided
+    if (lat && lng) {
+      query.location = {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [lng, lat],
+          },
+          $maxDistance: radiusNum * 1000, // Convert km to meters
+        },
+      };
+    }
 
-    // Execute search with pagination
-    const posts = await Post.find(query)
-      .populate("postedBy", "name avatar")
-      .populate({
-        path: "comments.user",
-        select: "name _id", // Standardize to name and _id
-      })
-      .sort({ datePosted: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    // Calculate pagination
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build aggregation pipeline for enhanced search
+    let pipeline = [
+      { $match: query },
+      {
+        $addFields: {
+          // Calculate text score for relevance if using text search
+          textScore: { $meta: "textScore" },
+          // Calculate distance if location provided
+          distance: lat && lng ? {
+            $sqrt: {
+              $add: [
+                { $pow: [{ $subtract: ["$location.coordinates.1", lat] }, 2] },
+                { $pow: [{ $subtract: ["$location.coordinates.0", lng] }, 2] }
+              ]
+            }
+          } : null
+        }
+      }
+    ];
+
+    // Add sorting based on parameter
+    let sort = {};
+    switch (sortBy) {
+      case 'relevance':
+        if (q) {
+          sort.textScore = { $meta: "textScore" };
+        } else {
+          sort.datePosted = -1; // Default to newest if no search query
+        }
+        break;
+      case 'newest':
+        sort.datePosted = -1;
+        break;
+      case 'oldest':
+        sort.datePosted = 1;
+        break;
+      case 'rating':
+        sort.averageRating = -1;
+        sort.totalRatings = -1;
+        break;
+      case 'popular':
+        sort.totalRatings = -1;
+        sort.averageRating = -1;
+        break;
+      case 'distance':
+        if (lat && lng) {
+          sort.distance = 1; // Closest first
+        } else {
+          sort.datePosted = -1; // Fallback to newest
+        }
+        break;
+      default:
+        sort.datePosted = -1;
+    }
+
+    // Add sorting, skip, limit and populate
+    pipeline = pipeline.concat([
+      { $sort: sort },
+      { $skip: skip },
+      { $limit: limitNum },
+      {
+        $lookup: {
+          from: "users",
+          localField: "postedBy",
+          foreignField: "_id",
+          as: "postedBy"
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "comments.user",
+          foreignField: "_id",
+          as: "commentUsers"
+        }
+      },
+      {
+        $addFields: {
+          "postedBy": {
+            $map: {
+              input: "$postedBy",
+              as: "user",
+              in: {
+                _id: "$$user._id",
+                name: "$$user.name",
+                avatar: "$$user.avatar"
+              }
+            }
+          },
+          "comments": {
+            $map: {
+              input: "$comments",
+              as: "comment",
+              in: {
+                _id: "$$comment._id",
+                text: "$$comment.text",
+                date: "$$comment.date",
+                user: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$commentUsers",
+                        cond: { $eq: ["$$this._id", "$$comment.user"] }
+                      }
+                    },
+                    0
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    // Execute search with aggregation
+    const posts = await Post.aggregate(pipeline);
 
     // Get total count for pagination info
     const total = await Post.countDocuments(query);
 
+    // Add distance to response if location was provided
+    const processedPosts = posts.map(post => {
+      const processedPost = { ...post };
+      if (post.distance !== undefined && post.distance !== null) {
+        processedPost.distance = parseFloat(post.distance.toFixed(2)); // Round to 2 decimal places
+      }
+      return processedPost;
+    });
+
     res.status(200).json({
       status: "success",
       data: {
-        posts,
+        posts: processedPosts,
         pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / limit),
+          currentPage: pageNum,
+          totalPages: Math.ceil(total / limitNum),
           totalPosts: total,
-          hasNext: parseInt(page) * limit < total,
-          hasPrev: parseInt(page) > 1,
+          hasNext: pageNum * limitNum < total,
+          hasPrev: pageNum > 1,
         },
       },
     });
@@ -1281,23 +1415,41 @@ const getNearbyPosts = async (req, res) => {
     // Convert radius from kilometers to meters for MongoDB query
     const radiusInMeters = parseFloat(radius) * 1000;
 
-    const posts = await Post.find({
-      "location.coordinates": {
-        $near: {
-          $geometry: {
+    const posts = await Post.aggregate([
+      {
+        $geoNear: {
+          near: {
             type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)],
+            coordinates: [parseFloat(longitude), parseFloat(latitude)]
           },
-          $maxDistance: radiusInMeters,
-        },
+          distanceField: "distance",
+          maxDistance: radiusInMeters,
+          spherical: true,
+          limit: parseInt(limit)
+        }
       },
-    })
-      .populate("postedBy", "name avatar")
-      .populate({
-        path: "comments.user",
-        select: "name _id", // Standardize to name and _id
-      })
-      .limit(parseInt(limit));
+      {
+        $lookup: {
+          from: "users",
+          localField: "postedBy",
+          foreignField: "_id",
+          as: "postedBy"
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "comments.user",
+          foreignField: "_id",
+          as: "comments.user"
+        }
+      },
+      {
+        $addFields: {
+          postedBy: { $arrayElemAt: ["$postedBy", 0] }
+        }
+      }
+    ]);
 
     res.status(200).json({
       status: "success",
@@ -1305,6 +1457,330 @@ const getNearbyPosts = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching nearby posts:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Advanced search that includes all locations and provides comprehensive results
+// @route   GET /api/v1/posts/advanced-search
+// @access  Public
+const advancedSearch = async (req, res) => {
+  try {
+    const { q, category, limit = 20, page = 1, sortBy = 'relevance', radius = 50, latitude, longitude, tags } = req.query;
+    
+    // Validate and convert parameters
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 20;
+    const radiusNum = parseFloat(radius) || 50;
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+
+    // Build search query
+    let query = { status: 'published' }; // Only published posts
+
+    // Text search in title, description, category, and tags
+    if (q) {
+      // Use MongoDB text search or regex-based search
+      query.$or = [
+        { title: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+        { category: { $regex: q, $options: 'i' } }
+      ];
+      
+      // If tags exist, include them in search
+      query.$or.push({ tags: { $regex: q, $options: 'i' } });
+    }
+
+    // Filter by category if provided
+    if (category && category !== 'all') {
+      query.category = { $regex: category, $options: "i" };
+    }
+
+    // Filter by tags if provided
+    if (tags) {
+      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+      query.tags = { $in: tagArray };
+    }
+
+    let result;
+    let total;
+    
+    // Location-based search if coordinates provided
+    if (lat && lng) {
+      // When using geospatial queries with sorts, use aggregation pipeline
+      const pipeline = [
+        { $match: query },
+        {
+          $geoNear: {
+            near: {
+              type: "Point",
+              coordinates: [lng, lat]
+            },
+            distanceField: "distanceFromCenter",
+            maxDistance: radiusNum * 1000, // Convert km to meters
+            spherical: true
+          }
+        }
+      ];
+      
+      // Add relevance scoring if query term exists
+      if (q) {
+        const queryLower = q.toLowerCase();
+        pipeline.push({
+          $addFields: {
+            relevanceScore: {
+              $add: [
+                {
+                  $cond: {
+                    if: { $regexMatch: { input: "$title", regex: queryLower, options: "i" } },
+                    then: 10,
+                    else: 0
+                  }
+                },
+                {
+                  $cond: {
+                    if: { $regexMatch: { input: "$description", regex: queryLower, options: "i" } },
+                    then: 5,
+                    else: 0
+                  }
+                },
+                {
+                  $cond: {
+                    if: { $regexMatch: { input: "$category", regex: queryLower, options: "i" } },
+                    then: 3,
+                    else: 0
+                  }
+                },
+                {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ifNull: ["$tags", false] },
+                        { $isArray: "$tags" },
+                        {
+                          $anyElementTrue: {
+                            $map: {
+                              input: "$tags",
+                              as: "tag",
+                              in: { $regexMatch: { input: "$$tag", regex: queryLower, options: "i" } }
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    then: 2,
+                    else: 0
+                  }
+                }
+              ]
+            }
+          }
+        });
+      } else {
+        pipeline.push({
+          $addFields: {
+            relevanceScore: 0
+          }
+        });
+      }
+      
+      // Add sorting based on parameter
+      if (sortBy === 'distance') {
+        // Already sorted by distance from $geoNear
+      } else if (sortBy === 'relevance' && q) {
+        pipeline.push({ $sort: { relevanceScore: -1, datePosted: -1 } });
+      } else if (sortBy === 'newest') {
+        pipeline.push({ $sort: { datePosted: -1 } });
+      } else if (sortBy === 'oldest') {
+        pipeline.push({ $sort: { datePosted: 1 } });
+      } else if (sortBy === 'rating') {
+        pipeline.push({ $sort: { averageRating: -1, totalRatings: -1 } });
+      } else if (sortBy === 'popular') {
+        pipeline.push({ $sort: { totalRatings: -1, averageRating: -1 } });
+      } else { // Default
+        pipeline.push({ $sort: { datePosted: -1 } });
+      }
+      
+      // Add populate by referencing the user in a separate step or using lookup
+      pipeline.push({
+        $lookup: {
+          from: "users",
+          localField: "postedBy",
+          foreignField: "_id",
+          as: "postedBy"
+        }
+      });
+      
+      // Project to shape the data properly
+      pipeline.push({
+        $addFields: {
+          postedBy: { $arrayElemAt: ["$postedBy", 0] }
+        }
+      });
+      
+      // Count total for pagination
+      total = await Post.countDocuments(query);
+      
+      // Add pagination
+      pipeline.push({ $skip: skip }, { $limit: limitNum });
+      
+      result = await Post.aggregate(pipeline);
+    } else {
+      // For non-geospatial searches, use aggregation pipeline for consistency
+      const pipeline = [
+        { $match: query }
+      ];
+      
+      // Add relevance scoring if query term exists
+      if (q) {
+        const queryLower = q.toLowerCase();
+        pipeline.push({
+          $addFields: {
+            relevanceScore: {
+              $add: [
+                {
+                  $cond: {
+                    if: { $regexMatch: { input: "$title", regex: queryLower, options: "i" } },
+                    then: 10,
+                    else: 0
+                  }
+                },
+                {
+                  $cond: {
+                    if: { $regexMatch: { input: "$description", regex: queryLower, options: "i" } },
+                    then: 5,
+                    else: 0
+                  }
+                },
+                {
+                  $cond: {
+                    if: { $regexMatch: { input: "$category", regex: queryLower, options: "i" } },
+                    then: 3,
+                    else: 0
+                  }
+                },
+                {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $ifNull: ["$tags", false] },
+                        { $isArray: "$tags" },
+                        {
+                          $anyElementTrue: {
+                            $map: {
+                              input: "$tags",
+                              as: "tag",
+                              in: { $regexMatch: { input: "$$tag", regex: queryLower, options: "i" } }
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    then: 2,
+                    else: 0
+                  }
+                }
+              ]
+            }
+          }
+        });
+      } else {
+        pipeline.push({
+          $addFields: {
+            relevanceScore: 0
+          }
+        });
+      }
+      
+      // Add sorting based on parameter
+      if (sortBy === 'relevance' && q) {
+        pipeline.push({ $sort: { relevanceScore: -1, datePosted: -1 } });
+      } else if (sortBy === 'newest') {
+        pipeline.push({ $sort: { datePosted: -1 } });
+      } else if (sortBy === 'oldest') {
+        pipeline.push({ $sort: { datePosted: 1 } });
+      } else if (sortBy === 'rating') {
+        pipeline.push({ $sort: { averageRating: -1, totalRatings: -1 } });
+      } else if (sortBy === 'popular') {
+        pipeline.push({ $sort: { totalRatings: -1, averageRating: -1 } });
+      } else { // Default
+        pipeline.push({ $sort: { datePosted: -1 } });
+      }
+      
+      // Add populate
+      pipeline.push({
+        $lookup: {
+          from: "users",
+          localField: "postedBy",
+          foreignField: "_id",
+          as: "postedBy"
+        }
+      });
+      
+      // Project to shape the data properly
+      pipeline.push({
+        $addFields: {
+          postedBy: { $arrayElemAt: ["$postedBy", 0] }
+        }
+      });
+      
+      // Count total for pagination
+      total = await Post.countDocuments(query);
+      
+      // Add pagination
+      pipeline.push({ $skip: skip }, { $limit: limitNum });
+      
+      result = await Post.aggregate(pipeline);
+    }
+
+    // Calculate distance for each post if location provided
+    const processedPosts = result.map(post => {
+      // Calculate distance if location provided and not already calculated
+      if (lat && lng && post.location && post.location.coordinates) {
+        // If using geoNear, distance is calculated by MongoDB as distanceFromCenter
+        if (post.distanceFromCenter !== undefined) {
+          post.distance = parseFloat((post.distanceFromCenter / 1000).toFixed(2)); // Convert meters to km
+        } else {
+          // Calculate distance manually if not using geoNear
+          const [postLng, postLat] = post.location.coordinates;
+          const R = 6371; // Earth's radius in km
+          const dLat = (postLat - lat) * Math.PI / 180;
+          const dLon = (postLng - lng) * Math.PI / 180;
+          const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat * Math.PI / 180) * Math.cos(postLat * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const distance = R * c; // Distance in km
+          post.distance = parseFloat(distance.toFixed(2));
+        }
+      }
+      
+      return post;
+    });
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        posts: processedPosts,
+        suggestions: {
+          query: q || '',
+          count: processedPosts.length
+        },
+        pagination: {
+          currentPage: pageNum,
+          totalPages: Math.ceil(total / limitNum),
+          totalPosts: total,
+          hasNext: pageNum * limitNum < total,
+          hasPrev: pageNum > 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error in advanced search:", error);
     res.status(500).json({
       status: "error",
       message: error.message,
@@ -1531,6 +2007,7 @@ module.exports = {
   deleteComment,
   getComments,
   searchPosts,
+  advancedSearch,
   getNearbyPosts,
   getPostsWithinArea,
   getPostDistance,

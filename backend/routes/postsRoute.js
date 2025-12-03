@@ -16,6 +16,7 @@ const {
   deleteComment,
   getComments,
   searchPosts,
+  advancedSearch,
   getNearbyPosts,
   getPostsWithinArea,
   getPostDistance,
@@ -33,8 +34,9 @@ router
   .post(protect, createPostLimiter, upload.array("images", 10), createPost)
   .get(apiLimiter, getAllPosts); // Apply API rate limiter to public endpoint
 
-// Search route
+// Search routes
 router.route("/search").get(apiLimiter, searchPosts);
+router.route("/advanced-search").get(apiLimiter, advancedSearch);
 
 // Route to get posts by location
 router.get("/by-location", apiLimiter, getPostsByLocation);

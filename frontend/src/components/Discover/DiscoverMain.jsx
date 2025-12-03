@@ -8,6 +8,7 @@ import PostWindow from '../PostWindow/PostWindow';
 import CurrentLocationMarker from './CurrentLocationMarker';
 import MapRouting from './MapRouting';
 import CreatePostModal from './CreatePostModal';
+import EnhancedSearchComponent from './EnhancedSearchComponent';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users, Bell, User, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -100,7 +101,7 @@ const DiscoverMain = () => {
     navigate("/"); // Redirect to home page after logout
   };
 
-  // Memoized search suggestions
+  // Memoized search suggestions (for backward compatibility)
   const searchSuggestions = useMemo(() => {
     if (!searchQuery || searchQuery.trim().length === 0) return [];
     
@@ -225,6 +226,10 @@ const DiscoverMain = () => {
     
     return allSuggestions.slice(0, 5); // Return top 5 suggestions
   }, [searchQuery, posts]);
+  
+  // State for enhanced search results
+  const [enhancedSearchResults, setEnhancedSearchResults] = useState([]);
+  const [isEnhancedSearchLoading, setIsEnhancedSearchLoading] = useState(false);
   
   // State for geocoding search results
   const [geocodingResults, setGeocodingResults] = useState([]);
@@ -1054,63 +1059,110 @@ const DiscoverMain = () => {
 
   // Apply filters when search query, category, or other filters change
   useEffect(() => {
-    let result = [...posts];
-    
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(post => 
-        post.title.toLowerCase().includes(query) || 
-        post.description.toLowerCase().includes(query) ||
-        (typeof post.postedBy === 'string' ? post.postedBy.toLowerCase() : 
-         (typeof post.postedBy === 'object' && post.postedBy.name ? post.postedBy.name.toLowerCase() : '')
-        ).includes(query) ||
-        post.category.toLowerCase().includes(query) ||
-        post.tags.some(tag => tag.toLowerCase().includes(query))
-      );
-    }
-    
-    // Apply category filter
-    if (selectedCategory !== 'all') {
-      result = result.filter(post => post.category.toLowerCase() === selectedCategory.toLowerCase());
-    }
-    
-    // Apply rating filter
-    if (rating > 0) {
-      result = result.filter(post => post.averageRating >= rating);
-    }
-    
-    // Apply price range filter
-    if (priceRange !== 'all') {
-      if (priceRange === 'free') {
-        result = result.filter(post => post.price === 0);
-      } else if (priceRange === 'low') {
-        result = result.filter(post => post.price > 0 && post.price <= 10);
-      } else if (priceRange === 'medium') {
-        result = result.filter(post => post.price > 10 && post.price <= 50);
-      } else if (priceRange === 'high') {
-        result = result.filter(post => post.price > 50);
+    // If we have enhanced search results, use them instead of filtering posts
+    if (enhancedSearchResults.length > 0) {
+      let result = [...enhancedSearchResults];
+      
+      // Apply category filter
+      if (selectedCategory !== 'all') {
+        result = result.filter(post => post.category.toLowerCase() === selectedCategory.toLowerCase());
       }
-    }
-    
-    // Apply sorting
-    result.sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return new Date(b.datePosted) - new Date(a.datePosted);
-        case 'oldest':
-          return new Date(a.datePosted) - new Date(b.datePosted);
-        case 'rating':
-          return b.averageRating - a.averageRating;
-        case 'popular':
-          return b.totalRatings - a.totalRatings;
-        default:
-          return 0;
+      
+      // Apply rating filter
+      if (rating > 0) {
+        result = result.filter(post => post.averageRating >= rating);
       }
-    });
-    
-    setFilteredPosts(result);
-  }, [searchQuery, selectedCategory, rating, priceRange, sortBy, posts]);
+      
+      // Apply price range filter
+      if (priceRange !== 'all') {
+        if (priceRange === 'free') {
+          result = result.filter(post => post.price === 0);
+        } else if (priceRange === 'low') {
+          result = result.filter(post => post.price > 0 && post.price <= 10);
+        } else if (priceRange === 'medium') {
+          result = result.filter(post => post.price > 10 && post.price <= 50);
+        } else if (priceRange === 'high') {
+          result = result.filter(post => post.price > 50);
+        }
+      }
+      
+      // Apply sorting
+      result.sort((a, b) => {
+        switch (sortBy) {
+          case 'newest':
+            return new Date(b.datePosted) - new Date(a.datePosted);
+          case 'oldest':
+            return new Date(a.datePosted) - new Date(b.datePosted);
+          case 'rating':
+            return b.averageRating - a.averageRating;
+          case 'popular':
+            return b.totalRatings - a.totalRatings;
+          default:
+            return 0;
+        }
+      });
+      
+      setFilteredPosts(result);
+    } else {
+      // Use the original filtering logic when no enhanced search results
+      let result = [...posts];
+      
+      // Apply search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        result = result.filter(post => 
+          post.title.toLowerCase().includes(query) || 
+          post.description.toLowerCase().includes(query) ||
+          (typeof post.postedBy === 'string' ? post.postedBy.toLowerCase() : 
+           (typeof post.postedBy === 'object' && post.postedBy.name ? post.postedBy.name.toLowerCase() : '')
+          ).includes(query) ||
+          post.category.toLowerCase().includes(query) ||
+          post.tags.some(tag => tag.toLowerCase().includes(query))
+        );
+      }
+      
+      // Apply category filter
+      if (selectedCategory !== 'all') {
+        result = result.filter(post => post.category.toLowerCase() === selectedCategory.toLowerCase());
+      }
+      
+      // Apply rating filter
+      if (rating > 0) {
+        result = result.filter(post => post.averageRating >= rating);
+      }
+      
+      // Apply price range filter
+      if (priceRange !== 'all') {
+        if (priceRange === 'free') {
+          result = result.filter(post => post.price === 0);
+        } else if (priceRange === 'low') {
+          result = result.filter(post => post.price > 0 && post.price <= 10);
+        } else if (priceRange === 'medium') {
+          result = result.filter(post => post.price > 10 && post.price <= 50);
+        } else if (priceRange === 'high') {
+          result = result.filter(post => post.price > 50);
+        }
+      }
+      
+      // Apply sorting
+      result.sort((a, b) => {
+        switch (sortBy) {
+          case 'newest':
+            return new Date(b.datePosted) - new Date(a.datePosted);
+          case 'oldest':
+            return new Date(a.datePosted) - new Date(b.datePosted);
+          case 'rating':
+            return b.averageRating - a.averageRating;
+          case 'popular':
+            return b.totalRatings - a.totalRatings;
+          default:
+            return 0;
+        }
+      });
+      
+      setFilteredPosts(result);
+    }
+  }, [searchQuery, selectedCategory, rating, priceRange, sortBy, posts, enhancedSearchResults]);
 
   // Get user location for initial centering - non-blocking
   useEffect(() => {
@@ -2121,12 +2173,25 @@ const DiscoverMain = () => {
                 className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => {
+                  // Open the search window when clicking on the top search bar
+                  document.getElementById('search-window')?.classList.remove('hidden');
+                }}
                 onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                    // You can add search handling here if needed
+                    // Open the search window when pressing Enter
+                    document.getElementById('search-window')?.classList.remove('hidden');
                 }
                 }}
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-4 w-4 text-gray-500" />
+              </button>
+            )}
             </div>
         </div>
         {/* Map */}
@@ -2263,6 +2328,11 @@ const DiscoverMain = () => {
               // Check if this post is also in the saved locations to avoid duplicate markers
               const isSaved = favoritePosts.has(post.id);
               
+              // Only render markers for posts with valid IDs to prevent duplicate key errors
+              if (!post.id) {
+                return null;
+              }
+              
               return (
                 <CustomMarker 
                   key={`post-${post.id}`} 
@@ -2397,10 +2467,10 @@ const DiscoverMain = () => {
           toggleSidebar={toggleSidebar}
         />
         
-        {/* Search Window */}
+        {/* Search Window with Enhanced Search */}
         <motion.div 
           id="search-window" 
-          className="hidden absolute top-20 left-20 z-[999] sidebar-window search-window bg-white rounded-xl shadow-xl p-6 max-w-md w-full backdrop-blur-sm border border-gray-200"
+          className="hidden absolute top-20 left-20 z-[999] sidebar-window search-window bg-white rounded-xl shadow-xl p-6 max-w-lg w-full backdrop-blur-sm border border-gray-200"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -2412,7 +2482,7 @@ const DiscoverMain = () => {
           }}
         >
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Search</h3>
+            <h3 className="text-xl font-bold text-gray-800">Advanced Search</h3>
             <button 
               onClick={() => document.getElementById('search-window')?.classList.add('hidden')}
               className="p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -2420,101 +2490,24 @@ const DiscoverMain = () => {
               <X className="h-5 w-5 text-gray-600" />
             </button>
           </div>
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                type="text"
-                placeholder="Search for locations, categories, or keywords..."
-                className="w-full pl-12 pr-4 py-3 rounded-xl modern-input focus-ring text-base"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                }}
-              />
-            </div>
-            
-            {/* Search Results - Show both post matches and geocoded locations */}
-            {(searchQuery && (searchSuggestions.length > 0 || geocodingResults.length > 0)) && (
-              <div className="border-t border-gray-200 pt-4 max-h-[60vh] overflow-y-auto">
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">Search Results</h4>
-                <div className="space-y-2">
-                  {/* Geocoded locations first */}
-                  {geocodingResults.map((result) => (
-                    <motion.div
-                      key={result.id}
-                      whileHover={{ scale: 1.02 }}
-                      className="p-4 bg-white/70 rounded-xl border border-gray-200 cursor-pointer hover:bg-white transition-colors flex items-start gap-3"
-                      onClick={() => {
-                        // Set the map to the geocoded location and open the create post modal
-                        if (mapRef.current) {
-                          mapRef.current.flyTo([result.location.latitude, result.location.longitude], 15);
-                        }
-                        // Pass the location in the correct format expected by CreatePostModal
-                        setSelectedMapPosition({
-                          lat: result.location.latitude,
-                          lng: result.location.longitude
-                        });
-                        setShowCreatePostModal(true);
-                        // Close the search window
-                        document.getElementById('search-window')?.classList.add('hidden');
-                      }}
-                    >
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-800">{result.title}</div>
-                        <div className="text-sm text-gray-600 mt-1">{result.description}</div>
-                      </div>
-                      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs px-3 py-1.5 rounded-full font-medium flex items-center">
-                        <MapPin className="w-3 h-3 mr-1" />
-                        Location
-                      </div>
-                    </motion.div>
-                  ))}
-                  
-                  {/* Post suggestions */}
-                  {searchSuggestions.map((suggestion) => (
-                    <motion.div
-                      key={suggestion.id}
-                      whileHover={{ scale: 1.02 }}
-                      className="p-4 bg-white/70 rounded-xl border border-gray-200 cursor-pointer hover:bg-white transition-colors flex items-start gap-3"
-                      onClick={() => {
-                        setSelectedPost(suggestion.post);
-                        flyToPost(suggestion.post.position);
-                        // Close the search window
-                        document.getElementById('search-window')?.classList.add('hidden');
-                      }}
-                    >
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-800">{suggestion.title}</div>
-                        <div className="text-sm text-gray-600 line-clamp-1 mt-1">{suggestion.description}</div>
-                      </div>
-                      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs px-3 py-1.5 rounded-full font-medium flex items-center">
-                        <Bookmark className="w-3 h-3 mr-1" />
-                        Post
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Show loading indicator when geocoding */}
-            {isGeocoding && (
-              <div className="flex items-center justify-center py-3">
-                <div className="flex items-center text-gray-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
-                  <span className="text-sm">Searching location...</span>
-                </div>
-              </div>
-            )}
-            
-            {/* Show "no results" when search has no matches */}
-            {searchQuery && searchQuery.trim().length > 0 && searchSuggestions.length === 0 && geocodingResults.length === 0 && !isGeocoding && (
-              <div className="pt-4 text-center text-gray-500 text-sm">
-                No matches found for "{searchQuery}"
-              </div>
-            )}
-          </div>
+          
+          <EnhancedSearchComponent
+            onSearchResults={(results) => {
+              // Handle search results if needed
+              setFilteredPosts(results);
+            }}
+            onLocationSelect={(post) => {
+              // Set the selected post when a location is clicked
+              setSelectedPost(post);
+              flyToPost(post.position);
+              // Close the search window
+              document.getElementById('search-window')?.classList.add('hidden');
+            }}
+            currentLocation={userLocation ? { latitude: userLocation[0], longitude: userLocation[1] } : null}
+            placeholder="Search for places, locations, categories..."
+            showFilters={true}
+            limit={20}
+          />
         </motion.div>
         
         {/* Category Window */}
@@ -2838,8 +2831,8 @@ const DiscoverMain = () => {
               Saved Posts ({favoritePosts.size})
             </h4>
             <div className="space-y-3">
-              {posts.filter(post => favoritePosts.has(post.id)).length > 0 ? (
-                posts.filter(post => favoritePosts.has(post.id)).map((post, index) => (
+              {posts.filter(post => post.id && favoritePosts.has(post.id)).length > 0 ? (
+                posts.filter(post => post.id && favoritePosts.has(post.id)).map((post, index) => (
                   <motion.div 
                     key={`fav-${post.id}`} 
                     initial={{ opacity: 0, x: -20 }}
@@ -3005,7 +2998,7 @@ const DiscoverMain = () => {
                     </div>
                   ))
                 ) : filteredPosts.length > 0 ? (
-                  filteredPosts.map((post, index) => (
+                  filteredPosts.filter(post => post.id).map((post, index) => (
                     <motion.div
                       key={post.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -3190,6 +3183,7 @@ const DiscoverMain = () => {
                             <h4 className="text-xs font-medium text-gray-700 mb-3">Popular locations you might like:</h4>
                             <div className="space-y-2">
                               {posts
+                                .filter(post => post.id)
                                 .sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0))
                                 .slice(0, 3)
                                 .map((post, index) => (
