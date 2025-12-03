@@ -2102,7 +2102,7 @@ const DiscoverMain = () => {
       {/* Map and results area - adjust to account for sidebar */}
       <div className={`map-container transition-all duration-300 ease-in-out ${isSidebarExpanded && window.innerWidth >= 768 ? 'ml-[16rem]' : 'ml-0'}`} style={{ marginLeft: isSidebarExpanded && window.innerWidth >= 768 ? '16rem' : '0' }}>
         {/* Responsive search bar: show full bar on bigger screens, icon only on mobile */}
-        <div className="top-search-bar absolute top-4 sm:top-16 left-1/2 transform -translate-x-1/2 z-[6000] w-full px-4">
+        <div className="top-search-bar absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-[6000] w-full px-4">
           <div className="max-w-2xl mx-auto relative" ref={searchContainerRef}>
             {/* Always show search bar on bigger screens, only icon on mobile */}
             <div className="relative sm:block hidden"> {/* Only show full bar on screens >= small */}
