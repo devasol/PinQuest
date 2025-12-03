@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, MapPin, Grid3X3, Bookmark, Navigation, Home, 
   User, Settings, LogOut, Heart, Star, Bell, 
   TrendingUp, Award, Globe, Users, Check, SlidersHorizontal
 } from 'lucide-react';
+import { adminAPI } from '../../services/api';
 
 const EnhancedSidebarWindows = ({ 
   showWindows = {},
@@ -24,7 +25,8 @@ const EnhancedSidebarWindows = ({
   user = null,
   updateUserLocation = () => {},
   followUser = false,
-  isSidebarExpanded = false
+  isSidebarExpanded = false,
+  authToken = null
 }) => {
   const categories = [
     { id: 'all', name: 'All', icon: MapPin, description: 'Show all locations' },
@@ -61,13 +63,77 @@ const EnhancedSidebarWindows = ({
     }));
   };
 
+  // State for notifications
+  const [notifications, setNotifications] = useState([]);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Function to fetch notifications
+  const fetchNotifications = async () => {
+    if (!authToken) return;
+    
+    setNotificationLoading(true);
+    try {
+      const response = await adminAPI.getAdminNotifications({}, authToken);
+      if (response.success) {
+        setNotifications(response.data.notifications || []);
+        // Calculate unread count
+        const unread = (response.data.notifications || []).filter(n => !n.read).length;
+        setUnreadCount(unread);
+      } else {
+        console.error('Error fetching notifications:', response.message);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
+
+  // Function to mark notification as read
+  const markAsRead = async (notificationId) => {
+    if (!authToken) return;
+    
+    try {
+      await adminAPI.markAsRead(notificationId, authToken);
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => 
+          n._id === notificationId ? { ...n, read: true } : n
+        )
+      );
+      setUnreadCount(prev => prev - 1);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  // Function to mark all notifications as read
+  const markAllAsRead = async () => {
+    if (!authToken) return;
+    
+    try {
+      await adminAPI.markAllAdminNotificationsAsRead(authToken);
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => ({ ...n, read: true }))
+      );
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
   // Function to close all windows
   const closeAllWindows = () => {
     setShowWindows({
       'category-window': false,
       'view-mode-window': false,
       'map-type-window': false,
-      'saved-locations-window': false
+      'saved-locations-window': false,
+      'notifications-window': false
     });
   };
 
@@ -79,6 +145,13 @@ const EnhancedSidebarWindows = ({
       [windowId]: true
     }));
   };
+
+  // Fetch notifications when notifications window opens
+  useEffect(() => {
+    if (showWindows['notifications-window'] && authToken) {
+      fetchNotifications();
+    }
+  }, [showWindows['notifications-window'], authToken]);
 
   return (
     <div className="z-[6000]">
@@ -433,6 +506,127 @@ const EnhancedSidebarWindows = ({
                   </button>
                 </div>
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Notifications Window */}
+      <AnimatePresence>
+        {showWindows['notifications-window'] && (
+          <motion.div 
+            className={`fixed top-0 bottom-0 z-[5995] sidebar-window h-full ${
+              isSidebarExpanded && window.innerWidth >= 768 
+                ? 'left-[16rem] xl:left-[16rem] lg:left-[16rem] md:left-[16rem] w-[380px]' 
+                : 'left-[5rem] w-[380px]'
+            }`}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ 
+              type: "spring", 
+              damping: 20, 
+              stiffness: 300,
+              duration: 0.4 
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notifications-window-title"
+            tabIndex={-1}
+          >
+            <div className="sidebar-window-header">
+              <h2 id="notifications-window-title">Notifications</h2>
+              <button 
+                onClick={() => closeWindow('notifications-window')}
+                aria-label="Close notifications window"
+              >
+                <X className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="sidebar-window-content">
+              <div className="mb-4">
+                <h4 className="font-semibold text-gray-700 mb-3 flex items-center text-base">
+                  <Bell className="h-5 w-5 mr-2.5" aria-hidden="true" />
+                  Recent Notifications
+                  {unreadCount > 0 && (
+                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                      {unreadCount} unread
+                    </span>
+                  )}
+                </h4>
+                {notificationLoading ? (
+                  <div className="p-4 text-center text-gray-500">
+                    Loading notifications...
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    No notifications
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {notifications.map((notification, index) => (
+                      <motion.div 
+                        key={notification._id}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={`p-3 rounded-lg border cursor-pointer hover:opacity-90 transition-opacity ${
+                          !notification.read 
+                            ? 'bg-blue-50 border-blue-100' 
+                            : 'bg-gray-50 border-gray-100'
+                        }`}
+                        onClick={() => {
+                          if (!notification.read) {
+                            markAsRead(notification._id);
+                          }
+                        }}
+                      >
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 mr-3">
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                              !notification.read ? 'bg-blue-100' : 'bg-gray-200'
+                            }`}>
+                              <Bell className={`h-5 w-5 ${
+                                !notification.read ? 'text-blue-600' : 'text-gray-600'
+                              }`} aria-hidden="true" />
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${
+                              !notification.read ? 'text-gray-900' : 'text-gray-600'
+                            }`}>
+                              {notification.title || 'Notification'}
+                            </p>
+                            <p className="text-sm text-gray-600">{notification.message}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(notification.date).toLocaleString()}
+                            </p>
+                            {!notification.read && (
+                              <span className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                Unread
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Mark all as read button */}
+              {notifications.length > 0 && (
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <button
+                    onClick={markAllAsRead}
+                    disabled={notificationLoading}
+                    className="w-full p-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Check className="h-5 w-5" aria-hidden="true" />
+                    Mark All as Read
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}

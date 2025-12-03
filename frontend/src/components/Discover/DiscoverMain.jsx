@@ -81,7 +81,8 @@ const DiscoverMain = () => {
     'category-window': false,
     'view-mode-window': false,
     'map-type-window': false,
-    'saved-locations-window': false
+    'saved-locations-window': false,
+    'notifications-window': false
   });
 
   const toggleSidebar = () => {
@@ -1762,7 +1763,8 @@ const DiscoverMain = () => {
       'category-window': false,
       'view-mode-window': false,
       'map-type-window': false,
-      'saved-locations-window': false
+      'saved-locations-window': false,
+      'notifications-window': false
     });
     
     // Then toggle the requested window
@@ -2587,6 +2589,7 @@ const DiscoverMain = () => {
           updateUserLocation={updateUserLocation}
           followUser={followUser}
           isSidebarExpanded={isSidebarExpanded}
+          authToken={isAuthenticated ? localStorage.getItem('token') : null}
         />
         
         {/* Listing Panel - Side Panel on Desktop, Bottom Panel on Mobile */}

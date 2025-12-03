@@ -30,10 +30,10 @@ const Sidebar = ({
       id: 'notifications',
       label: 'Notifications',
       icon: Bell,
-      path: '/discover',
+      path: null,
       requiresAuth: true,
-      action: null, // Will be handled differently
-      type: 'link'
+      action: () => toggleWindow('notifications-window'),
+      type: 'action'
     },
     {
       id: 'categories',
