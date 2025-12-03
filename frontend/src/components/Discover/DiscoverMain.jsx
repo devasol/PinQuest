@@ -2070,102 +2070,7 @@ const DiscoverMain = () => {
         {/* User controls - login, notifications, name */}
         {isAuthenticated ? (
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-white/90 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 shadow-md border border-gray-200">
-            {/* Notifications */}
-            <div className="relative">
-              <button 
-                className="p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-full hover:bg-gray-100"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsNotificationOpen(!isNotificationOpen);
-                }}
-                aria-label="Notifications"
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center text-xs bg-red-500 text-white rounded-full">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </button>
-              
-              {/* Notification Dropdown */}
-              {isNotificationOpen && (
-                <div 
-                  ref={notificationRef}
-                  className="absolute right-0 mt-2 w-72 max-w-[90vw] sm:w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-[5981]"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-semibold text-gray-800 text-sm sm:text-base">Notifications</h3>
-                    {notifications.length > 0 && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          markAllAsRead();
-                        }}
-                        className="text-xs sm:text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        Mark all as read
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="max-h-64 sm:max-h-96 overflow-y-auto">
-                    {notifications.length > 0 ? (
-                      <div className="divide-y divide-gray-100">
-                        {notifications.map((notification) => (
-                          <div 
-                            key={notification._id} 
-                            className={`p-3 sm:p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-                              !notification.read ? "bg-blue-50" : ""
-                            }`}
-                            onClick={() => {
-                              markNotificationAsRead(notification._id);
-                              // Navigate to the relevant post
-                              if (notification.post) {
-                                navigate(`/discover#${notification.post}`);
-                              }
-                            }}
-                          >
-                            <div className="flex items-start">
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-xs sm:text-sm ${!notification.read ? "font-semibold" : "font-medium"} text-gray-800`}>
-                                  {notification.message}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {formatNotificationDate(notification.date)}
-                                </p>
-                              </div>
-                              {!notification.read && (
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    markNotificationAsRead(notification._id);
-                                  }}
-                                  className="ml-2 text-gray-400 hover:text-blue-600"
-                                >
-                                  <Check className="h-4 w-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-4 sm:p-6 text-center">
-                        <Bell className="mx-auto h-8 w-8 sm:h-10 sm:w-10 text-gray-300" />
-                        <h3 className="mt-2 font-medium text-gray-900 text-sm">No notifications</h3>
-                        <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                          You'll see notifications here when they arrive.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* User profile - logout button removed */}
+            {/* User profile - logout and notifications moved to sidebar */}
             <div className="flex flex-wrap items-center gap-1 sm:gap-2">
               <Link
                 to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
@@ -2179,7 +2084,7 @@ const DiscoverMain = () => {
                     (user?.role === "admin" ? "Admin" : "Profile")}
                 </span>
               </Link>
-              {/* Logout button removed from top bar */}
+              {/* Logout and notifications moved to sidebar */}
             </div>
           </div>
         ) : (

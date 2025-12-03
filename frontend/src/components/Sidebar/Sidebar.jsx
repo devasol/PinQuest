@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, User, Settings, LogOut, Heart, Star } from 'lucide-react';
+import { Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, User, Settings, LogOut, Heart, Star, Bell } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = ({ 
@@ -24,6 +24,15 @@ const Sidebar = ({
       path: '/',
       requiresAuth: false,
       action: null,
+      type: 'link'
+    },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: Bell,
+      path: '/discover',
+      requiresAuth: true,
+      action: null, // Will be handled differently
       type: 'link'
     },
     {
