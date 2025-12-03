@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Search, MapPin, Star, Heart, Bookmark, Navigation, X, Filter, SlidersHorizontal, TrendingUp, Award, Users, Globe } from 'lucide-react';
 import { useModal } from '../../contexts/ModalContext';
 import { postApi } from '../../services/api';
@@ -10,9 +10,11 @@ const EnhancedSearchComponent = ({
   currentLocation = null,
   placeholder = "Search for places, locations, categories...",
   showFilters = true,
-  limit = 20 
+  limit = 20,
+  searchQuery,
+  onSearchQueryChange
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+ 
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
@@ -50,18 +52,12 @@ const EnhancedSearchComponent = ({
     }
   }, [userLocation]);
 
-  // Debounced search function
-  useEffect(() => {
-    const delaySearch = setTimeout(() => {
-      performSearch();
-    }, 500);
-
-    return () => clearTimeout(delaySearch);
-  }, [searchQuery, activeFilters, activeTab, userLocation]);
-
-  const performSearch = async () => {
+  const performSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
+      if (onSearchResults) {
+          onSearchResults([]);
+      }
       return;
     }
 
@@ -96,6 +92,9 @@ const EnhancedSearchComponent = ({
         }
       } else {
         setSearchResults([]);
+        if (onSearchResults) {
+          onSearchResults([]);
+        }
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -108,7 +107,16 @@ const EnhancedSearchComponent = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, activeFilters, activeTab, userLocation, limit, onSearchResults, showModal]);
+
+  // Debounced search function
+  useEffect(() => {
+    const delaySearch = setTimeout(() => {
+      performSearch();
+    }, 500);
+
+    return () => clearTimeout(delaySearch);
+  }, [performSearch]);
 
   // Filter results based on active filters
   const filteredResults = useMemo(() => {
@@ -149,7 +157,7 @@ const EnhancedSearchComponent = ({
     if (onLocationSelect) {
       onLocationSelect(post);
     }
-    setSearchQuery('');
+    onSearchQueryChange('');
   };
 
   const getDistanceText = (post) => {
@@ -174,15 +182,18 @@ const EnhancedSearchComponent = ({
         <input
           type="text"
           placeholder={placeholder}
-          className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base bg-white/80 backdrop-blur-sm"
+          className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base bg-white"  // Changed to solid white background from bg-white/80 backdrop-blur-sm
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => onSearchQueryChange(e.target.value)}
         />
         {searchQuery && (
           <button
             onClick={() => {
-              setSearchQuery('');
+              onSearchQueryChange('');
               setSearchResults([]);
+              if (onSearchResults) {
+                onSearchResults([]);
+              }
             }}
             className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
           >

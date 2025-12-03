@@ -8,13 +8,14 @@ import PostWindow from '../PostWindow/PostWindow';
 import CurrentLocationMarker from './CurrentLocationMarker';
 import MapRouting from './MapRouting';
 import CreatePostModal from './CreatePostModal';
-import EnhancedSearchComponent from './EnhancedSearchComponent';
+
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users, Bell, User, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './DiscoverMain.css';
 import { useModal } from '../../contexts/ModalContext';
 import { connectSocket } from '../../services/socketService';
+import { postApi } from '../../services/api'; // Import the postApi to use search functionality
 import Sidebar from '../Sidebar/Sidebar';
 
 // API base URL - adjust based on your backend URL
@@ -53,14 +54,16 @@ const DiscoverMain = () => {
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
   const [loading, setLoading] = useState(false); // Don't block initial render
-  const [initialLoading, setInitialLoading] = useState(false); // Don't block initial render
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [mapType, setMapType] = useState('google'); // street, satellite, terrain, dark, light, topographic, navigation, cycle, google
   const [savedLocations, setSavedLocations] = useState([]); // For saved locations (separate from bookmarks)
   const [favoritePosts, setFavoritePosts] = useState(new Set()); // Track which posts are bookmarked/favorited
-  const [likedPosts, setLikedPosts] = useState(new Set()); // Track which posts are liked
+  
   const [showSavedLocationsOnMap, setShowSavedLocationsOnMap] = useState(false); // Toggle to show saved locations
   const [selectedPost, setSelectedPost] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
@@ -229,24 +232,12 @@ const DiscoverMain = () => {
   
   // State for enhanced search results
   const [enhancedSearchResults, setEnhancedSearchResults] = useState([]);
-  const [isEnhancedSearchLoading, setIsEnhancedSearchLoading] = useState(false);
+  
   
   // State for geocoding search results
-  const [geocodingResults, setGeocodingResults] = useState([]);
-  const [isGeocoding, setIsGeocoding] = useState(false);
   
-  // Simple debounce function
-  const debounce = (func, wait) => {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  };
+  
+
   
   // Function to mark a notification as read
   const markNotificationAsRead = async (notificationId) => {
@@ -344,63 +335,7 @@ const DiscoverMain = () => {
     };
   }, [isNotificationOpen]);
   
-  // Debounced geocoding function
-  const debouncedGeocode = useCallback(
-    debounce(async (query) => {
-      if (!query || query.trim().length < 3) {
-        setGeocodingResults([]);
-        return;
-      }
 
-      // Only perform geocoding if the query doesn't match any existing posts
-      const hasMatchingPost = posts.some(post => 
-        post.title.toLowerCase().includes(query.toLowerCase()) || 
-        post.description.toLowerCase().includes(query.toLowerCase()) ||
-        (typeof post.postedBy === 'string' ? post.postedBy.toLowerCase() : 
-         (typeof post.postedBy === 'object' && post.postedBy.name ? post.postedBy.name.toLowerCase() : '')
-        ).includes(query.toLowerCase()) ||
-        post.category.toLowerCase().includes(query.toLowerCase()) ||
-        post.tags.some(tag => tag.toLowerCase().includes(query.toLowerCase()))
-      );
-
-      // If we have matching posts, don't geocode (let the existing search handle it)
-      if (hasMatchingPost) {
-        setGeocodingResults([]);
-        return;
-      }
-
-      setIsGeocoding(true);
-      try {
-        const result = await geocodeAddress(query);
-        setGeocodingResults([{
-          id: 'geocoded-result',
-          type: 'geocoded-location',
-          title: result.displayName,
-          description: `Location: ${result.latitude.toFixed(6)}, ${result.longitude.toFixed(6)}`,
-          location: {
-            latitude: result.latitude,
-            longitude: result.longitude
-          },
-          relevance: 'geocoded'
-        }]);
-      } catch (error) {
-        setGeocodingResults([]);
-        console.log('Geocoding failed, this is normal for non-location queries'); // Not an error we need to report
-      } finally {
-        setIsGeocoding(false);
-      }
-    }, 500), // 500ms debounce
-    [posts]
-  );
-
-  // Update geocoding when search query changes
-  useEffect(() => {
-    if (searchQuery && searchQuery.trim().length > 0) {
-      debouncedGeocode(searchQuery);
-    } else {
-      setGeocodingResults([]);
-    }
-  }, [searchQuery, debouncedGeocode]);
   
   const mapRef = useRef();
   const fetchIntervalRef = useRef(null);
@@ -520,7 +455,7 @@ const DiscoverMain = () => {
                 const userId = typeof like.user === 'object' ? like.user._id : like.user;
                 return userId !== user?._id;
               }),
-          likesCount: isLiked ? (prev.likesCount || 0) + 1 : (prev.likesCount || 0) - 1
+          likesCount: isLiked ? (post.likesCount || 0) + 1 : (post.likesCount || 0) - 1
         };
       }
       return post;
@@ -537,12 +472,12 @@ const DiscoverMain = () => {
                 const userId = typeof like.user === 'object' ? like.user._id : like.user;
                 return userId !== user?._id;
               }),
-          likesCount: isLiked ? (prev.likesCount || 0) + 1 : (prev.likesCount || 0) - 1
+          likesCount: isLiked ? (post.likesCount || 0) + 1 : (post.likesCount || 0) - 1
         };
       }
       return post;
     }));
-  }, [selectedPost, user]);
+  }, [selectedPost, user, showModal]);
 
   const handlePostSave = useCallback((postId, isSaved) => {
     // Update favorite posts when a post is bookmarked/unbookmarked
@@ -588,7 +523,7 @@ const DiscoverMain = () => {
       }
       return post;
     }));
-  }, [selectedPost]);
+  }, [selectedPost, showModal]);
 
   const handlePostRate = useCallback((postId, newAverageRating, newTotalRatings) => {
     // Update the posts state in DiscoverMain when ratings change
@@ -855,7 +790,7 @@ const DiscoverMain = () => {
       // If not authenticated, reset to empty
       setSavedLocations([]);
     }
-  }, [isAuthenticated, API_BASE_URL]);
+  }, [isAuthenticated]);
 
   // Fetch user's favorite posts if user is authenticated
   const fetchUserFavoritePostsRef = useRef();
@@ -960,7 +895,7 @@ const DiscoverMain = () => {
         fetchUserFavoritePostsRef.current = false;
       }
     }
-  }, [isAuthenticated, user, API_BASE_URL]); // Removed selectedPost to prevent circular dependency
+  }, [isAuthenticated, user]);
 
   // Update posts when favoritePosts changes to ensure correct bookmark status
   useEffect(() => {
@@ -1008,23 +943,11 @@ const DiscoverMain = () => {
     }
   }, [favoritePosts]); // Removed selectedPost to prevent circular dependency
 
-  // Fetch user's liked posts if user is authenticated
-  const fetchUserLikedPosts = useCallback(async () => {
-    if (isAuthenticated && user) {
-      try {
-        // For now, we rely on the post data returned from the server
-        // which should include likes array with user information
-        // The logic in the rendering already checks if user has liked each post
-      } catch (err) {
-        console.error("Error fetching user liked posts:", err);
-      }
-    }
-  }, [isAuthenticated, user]);
+
 
   // Initial data fetch - non-blocking
-  useEffect(() => {
+    useEffect(() => {
     // Immediately show the map without waiting for data
-    setInitialLoading(false);
     
     // Fetch saved locations and favorite posts in background (not blocking)
     if (isAuthenticated) {
@@ -1241,6 +1164,7 @@ const DiscoverMain = () => {
       }
     };
   }, []); // Run once when component mounts
+
   
   // Always request location when component mounts to ensure permission is requested
   useEffect(() => {
@@ -1461,75 +1385,7 @@ const DiscoverMain = () => {
     }
   };
 
-  // Remove a saved location
-  const removeSavedLocation = async (locationId) => {
-    if (!isAuthenticated) {
-      showModal({
-        title: "Authentication Required",
-        message: 'Please login to manage saved locations',
-        type: 'info',
-        confirmText: 'OK'
-      });
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/users/saved-locations/${locationId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        fetchSavedLocations(); // Refresh saved locations
-      } else {
-        showModal({
-          title: "Error",
-          message: 'Failed to remove location',
-          type: 'error',
-          confirmText: 'OK'
-        });
-      }
-    } catch (err) {
-      console.error('Error removing location:', err);
-      showModal({
-        title: "Error",
-        message: 'Error removing location',
-        type: 'error',
-        confirmText: 'OK'
-      });
-    }
-  };
 
-  // Function to show saved locations on the map
-  const showSavedLocations = () => {
-    if (!isAuthenticated) {
-      showModal({
-        title: "Authentication Required",
-        message: 'Please login to view saved locations',
-        type: 'info',
-        confirmText: 'OK'
-      });
-      return;
-    }
-    
-    if (savedLocations.length === 0) {
-      // Button should be disabled when there are no saved locations,
-      // but if somehow this function is called, just return without doing anything
-      return;
-    }
-    
-    setShowSavedLocationsOnMap(prev => !prev);
-  };
-
-  // Function to fly to a saved location on the map
-  const flyToSavedLocation = (position) => {
-    if (mapRef.current) {
-      mapRef.current.flyTo(position, 15);
-    }
-  };
 
   // Get directions to a location - now shows directions in the map itself
   const getDirections = useCallback((position) => {
@@ -1621,7 +1477,7 @@ const DiscoverMain = () => {
         maximumAge: 300000, // 5 minutes
       }
     );
-  }, [userLocation, flyToPost]);
+  }, [userLocation, showModal]);
 
   // Update user's current location manually
   const updateUserLocation = useCallback(async () => {
@@ -1694,7 +1550,7 @@ const DiscoverMain = () => {
       // Reset loading state in all cases
       setLocationLoading(false);
     }
-  }, []);
+  }, [showModal]);
 
   // Clear the routing state
   const clearRouting = useCallback(() => {
@@ -1703,36 +1559,7 @@ const DiscoverMain = () => {
     setRoutingLoading(false); // Also reset loading state
   }, []);
 
-  // Function to geocode an address and find coordinates
-  const geocodeAddress = async (address) => {
-    try {
-      // Use OpenStreetMap Nominatim API for geocoding
-      const encodedAddress = encodeURIComponent(address);
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Geocoding request failed');
-      }
-      
-      const data = await response.json();
-      
-      if (data && data.length > 0) {
-        const location = data[0];
-        return {
-          latitude: parseFloat(location.lat),
-          longitude: parseFloat(location.lon),
-          displayName: location.display_name
-        };
-      } else {
-        throw new Error('Location not found');
-      }
-    } catch (error) {
-      console.error('Geocoding error:', error);
-      throw error;
-    }
-  };
+
 
   // Function to toggle windows - closes previous window and opens new one
   const toggleWindow = (windowId) => {
@@ -1964,6 +1791,53 @@ const DiscoverMain = () => {
     }
   };
 
+  // Debounced search function
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!searchQuery.trim()) {
+        setEnhancedSearchResults([]);
+        return;
+      }
+
+      setSearchLoading(true);
+      try {
+        const response = await postApi.advancedSearch(
+          searchQuery,
+          null, // category
+          20, // limit
+          1, // page
+          'relevance', // sortBy
+          userLocation ? userLocation[0] : null, // latitude
+          userLocation ? userLocation[1] : null, // longitude
+          50 // radius
+        );
+
+        if (response.success && response.data) {
+          const validPosts = (response.data.data?.posts || []).filter(post => post._id || post.id);
+          setEnhancedSearchResults(validPosts);
+        } else {
+          setEnhancedSearchResults([]);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        setEnhancedSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    if (searchQuery.trim()) {
+      const delaySearch = setTimeout(() => {
+        performSearch();
+      }, 500); // 500ms delay
+
+      return () => clearTimeout(delaySearch);
+    } else {
+      // If search query is empty, clear results immediately
+      setEnhancedSearchResults([]);
+    }
+  }, [searchQuery, userLocation]); // Only re-run when searchQuery or userLocation changes
+
   // Get the appropriate tile layer URL based on map type
   const getTileLayerUrl = () => {
     switch (mapType) {
@@ -2163,39 +2037,110 @@ const DiscoverMain = () => {
       
       {/* Map and results area - adjust to account for sidebar */}
       <div className="map-container" style={{ marginLeft: isSidebarExpanded ? '16rem' : '5rem' }}>
-        {/* Search bar at the top center of the map */}
+        {/* Search Bar with Results Window */}
         <div className="top-search-bar absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4">
-            <div className="relative flex items-center">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
+          <div className="relative">
+            <div className="relative">
+              <input
                 type="text"
                 placeholder="Search for places, locations, categories..."
-                className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base"
+                className="w-full pl-12 pr-10 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base bg-white"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => {
-                  // Open the search window when clicking on the top search bar
-                  document.getElementById('search-window')?.classList.remove('hidden');
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => {
+                  // Only hide the results window after a short delay to allow clicks on results
+                  setTimeout(() => setSearchFocused(false), 200);
                 }}
-                onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                    // Open the search window when pressing Enter
-                    document.getElementById('search-window')?.classList.remove('hidden');
-                }
-                }}
-            />
-            {searchQuery && (
+              />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setEnhancedSearchResults([]);
+                  }}
+                  className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="h-4 w-4 text-gray-500" />
+                </button>
+              )}
+              
+              {/* Close button for the search bar itself */}
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setEnhancedSearchResults([]);
+                  setSearchFocused(false); // Also hide the results window
+                }}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <X className="h-4 w-4 text-gray-500" />
               </button>
-            )}
             </div>
+            
+            {/* Search Results Window - appears when search bar is focused or has results */}
+            {searchFocused && (
+              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-[1001] max-h-96 overflow-y-auto">
+                {/* Close button for the results window */}
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setEnhancedSearchResults([]);
+                    setSearchFocused(false); // Also hide the results window
+                  }}
+                  className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 transition-colors z-[1002]"
+                >
+                  <X className="h-4 w-4 text-gray-500" />
+                </button>
+                
+                <div className="p-3 pt-8 space-y-2"> {/* Added pt-8 to make space for close button */}
+                  {searchLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                    </div>
+                  ) : enhancedSearchResults.length > 0 ? (
+                    enhancedSearchResults.map((post) => (
+                      <div 
+                        key={post._id || post.id}
+                        className="p-3 bg-white hover:bg-gray-50 rounded-lg cursor-pointer border border-gray-100"
+                        onClick={() => {
+                          setSelectedPost(post);
+                          flyToPost(post.position);
+                          setSearchQuery(''); // Clear search after selection
+                          setEnhancedSearchResults([]); // Clear results after selection
+                          setSearchFocused(false); // Hide the results window after selection
+                        }}
+                      >
+                        <div className="font-medium text-gray-900">{post.title}</div>
+                        <div className="text-sm text-gray-600 truncate">{post.description}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            {post.category}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {post.averageRating?.toFixed(1) || '0.0'} ★
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : searchQuery ? (
+                    <div className="text-center py-4 text-gray-500">
+                      No results found for "{searchQuery}"
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      Enter a search term to find locations
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        {/* Map */}
-        <MapContainer
+      {/* Map */}
+      <MapContainer
           center={mapCenter}
           zoom={mapZoom}
           minZoom={2}
@@ -2246,7 +2191,7 @@ const DiscoverMain = () => {
           />
           
           <MapClickHandler 
-            onMapClick={(latlng) => {
+            onMapClick={() => {
               // Handle map click
             }} 
             onMapPositionSelected={(position) => {
@@ -2316,7 +2261,7 @@ const DiscoverMain = () => {
           
           {/* Render custom markers for each post */}
           <AnimatePresence>
-            {filteredPosts.map((post, index) => {
+            {filteredPosts.map((post) => {
               // Determine if the current user has liked this post based on the likes array
               const userHasLiked = post.likes?.some(like => 
                 like.user && 
@@ -2363,7 +2308,7 @@ const DiscoverMain = () => {
           )}
           
           {/* Render markers for saved locations when toggle is enabled */}
-          {isAuthenticated && showSavedLocationsOnMap && savedLocations.map((savedLocation, index) => {
+          {isAuthenticated && showSavedLocationsOnMap && savedLocations.map((savedLocation) => {
             // Check if this saved location is also in the filtered posts to avoid duplicate markers
             const isAlreadyDisplayed = filteredPosts.some(post => post.id === savedLocation.id);
             
@@ -2467,48 +2412,7 @@ const DiscoverMain = () => {
           toggleSidebar={toggleSidebar}
         />
         
-        {/* Search Window with Enhanced Search */}
-        <motion.div 
-          id="search-window" 
-          className="hidden absolute top-[56px] left-20 z-[999] sidebar-window search-window bg-white rounded-xl shadow-xl p-6 max-w-lg w-full backdrop-blur-sm border border-gray-200"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ 
-            type: "spring", 
-            damping: 20, 
-            stiffness: 300,
-            duration: 0.4 
-          }}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Advanced Search</h3>
-            <button 
-              onClick={() => document.getElementById('search-window')?.classList.add('hidden')}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <X className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-          
-          <EnhancedSearchComponent
-            onSearchResults={(results) => {
-              // Handle search results if needed
-              setFilteredPosts(results);
-            }}
-            onLocationSelect={(post) => {
-              // Set the selected post when a location is clicked
-              setSelectedPost(post);
-              flyToPost(post.position);
-              // Close the search window
-              document.getElementById('search-window')?.classList.add('hidden');
-            }}
-            currentLocation={userLocation ? { latitude: userLocation[0], longitude: userLocation[1] } : null}
-            placeholder="Search for places, locations, categories..."
-            showFilters={true}
-            limit={20}
-          />
-        </motion.div>
+
         
         {/* Category Window */}
         <motion.div 

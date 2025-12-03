@@ -1477,6 +1477,9 @@ const advancedSearch = async (req, res) => {
     const radiusNum = parseFloat(radius) || 50;
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
+    
+    // Calculate pagination
+    const skip = (pageNum - 1) * limitNum;
 
     // Build search query
     let query = { status: 'published' }; // Only published posts
@@ -1510,9 +1513,23 @@ const advancedSearch = async (req, res) => {
     
     // Location-based search if coordinates provided
     if (lat && lng) {
+      // For $geoNear, we can't use $or with text search, so create a separate query
+      // without the text search conditions ($or array)
+      let geoQuery = { status: 'published' }; // Start with basic published filter
+      
+      // Add category filter if provided
+      if (category && category !== 'all') {
+        geoQuery.category = { $regex: category, $options: "i" };
+      }
+      
+      // Add tags filter if provided
+      if (tags) {
+        const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+        geoQuery.tags = { $in: tagArray };
+      }
+
       // When using geospatial queries with sorts, use aggregation pipeline
       const pipeline = [
-        { $match: query },
         {
           $geoNear: {
             near: {
@@ -1521,7 +1538,9 @@ const advancedSearch = async (req, res) => {
             },
             distanceField: "distanceFromCenter",
             maxDistance: radiusNum * 1000, // Convert km to meters
-            spherical: true
+            spherical: true,
+            query: geoQuery, // Use simplified query that works with $geoNear
+            key: "location" // Specify the field with the geospatial index
           }
         }
       ];
@@ -1621,8 +1640,8 @@ const advancedSearch = async (req, res) => {
         }
       });
       
-      // Count total for pagination
-      total = await Post.countDocuments(query);
+      // Count total for pagination - use geoQuery for geospatial case
+      total = await Post.countDocuments(geoQuery);
       
       // Add pagination
       pipeline.push({ $skip: skip }, { $limit: limitNum });
