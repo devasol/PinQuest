@@ -1975,25 +1975,6 @@ const DiscoverMain = () => {
 
   return (
     <div className="min-h-screen bg-white relative">
-      {/* Search bar at the top center of the map (adjusted for sidebar) */}
-      <div className="top-search-bar absolute top-4 left-[calc(var(--sidebar-width, 5rem) + 1rem)] right-4 z-[1000] w-auto max-w-2xl px-4">
-        <div className="relative flex items-center">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-          <input
-            type="text"
-            placeholder="Search for places, locations, categories..."
-            className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                // You can add search handling here if needed
-              }
-            }}
-          />
-        </div>
-      </div>
-      
       {/* Top-right user controls positioned above the map (adjusted for sidebar) */}
       <div className="top-right-controls absolute top-4 z-[1000] flex items-center gap-3" style={{ right: isSidebarExpanded ? '1rem' : '4rem' }}>
         {/* User controls - login, notifications, name */}
@@ -2130,6 +2111,24 @@ const DiscoverMain = () => {
       
       {/* Map and results area - adjust to account for sidebar */}
       <div className="map-container" style={{ marginLeft: isSidebarExpanded ? '16rem' : '5rem' }}>
+        {/* Search bar at the top center of the map */}
+        <div className="top-search-bar absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4">
+            <div className="relative flex items-center">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <input
+                type="text"
+                placeholder="Search for places, locations, categories..."
+                className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                    // You can add search handling here if needed
+                }
+                }}
+            />
+            </div>
+        </div>
         {/* Map */}
         <MapContainer
           center={mapCenter}
