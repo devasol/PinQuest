@@ -7,5 +7,4 @@ module.exports = {
     '/node_modules/(?!(@testing-library)/)',
   ],
   moduleFileExtensions: ['js', 'jsx', 'json', 'node', 'mjs'],
-  extensionsToTreatAsEsm: ['.js', '.jsx'],
 };

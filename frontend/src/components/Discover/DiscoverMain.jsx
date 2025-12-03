@@ -283,7 +283,13 @@ const DiscoverMain = () => {
   
   const mapRef = useRef();
   const fetchIntervalRef = useRef(null);
+  const selectedPostRef = useRef(selectedPost); // Create a ref to track selectedPost
   const { isAuthenticated, user } = useAuth();
+
+  // Update the ref when selectedPost changes
+  useEffect(() => {
+    selectedPostRef.current = selectedPost;
+  }, [selectedPost]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handlePostLike = useCallback((postId, isLiked) => {
@@ -347,7 +353,40 @@ const DiscoverMain = () => {
       }
       return newFavorites;
     });
-  }, []);
+
+    // Update the selected post's bookmarked status if it's the same post
+    if (selectedPost && selectedPost._id === postId) {
+      setSelectedPost(prev => ({
+        ...prev,
+        bookmarked: isSaved,
+        saved: isSaved
+      }));
+    }
+
+    // Update the main posts array to reflect the bookmark change
+    setPosts(prevPosts => prevPosts.map(post => {
+      if (post && post._id === postId) {
+        return {
+          ...post,
+          bookmarked: isSaved,
+          saved: isSaved
+        };
+      }
+      return post;
+    }));
+
+    // Also update filteredPosts if needed
+    setFilteredPosts(prevFilteredPosts => prevFilteredPosts.map(post => {
+      if (post && post._id === postId) {
+        return {
+          ...post,
+          bookmarked: isSaved,
+          saved: isSaved
+        };
+      }
+      return post;
+    }));
+  }, [selectedPost]);
 
   const handlePostRate = useCallback((postId, newAverageRating, newTotalRatings) => {
     // Update the posts state in DiscoverMain when ratings change
@@ -384,8 +423,18 @@ const DiscoverMain = () => {
     }));
   }, [selectedPost]);
 
-  // Fetch posts from the backend API
+  // Fetch posts from the backend API - with concurrency control
+  const fetchPostsRef = useRef();
   const fetchPosts = useCallback(async (preserveSelectedPost = null, limit = 50) => {
+    // Prevent multiple concurrent requests for the same data
+    if (fetchPostsRef.current) {
+      console.log("Request already in progress, skipping duplicate fetch");
+      return;
+    }
+    
+    // Set a flag to indicate we're currently fetching
+    fetchPostsRef.current = true;
+
     try {
       // Fetch posts with a default limit to improve initial load time
       let url = `${API_BASE_URL}/posts`;
@@ -396,13 +445,20 @@ const DiscoverMain = () => {
       // Set loading state for posts
       setLoading(true);
       
+      // Add a timeout to the fetch request to avoid hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(url, {
         // Use cache to improve performance
-        cache: 'default'
+        cache: 'default',
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
       }
       
       const result = await response.json();
@@ -412,67 +468,70 @@ const DiscoverMain = () => {
         // Handle both location formats: coordinates array and latitude/longitude fields
         let transformedPosts = result.data
           .filter(post => {
+            // Check if post exists and has location data
+            if (!post || !post.location) {
+              return false;
+            }
+            
             // Check if the post has valid location data in either format
-            if (post.location) {
-              // Check GeoJSON format: [longitude, latitude]
-              if (post.location.coordinates && Array.isArray(post.location.coordinates) 
-                  && post.location.coordinates.length === 2 
-                  && typeof post.location.coordinates[0] === 'number' 
-                  && typeof post.location.coordinates[1] === 'number') {
-                return true;
-              }
-              // Check separate latitude/longitude format
-              if (typeof post.location.latitude === 'number' && 
-                  typeof post.location.longitude === 'number' &&
-                  !isNaN(post.location.latitude) &&
-                  !isNaN(post.location.longitude)) {
-                return true;
-              }
+            // Check GeoJSON format: [longitude, latitude]
+            if (post.location.coordinates && Array.isArray(post.location.coordinates) 
+                && post.location.coordinates.length === 2 
+                && typeof post.location.coordinates[0] === 'number' 
+                && typeof post.location.coordinates[1] === 'number') {
+              return true;
+            }
+            // Check separate latitude/longitude format
+            if (typeof post.location.latitude === 'number' && 
+                typeof post.location.longitude === 'number' &&
+                !isNaN(post.location.latitude) &&
+                !isNaN(post.location.longitude)) {
+              return true;
             }
             return false;
           })
           .map(post => {
             let position;
             // Handle GeoJSON format [longitude, latitude]
-            if (post.location.coordinates && Array.isArray(post.location.coordinates) 
+            if (post && post.location && post.location.coordinates && Array.isArray(post.location.coordinates) 
                 && post.location.coordinates.length === 2) {
               // Convert to [latitude, longitude] for Leaflet
-              position = [post.location.coordinates[1], post.location.coordinates[0]];
+              position = [post.location.coordinates[1] || 0, post.location.coordinates[0] || 0];
             } 
             // Handle separate latitude/longitude format
-            else if (typeof post.location.latitude === 'number' && 
+            else if (post && post.location && typeof post.location.latitude === 'number' && 
                      typeof post.location.longitude === 'number') {
               position = [post.location.latitude, post.location.longitude];
             }
             
             return {
-              _id: post._id,
-              id: post._id, // Keep both for compatibility
-              title: post.title || "Untitled",
-              description: post.description || "No description provided",
-              image: post.image,
-              images: post.images || [],
-              averageRating: post.averageRating || 0,
-              totalRatings: post.totalRatings || 0,
-              postedBy: post.postedBy || post.postedBy?.name || "Unknown", // Preserve full postedBy object
-              category: post.category || "general",
-              datePosted: post.datePosted || new Date().toISOString(),
+              _id: post && post._id ? post._id : null,
+              id: post && post._id ? post._id : null, // Keep both for compatibility
+              title: (post && post.title) || "Untitled",
+              description: (post && post.description) || "No description provided",
+              image: post && post.image ? post.image : null,
+              images: (post && post.images) || [],
+              averageRating: (post && post.averageRating) || 0,
+              totalRatings: (post && post.totalRatings) || 0,
+              postedBy: (post && (post.postedBy || (post.postedBy?.name))) || "Unknown", // Preserve full postedBy object
+              category: (post && post.category) || "general",
+              datePosted: (post && post.datePosted) || new Date().toISOString(),
               position: position, // [lat, lng] format for Leaflet
-              price: post.price || 0,
-              tags: post.tags || [],
-              comments: post.comments || [],
-              likes: post.likes || [], // Add likes array
-              likesCount: post.likesCount || 0, // Add likes count
+              price: (post && post.price) || 0,
+              tags: (post && post.tags) || [],
+              comments: (post && post.comments) || [],
+              likes: (post && post.likes) || [], // Add likes array
+              likesCount: (post && post.likesCount) || 0, // Add likes count
               location: {
                 // Ensure location has proper latitude and longitude for the directions feature
-                latitude: post.location?.latitude || 
-                         (post.location?.coordinates && post.location.coordinates[1]) || 
+                latitude: (post && post.location?.latitude) || 
+                         (post && post.location?.coordinates && post.location.coordinates[1]) || 
                          (position && position[0]), // fallback to position[0] if available
-                longitude: post.location?.longitude || 
-                          (post.location?.coordinates && post.location.coordinates[0]) || 
+                longitude: (post && post.location?.longitude) || 
+                          (post && post.location?.coordinates && post.location.coordinates[0]) || 
                           (position && position[1]), // fallback to position[1] if available
                 // Preserve other location properties if they exist
-                ...post.location
+                ...(post && post.location ? post.location : {})
               },
             };
           });
@@ -483,40 +542,66 @@ const DiscoverMain = () => {
         }
         
         // If we're preserving a selected post, we need to handle it specially
-        if (preserveSelectedPost) {
+        if (preserveSelectedPost && preserveSelectedPost._id) {
           // Find if the selected post exists in the newly fetched data
           const updatedSelectedPost = transformedPosts.find(p => p._id === preserveSelectedPost._id);
           
           if (updatedSelectedPost) {
             // Update the selected post with only the fresh volatile data while preserving detailed data
-            setSelectedPost(prev => prev ? {
-              ...prev, // Preserve existing data first
-              ...updatedSelectedPost, // Then apply fresh data, overwriting if keys exist
-            } : null);
+            setSelectedPost(prev => {
+              // Check if prev is null to avoid accessing _id on null
+              if (!prev) return updatedSelectedPost;
+              return {
+                ...prev, // Preserve existing data first
+                ...updatedSelectedPost, // Then apply fresh data, overwriting if keys exist
+              };
+            });
           }
         }
         
-        setPosts(transformedPosts);
-        setFilteredPosts(transformedPosts);
+        // Filter out any null or undefined posts before setting state
+        const validTransformedPosts = transformedPosts.filter(post => post && post._id);
+        setPosts(validTransformedPosts);
+        setFilteredPosts(validTransformedPosts);
       } else {
         console.error("Error: Invalid API response format", result);
-        setError("Failed to load posts from server");
+        setError("Failed to load posts from server: Invalid response format");
         setPosts([]);
         setFilteredPosts([]);
       }
     } catch (err) {
       console.error("Error fetching posts:", err);
-      setError("Failed to load posts: " + err.message);
+      // Provide more user-friendly error message based on error type
+      if (err.name === 'AbortError') {
+        setError("Request timed out. Please check your network connection and try again.");
+      } else if (err.message.includes('Failed to fetch')) {
+        setError("Unable to connect to the server. The server may be down or unreachable. Please make sure the backend server is running.");
+      } else if (err.message.includes('Too many requests')) {
+        setError("Rate limit exceeded. Please wait a moment and try again. The server may have rate limiting enabled.");
+      } else {
+        setError("Failed to load posts: " + err.message);
+      }
       setPosts([]);
       setFilteredPosts([]);
     } finally {
+      // Reset the flag and loading state
+      fetchPostsRef.current = false;
       setLoading(false);
     }
-  }, []);
+  }, []); // Empty dependency array since we're using ref to track state
 
   // Fetch saved locations if user is authenticated
+  const fetchSavedLocationsRef = useRef();
   const fetchSavedLocations = useCallback(async () => {
     if (isAuthenticated) {
+      // Prevent multiple concurrent requests
+      if (fetchSavedLocationsRef.current) {
+        console.log("Saved locations fetch already in progress, skipping duplicate request");
+        return;
+      }
+      
+      fetchSavedLocationsRef.current = true;
+      
       try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -547,6 +632,8 @@ const DiscoverMain = () => {
       } catch (err) {
         console.error("Error fetching saved locations:", err);
         setSavedLocations([]);
+      } finally {
+        fetchSavedLocationsRef.current = false;
       }
     } else {
       // If not authenticated, reset to empty
@@ -555,10 +642,24 @@ const DiscoverMain = () => {
   }, [isAuthenticated, API_BASE_URL]);
 
   // Fetch user's favorite posts if user is authenticated
+  const fetchUserFavoritePostsRef = useRef();
   const fetchUserFavoritePosts = useCallback(async () => {
     if (isAuthenticated && user) {
+      // Prevent multiple concurrent requests
+      if (fetchUserFavoritePostsRef.current) {
+        console.log("Favorite posts fetch already in progress, skipping duplicate request");
+        return;
+      }
+      
+      fetchUserFavoritePostsRef.current = true;
+      
       try {
         const token = localStorage.getItem('token');
+        if (!token) {
+          console.error("No authentication token found");
+          return;
+        }
+        
         const response = await fetch(`${API_BASE_URL}/users/favorites`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -585,13 +686,102 @@ const DiscoverMain = () => {
                 .filter(id => id !== null) // Remove any null/undefined values
             );
             setFavoritePosts(favoritePostIds);
+            
+            // Update the posts array to mark them as bookmarked
+            setPosts(prevPosts => 
+              prevPosts.map(post => {
+                if (post && post._id) {
+                  return {
+                    ...post,
+                    bookmarked: favoritePostIds.has(post._id),
+                    saved: favoritePostIds.has(post._id)
+                  };
+                }
+                return post;
+              })
+            );
+            
+            // Also update filtered posts
+            setFilteredPosts(prevFilteredPosts => 
+              prevFilteredPosts.map(post => {
+                if (post && post._id) {
+                  return {
+                    ...post,
+                    bookmarked: favoritePostIds.has(post._id),
+                    saved: favoritePostIds.has(post._id)
+                  };
+                }
+                return post;
+              })
+            );
+            
+            // Also update selected post if it exists
+            if (selectedPost && selectedPost._id) {
+              setSelectedPost(prev => {
+                // Check if prev is null to avoid the error
+                if (!prev || !prev._id) return prev;
+                return {
+                  ...prev,
+                  bookmarked: favoritePostIds.has(prev._id),
+                  saved: favoritePostIds.has(prev._id)
+                };
+              });
+            }
           }
         }
       } catch (err) {
         console.error("Error fetching user favorite posts:", err);
+      } finally {
+        fetchUserFavoritePostsRef.current = false;
       }
     }
-  }, [isAuthenticated, user, API_BASE_URL]);
+  }, [isAuthenticated, user, API_BASE_URL]); // Removed selectedPost to prevent circular dependency
+
+  // Update posts when favoritePosts changes to ensure correct bookmark status
+  useEffect(() => {
+    if (favoritePosts) {
+      // Update the posts array to mark them as bookmarked based on favoritePosts
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post && post._id) {
+            return {
+              ...post,
+              bookmarked: favoritePosts.has(post._id),
+              saved: favoritePosts.has(post._id)
+            };
+          }
+          return post;
+        })
+      );
+      
+      // Also update filtered posts
+      setFilteredPosts(prevFilteredPosts => 
+        prevFilteredPosts.map(post => {
+          if (post && post._id) {
+            return {
+              ...post,
+              bookmarked: favoritePosts.has(post._id),
+              saved: favoritePosts.has(post._id)
+            };
+          }
+          return post;
+        })
+      );
+      
+      // Also update selected post if it exists
+      if (selectedPost && selectedPost._id) {
+        setSelectedPost(prev => {
+          // Check if prev is null to avoid the error
+          if (!prev || !prev._id) return prev;
+          return {
+            ...prev,
+            bookmarked: favoritePosts.has(prev._id),
+            saved: favoritePosts.has(prev._id)
+          };
+        });
+      }
+    }
+  }, [favoritePosts]); // Removed selectedPost to prevent circular dependency
 
   // Fetch user's liked posts if user is authenticated
   const fetchUserLikedPosts = useCallback(async () => {
@@ -622,25 +812,25 @@ const DiscoverMain = () => {
     // Fetch posts in background
     fetchPosts(null, 50); // Fetch limited posts initially
 
-    // Set up periodic refresh every 30 seconds
+    // Set up periodic refresh every 60 seconds to reduce load
     fetchIntervalRef.current = setInterval(() => {
       // Preserve the selected post if it exists before refreshing
-      const preservedSelectedPost = selectedPost;
-      
-      fetchPosts(preservedSelectedPost, 50);
+      // Use ref to get the current value instead of closure value
+      fetchPosts(selectedPostRef.current, 50);
       
       if (isAuthenticated) {
-        fetchSavedLocations();
-        fetchUserFavoritePosts(); // Also refresh favorite posts periodically
+        // Stagger the API calls to avoid overloading
+        setTimeout(() => fetchSavedLocations(), 500);
+        setTimeout(() => fetchUserFavoritePosts(), 1000);
       }
-    }, 30000);
+    }, 60000); // Changed from 30 to 60 seconds
     
     return () => {
       if (fetchIntervalRef.current) {
         clearInterval(fetchIntervalRef.current);
       }
     };
-  }, [fetchPosts, fetchSavedLocations, fetchUserFavoritePosts, isAuthenticated]);
+  }, [fetchPosts, fetchSavedLocations, fetchUserFavoritePosts, isAuthenticated]); // Remove selectedPost to avoid interval recreation
 
   // Apply filters when search query, category, or other filters change
   useEffect(() => {
@@ -709,7 +899,7 @@ const DiscoverMain = () => {
     // Set a quick default location immediately to avoid world view
     const defaultLocation = [20.5937, 78.9629]; // India coordinates as a default
     setMapCenter(defaultLocation);
-    setMapZoom(2); // Start with a reasonable zoom level immediately
+    setMapZoom(3); // Start with a reasonable zoom level immediately (not too zoomed out)
     
     if (navigator.geolocation) {
       // Try to get initial position with reduced timeout for faster response
@@ -805,6 +995,12 @@ const DiscoverMain = () => {
         type: 'info',
         confirmText: 'OK'
       });
+      return;
+    }
+    
+    // Check if post exists before accessing its properties
+    if (!post || !post.id) {
+      console.error("Invalid post provided to togglePostBookmark:", post);
       return;
     }
     
@@ -1495,10 +1691,10 @@ const DiscoverMain = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 fixed inset-0 z-[9999]">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 fixed inset-0 z-[50000]">
         <Header isDiscoverPage={true} />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="text-center p-6 bg-white rounded-xl shadow-xl max-w-md z-[10000] relative">
+          <div className="text-center p-6 bg-white rounded-xl shadow-xl max-w-md z-[50001] relative">
             <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Discover Page</h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <button 
@@ -1506,7 +1702,7 @@ const DiscoverMain = () => {
                 setError(null); // Clear the error state first
                 fetchPosts();
               }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors cursor-pointer z-[10001]"
+              className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors cursor-pointer z-[50002]"
             >
               Try Again
             </button>
@@ -1539,6 +1735,13 @@ const DiscoverMain = () => {
           style={{ height: '100vh', width: '100vw' }}
           ref={mapRef}
           className="z-0"
+          maxBounds={[
+            [-90, -180], // Southwest coordinates (bottom-left)
+            [90, 180]    // Northeast coordinates (top-right)
+          ]}
+          maxBoundsViscosity={0.75}
+          worldCopyJump={true}
+          attributionControl={true}
         >
           <TileLayer
             attribution={mapType === 'satellite' 
@@ -1667,7 +1870,7 @@ const DiscoverMain = () => {
           
           {/* Loading overlay for posts */}
           {loading && filteredPosts.length === 0 && (
-            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[9999] flex items-center justify-center">
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[49999] flex items-center justify-center">
               <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
                 <p className="text-xl font-medium text-gray-700">Loading map data...</p>

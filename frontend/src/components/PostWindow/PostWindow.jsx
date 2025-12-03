@@ -37,7 +37,7 @@ const PostWindow = ({
   const [currentPost, setCurrentPost] = useState(post);
   const [comments, setComments] = useState(post?.comments || []);
   const [newComment, setNewComment] = useState('');
-  const [rating, setRating] = useState(0);
+  const [rating, setRating] = useState(post?.userRating || 0); // Use user's specific rating if available
   const [hoverRating, setHoverRating] = useState(0);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -46,7 +46,7 @@ const PostWindow = ({
 
   // Initialize bookmark state
   const { showModal } = useModal();
-  const [bookmarked, setBookmarked] = useState(post?.bookmarked || false);
+  const [bookmarked, setBookmarked] = useState(post?.bookmarked || post?.saved || false);
   const [loading, setLoading] = useState(false);
 
   // Simple local bookmark functionality
@@ -71,8 +71,19 @@ const PostWindow = ({
       }
 
       if (result.success) {
+        // Update local state optimistically
         setBookmarked(!bookmarked);
-        onSave && onSave(currentPost._id, !bookmarked); // Notify parent
+        
+        // Call parent callback to notify of the change
+        onSave && onSave(currentPost._id, !bookmarked);
+        
+        // Show success message
+        showModal({
+          title: "Success",
+          message: `Post ${!bookmarked ? 'saved' : 'removed from saved'}`,
+          type: 'success',
+          confirmText: 'OK'
+        });
       } else {
         throw new Error(result.error || 'Failed to update bookmark status');
       }
@@ -80,7 +91,7 @@ const PostWindow = ({
       console.error('Error handling bookmark:', error);
       showModal({
         title: "Error",
-        message: 'An error occurred. Please try again.',
+        message: error.message || 'An error occurred. Please try again.',
         type: 'error',
         confirmText: 'OK'
       });
@@ -97,10 +108,20 @@ const PostWindow = ({
         if (!prevCurrentPost || prevCurrentPost._id !== post._id) {
           return post;
         }
-        // If same post, keep the current state
-        return prevCurrentPost;
+        // If same post, keep the current state but update volatile data
+        return {
+          ...prevCurrentPost,
+          ...post,
+          comments: post.comments || [],
+          averageRating: post.averageRating || prevCurrentPost.averageRating,
+          totalRatings: post.totalRatings || prevCurrentPost.totalRatings,
+        };
       });
       setComments(post.comments || []);
+      // Update rating if user has rated this post
+      setRating(post.userRating || 0);
+      // Update bookmark status
+      setBookmarked(post.bookmarked || post.saved || false);
     }
   }, [post]);
 
@@ -251,23 +272,36 @@ const PostWindow = ({
       const result = await postApi.addRating(currentPost._id, { rating: starRating }, authToken);
 
       if (result.success) {
+        // Update the rating state
         setRating(starRating);
+        
+        // Update the current post with new rating data
+        setCurrentPost(prevPost => ({
+          ...prevPost,
+          averageRating: result.data?.averageRating || prevPost.averageRating || 0,
+          totalRatings: result.data?.totalRatings || prevPost.totalRatings || 0,
+          userRating: starRating // Store the user's rating
+        }));
+        
         // Call parent callback if provided
         if (onRate && typeof onRate === 'function') {
           onRate(currentPost._id, result.data?.averageRating || 0, result.data?.totalRatings || 0);
         }
+        
         showModal({
           title: "Rating Submitted",
           message: 'Thank you for rating this post!',
           type: 'success',
           confirmText: 'OK'
         });
+      } else {
+        throw new Error(result.error || 'Failed to submit rating');
       }
     } catch (error) {
       console.error('Error submitting rating:', error);
       showModal({
         title: "Error",
-        message: 'An error occurred while rating. Please try again.',
+        message: error.message || 'An error occurred while rating. Please try again.',
         type: 'error',
         confirmText: 'OK'
       });
@@ -291,15 +325,29 @@ const PostWindow = ({
       const response = await postApi.addComment(currentPost._id, { text: newComment }, authToken);
 
       if (response.success) {
+        // Optimistically update the UI with the new comment
+        const newCommentObj = {
+          _id: response.data?._id || `temp-${Date.now()}`, // Use server ID if available
+          text: newComment,
+          user: currentUser, // Use current user data
+          createdAt: new Date().toISOString(), // Use current timestamp
+          updatedAt: new Date().toISOString()
+        };
+        
+        setComments(prevComments => [...prevComments, newCommentObj]);
         setNewComment('');
-        // Simple approach: refetch the post to get updated comments
-        if (authToken) {
-          const updatedResponse = await postApi.getPostById(currentPost._id, authToken);
-          if (updatedResponse.success && updatedResponse.data) {
-            setCurrentPost(updatedResponse.data);
-            setComments(updatedResponse.data.comments || []);
-          }
-        }
+        
+        // Update the current post's comment count
+        setCurrentPost(prevPost => ({
+          ...prevPost,
+          comments: [...(prevPost.comments || []), newCommentObj],
+          totalComments: (prevPost.totalComments || prevPost.comments?.length || 0) + 1
+        }));
+        
+        // Close the modal after successful comment
+        setShowCommentsModal(false);
+      } else {
+        throw new Error(response.error || 'Failed to add comment');
       }
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -326,7 +374,7 @@ const PostWindow = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-gradient-to-br from-black/70 to-black/60 backdrop-blur-xl z-[6000] flex items-center justify-center p-4 sm:p-6 min-h-full"
+        className="fixed inset-0 bg-gradient-to-br from-black/70 to-black/60 backdrop-blur-xl z-[99998] flex items-center justify-center p-4 sm:p-6 min-h-full"
         onClick={handleClose}
       >
         <motion.div
@@ -339,7 +387,7 @@ const PostWindow = ({
             stiffness: 300,
             duration: 0.3 
           }}
-          className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col z-[6001] border border-white/20 backdrop-blur-md"
+          className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col z-[99999] border border-white/20 backdrop-blur-md"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -528,8 +576,8 @@ const PostWindow = ({
                                   });
                                 }
                               }}
-                              onMouseEnter={() => rating === 0 && setHoverRating(star)}
-                              onMouseLeave={() => rating === 0 && setHoverRating(0)}
+                              onMouseEnter={() => authToken && rating === 0 && setHoverRating(star)}
+                              onMouseLeave={() => setHoverRating(0)}
                             />
                           ))}
                           <span className="ml-3 text-gray-800 font-bold text-lg">
@@ -541,7 +589,7 @@ const PostWindow = ({
                         <p className="text-gray-600">
                           <span className="font-medium text-gray-800">{currentPost.totalRatings || 0}</span> 
                           <span className="mx-2 text-gray-400">•</span>
-                          <span>{currentPost.comments?.length || 0} {currentPost.comments?.length === 1 ? 'comment' : 'comments'}</span>
+                          <span>{(currentPost.comments || []).length || 0} {(currentPost.comments || []).length === 1 ? 'comment' : 'comments'}</span>
                         </p>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-700 font-medium">Rate this:</span>
@@ -563,7 +611,7 @@ const PostWindow = ({
                                 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md hover:shadow-lg' 
                                 : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                             }`}
-                            disabled={rating === 0}
+                            disabled={rating === 0 || !authToken}
                           >
                             {rating > 0 ? 'Submit Rating' : 'Select Stars'}
                           </button>
@@ -618,13 +666,13 @@ const PostWindow = ({
                       disabled={loading} // Disable button when loading
                       className={`flex items-center space-x-2 px-4 py-3 rounded-xl transition-all shadow-sm ${
                         bookmarked
-                          ? "bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-700"
+                          ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-lg"
                           : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300"
                       } ${loading ? 'cursor-not-allowed opacity-70' : ''}`}
                       whileTap={{ scale: 0.95 }}
                     >
                       <Bookmark
-                        className={`w-5 h-5 ${bookmarked ? "fill-current" : ""}`}
+                        className={`w-5 h-5 ${bookmarked ? "fill-current text-white" : ""}`}
                       />
                     </motion.button>
                   </div>
@@ -651,7 +699,7 @@ const PostWindow = ({
                 
                 {/* Comments Modal */}
                 {showCommentsModal && (
-                  <div className="fixed inset-0 bg-gradient-to-br from-black/60 to-black/50 backdrop-blur-lg flex items-center justify-center z-[6002] p-4">
+                  <div className="fixed inset-0 bg-gradient-to-br from-black/60 to-black/50 backdrop-blur-lg flex items-center justify-center z-[100000] p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-white/20 backdrop-blur-sm">
                       <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 rounded-t-2xl">
                         <div className="flex justify-between items-center">

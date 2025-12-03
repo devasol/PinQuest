@@ -152,10 +152,10 @@ const PostCard = ({ post, currentUser, authToken, isAuthenticated, onLike, onCom
 
             <button
               onClick={handleBookmark}
-              className={`flex items-center space-x-1 ${
+              className={`flex items-center space-x-1 px-2 py-1 rounded-lg transition-all ${
                 bookmarked
-                  ? "text-yellow-500"
-                  : "text-gray-600 hover:text-yellow-500"
+                  ? "bg-yellow-100 text-yellow-600"
+                  : "text-gray-600 hover:bg-yellow-100 hover:text-yellow-500"
               }`}
             >
               <Bookmark

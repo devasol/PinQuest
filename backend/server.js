@@ -48,23 +48,26 @@ app.use(helmet({
   }
 }));
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-});
-app.use(limiter);
+// Rate Limiting - Only enable in production
+if (process.env.NODE_ENV === 'production') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  });
+  app.use(limiter);
 
-// Slow down requests
-const speedLimiter = require("express-slow-down")({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 50, // Begin slowing down after 50 requests
-  delayMs: () => 500, // Slow down by 500ms (using new format)
-});
-app.use(speedLimiter);
+  const speedLimiter = slowDown({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    delayAfter: 50, // Begin slowing down after 50 requests
+    delayMs: () => 500, // Slow down by 500ms (using new format)
+  });
+  app.use(speedLimiter);
+} else {
+  console.log("Rate limiting disabled in development environment");
+}
 
 // Compression
 app.use(compression());
