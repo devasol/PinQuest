@@ -33,6 +33,7 @@ const EnhancedSearchComponent = ({
   // Get user's location
   useEffect(() => {
     if (!userLocation && navigator.geolocation) {
+      // First attempt with high accuracy
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setUserLocation({
@@ -41,11 +42,31 @@ const EnhancedSearchComponent = ({
           });
         },
         (error) => {
-          console.log("Geolocation error:", error.message);
+          console.log("Geolocation error on first attempt:", error.message);
+          
+          // If first attempt fails due to timeout, try with fallback settings
+          if (error.code === error.TIMEOUT) {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                setUserLocation({
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude
+                });
+              },
+              (fallbackError) => {
+                console.log("Geolocation fallback also failed:", fallbackError.message);
+              },
+              {
+                enableHighAccuracy: false, // Use less accuracy to get faster response
+                timeout: 10000, // 10 seconds timeout
+                maximumAge: 300000, // Allow cached location up to 5 minutes old
+              }
+            );
+          }
         },
         {
           enableHighAccuracy: true,
-          timeout: 5000,
+          timeout: 15000, // Increased to 15 seconds for better GPS acquisition
           maximumAge: 0
         }
       );

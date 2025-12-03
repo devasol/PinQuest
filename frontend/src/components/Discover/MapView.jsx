@@ -237,7 +237,7 @@ const MapView = () => {
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 15000, // Increased to 15 seconds for better GPS acquisition
           maximumAge: 600000, // 10 minutes
         }
       );

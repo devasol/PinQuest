@@ -1097,7 +1097,7 @@ const DiscoverMain = () => {
     setMapZoom(3); // Start with a reasonable zoom level immediately (not too zoomed out)
     
     if (navigator.geolocation) {
-      // Try to get initial position with reduced timeout for faster response
+      // Try to get initial position with high accuracy first
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -1114,15 +1114,48 @@ const DiscoverMain = () => {
           }
         },
         (error) => {
-          console.log("Geolocation error:", error.message);
-          // Fallback to default location with better zoom
-          if (mapRef.current) {
-            mapRef.current.setView(defaultLocation, 3);
+          console.log("Geolocation error on first attempt:", error.message);
+          
+          // If first attempt fails, try with fallback settings
+          if (error.code === error.TIMEOUT) {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const { latitude, longitude } = position.coords;
+                const userPos = [latitude, longitude];
+                setUserLocation(userPos);
+                
+                // Center the map on the user's location when page loads with a nice zoom level
+                if (mapRef.current) {
+                  mapRef.current.setView(userPos, 13); // Use zoom 13 for better initial experience
+                } else {
+                  // If map isn't ready yet, update the state
+                  setMapCenter(userPos);
+                  setMapZoom(13);
+                }
+              },
+              (fallbackError) => {
+                console.log("Geolocation fallback also failed:", fallbackError.message);
+                // Fallback to default location with better zoom
+                if (mapRef.current) {
+                  mapRef.current.setView(defaultLocation, 3);
+                }
+              },
+              {
+                enableHighAccuracy: false, // Use less accuracy for faster response
+                timeout: 10000, // 10 seconds timeout
+                maximumAge: 300000, // Allow cached location up to 5 minutes old
+              }
+            );
+          } else {
+            // Fallback to default location with better zoom
+            if (mapRef.current) {
+              mapRef.current.setView(defaultLocation, 3);
+            }
           }
         },
         {
-          enableHighAccuracy: true, // Changed back to true for accurate location
-          timeout: 30000, // Increased timeout to 30 seconds to allow for GPS acquisition
+          enableHighAccuracy: true, // Start with high accuracy for precise location
+          timeout: 15000, // 15 seconds to allow for GPS acquisition
           maximumAge: 0, // Do not use cached location - get fresh location
         }
       );
@@ -1145,7 +1178,7 @@ const DiscoverMain = () => {
         {
           enableHighAccuracy: true, // Changed back to true for accurate location
           maximumAge: 0, // Do not use cached location - get fresh location
-          timeout: 30000, // 30 seconds to allow for GPS acquisition
+          timeout: 15000, // 15 seconds to allow for GPS acquisition
         }
       );
     } else {
@@ -1178,7 +1211,7 @@ const DiscoverMain = () => {
               reject,
               {
                 enableHighAccuracy: true,
-                timeout: 30000, // 30 seconds to allow for GPS acquisition
+                timeout: 15000, // 15 seconds to allow for GPS acquisition
                 maximumAge: 0 // Don't use cached position - get fresh location
               }
             );
@@ -1196,7 +1229,39 @@ const DiscoverMain = () => {
             setMapZoom(13);
           }
         } catch (error) {
-          console.log("Location permission denied or unavailable:", error.message);
+          console.log("Location permission denied or unavailable on first attempt:", error.message);
+          
+          // If the first attempt with high accuracy fails, try with fallback settings
+          if (error.code === error.TIMEOUT) {
+            try {
+              console.log("Retrying location with fallback settings...");
+              const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                  resolve,
+                  reject,
+                  {
+                    enableHighAccuracy: false, // Use less accuracy for faster response
+                    timeout: 10000, // 10 seconds timeout
+                    maximumAge: 300000, // Allow cached location up to 5 minutes old
+                  }
+                );
+              });
+              
+              const { latitude, longitude } = position.coords;
+              const userPos = [latitude, longitude];
+              setUserLocation(userPos);
+              
+              // Center the map on the user's location
+              if (mapRef.current) {
+                mapRef.current.setView(userPos, 13);
+              } else {
+                setMapCenter(userPos);
+                setMapZoom(13);
+              }
+            } catch (fallbackError) {
+              console.log("Fallback location request also failed:", fallbackError.message);
+            }
+          }
         }
       };
       
@@ -1473,13 +1538,13 @@ const DiscoverMain = () => {
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000, // Increased to 15 seconds for better GPS acquisition
         maximumAge: 300000, // 5 minutes
       }
     );
   }, [userLocation, showModal]);
 
-  // Update user's current location manually
+  // Update user's current location manually - with retry and fallback options
   const updateUserLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       // Fallback for browsers that don't support geolocation
@@ -1496,10 +1561,11 @@ const DiscoverMain = () => {
     setLocationLoading(true);
 
     try {
+      // First attempt with high accuracy and longer timeout
       const position = await new Promise((resolve, reject) => {
         const geoOptions = {
           enableHighAccuracy: true,
-          timeout: 30000, // Increased timeout to 30 seconds to allow for GPS acquisition
+          timeout: 15000, // 15 seconds to allow for GPS acquisition
           maximumAge: 0, // Do not use any cached position - force fresh location reading
         };
 
@@ -1522,7 +1588,44 @@ const DiscoverMain = () => {
       // Show success message to confirm location update
       console.log(`Location updated to: [${latitude}, ${longitude}]`);
     } catch (error) {
-      console.error("Geolocation error:", error);
+      console.error("Geolocation error on first attempt:", error);
+      
+      // If first attempt with high accuracy fails due to timeout, try with less strict settings
+      if (error.code === error.TIMEOUT) {
+        try {
+          console.log("Retrying with less strict geolocation settings...");
+          const position = await new Promise((resolve, reject) => {
+            const geoOptions = {
+              enableHighAccuracy: false, // Use less accuracy to get faster response
+              timeout: 10000, // 10 seconds timeout
+              maximumAge: 300000, // Allow cached location up to 5 minutes old
+            };
+
+            navigator.geolocation.getCurrentPosition(resolve, reject, geoOptions);
+          });
+
+          const { latitude, longitude } = position.coords;
+          const userPos = [latitude, longitude];
+          setUserLocation(userPos);
+          
+          // Center the map on the new location
+          if (mapRef.current) {
+            mapRef.current.flyTo(userPos, 15);
+          } else {
+            // If map isn't ready yet, update the state so it centers when map loads
+            setMapCenter(userPos);
+            setMapZoom(15);
+          }
+          
+          // Success after retry
+          console.log(`Location updated to: [${latitude}, ${longitude}] with fallback settings`);
+          return; // Exit successfully after retry
+        } catch (retryError) {
+          console.error("Geolocation error on retry:", retryError);
+        }
+      }
+      
+      // If both attempts fail, show appropriate error message
       let errorMessage = "Could not get your current location. ";
       
       switch(error.code) {
@@ -1530,7 +1633,7 @@ const DiscoverMain = () => {
           errorMessage += "Location access was denied. Please allow location access in your browser settings.";
           break;
         case error.POSITION_UNAVAILABLE:
-          errorMessage += "Location information is unavailable.";
+          errorMessage += "Location information is unavailable. Please make sure location services are enabled on your device.";
           break;
         case error.TIMEOUT:
           errorMessage += "The request to get your location timed out. This might happen if you're indoors, underground, or have a weak GPS signal. Try moving to an area with better satellite visibility, or ensure Wi-Fi and location services are enabled on your device.";
@@ -1540,6 +1643,7 @@ const DiscoverMain = () => {
           break;
       }
       
+      // Show the error message in a modal to the user
       showModal({
         title: "Location Error",
         message: errorMessage,
