@@ -1669,7 +1669,6 @@ const DiscoverMain = () => {
   const toggleWindow = (windowId) => {
     // Get all window IDs
     const allWindowIds = [
-      'search-window', 
       'category-window', 
       'view-mode-window', 
       'map-type-window', 

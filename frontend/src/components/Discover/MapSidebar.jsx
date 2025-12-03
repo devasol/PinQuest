@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Grid3X3, Bookmark, Navigation, Menu, X } from 'lucide-react';
+import { MapPin, Grid3X3, Bookmark, Navigation, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import './MapSidebar.css';
 
@@ -62,20 +62,6 @@ const MapSidebar = ({
                 {showText ? <X className="sidebar-button-icon" /> : <Menu className="sidebar-button-icon" />}
               </div>
               {showText && <span className="sidebar-button-text">Menu</span>}
-            </motion.button>
-            
-            {/* Search button */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => toggleWindow('search-window')}
-              className="sidebar-button border-b border-gray-200"
-              title="Search"
-            >
-              <div className="sidebar-button-icon-wrapper bg-gray-100">
-                <Search className="sidebar-button-icon" />
-              </div>
-              {showText && <span className="sidebar-button-text">Search</span>}
             </motion.button>
             
             {/* Categories button */}

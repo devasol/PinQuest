@@ -27,15 +27,6 @@ const Sidebar = ({
       type: 'link'
     },
     {
-      id: 'search',
-      label: 'Search',
-      icon: Search,
-      path: '/discover',
-      requiresAuth: false,
-      action: () => toggleWindow('search-window'),
-      type: 'action'
-    },
-    {
       id: 'categories',
       label: 'Categories',
       icon: MapPin,
