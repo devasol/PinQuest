@@ -194,32 +194,7 @@ const Login = () => {
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {/* Scrollable Input Fields Container */}
               <div className="max-h-[50vh] overflow-y-auto pr-2 -mr-2">
-                {/* Custom scrollbar styles for input fields container */}
-                <style>{`
-                  div.max-h-\\[50vh\\].overflow-y-auto::-webkit-scrollbar {
-                    width: 6px;
-                  }
-                  
-                  div.max-h-\\[50vh\\].overflow-y-auto::-webkit-scrollbar-track {
-                    background: rgba(249, 250, 251, 0.5); /* bg-gray-50 with opacity */
-                    border-radius: 3px;
-                  }
-                  
-                  div.max-h-\\[50vh\\].overflow-y-auto::-webkit-scrollbar-thumb {
-                    background: #818cf8; /* indigo-400 */
-                    border-radius: 3px;
-                  }
-                  
-                  div.max-h-\\[50vh\\].overflow-y-auto::-webkit-scrollbar-thumb:hover {
-                    background: #6366f1; /* indigo-500 */
-                  }
-                  
-                  /* Firefox */
-                  div.max-h-\\[50vh\\].overflow-y-auto {
-                    scrollbar-width: thin;
-                    scrollbar-color: #818cf8 #f9fafb80;
-                  }
-                `}</style>
+
                 
                 <div className="space-y-4 sm:space-y-6">
                   <AnimatePresence mode="wait">
@@ -484,42 +459,7 @@ const Login = () => {
         <ForgotPassword onClose={() => setShowForgotPassword(false)} />
       )}
       
-      <style>{`
-        .overflow-y-auto::-webkit-scrollbar {
-          width: 8px;
-        }
-        
-        .overflow-y-auto::-webkit-scrollbar-track {
-          background: transparent;
-          border-radius: 4px;
-        }
-        
-        .overflow-y-auto::-webkit-scrollbar-thumb {
-          background: #6366f1;
-          border-radius: 4px;
-        }
-        
-        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-          background: #4f46e5;
-        }
-        
-        /* Firefox */
-        .overflow-y-auto {
-          scrollbar-width: thin;
-          scrollbar-color: #6366f1 transparent;
-        }
-        
-        /* Hide scrollbar on medium and larger screens */
-        @media (min-width: 768px) {
-          .md\\:overflow-y-visible::-webkit-scrollbar {
-            display: none;
-          }
-          .md\\:overflow-y-visible {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-          }
-        }
-      `}</style>
+
     </div>
   );
 };

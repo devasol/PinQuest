@@ -14,24 +14,7 @@
   }
 }
 
-/* Custom scrollbar for mobile tab navigation */
-.profile-tabs::-webkit-scrollbar {
-  height: 4px;
-}
 
-.profile-tabs::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 2px;
-}
-
-.profile-tabs::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 2px;
-}
-
-.profile-tabs::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
 
 /* Animation for loading states */
 @keyframes pulse {

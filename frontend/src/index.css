@@ -1,2 +1,105 @@
 @import "tailwindcss";
 @import 'leaflet/dist/leaflet.css';
+
+/* Custom Scrollbar Styles - Beautiful & Modern Design */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #6366f1, #8b5cf6);
+  border-radius: 10px;
+  border: 2px solid #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, #4f46e5, #7c3aed);
+}
+
+/* Firefox scrollbar styling */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #6366f1 #f1f5f9;
+}
+
+/* Custom styling for specific scrollable elements */
+.sidebar-window::-webkit-scrollbar,
+.admin-activity-list::-webkit-scrollbar,
+.admin-alerts-list::-webkit-scrollbar,
+.profile-tabs::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sidebar-window::-webkit-scrollbar-track,
+.admin-activity-list::-webkit-scrollbar-track,
+.admin-alerts-list::-webkit-scrollbar-track,
+.profile-tabs::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+.sidebar-window::-webkit-scrollbar-thumb,
+.admin-activity-list::-webkit-scrollbar-thumb,
+.admin-alerts-list::-webkit-scrollbar-thumb,
+.profile-tabs::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #6366f1, #8b5cf6);
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Scroll for modal content */
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* For overflow-y-auto and overflow-x-auto Tailwind classes */
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #c7d2e0;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Firefox variants */
+.overflow-y-auto,
+.overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #c7d2e0 #f1f5f9;
+}

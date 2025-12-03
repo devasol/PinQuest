@@ -885,28 +885,7 @@
   }
 }
 
-/* Scrollbar styling for better UX */
-.admin-activity-list::-webkit-scrollbar,
-.admin-alerts-list::-webkit-scrollbar {
-  width: 6px;
-}
 
-.admin-activity-list::-webkit-scrollbar-track,
-.admin-alerts-list::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
-}
-
-.admin-activity-list::-webkit-scrollbar-thumb,
-.admin-alerts-list::-webkit-scrollbar-thumb {
-  background: #c7d2e0;
-  border-radius: 3px;
-}
-
-.admin-activity-list::-webkit-scrollbar-thumb:hover,
-.admin-alerts-list::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
 
 /* New Admin Dashboard Header Styles */
 .admin-dashboard-nav {

@@ -234,24 +234,7 @@
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Scrollbar styling */
-.sidebar-window::-webkit-scrollbar {
-  width: 8px !important;
-}
 
-.sidebar-window::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05) !important;
-  border-radius: 4px !important;
-}
-
-.sidebar-window::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2) !important;
-  border-radius: 4px !important;
-}
-
-.sidebar-window::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3) !important;
-}
 
 /* Interactive elements */
 .interactive-element {
