@@ -74,7 +74,6 @@
 
 /* Specific style for search window */
 .search-window {
-  width: 360px !important;
   max-height: 60vh !important;
   overflow-y: auto !important;
 }
