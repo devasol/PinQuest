@@ -231,7 +231,7 @@ const Header = ({ isDiscoverPage = false }) => {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-[50] transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-[7000] transition-all duration-300 ${
         isDiscoverPage
           ? "bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200"
           : isScrolled
@@ -346,7 +346,7 @@ const Header = ({ isDiscoverPage = false }) => {
               {isNotificationOpen && isAuthenticated && (
                 <div 
                   ref={notificationRef}
-                  className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50"
+                  className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-[7001]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="p-4 border-b border-gray-100 flex justify-between items-center">
@@ -491,7 +491,7 @@ const Header = ({ isDiscoverPage = false }) => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200 shadow-lg">
+        <div className="md:hidden bg-white border-t border-gray-200 shadow-lg z-[7002]">
           <div className="px-4 py-2 space-y-1">
             {/* Mobile navigation items */}
             {navigationItems.map((item) => {

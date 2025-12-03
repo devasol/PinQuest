@@ -2047,25 +2047,6 @@ const DiscoverMain = () => {
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="absolute top-[65px] left-4 z-[1000] flex flex-col gap-3"
         >
-          {/* Location Permission Prompt */}
-          {!userLocation && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="sidebar-control modern-btn bg-blue-500 text-white flex items-center gap-2 px-3 cursor-pointer"
-              onClick={() => {
-                updateUserLocation().then(() => {
-                  setFollowUser(true); // Turn on follow mode after getting location
-                });
-              }}
-              title="Enable location services to see your current location"
-            >
-              <Navigation className="h-5 w-5" />
-              <span className="text-sm">Enable Location</span>
-            </motion.div>
-          )}
           {/* Search and Filter control icons with modern styling */}
           <motion.button
             whileHover={{ scale: 1.05 }}

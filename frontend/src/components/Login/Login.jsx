@@ -127,7 +127,7 @@ const Login = () => {
         className="w-full max-w-lg mx-4 sm:mx-auto"
       >
         {/* Main Container */}
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-hidden max-h-[70vh] md:max-h-[none] overflow-y-hidden md:overflow-y-visible">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-hidden max-h-[85vh] md:max-h-[none] overflow-y-auto md:overflow-y-visible max-w-full">
           {/* Header */}
           <div className="relative p-2 sm:p-4">
             <div className="flex justify-center">
@@ -193,29 +193,29 @@ const Login = () => {
           <div className="p-4 sm:p-6">
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {/* Scrollable Input Fields Container */}
-              <div className="max-h-[30vh] overflow-y-auto pr-2 -mr-2">
+              <div className="max-h-[50vh] overflow-y-auto pr-2 -mr-2">
                 {/* Custom scrollbar styles for input fields container */}
                 <style>{`
-                  div.max-h-\\[30vh\\].overflow-y-auto::-webkit-scrollbar {
+                  div.max-h-\\[50vh\\].overflow-y-auto::-webkit-scrollbar {
                     width: 6px;
                   }
                   
-                  div.max-h-\\[30vh\\].overflow-y-auto::-webkit-scrollbar-track {
+                  div.max-h-\\[50vh\\].overflow-y-auto::-webkit-scrollbar-track {
                     background: rgba(249, 250, 251, 0.5); /* bg-gray-50 with opacity */
                     border-radius: 3px;
                   }
                   
-                  div.max-h-\\[30vh\\].overflow-y-auto::-webkit-scrollbar-thumb {
+                  div.max-h-\\[50vh\\].overflow-y-auto::-webkit-scrollbar-thumb {
                     background: #818cf8; /* indigo-400 */
                     border-radius: 3px;
                   }
                   
-                  div.max-h-\\[30vh\\].overflow-y-auto::-webkit-scrollbar-thumb:hover {
+                  div.max-h-\\[50vh\\].overflow-y-auto::-webkit-scrollbar-thumb:hover {
                     background: #6366f1; /* indigo-500 */
                   }
                   
                   /* Firefox */
-                  div.max-h-\\[30vh\\].overflow-y-auto {
+                  div.max-h-\\[50vh\\].overflow-y-auto {
                     scrollbar-width: thin;
                     scrollbar-color: #818cf8 #f9fafb80;
                   }
