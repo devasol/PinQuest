@@ -110,7 +110,7 @@ const Sidebar = ({
               className="sidebar-button border-b border-gray-200"
               title={isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
             >
-              <div className="sidebar-button-icon-wrapper bg-gray-100">
+              <div className="sidebar-button-icon-wrapper">
                 {isSidebarExpanded ? <X className="sidebar-button-icon" /> : <Menu className="sidebar-button-icon" />}
               </div>
               {isSidebarExpanded && <span className="sidebar-button-text">Menu</span>}
@@ -126,7 +126,7 @@ const Sidebar = ({
                   className="sidebar-button border-b border-gray-200"
                   title={item.label}
                 >
-                  <div className="sidebar-button-icon-wrapper bg-gray-100">
+                  <div className="sidebar-button-icon-wrapper">
                     <IconComponent className="sidebar-button-icon" />
                   </div>
                   {isSidebarExpanded && <span className="sidebar-button-text">{item.label}</span>}
@@ -191,7 +191,7 @@ const Sidebar = ({
                   className="sidebar-button border-b border-gray-200"
                   title="Profile"
                 >
-                  <div className="sidebar-button-icon-wrapper bg-gray-100">
+                  <div className="sidebar-button-icon-wrapper">
                     <User className="sidebar-button-icon" />
                   </div>
                   {isSidebarExpanded && <span className="sidebar-button-text">Profile</span>}

@@ -115,3 +115,7 @@
 .sidebar-container {
   transition: all 0.3s ease;
 }
+
+.sidebar-button-icon-wrapper.bg-gray-100 {
+  background-color: transparent !important;
+}

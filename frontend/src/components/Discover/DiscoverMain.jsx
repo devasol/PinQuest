@@ -1976,7 +1976,7 @@ const DiscoverMain = () => {
   return (
     <div className="min-h-screen bg-white relative">
       {/* Search bar at the top center of the map (adjusted for sidebar) */}
-      <div className="top-search-bar absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4">
+      <div className="top-search-bar absolute top-4 left-[calc(var(--sidebar-width, 5rem) + 1rem)] right-4 z-[1000] w-auto max-w-2xl px-4">
         <div className="relative flex items-center">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
           <input
@@ -1995,7 +1995,7 @@ const DiscoverMain = () => {
       </div>
       
       {/* Top-right user controls positioned above the map (adjusted for sidebar) */}
-      <div className="top-right-controls absolute top-4 right-4 z-[1000] flex items-center gap-3">
+      <div className="top-right-controls absolute top-4 z-[1000] flex items-center gap-3" style={{ right: isSidebarExpanded ? '1rem' : '4rem' }}>
         {/* User controls - login, notifications, name */}
         {isAuthenticated ? (
           <div className="flex items-center gap-3 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-md border border-gray-200">
@@ -2129,7 +2129,7 @@ const DiscoverMain = () => {
       </div>
       
       {/* Map and results area - adjust to account for sidebar */}
-      <div className="map-container">
+      <div className="map-container" style={{ marginLeft: isSidebarExpanded ? '16rem' : '5rem' }}>
         {/* Map */}
         <MapContainer
           center={mapCenter}
