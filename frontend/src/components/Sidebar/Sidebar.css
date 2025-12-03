@@ -1,0 +1,117 @@
+/* Sidebar container styling */
+.sidebar-container {
+  background-color: white;
+  border-radius: 0; /* Remove border-radius for full flush appearance */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Adjusted shadow */
+  border: none;
+  border-right: 1px solid #e5e7eb; /* Add border only on the right side */
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  height: 100%;
+  transition: width 0.3s ease; /* Smooth transition when expanding/collapsing */
+}
+
+/* Base sidebar width when text is hidden */
+.sidebar-collapsed {
+  width: 5rem; /* w-20 */
+  flex: 0 0 5rem; /* Don't grow, don't shrink, base width of 5rem */
+  transition: width 0.3s ease;
+}
+
+/* Expanded sidebar width when text is shown */
+.sidebar-expanded {
+  width: 16rem; /* w-64 */
+  flex: 0 0 16rem; /* Don't grow, don't shrink, base width of 16rem */
+  transition: width 0.3s ease;
+}
+
+
+
+/* Sidebar button styling */
+.sidebar-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Matches gap-3 */
+  padding: 12px; /* Matches px-4 py-3 (16px horizontal, 12px vertical) */
+  text-align: left;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: #374151; /* Matches text-gray-700 */
+  text-decoration: none; /* Remove default link underline */
+}
+
+.sidebar-button:hover {
+  background-color: #f3f4f6; /* Matches hover:bg-gray-100 */
+}
+
+.sidebar-button-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px; /* Matches rounded-lg */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-button-icon {
+  width: 20px;
+  height: 20px;
+  color: #4b5563; /* Matches text-gray-600 */
+}
+
+.sidebar-button-text {
+  font-weight: 500; /* Matches font-medium */
+  color: #374151; /* Matches text-gray-700 */
+  white-space: nowrap; /* Prevent text from wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Show ellipsis for long text */
+}
+
+/* Special button states */
+.sidebar-button:hover .sidebar-button-icon {
+  color: #2563eb; /* Matches text-blue-600 on hover */
+}
+
+.logout-button .sidebar-button-icon-wrapper {
+  background-color: #fee2e2; /* Matches bg-red-100 */
+}
+
+.logout-button .sidebar-button-icon {
+  color: #ef4444; /* Matches text-red-600 */
+}
+
+/* Ensure the sidebar takes full height */
+.sidebar-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive behavior */
+@media (max-width: 768px) {
+  .sidebar-expanded {
+    width: 16rem; /* Keep expanded width on mobile when showing text */
+  }
+  
+  .sidebar-collapsed {
+    width: 5rem; /* Keep collapsed width on mobile */
+  }
+  
+  /* On mobile, you might want to slide in as a drawer instead */
+  .sidebar-collapsed {
+    transform: translateX(0);
+  }
+  
+  .sidebar-expanded {
+    transform: translateX(0);
+  }
+}
+
+/* Animation for smooth transition */
+.sidebar-container {
+  transition: all 0.3s ease;
+}

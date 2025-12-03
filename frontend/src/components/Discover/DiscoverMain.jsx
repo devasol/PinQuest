@@ -14,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import './DiscoverMain.css';
 import { useModal } from '../../contexts/ModalContext';
 import { connectSocket } from '../../services/socketService';
+import Sidebar from '../Sidebar/Sidebar';
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
@@ -70,7 +71,11 @@ const DiscoverMain = () => {
   const [mapCenter, setMapCenter] = useState([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
   const [userLocation, setUserLocation] = useState(null);
-  const [mobileView, setMobileView] = useState('map'); // 'map' or 'list' for mobile
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarExpanded(!isSidebarExpanded);
+  };
   const [routingActive, setRoutingActive] = useState(false); // Track if routing is active
   const [routingDestination, setRoutingDestination] = useState(null); // Store destination for routing
   const [routingLoading, setRoutingLoading] = useState(false); // Track if routing is being calculated
@@ -1970,8 +1975,8 @@ const DiscoverMain = () => {
 
   return (
     <div className="min-h-screen bg-white relative">
-      {/* Search bar at the top center of the map */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4">
+      {/* Search bar at the top center of the map (adjusted for sidebar) */}
+      <div className="top-search-bar absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-2xl px-4">
         <div className="relative flex items-center">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
           <input
@@ -1989,8 +1994,8 @@ const DiscoverMain = () => {
         </div>
       </div>
       
-      {/* Top-right user controls positioned above the map */}
-      <div className="absolute top-4 right-4 z-[1000] flex items-center gap-3">
+      {/* Top-right user controls positioned above the map (adjusted for sidebar) */}
+      <div className="top-right-controls absolute top-4 right-4 z-[1000] flex items-center gap-3">
         {/* User controls - login, notifications, name */}
         {isAuthenticated ? (
           <div className="flex items-center gap-3 bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-md border border-gray-200">
@@ -2123,8 +2128,8 @@ const DiscoverMain = () => {
         )}
       </div>
       
-      {/* Map and results area */}
-      <div className="relative w-screen h-screen overflow-hidden">
+      {/* Map and results area - adjust to account for sidebar */}
+      <div className="map-container">
         {/* Map */}
         <MapContainer
           center={mapCenter}
@@ -2137,7 +2142,7 @@ const DiscoverMain = () => {
           dragging={true}
           animate={true}
           easeLinearity={0.35}
-          style={{ height: '100vh', width: '100vw' }}
+          style={{ height: '100vh', width: '100%' }}
           ref={mapRef}
           className="z-0"
           maxBounds={[
@@ -2379,103 +2384,19 @@ const DiscoverMain = () => {
             </div>
           </motion.div>
         )}
-        
-
-        
-        {/* Left Sidebar with Icons - Google-like design */}
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="absolute top-20 left-4 z-[1000] flex flex-col gap-2"
-        >
-          {/* Search and Filter control icons with modern styling */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => toggleWindow('search-window')}
-            className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow"
-            title="Search"
-          >
-            <Search className="h-5 w-5 text-gray-700" />
-          </motion.button>
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => toggleWindow('category-window')}
-            className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow"
-            title="Categories"
-          >
-            <MapPin className="h-5 w-5 text-gray-700" />
-          </motion.button>
-          
-
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => toggleWindow('view-mode-window')}
-            className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow"
-            title="View Mode"
-          >
-            <Grid3X3 className="h-5 w-5 text-gray-700" />
-          </motion.button>
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => toggleWindow('map-type-window')}
-            className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow"
-            title="Map Type"
-          >
-            <MapPin className="h-5 w-5 text-gray-700" />
-          </motion.button>
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => toggleWindow('saved-locations-window')}
-            className={`w-10 h-10 rounded-full backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow ${
-              showSavedLocationsOnMap 
-                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white border-yellow-500' 
-                : 'bg-white/90'
-            }`}
-            title={isAuthenticated ? `${showSavedLocationsOnMap ? 'Hide' : 'Show'} saved locations` : 'Login to view saved locations'}
-          >
-            <Bookmark className={`h-5 w-5 ${showSavedLocationsOnMap ? 'fill-current' : ''}`} />
-          </motion.button>
-          
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              if (followUser) {
-                // If currently following, just update location without zooming
-                updateUserLocation();
-                setFollowUser(false); // Turn off follow mode
-              } else {
-                // If not following, update and enable follow mode
-                updateUserLocation().then(() => {
-                  setFollowUser(true); // Turn on follow mode after getting location
-                });
-              }
-            }}
-            className={`w-10 h-10 rounded-full backdrop-blur-sm shadow-md flex items-center justify-center border border-gray-200 hover:shadow-lg transition-shadow ${
-              followUser ? 'bg-blue-500 text-white' : 'bg-white/90'
-            }`}
-            title={followUser ? "Stop Following Location" : (userLocation ? "Update Current Location" : "Show My Location")}
-            disabled={locationLoading}
-          >
-            {locationLoading ? (
-              <div className="w-5 h-5 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-              </div>
-            ) : (
-              <Navigation className={`h-5 w-5 ${followUser ? 'text-white' : 'text-gray-700'}`} />
-            )}
-          </motion.button>
-        </motion.div>
+        {/* Universal Sidebar - Full height from top to bottom */}
+        <Sidebar 
+          onLogout={handleLogout} 
+          user={isAuthenticated ? user : null} 
+          toggleWindow={toggleWindow}
+          showSavedLocationsOnMap={showSavedLocationsOnMap}
+          updateUserLocation={updateUserLocation}
+          followUser={followUser}
+          locationLoading={locationLoading}
+          setFollowUser={setFollowUser}
+          isSidebarExpanded={isSidebarExpanded}
+          toggleSidebar={toggleSidebar}
+        />
         
         {/* Search Window */}
         <motion.div 

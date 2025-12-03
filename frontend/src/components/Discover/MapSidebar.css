@@ -1,0 +1,141 @@
+
+
+/* Sidebar container styling */
+.sidebar-container {
+  background-color: white;
+  border-radius: 0; /* Remove border-radius for full flush appearance */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Adjusted shadow */
+  border: none;
+  border-right: 1px solid #e5e7eb; /* Add border only on the right side */
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  height: 100%;
+}
+
+/* Base sidebar width when text is hidden */
+.sidebar-collapsed {
+  width: 5rem; /* w-20 */
+  flex: 0 0 5rem; /* Don't grow, don't shrink, base width of 5rem */
+}
+
+/* Expanded sidebar width when text is shown */
+.sidebar-expanded {
+  width: 16rem; /* w-64 */
+  flex: 0 0 16rem; /* Don't grow, don't shrink, base width of 16rem */
+}
+
+/* Sidebar button styling */
+.sidebar-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Matches gap-3 */
+  padding: 12px; /* Matches px-4 py-3 (16px horizontal, 12px vertical) */
+  text-align: left;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: #374151; /* Matches text-gray-700 */
+}
+
+.sidebar-button:hover {
+  background-color: #f3f4f6; /* Matches hover:bg-gray-100 */
+}
+
+.sidebar-button-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px; /* Matches rounded-lg */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-button-icon {
+  width: 20px;
+  height: 20px;
+  color: #4b5563; /* Matches text-gray-600 */
+}
+
+.sidebar-button-text {
+  font-weight: 500; /* Matches font-medium */
+  color: #374151; /* Matches text-gray-700 */
+}
+
+/* Special button states */
+.following-location .sidebar-button-icon-wrapper {
+  background-color: #dbeafe; /* Matches bg-blue-100 */
+}
+
+.following-location .sidebar-button-icon {
+  color: #2563eb; /* Matches text-blue-600 */
+}
+
+.following-location {
+  background-color: #eff6ff; /* Matches bg-blue-50 */
+  color: #1e40af; /* Matches text-blue-700 */
+}
+
+.saved-locations .sidebar-button-icon-wrapper {
+  background-color: #fefce8; /* Matches bg-yellow-100 */
+}
+
+.saved-locations .sidebar-button-icon {
+  color: #ca8a04; /* Matches text-yellow-600 */
+}
+
+.saved-locations {
+  background-color: #fffbeb; /* Matches bg-yellow-50 */
+  color: #92400e; /* Matches text-yellow-700 */
+}
+
+/* Search bar styling for Google Maps-like appearance */
+.google-maps-search {
+  position: absolute;
+  top: 16px; /* Matches the original top-4 class */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 100%;
+  max-width: 768px; /* Matches max-w-2xl */
+  padding-left: 16px; /* Matches px-4 */
+  padding-right: 16px; /* Matches px-4 */
+}
+
+.google-maps-search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.google-maps-search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280; /* Matches text-gray-500 */
+  width: 20px;
+  height: 20px;
+}
+
+.google-maps-search-input {
+  width: 100%;
+  padding-left: 48px; /* Matches pl-12 */
+  padding-right: 16px; /* Matches pr-4 */
+  padding-top: 16px; /* Matches py-4 */
+  padding-bottom: 16px; /* Matches py-4 */
+  border-radius: 8px; /* Matches rounded-lg */
+  border: 1px solid #d1d5db; /* Matches border-gray-300 */
+  outline: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Matches shadow-lg */
+  font-size: 1rem; /* Matches text-base */
+  background-color: white; /* Matches bg-white */
+}
+
+.google-maps-search-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #3b82f6, 0 4px 12px rgba(0, 0, 0, 0.15); /* Matches focus:ring-2 focus:ring-blue-500 */
+}
+
