@@ -1,63 +1,70 @@
-/**
- * Standardized response utility
- */
+const logger = require('./logger');
 
-/**
- * Creates a standard error response
- * @param {Object} res - Express response object
- * @param {number} statusCode - HTTP status code
- * @param {string} message - Error message
- * @param {Array} errors - Array of validation errors (optional)
- * @param {string} errorType - Type of error for logging purposes
- */
-const sendErrorResponse = (res, statusCode, message, errors = [], errorType = 'general') => {
-  res.status(statusCode).json({
-    status: 'error',
-    message,
-    ...(errors.length > 0 && { errors }),
-    ...(process.env.NODE_ENV === 'development' && { 
-      timestamp: new Date().toISOString(),
-      type: errorType
-    })
+const handleCastErrorDB = (err) => {
+  const message = `Invalid ${err.path}: ${err.value}.`;
+  return new Error(message);
+};
+
+const handleDuplicateFieldsDB = (err) => {
+  const value = err.errmsg?.match(/(["'])(\\?.)*?\1/)?.[0];
+  const message = `Duplicate field value: ${value}. Please use another value!`;
+  return new Error(message);
+};
+
+const handleValidationErrorDB = (err) => {
+  const errors = Object.values(err.errors).map(el => el.message);
+  const message = `Invalid input data. ${errors.join('. ')}`;
+  return new Error(message);
+};
+
+const handleJWTError = () =>
+  new Error('Invalid token. Please log in again!');
+
+const handleJWTExpiredError = () =>
+  new Error('Your token has expired! Please log in again.');
+
+const sendErrorDev = (err, res) => {
+  res.status(err.statusCode).json({
+    status: err.status,
+    error: err,
+    message: err.message,
+    stack: err.stack
   });
 };
 
-/**
- * Creates a standard success response
- * @param {Object} res - Express response object
- * @param {number} statusCode - HTTP status code
- * @param {any} data - Response data
- * @param {Object} meta - Additional metadata (optional)
- */
-const sendSuccessResponse = (res, statusCode, data, meta = {}) => {
-  res.status(statusCode).json({
-    status: 'success',
-    data,
-    ...(Object.keys(meta).length > 0 && { meta })
-  });
+const sendErrorProd = (err, res) => {
+  // Operational, trusted error: send message to client
+  if (err.isOperational) {
+    res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message
+    });
+  } else {
+    // Programming or other unknown error: don't leak error details
+    logger.error('ERROR', err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Something went very wrong!'
+    });
+  }
 };
 
-/**
- * Creates a standard response with custom structure
- * @param {Object} res - Express response object
- * @param {number} statusCode - HTTP status code
- * @param {string} status - Response status ('success', 'error', 'fail')
- * @param {any} data - Response data
- * @param {string} message - Custom message
- * @param {Object} meta - Additional metadata
- */
-const sendResponse = (res, statusCode, status, data = null, message = null, meta = {}) => {
-  const response = { status };
-  
-  if (data !== null) response.data = data;
-  if (message) response.message = message;
-  if (Object.keys(meta).length > 0) response.meta = meta;
+module.exports = (err, req, res, next) => {
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || 'error';
 
-  res.status(statusCode).json(response);
-};
+  if (process.env.NODE_ENV === 'development') {
+    sendErrorDev(err, res);
+  } else if (process.env.NODE_ENV === 'production') {
+    let error = { ...err };
+    error.message = err.message;
 
-module.exports = {
-  sendErrorResponse,
-  sendSuccessResponse,
-  sendResponse
+    if (error.name === 'CastError') error = handleCastErrorDB(error);
+    if (error.code === 11000) error = handleDuplicateFieldsDB(error);
+    if (error.name === 'ValidationError') error = handleValidationErrorDB(error);
+    if (error.name === 'JsonWebTokenError') error = handleJWTError();
+    if (error.name === 'TokenExpiredError') error = handleJWTExpiredError();
+
+    sendErrorProd(error, res);
+  }
 };

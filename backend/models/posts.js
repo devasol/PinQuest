@@ -136,13 +136,22 @@ postSchema.pre("save", function (next) {
   next();
 });
 
-// Create indexes
-postSchema.index({ category: 1 });
-postSchema.index({ status: 1 });
-postSchema.index({ postedBy: 1 });
-postSchema.index({ datePosted: -1 });
-postSchema.index({ likesCount: -1 });
-postSchema.index({ averageRating: -1 });
+// Create compound indexes for better query performance
+postSchema.index({ status: 1, datePosted: -1 }); // For getting published posts sorted by date
+postSchema.index({ postedBy: 1, datePosted: -1 }); // For user's posts sorted by date
+postSchema.index({ category: 1, status: 1 }); // For category filtering
+postSchema.index({ category: 1, status: 1, datePosted: -1 }); // For category + status + date queries
 postSchema.index({ location: "2dsphere" }); // For geospatial queries
+postSchema.index({ averageRating: -1, datePosted: -1 }); // For rating and date sorting
+postSchema.index({ postedBy: 1, category: 1 }); // For user's posts by category
+postSchema.index({ datePosted: -1, status: 1 }); // For recent posts filtering by status
+postSchema.index({ likesCount: -1, datePosted: -1 }); // For popular posts by date
+postSchema.index({ title: "text", description: "text" }); // For text search
+
+// Performance indexes for common lookups
+postSchema.index({ "comments.user": 1 }); // For user's comments
+postSchema.index({ "likes.user": 1 }); // For user's likes
+postSchema.index({ title: 1 }); // For title searches
+postSchema.index({ "postedBy": 1, "status": 1 }); // For user's published posts
 
 module.exports = mongoose.model("Post", postSchema);

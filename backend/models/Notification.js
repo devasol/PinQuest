@@ -50,4 +50,13 @@ const notificationSchema = new mongoose.Schema({
   }
 });
 
+// Add indexes for better query performance
+notificationSchema.index({ recipient: 1, date: -1 }); // For user's notifications sorted by date
+notificationSchema.index({ recipient: 1, read: 1 }); // For user's read/unread notifications
+notificationSchema.index({ recipient: 1, type: 1 }); // For user's notifications by type
+notificationSchema.index({ date: -1 }); // For newest notifications
+notificationSchema.index({ type: 1, date: -1 }); // For notifications by type sorted by date
+notificationSchema.index({ sender: 1, date: -1 }); // For notifications from a sender
+notificationSchema.index({ post: 1, date: -1 }); // For notifications related to a post
+
 module.exports = mongoose.model('Notification', notificationSchema);

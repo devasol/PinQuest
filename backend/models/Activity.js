@@ -47,5 +47,9 @@ const activitySchema = new mongoose.Schema({
 // Index for efficient querying by user and date
 activitySchema.index({ userId: 1, date: -1 });
 activitySchema.index({ date: -1 });
+activitySchema.index({ action: 1, date: -1 }); // For activities by action type
+activitySchema.index({ targetType: 1, targetId: 1 }); // For activities on specific targets
+activitySchema.index({ userId: 1, action: 1 }); // For user's specific actions
+activitySchema.index({ userId: 1, targetType: 1 }); // For user's specific target types
 
 module.exports = mongoose.model('Activity', activitySchema);

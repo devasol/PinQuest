@@ -195,11 +195,18 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Create indexes
-userSchema.index({ isBanned: 1 });
-userSchema.index({ role: 1 });
-userSchema.index({ resetPasswordToken: 1 });
-userSchema.index({ resetPasswordExpires: 1 });
+// Create compound indexes for better query performance
+userSchema.index({ email: 1 }); // For email lookups (this is already unique)
+userSchema.index({ googleId: 1 }); // For Google OAuth lookups (sparse index)
+userSchema.index({ role: 1, isBanned: 1 }); // For admin queries
+userSchema.index({ isVerified: 1, createdAt: -1 }); // For verified user queries
+userSchema.index({ isBanned: 1, role: 1 }); // For banned user and role queries
+userSchema.index({ "followers.user": 1 }); // For finding users by their followers
+userSchema.index({ "following.user": 1 }); // For finding users by who they follow
+userSchema.index({ resetPasswordToken: 1, resetPasswordExpires: 1 }); // For password reset
+userSchema.index({ createdAt: -1 }); // For newest users
+userSchema.index({ name: "text" }); // For user searches
+userSchema.index({ email: "text", name: "text" }); // For comprehensive user searches
 
 const User = mongoose.model('User', userSchema);
 

@@ -26,6 +26,7 @@ const messagesRoute = require("./routes/messagesRoute");
 const analyticsRoute = require("./routes/analyticsRoute");
 const globalErrorHandler = require("./utils/errorHandler");
 const logger = require("./utils/logger");
+const { healthCheck, livenessCheck, readinessCheck, getMetrics } = require('./controllers/healthController');
 require("./config/passport");
 
 const app = express();
@@ -204,8 +205,6 @@ try {
 require("./config/passport")(passport);
 app.use(passport.initialize());
 
-const { healthCheck, livenessCheck, readinessCheck, getMetrics } = require('./controllers/healthController');
-
 // Health check endpoints
 app.get("/api/v1/health", healthCheck); // Comprehensive health check
 app.get("/api/v1/health/live", livenessCheck); // Kubernetes-style liveness probe
@@ -278,6 +277,7 @@ io.on("connection", (socket) => {
 // Make io available to other modules
 app.set("io", io);
 
+// Connect to database
 dbConnect();
 
 // Global error handler middleware

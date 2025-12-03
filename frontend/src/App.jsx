@@ -15,7 +15,7 @@ L.Icon.Default.mergeOptions({
 
 const App = () => {
   return (
-    <div>
+    <div className="min-h-screen bg-gray-50">
       <RouterProvider router={router} />
       <ToastContainer 
         position="top-right" 
