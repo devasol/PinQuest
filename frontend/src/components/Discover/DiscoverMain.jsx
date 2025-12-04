@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Popup, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import CustomMarker from './CustomMarker';
 import PostWindow from '../PostWindow/PostWindow';
 import CurrentLocationMarker from './CurrentLocationMarker';
 import MapRouting from './MapRouting';
-import CreatePostModal from './CreatePostModal';
 import EnhancedSidebarWindows from './EnhancedSidebarWindows';
 
 import { Link, useNavigate } from 'react-router-dom';
@@ -39,7 +38,7 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
       }
       
       // Hide all control windows when clicking on map
-      const windows = ['filter-window', 'view-mode-window', 'map-type-window', 'saved-locations-window'];
+      const windows = ['category-window', 'view-mode-window', 'map-type-window', 'saved-locations-window', 'notifications-window'];
       windows.forEach(windowId => {
         const windowElement = document.getElementById(windowId);
         if (windowElement && !windowElement.classList.contains('hidden')) {
@@ -104,12 +103,19 @@ const DiscoverMain = () => {
   const [routingActive, setRoutingActive] = useState(false); // Track if routing is active
   const [routingDestination, setRoutingDestination] = useState(null); // Store destination for routing
   const [routingLoading, setRoutingLoading] = useState(false); // Track if routing is being calculated
-  const [showCreatePostModal, setShowCreatePostModal] = useState(false); // Track if create post modal is open
-  const [selectedMapPosition, setSelectedMapPosition] = useState(null); // Store selected position for post creation
-  const [createPostLoading, setCreatePostLoading] = useState(false); // Track if post creation is in progress
+
   const [locationLoading, setLocationLoading] = useState(false); // Track if updating user location is in progress
   const [bookmarkLoading, setBookmarkLoading] = useState(null); // Track which post is being bookmarked/unbookmarked
   const [followUser, setFollowUser] = useState(false); // Track if map should follow user's movement
+  const [creatingPostAt, setCreatingPostAt] = useState(null); // Track the position where user wants to create a post
+  const [postCreationForm, setPostCreationForm] = useState({
+    title: "",
+    description: "",
+    category: "general",
+    loading: false,
+    error: null,
+    images: [] // Store selected image files
+  });
 
   // Handle responsive sidebar for mobile
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
@@ -1757,6 +1763,180 @@ const DiscoverMain = () => {
     setRoutingLoading(false); // Also reset loading state
   }, []);
 
+  // Function to handle creating a post directly on the map
+  const handleMapPostCreation = async (e) => {
+    e.preventDefault();
+    
+    // Validate form data
+    if (!postCreationForm.title.trim() || !postCreationForm.description.trim()) {
+      setPostCreationForm({
+        ...postCreationForm,
+        error: "Title and description are required"
+      });
+      return;
+    }
+
+    if (!creatingPostAt) {
+      setPostCreationForm({
+        ...postCreationForm,
+        error: "Location is required"
+      });
+      return;
+    }
+
+    setPostCreationForm({
+      ...postCreationForm,
+      loading: true,
+      error: null
+    });
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      // Create form data for the post with location
+      const formData = new FormData();
+      formData.append('title', postCreationForm.title);
+      formData.append('description', postCreationForm.description);
+      formData.append('category', postCreationForm.category);
+      formData.append('location[latitude]', creatingPostAt.lat.toString());
+      formData.append('location[longitude]', creatingPostAt.lng.toString());
+
+      // Add image files if any
+      if (postCreationForm.images && postCreationForm.images.length > 0) {
+        postCreationForm.images.forEach(image => {
+          formData.append('images', image);
+        });
+      }
+
+      // Call the API to create the post
+      const result = await apiService.upload('/posts', formData, token);
+
+      if (result.status === 'success' && result.data) {
+        // Add the new post to our local state
+        const newPost = {
+          _id: result.data._id,
+          id: result.data._id,
+          title: result.data.title,
+          description: result.data.description,
+          image: result.data.image || null,
+          images: result.data.images || [],
+          averageRating: result.data.averageRating || 0,
+          totalRatings: result.data.totalRatings || 0,
+          postedBy: result.data.postedBy?.name || user?.name || user?.email || "Anonymous",
+          category: result.data.category,
+          datePosted: result.data.datePosted || new Date().toISOString(),
+          position: [result.data.location.latitude, result.data.location.longitude],
+          price: result.data.price || 0,
+          tags: result.data.tags || [],
+          comments: result.data.comments || [],
+          likes: result.data.likes || [],
+          likesCount: result.data.likesCount || 0,
+          location: {
+            latitude: result.data.location.latitude,
+            longitude: result.data.location.longitude,
+            ...(result.data.location || {})
+          },
+        };
+
+        setPosts(prev => [newPost, ...prev]);
+        
+        // Apply current filters to determine if the new post should be in the filtered list
+        let shouldIncludeInFiltered = true;
+        
+        // Apply search filter
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          shouldIncludeInFiltered = 
+            newPost.title.toLowerCase().includes(query) || 
+            newPost.description.toLowerCase().includes(query) ||
+            (typeof newPost.postedBy === 'string' ? newPost.postedBy.toLowerCase() : 
+             (typeof newPost.postedBy === 'object' && newPost.postedBy.name ? newPost.postedBy.name.toLowerCase() : '')
+            ).includes(query) ||
+            newPost.category.toLowerCase().includes(query) ||
+            newPost.tags.some(tag => tag.toLowerCase().includes(query));
+        }
+        
+        // Apply category filter
+        if (selectedCategory !== 'all' && shouldIncludeInFiltered) {
+          shouldIncludeInFiltered = newPost.category.toLowerCase() === selectedCategory.toLowerCase();
+        }
+        
+        // Apply rating filter
+        if (rating > 0 && shouldIncludeInFiltered) {
+          shouldIncludeInFiltered = newPost.averageRating >= rating;
+        }
+        
+        // Apply price range filter
+        if (priceRange !== 'all' && shouldIncludeInFiltered) {
+          if (priceRange === 'free') {
+            shouldIncludeInFiltered = newPost.price === 0;
+          } else if (priceRange === 'low') {
+            shouldIncludeInFiltered = newPost.price > 0 && newPost.price <= 10;
+          } else if (priceRange === 'medium') {
+            shouldIncludeInFiltered = newPost.price > 10 && newPost.price <= 50;
+          } else if (priceRange === 'high') {
+            shouldIncludeInFiltered = newPost.price > 50;
+          }
+        }
+        
+        // Only add to filtered posts if it passes all current filters
+        if (shouldIncludeInFiltered) {
+          setFilteredPosts(prev => {
+            const updatedList = [newPost, ...prev];
+            
+            // Apply sorting based on current sort setting
+            updatedList.sort((a, b) => {
+              switch (sortBy) {
+                case 'newest':
+                  return new Date(b.datePosted) - new Date(a.datePosted);
+                case 'oldest':
+                  return new Date(a.datePosted) - new Date(b.datePosted);
+                case 'rating':
+                  return b.averageRating - a.averageRating;
+                case 'popular':
+                  return b.totalRatings - a.totalRatings;
+                default:
+                  return 0;
+              }
+            });
+            
+            return updatedList;
+          });
+        }
+
+        // Show success message
+        showModal({
+          title: "Success",
+          message: 'Post created successfully!',
+          type: 'success',
+          confirmText: 'OK'
+        });
+
+        // Close the creation form
+        setCreatingPostAt(null);
+        
+        // Fly to the new post location to show it on the map
+        setTimeout(() => {
+          if (newPost.position) {
+            flyToPost(newPost.position);
+          }
+        }, 300);
+      } else {
+        throw new Error(result.message || result.error || 'Failed to create post');
+      }
+    } catch (error) {
+      console.error('Error creating post:', error);
+      setPostCreationForm({
+        ...postCreationForm,
+        loading: false,
+        error: error.message || 'An error occurred while creating the post'
+      });
+    }
+  };
+
   // Close all windows using ESC key
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -1767,7 +1947,8 @@ const DiscoverMain = () => {
             'category-window': false,
             'view-mode-window': false,
             'map-type-window': false,
-            'saved-locations-window': false
+            'saved-locations-window': false,
+            'notifications-window': false
           });
         }
       }
@@ -1783,320 +1964,17 @@ const DiscoverMain = () => {
 
   // Function to toggle windows - closes previous window and opens new one
   const toggleWindow = (windowId) => {
-    // Close all windows first
+    // Close all windows and open the requested window atomically
     setShowWindows({
-      'category-window': false,
-      'view-mode-window': false,
-      'map-type-window': false,
-      'saved-locations-window': false,
-      'notifications-window': false
+      'category-window': windowId === 'category-window',
+      'view-mode-window': windowId === 'view-mode-window',
+      'map-type-window': windowId === 'map-type-window',
+      'saved-locations-window': windowId === 'saved-locations-window',
+      'notifications-window': windowId === 'notifications-window'
     });
-    
-    // Then toggle the requested window
-    setShowWindows(prev => ({
-      ...prev,
-      [windowId]: true
-    }));
   };
 
-  // Function to handle creating a new post
-  const handleCreatePost = async (postPayload) => {
-    if (!isAuthenticated) {
-      showModal({
-        title: "Authentication Required",
-        message: 'Please login to create posts',
-        type: 'info',
-        confirmText: 'OK'
-      });
-      // Return a rejected promise so the modal can handle it
-      return Promise.reject(new Error('Authentication required'));
-    }
 
-    setCreatePostLoading(true);
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
-      let formData;
-      let locationData;
-      
-      // Check if postPayload is already a FormData object (when files are being uploaded)
-      if (postPayload instanceof FormData) {
-        // Use the FormData object as is
-        formData = postPayload;
-        
-        // Extract location data from FormData for use below
-        const latValue = formData.get('location[latitude]');
-        const lngValue = formData.get('location[longitude]');
-        
-        if (!latValue || !lngValue) {
-          // Try alternative location formats that might be used by different parts of the app
-          const latAlt = formData.get('location.latitude'); // Alternative format
-          const lngAlt = formData.get('location.longitude'); // Alternative format
-          
-          if (latAlt && lngAlt) {
-            locationData = {
-              latitude: parseFloat(latAlt),
-              longitude: parseFloat(lngAlt)
-            };
-          } else {
-            throw new Error('Location data is missing in form data. Expected location[latitude] and location[longitude].');
-          }
-        } else {
-          locationData = {
-            latitude: parseFloat(latValue),
-            longitude: parseFloat(lngValue)
-          };
-        }
-      } else {
-        // Prepare form data for multipart request when we have a regular object
-        formData = new FormData();
-        
-        // Add basic post data
-        formData.append('title', postPayload.title);
-        formData.append('description', postPayload.description);
-        formData.append('category', postPayload.category);
-        
-        // Add location data - ensure location exists and has required properties
-        if (postPayload.location && postPayload.location.latitude !== undefined && postPayload.location.longitude !== undefined) {
-          formData.append('location[latitude]', postPayload.location.latitude.toString());
-          formData.append('location[longitude]', postPayload.location.longitude.toString());
-          
-          locationData = {
-            latitude: parseFloat(postPayload.location.latitude),
-            longitude: parseFloat(postPayload.location.longitude)
-          };
-        } else {
-          throw new Error('Location data is missing or invalid');
-        }
-
-        // Add uploaded file images
-        if (postPayload.images) {
-          postPayload.images.forEach((image) => {
-            if (image.file) {
-              formData.append('images', image.file, image.name);
-            }
-          });
-        }
-
-        // Add image links if any
-        if (postPayload.imageLinks && postPayload.imageLinks.length > 0) {
-          postPayload.imageLinks.forEach((link) => {
-            formData.append('imageLinks', link.url || link);
-          });
-        }
-      }
-
-      // Prepare the data properly before sending to the API service
-      // Use the appropriate API service method based on the data type
-      // If postPayload is FormData, we need to call upload directly
-      // If it's a regular object, we can use the postApi.createPost method
-      let result;
-      try {
-        if (postPayload instanceof FormData) {
-          // Use direct upload for FormData with files
-          result = await apiService.upload('/posts', postPayload, token);
-        } else {
-          // Use the postApi service for regular objects
-          result = await postApi.createPost(postPayload, token);
-        }
-      } catch (apiError) {
-        console.error('API call failed:', apiError);
-        throw new Error(apiError.message || 'Failed to connect to server');
-      }
-      
-      // Check if result has the expected structure from our backend
-      if (!result || !result.success || !result.data) {
-        // Safely extract error message, avoiding potential function calls
-        const errorMessage = result?.error || result?.message || 'Invalid response format from server';
-        throw new Error(errorMessage);
-      }
-
-      if (result.status === 'success') {
-        try {
-          // Add the new post to our local state with the same structure as API-transformed posts
-          // Start with the response data and ensure position is in the right format [lat, lng] for Leaflet
-          let position;
-          if (result.data?.location?.coordinates && Array.isArray(result.data.location.coordinates) 
-              && result.data.location.coordinates.length === 2) {
-            // Convert from [longitude, latitude] (GeoJSON) to [latitude, longitude] (Leaflet)
-            position = [result.data.location.coordinates[1], result.data.location.coordinates[0]];
-          } 
-          else if (result.data?.location && typeof result.data.location.latitude === 'number' && 
-                   typeof result.data.location.longitude === 'number') {
-            position = [result.data.location.latitude, result.data.location.longitude];
-          }
-          else {
-            // Fallback to the extracted location data if API doesn't return location properly
-            position = [locationData.latitude, locationData.longitude];
-          }
-          
-          const newPost = {
-            _id: result.data?._id,
-            id: result.data?._id,
-            title: result.data?.title || (postPayload instanceof FormData ? 'Untitled' : postPayload.title),
-            description: result.data?.description || (postPayload instanceof FormData ? 'No description' : postPayload.description),
-            image: result.data?.image || null, // Use image from response if available
-            images: result.data?.images || [],
-            averageRating: result.data?.averageRating || 0,
-            totalRatings: result.data?.totalRatings || 0,
-            postedBy: result.data?.postedBy?.name || user?.name || user?.email || "Anonymous",
-            category: result.data?.category || (postPayload instanceof FormData ? 'general' : postPayload.category),
-            datePosted: result.data?.datePosted || new Date().toISOString(),
-            position: position,
-            price: result.data?.price || 0,
-            tags: result.data?.tags || [],
-            comments: result.data?.comments || [],
-            likes: result.data?.likes || [], // Use likes from response if available
-            likesCount: result.data?.likesCount || 0,
-            location: {
-              // Ensure location has proper latitude and longitude for the directions feature
-              latitude: result.data?.location?.latitude || 
-                        (result.data?.location?.coordinates && typeof result.data.location.coordinates[1] === 'number' ? result.data.location.coordinates[1] : null) || 
-                        locationData.latitude,
-              longitude: result.data?.location?.longitude || 
-                         (result.data?.location?.coordinates && typeof result.data.location.coordinates[0] === 'number' ? result.data.location.coordinates[0] : null) || 
-                         locationData.longitude,
-              // Preserve other location properties if they exist
-              ...(result.data?.location || {})
-            },
-          };
-          
-          setPosts(prev => [newPost, ...prev]);
-          
-          // Apply current filters to determine if the new post should be in the filtered list
-          let shouldIncludeInFiltered = true;
-          
-          // Apply search filter
-          if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            shouldIncludeInFiltered = 
-              newPost.title.toLowerCase().includes(query) || 
-              newPost.description.toLowerCase().includes(query) ||
-              (typeof newPost.postedBy === 'string' ? newPost.postedBy.toLowerCase() : 
-               (typeof newPost.postedBy === 'object' && newPost.postedBy.name ? newPost.postedBy.name.toLowerCase() : '')
-              ).includes(query) ||
-              newPost.category.toLowerCase().includes(query) ||
-              newPost.tags.some(tag => tag.toLowerCase().includes(query));
-          }
-          
-          // Apply category filter
-          if (selectedCategory !== 'all' && shouldIncludeInFiltered) {
-            shouldIncludeInFiltered = newPost.category.toLowerCase() === selectedCategory.toLowerCase();
-          }
-          
-          // Apply rating filter
-          if (rating > 0 && shouldIncludeInFiltered) {
-            shouldIncludeInFiltered = newPost.averageRating >= rating;
-          }
-          
-          // Apply price range filter
-          if (priceRange !== 'all' && shouldIncludeInFiltered) {
-            if (priceRange === 'free') {
-              shouldIncludeInFiltered = newPost.price === 0;
-            } else if (priceRange === 'low') {
-              shouldIncludeInFiltered = newPost.price > 0 && newPost.price <= 10;
-            } else if (priceRange === 'medium') {
-              shouldIncludeInFiltered = newPost.price > 10 && newPost.price <= 50;
-            } else if (priceRange === 'high') {
-              shouldIncludeInFiltered = newPost.price > 50;
-            }
-          }
-          
-          // Only add to filtered posts if it passes all current filters
-          if (shouldIncludeInFiltered) {
-            setFilteredPosts(prev => {
-              // Add new post and sort according to current sort setting
-              const updatedList = [newPost, ...prev];
-              
-              // Apply sorting based on current sort setting
-              updatedList.sort((a, b) => {
-                switch (sortBy) {
-                  case 'newest':
-                    return new Date(b.datePosted) - new Date(a.datePosted);
-                  case 'oldest':
-                    return new Date(a.datePosted) - new Date(b.datePosted);
-                  case 'rating':
-                    return b.averageRating - a.averageRating;
-                  case 'popular':
-                    return b.totalRatings - a.totalRatings;
-                  default:
-                    return 0;
-                }
-              });
-              
-              return updatedList;
-            });
-            
-            // Fly to the new post location to show it on the map
-            setTimeout(() => {
-              if (newPost.position) {
-                flyToPost(newPost.position);
-              }
-            }, 300); // Small delay to ensure the post is rendered
-          }
-          
-          // Show success message
-          showModal({
-            title: "Success",
-            message: 'Post created successfully!',
-            type: 'success',
-            confirmText: 'OK'
-          });
-        } catch (postProcessingError) {
-          console.error('Error processing successful post creation response:', postProcessingError);
-          
-          // Still show success since the post was created on the server, but warn about UI issues
-          showModal({
-            title: "Post Created with Issues",
-            message: 'The post was created successfully on the server, but there were issues updating the display. The page may need to be refreshed to see the new post.',
-            type: 'warning',
-            confirmText: 'OK'
-          });
-        }
-      } else {
-        // Handle case where response is not ok but we still got JSON
-        const errorMessage = result.message || result.error || 'Failed to create post';
-        throw new Error(errorMessage);
-      }
-
-      // Return the successful result
-      return result;
-    } catch (error) {
-      console.error('Error creating post:', error);
-      
-      // Check if it's a timeout error specifically
-      if (error.message && (error.message.includes('timeout') || error.message.includes('timed out'))) {
-        showModal({
-          title: "Request Timeout",
-          message: "The post creation request took too long. The server might be busy or you may have a slow connection. Please try again.",
-          type: 'warning',
-          confirmText: 'OK'
-        });
-      } else {
-        // Show error modal with more specific error message
-        const errorMessage = error.message || 'An error occurred while creating the post';
-        showModal({
-          title: "Error Creating Post",
-          message: errorMessage,
-          type: 'error',
-          confirmText: 'OK'
-        });
-      }
-      
-      // Re-throw the error so the modal can handle the promise rejection
-      throw error;
-    } finally {
-      // Make sure loading state is reset in all cases
-      // Use setTimeout to ensure smooth UI transition after any modals appear
-      setTimeout(() => {
-        setCreatePostLoading(false);
-      }, 300); // Small delay to allow success/error messages to appear first
-    }
-  };
 
   // Debounced search function
   useEffect(() => {
@@ -2501,10 +2379,17 @@ const DiscoverMain = () => {
             onMapPositionSelected={(position) => {
               // Only allow authenticated users to create posts and only when routing is not active
               if (isAuthenticated && !routingActive) {
-                setSelectedMapPosition(position);
-                setShowCreatePostModal(true);
+                setCreatingPostAt(position);
+                setPostCreationForm({
+                  ...postCreationForm,
+                  title: "",
+                  description: "",
+                  category: "general",
+                  loading: false,
+                  error: null
+                });
               } else if (isAuthenticated && routingActive) {
-                // If routing is active, just clear the routing and don't open the create post modal
+                // If routing is active, just clear the routing and don't create a post
                 clearRouting();
               } else if (!isAuthenticated) {
                 showModal({
@@ -2715,6 +2600,226 @@ const DiscoverMain = () => {
               destination={routingDestination.destination}
               clearRoute={!routingActive}
             />
+          )}
+          
+          {/* Map-based Post Creation Form - appears when user clicks on map to create a post */}
+          {creatingPostAt && (
+            <div 
+              className="absolute z-[1000] bg-white rounded-lg shadow-2xl p-4 min-w-[300px] border border-gray-200"
+              style={{
+                left: `${(creatingPostAt.lng + 180) * 2 + 100}px`, // This won't work directly in Leaflet
+                top: `${(90 - creatingPostAt.lat) * 2 + 100}px`    // This won't work directly in Leaflet
+              }}
+            >
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold text-gray-800">Create New Post</h3>
+                <button 
+                  onClick={() => setCreatingPostAt(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <form onSubmit={(e) => handleMapPostCreation(e)}>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                  <input
+                    type="text"
+                    value={postCreationForm.title}
+                    onChange={(e) => setPostCreationForm({...postCreationForm, title: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter title"
+                    required
+                  />
+                </div>
+                
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                  <textarea
+                    value={postCreationForm.description}
+                    onChange={(e) => setPostCreationForm({...postCreationForm, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Describe this location"
+                    rows="3"
+                    required
+                  />
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    value={postCreationForm.category}
+                    onChange={(e) => setPostCreationForm({...postCreationForm, category: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="general">General</option>
+                    <option value="nature">Nature</option>
+                    <option value="culture">Culture</option>
+                    <option value="shopping">Shopping</option>
+                    <option value="food">Food & Drinks</option>
+                    <option value="event">Event</option>
+                    <option value="travel">Travel</option>
+                  </select>
+                </div>
+                
+                {postCreationForm.error && (
+                  <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">
+                    {postCreationForm.error}
+                  </div>
+                )}
+                
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCreatingPostAt(null)}
+                    className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={postCreationForm.loading}
+                    className="flex-1 px-3 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {postCreationForm.loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Creating...
+                      </>
+                    ) : (
+                      'Create'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+          
+          {/* Map-based Post Creation Popup */}
+          {creatingPostAt && (
+            <Popup
+              position={[creatingPostAt.lat, creatingPostAt.lng]}
+              onClose={() => setCreatingPostAt(null)}
+            >
+              <div className="w-80">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-semibold text-gray-800">Create New Post</h3>
+                  <button 
+                    onClick={() => setCreatingPostAt(null)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <form onSubmit={handleMapPostCreation}>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                    <input
+                      type="text"
+                      value={postCreationForm.title}
+                      onChange={(e) => setPostCreationForm({...postCreationForm, title: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      placeholder="Enter title"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                    <textarea
+                      value={postCreationForm.description}
+                      onChange={(e) => setPostCreationForm({...postCreationForm, description: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      placeholder="Describe this location"
+                      rows="3"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={postCreationForm.category}
+                      onChange={(e) => setPostCreationForm({...postCreationForm, category: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    >
+                      <option value="general">General</option>
+                      <option value="nature">Nature</option>
+                      <option value="culture">Culture</option>
+                      <option value="shopping">Shopping</option>
+                      <option value="food">Food & Drinks</option>
+                      <option value="event">Event</option>
+                      <option value="travel">Travel</option>
+                    </select>
+                  </div>
+                  
+                  {/* Image Upload Section */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Images</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center">
+                      <input
+                        type="file"
+                        id="image-upload"
+                        multiple
+                        accept="image/*"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          setPostCreationForm({
+                            ...postCreationForm,
+                            images: files
+                          });
+                        }}
+                        className="hidden"
+                      />
+                      <label htmlFor="image-upload" className="cursor-pointer">
+                        <div className="flex flex-col items-center">
+                          <Plus className="w-6 h-6 text-gray-400 mx-auto" />
+                          <span className="text-sm text-gray-600 mt-1">Click to upload images</span>
+                          <span className="text-xs text-gray-500">JPG, PNG, GIF (max 5MB each)</span>
+                        </div>
+                      </label>
+                      {postCreationForm.images.length > 0 && (
+                        <div className="mt-2 text-xs text-gray-600">
+                          {postCreationForm.images.length} image(s) selected
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {postCreationForm.error && (
+                    <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">
+                      {postCreationForm.error}
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCreatingPostAt(null)}
+                      className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={postCreationForm.loading}
+                      className="flex-1 px-3 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:from-emerald-600 hover:to-teal-600 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                    >
+                      {postCreationForm.loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Creating...
+                        </>
+                      ) : (
+                        'Create'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </Popup>
           )}
         </MapContainer>
         
@@ -3125,6 +3230,7 @@ const DiscoverMain = () => {
         </AnimatePresence>
       </div>
       
+      
       {/* Post Window Modal */}
       <AnimatePresence>
         {selectedPost ? (
@@ -3150,18 +3256,6 @@ const DiscoverMain = () => {
           />
         ) : null}
       </AnimatePresence>
-      
-      {/* Create Post Modal */}
-      <CreatePostModal
-        isOpen={showCreatePostModal}
-        onClose={() => {
-          setShowCreatePostModal(false);
-          setSelectedMapPosition(null);
-        }}
-        initialPosition={selectedMapPosition}
-        onCreatePost={handleCreatePost}
-        loading={createPostLoading}
-      />
     </div>
   );
 };
