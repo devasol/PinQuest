@@ -41,7 +41,6 @@
   height: 100vh !important;
   overflow-y: auto !important;
   animation: slideInLeft 0.3s ease-out !important;
-  width: 380px !important;
   position: fixed !important;
   z-index: 6000 !important;
   backdrop-filter: blur(10px) !important;
@@ -290,107 +289,7 @@
   border-color: #4285f4 !important;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .sidebar-window {
-    width: calc(100% - 24px) !important;
-    max-height: 50vh !important;
-    left: 12px !important;
-    right: 12px !important;
-    position: fixed !important;
-    top: 90px !important;
-    margin: 0 !important;
-    z-index: 5999 !important;
-    max-width: calc(100vw - 24px) !important;
-  }
-  
-  .sidebar-window-header {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-  }
-  
-  .sidebar-window-content {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-  }
-  
-  .sidebar-window-button {
-    padding: 12px !important;
-  }
-  
-  .sidebar-control {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-  }
-  
-  /* Improve mobile search bar visibility */
-  .top-search-bar {
-    width: calc(100% - 2rem) !important;
-    padding: 0 !important;
-  }
-  
-  /* Adjust map container for mobile */
-  .map-container {
-    margin-left: 2rem !important;
-  }
-}
 
-/* Enhance mobile experience for sidebar windows */
-@media (max-width: 480px) {
-  .sidebar-window {
-    width: calc(100% - 16px) !important;
-    left: 8px !important;
-    right: 8px !important;
-    top: 80px !important;
-    max-height: 45vh !important;
-    padding: 16px !important;
-    border-radius: 12px !important;
-  }
-  
-  .sidebar-window-header {
-    padding-bottom: 8px !important;
-    margin-bottom: 12px !important;
-  }
-  
-  .sidebar-window-header h2 {
-    font-size: 1.1rem !important;
-  }
-  
-  .sidebar-window-button {
-    padding: 12px !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 6px !important;
-  }
-  
-  .sidebar-window-button-icon {
-    align-self: center !important;
-  }
-  
-  .sidebar-window-button-title {
-    font-size: 0.95rem !important;
-  }
-  
-  .sidebar-window-button-description {
-    font-size: 0.8rem !important;
-  }
-  
-  .enhanced-sidebar-window-overlay {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    background: rgba(0, 0, 0, 0.5) !important;
-    z-index: 5998 !important;
-    display: none !important;
-  }
-  
-  .enhanced-sidebar-window-overlay.mobile-open {
-    display: block !important;
-  }
-}
 
 /* Animation for list items */
 .fade-in-up {
@@ -444,70 +343,11 @@
   to { opacity: 1; }
 }
 
-/* Mobile-friendly adjustments */
-@media (max-width: 480px) {
-  .sidebar-window {
-    width: calc(100% - 16px) !important;
-    padding: 12px !important;
-    max-height: 50vh !important;
-    top: 90px !important;
-    left: 8px !important;
-    right: 8px !important;
-    position: fixed !important;
-    transform: none !important;
-    z-index: 5999 !important;
-  }
-  
-  .sidebar-control {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-  }
-  
-  /* Adjust mobile layout */
-  .top-search-bar {
-    width: calc(100% - 1rem) !important;
-    padding: 0 !important;
-  }
-  
-  .map-container {
-    margin-left: 1rem !important;
-  }
-}
 
-/* Extra small device adjustments */
-@media (max-width: 360px) {
-  .sidebar-window {
-    width: calc(100% - 12px) !important;
-    padding: 10px !important;
-    top: 80px !important;
-    left: 6px !important;
-    right: 6px !important;
-  }
-  
-  .sidebar-control {
-    width: 30px !important;
-    height: 30px !important;
-    min-width: 30px !important;
-  }
-}
 
-/* Extra small screen improvements */
-@media (max-width: 320px) {
-  .sidebar-window {
-    width: calc(100% - 8px) !important;
-    padding: 8px !important;
-    top: 70px !important;
-    left: 4px !important;
-    right: 4px !important;
-  }
-  
-  .sidebar-control {
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px !important;
-  }
-}
+
+
+
 
 /* Additional responsive fixes */
 @media (max-width: 1024px) {
@@ -528,10 +368,95 @@
   }
 }
 
+
+
+/* Responsive adjustments for sidebar windows - maintain positioning beside sidebar */
+@media (min-width: 1280px) {
+  .sidebar-window {
+    width: 380px !important; /* Full width on larger screens */
+  }
+}
+
+@media (max-width: 1279px) and (min-width: 1024px) {
+  .sidebar-window {
+    width: 340px !important; /* Slightly narrower on large tablets */
+  }
+}
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .sidebar-window {
+    width: 320px !important; /* Adjust for tablets */
+  }
+  
+  .map-container {
+    margin-left: 3rem !important;
+  }
+}
+
+@media (max-width: 767px) and (min-width: 640px) {
+  .sidebar-window {
+    width: 300px !important; /* Narrower on mobile devices but still beside sidebar */
+  }
+  
+  .discover-card {
+    margin: 0.25rem !important;
+  }
+  
+  /* Improve mobile touch targets */
+  button, .interactive-element {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+@media (max-width: 639px) and (min-width: 480px) {
+  .sidebar-window {
+    width: 280px !important; /* Even more compact for smaller mobile devices */
+    padding: 20px !important; /* Slightly reduce padding */
+  }
+  
+  .sidebar-window-header h2 {
+    font-size: 1.1rem !important; /* Smaller header text */
+  }
+  
+  .sidebar-window-button {
+    padding: 12px !important; /* Slightly smaller buttons */
+  }
+}
+
+@media (max-width: 479px) {
+  .sidebar-window {
+    width: 260px !important; /* Most compact size */
+    padding: 16px !important;
+  }
+  
+  .sidebar-window-header {
+    padding-bottom: 10px !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .sidebar-window-header h2 {
+    font-size: 1.05rem !important;
+  }
+  
+  .sidebar-window-button {
+    padding: 10px !important;
+    gap: 10px !important;
+  }
+  
+  .sidebar-window-button-title {
+    font-size: 0.95rem !important;
+  }
+  
+  .sidebar-window-button-description {
+    font-size: 0.8rem !important;
+  }
+}
+
 /* Landscape mobile adjustments */
 @media (max-height: 500px) and (orientation: landscape) {
   .sidebar-window {
-    max-height: 40vh !important;
+    max-height: 90vh !important; /* Allow more height in landscape */
   }
 }
 

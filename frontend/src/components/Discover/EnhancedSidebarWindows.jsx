@@ -7,6 +7,16 @@ import {
 } from 'lucide-react';
 import { adminAPI } from '../../services/api';
 
+// Helper function to get responsive window width
+const getResponsiveWidth = () => {
+  if (window.innerWidth >= 1280) return '380px';
+  if (window.innerWidth >= 1024) return '340px';
+  if (window.innerWidth >= 768) return '320px';
+  if (window.innerWidth >= 640) return '300px';
+  if (window.innerWidth >= 480) return '280px';
+  return '260px';
+};
+
 const EnhancedSidebarWindows = ({ 
   showWindows = {},
   setShowWindows = () => {},
@@ -161,9 +171,10 @@ const EnhancedSidebarWindows = ({
           <motion.div 
             className={`fixed top-0 bottom-0 z-[6000] sidebar-window h-full ${
               isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem] xl:left-[16rem] lg:left-[16rem] md:left-[16rem] w-[380px]' 
-                : 'left-[5rem] w-[380px]'
+                ? 'left-[16rem]' 
+                : 'left-[5rem]'
             }`}
+            style={{ width: getResponsiveWidth() }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -227,9 +238,10 @@ const EnhancedSidebarWindows = ({
           <motion.div 
             className={`fixed top-0 bottom-0 z-[5998] sidebar-window h-full ${
               isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem] xl:left-[16rem] lg:left-[16rem] md:left-[16rem] w-[380px]' 
-                : 'left-[5rem] w-[380px]'
+                ? 'left-[16rem]' 
+                : 'left-[5rem]'
             }`}
+            style={{ width: getResponsiveWidth() }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -292,9 +304,10 @@ const EnhancedSidebarWindows = ({
           <motion.div 
             className={`fixed top-0 bottom-0 z-[5997] sidebar-window h-full ${
               isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem] xl:left-[16rem] lg:left-[16rem] md:left-[16rem] w-[380px]' 
-                : 'left-[5rem] w-[380px]'
+                ? 'left-[16rem]' 
+                : 'left-[5rem]'
             }`}
+            style={{ width: getResponsiveWidth() }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -357,9 +370,10 @@ const EnhancedSidebarWindows = ({
           <motion.div 
             className={`fixed top-0 bottom-0 z-[5996] sidebar-window h-full ${
               isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem] xl:left-[16rem] lg:left-[16rem] md:left-[16rem] w-[380px]' 
-                : 'left-[5rem] w-[380px]'
+                ? 'left-[16rem]' 
+                : 'left-[5rem]'
             }`}
+            style={{ width: getResponsiveWidth() }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -517,9 +531,10 @@ const EnhancedSidebarWindows = ({
           <motion.div 
             className={`fixed top-0 bottom-0 z-[5995] sidebar-window h-full ${
               isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem] xl:left-[16rem] lg:left-[16rem] md:left-[16rem] w-[380px]' 
-                : 'left-[5rem] w-[380px]'
+                ? 'left-[16rem]' 
+                : 'left-[5rem]'
             }`}
+            style={{ width: getResponsiveWidth() }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
