@@ -87,6 +87,18 @@ const DiscoverMain = () => {
 
   const toggleSidebar = () => {
     setIsSidebarExpanded(!isSidebarExpanded);
+    // Close search bar when opening sidebar
+    if (!isSidebarExpanded) { // If sidebar is being opened
+      setSearchFocused(false);
+      if (window.innerWidth < 640) {
+        setIsSearchBarVisible(false);
+      }
+      // Close any open sidebar windows
+      setShowWindows(prev => Object.keys(prev).reduce((acc, key) => {
+        acc[key] = false;
+        return acc;
+      }, {}));
+    }
   };
   const [routingActive, setRoutingActive] = useState(false); // Track if routing is active
   const [routingDestination, setRoutingDestination] = useState(null); // Store destination for routing
@@ -2089,7 +2101,7 @@ const DiscoverMain = () => {
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
       {/* Top-right user controls positioned above the map (adjusted for sidebar) */}
-      <div className="top-right-controls absolute top-4 z-[5980] flex flex-wrap items-center gap-2 sm:gap-3" style={{ right: isSidebarExpanded && window.innerWidth >= 768 ? '4rem' : '1rem' }}>
+      <div className="top-right-controls absolute top-4 z-[7010] flex flex-wrap items-center gap-2 sm:gap-3" style={{ right: isSidebarExpanded && window.innerWidth >= 768 ? '4rem' : '1rem' }}>
         {/* User controls - login, notifications, name */}
         {isAuthenticated ? (
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-white/90 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 shadow-md border border-gray-200">
@@ -2114,10 +2126,10 @@ const DiscoverMain = () => {
           // Login button for unauthenticated users
           <Link
             to="/login"
-            className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+            className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
           >
-            <span className="text-xs sm:text-sm font-medium">Login</span>
-            <User className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="text-sm sm:text-base font-medium">Login</span>
+            <User className="h-4 w-4 sm:h-5 sm:w-5" />
           </Link>
         )}
       </div>
@@ -2137,34 +2149,51 @@ const DiscoverMain = () => {
           : '5rem'
       }}>
         {/* Responsive search bar: show full bar on bigger screens, icon only on mobile */}
-        <div className="top-search-bar absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-[6000] w-full px-4">
+        <div className="top-search-bar absolute top-4 sm:top-6 md:top-8 left-1/2 transform -translate-x-1/2 z-[7000] w-full px-4" 
+             style={{
+               left: isSidebarExpanded && window.innerWidth >= 768 
+                 ? 'calc(50% + 8rem)' // Position at center of remaining space when sidebar is expanded
+                 : '50%'
+             }}>
           <div className="max-w-2xl mx-auto relative" ref={searchContainerRef}>
             {/* Always show search bar on bigger screens, only icon on mobile */}
-            <div className="relative sm:block hidden"> {/* Only show full bar on screens >= small */}
-              <input
-                type="text"
-                placeholder="Search for places, locations, categories..."
-                className="w-full pl-12 pr-10 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base bg-white"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => {
-                  // Only hide the results window after a short delay to allow clicks on results
-                  setTimeout(() => setSearchFocused(false), 200);
-                }}
-                autoFocus
-              />
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              
+            <div className="flex items-center sm:block hidden gap-2"> {/* Changed to flex for desktop, keeping block for mobile */}
+              <div className="relative w-full">
+                <input
+                  type="text"
+                  placeholder="Search for places, locations, categories..."
+                  className="w-full pl-12 pr-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base sm:text-lg bg-white"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => {
+                    setSearchFocused(true);
+                    // Close sidebar when search bar is focused
+                    if (isSidebarExpanded) {
+                      setIsSidebarExpanded(false);
+                      // Close any open sidebar windows
+                      setShowWindows(prev => Object.keys(prev).reduce((acc, key) => {
+                        acc[key] = false;
+                        return acc;
+                      }, {}));
+                    }
+                  }}
+                  onBlur={() => {
+                    // Only hide the results window after a short delay to allow clicks on results
+                    setTimeout(() => setSearchFocused(false), 200);
+                  }}
+                  autoFocus
+                />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-6 sm:w-6" />
+              </div>
               {searchQuery && (
                 <button
                   onClick={() => {
                     setSearchQuery('');
                     setEnhancedSearchResults([]);
                   }}
-                  className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                  className="ml-2 p-3 rounded-full hover:bg-gray-100 transition-colors self-center"
                 >
-                  <X className="h-4 w-4 text-gray-500" />
+                  <X className="h-4 w-4 sm:h-6 sm:w-6 text-gray-500" />
                 </button>
               )}
             </div>
@@ -2173,7 +2202,20 @@ const DiscoverMain = () => {
             <div className="sm:hidden flex items-center justify-center">
               <button
                 onClick={() => {
+                  // If search bar is currently hidden, we're opening it
+                  const isCurrentlyHidden = !isSearchBarVisible;
                   setIsSearchBarVisible(!isSearchBarVisible);
+                  
+                  if (isCurrentlyHidden && isSidebarExpanded) {
+                    // Close sidebar when opening mobile search bar
+                    setIsSidebarExpanded(false);
+                    // Close any open sidebar windows
+                    setShowWindows(prev => Object.keys(prev).reduce((acc, key) => {
+                      acc[key] = false;
+                      return acc;
+                    }, {}));
+                  }
+                  
                   setTimeout(() => {
                     // Focus the search input after it appears
                     const searchInput = document.querySelector('.top-search-bar input');
@@ -2182,70 +2224,75 @@ const DiscoverMain = () => {
                     }
                   }, 100);
                 }}
-                className="w-10 h-10 rounded-lg border border-gray-200 bg-white shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors"
+                className="w-14 h-14 rounded-xl border border-gray-200 bg-white shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
                 aria-label="Open search"
               >
-                <Search className="h-4 w-4 text-gray-600" />
+                <Search className="h-6 w-6 text-gray-600" />
               </button>
             </div>
             
             {/* Conditional search bar for mobile when icon is clicked */}
             {isSearchBarVisible && window.innerWidth < 640 && (
-              <div className="relative sm:hidden mt-2">
-                <input
-                  type="text"
-                  placeholder="Search for places, locations, categories..."
-                  className="w-full pl-12 pr-10 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base bg-white"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => setSearchFocused(true)}
-                  onBlur={() => {
-                    // Only hide the results window after a short delay to allow clicks on results
-                    setTimeout(() => setSearchFocused(false), 200);
+              <div className="flex items-center sm:hidden mt-2 w-full max-w-md mx-auto gap-2">
+                <div className="relative w-full">
+                  <input
+                    type="text"
+                    placeholder="Search for places, locations, categories..."
+                    className="w-full pl-12 pr-10 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg text-base bg-white"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => {
+                    setSearchFocused(true);
+                    // Close sidebar when search bar is focused
+                    if (isSidebarExpanded) {
+                      setIsSidebarExpanded(false);
+                      // Close any open sidebar windows
+                      setShowWindows(prev => Object.keys(prev).reduce((acc, key) => {
+                        acc[key] = false;
+                        return acc;
+                      }, {}));
+                    }
                   }}
-                />
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                
-                {searchQuery && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setEnhancedSearchResults([]);
+                    onBlur={() => {
+                      // Only hide the results window after a short delay to allow clicks on results
+                      setTimeout(() => setSearchFocused(false), 200);
                     }}
-                    className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    <X className="h-4 w-4 text-gray-500" />
-                  </button>
-                )}
-                
-                {/* Close button for the search bar itself */}
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setEnhancedSearchResults([]);
-                    setSearchFocused(false); // Also hide the results window
-                    setIsSearchBarVisible(false); // Hide the search bar
-                  }}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <X className="h-4 w-4 text-gray-500" />
-                </button>
+                  />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  
+                  {/* Clear button for mobile search bar (only shows when there's a query) */}
+                  {searchQuery && (
+                    <button
+                      onClick={() => {
+                        setSearchQuery('');
+                        setEnhancedSearchResults([]);
+                        // On mobile, after clearing, close the search bar 
+                        setTimeout(() => {
+                          setIsSearchBarVisible(false);
+                        }, 100);
+                      }}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="h-5 w-5 text-gray-500" />
+                    </button>
+                  )}
+                </div>
               </div>
             )}
             
             {/* Search Results Window - only appears when search query exists AND search is focused (for both mobile and desktop) */}
             {searchFocused && searchQuery && (
-              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-full max-w-2xl mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-[6001] max-h-64 sm:max-h-96 overflow-y-auto`}>
-                <div className="p-3 space-y-2">
+              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-full max-w-sm sm:max-w-sm md:max-w-md lg:max-w-2xl mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-[7001] max-h-60 sm:max-h-80 md:max-h-96 lg:max-h-[500px] overflow-y-auto`}>
+                <div className="p-3 sm:p-4 space-y-2 sm:space-y-2">
                   {searchLoading ? (
-                    <div className="flex items-center justify-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                    <div className="flex items-center justify-center py-6">
+                      <div className="animate-spin rounded-full h-6 w-6 sm:h-6 sm:w-6 border-b-2 border-blue-500"></div>
                     </div>
                   ) : enhancedSearchResults.length > 0 ? (
                     enhancedSearchResults.map((post) => (
                       <div 
                         key={post._id || post.id}
-                        className="p-3 bg-white hover:bg-gray-50 rounded-lg cursor-pointer border border-gray-100"
+                        className="p-3 sm:p-4 bg-white hover:bg-gray-50 rounded-xl cursor-pointer border border-gray-100 transition-colors duration-150"
                         onClick={() => {
                           setSelectedPost(post);
                           flyToPost(post.position);
@@ -2255,25 +2302,25 @@ const DiscoverMain = () => {
                           setIsSearchBarVisible(false); // Hide the search bar
                         }}
                       >
-                        <div className="font-medium text-gray-900 text-sm">{post.title}</div>
-                        <div className="text-xs text-gray-600 truncate mt-1">{post.description}</div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        <div className="font-medium text-gray-900 text-base sm:text-base truncate">{post.title}</div>
+                        <div className="text-sm sm:text-sm text-gray-600 truncate mt-1">{post.description}</div>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <span className="text-xs sm:text-xs bg-blue-100 text-blue-800 px-2 sm:px-2 py-1 sm:py-1 rounded-full">
                             {post.category}
                           </span>
-                          <span className="text-xs text-gray-500 flex items-center">
-                            <Star className="h-3 w-3 mr-0.5" />
+                          <span className="text-xs sm:text-xs text-gray-500 flex items-center">
+                            <Star className="h-3 w-3 sm:h-3 sm:w-3 mr-0.5" />
                             {post.averageRating?.toFixed(1) || '0.0'}
                           </span>
                         </div>
                       </div>
                     ))
                   ) : searchQuery ? (
-                    <div className="text-center py-4 text-gray-500 text-sm">
+                    <div className="text-center py-6 text-gray-500 text-base">
                       No results found for "{searchQuery}"
                     </div>
                   ) : (
-                    <div className="text-center py-4 text-gray-500 text-sm">
+                    <div className="text-center py-6 text-gray-500 text-base">
                       Enter a search term to find locations
                     </div>
                   )}
