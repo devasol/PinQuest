@@ -288,11 +288,13 @@ const createPost = async (req, res) => {
 
     // Only send error response if response has not already been sent
     if (!responseSent && !res.headersSent) {
-      sendErrorResponse(res, 500, error.message);
-    } else if (!responseSent && !res.headersSent) {
-      // Fallback error response in case something goes wrong
+      sendErrorResponse(res, 500, error.message || "Internal server error");
+    } else if (!responseSent) {
+      // Fallback error response in case response headers were sent but response not completed
       try {
-        sendErrorResponse(res, 500, error.message);
+        if (!res.headersSent) {
+          sendErrorResponse(res, 500, error.message || "Internal server error");
+        }
       } catch (secondaryError) {
         // If we can't even send the error response, log it
         console.error("Critical error: Could not send error response:", secondaryError);

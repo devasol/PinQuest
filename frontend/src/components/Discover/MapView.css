@@ -54,11 +54,26 @@
 /* Popup content styling */
 .leaflet-popup-content {
   margin: 0 !important;
-  min-width: 250px;
+  min-width: 280px;
+  max-width: 400px !important;
+  width: auto !important;
 }
 
 .leaflet-popup-content .popup-content {
   width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+/* Specific styling for post creation popup */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* Map container styling */
