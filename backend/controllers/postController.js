@@ -12,6 +12,8 @@ const { sendSuccessResponse, sendErrorResponse } = require("../utils/errorHandle
 const path = require("path");
 
 const createPost = async (req, res) => {
+  let responseSent = false; // Flag to track if response has been sent
+
   try {
     const { title, description, postedBy, location, category } = req.body;
 
@@ -79,8 +81,14 @@ const createPost = async (req, res) => {
       req.user.name
     );
 
-    // Process uploaded images using utility
-    let { image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host"));
+    // Process uploaded images using utility - add safety checks
+    let image = null, imagesArr = [];
+    try {
+      ({ image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host") || req.headers.host || 'localhost'));
+    } catch (imageError) {
+      console.error("Error processing uploaded images:", imageError);
+      return sendErrorResponse(res, 400, `Error processing uploaded images: ${imageError.message}`);
+    }
     
     // Add image links if provided in the request body
     if (req.body.imageLinks) {
@@ -168,6 +176,9 @@ const createPost = async (req, res) => {
         avatar: req.user.avatar
       }
     });
+    
+    // Set the responseSent flag to true so we don't send another error response
+    responseSent = true;
 
     // --- Decouple non-blocking tasks to run AFTER sending response ---
     // Use setImmediate instead of process.nextTick to ensure response is sent
@@ -196,20 +207,33 @@ const createPost = async (req, res) => {
 
       try {
         // Clear related caches - invalidate all posts pages since new post changes the list
-        // Use a shorter timeout for cache operations to prevent hanging
-        const cacheTimeout = setTimeout(() => {
-          console.log('Cache operation timeout for post creation');
-        }, 5000); // 5 second timeout for cache operations
+        // Run cache operations in a separate promise with timeout to prevent hanging
+        const cacheTask = async () => {
+          try {
+            // Use Promise.race with a timeout to prevent hanging
+            const result = await Promise.race([
+              (async () => {
+                const postCacheKeys = await cache.keys('posts_page_*');
+                const deletePromises = postCacheKeys.map(key => cache.del(key));
+                await Promise.all(deletePromises);
+                return 'success';
+              })(),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Cache operation timeout')), 2000) // 2 second timeout
+              )
+            ]);
+            console.log('Background task: Cache invalidated for posts');
+            return result;
+          } catch (cacheError) {
+            console.error('Background task error: Error invalidating cache:', cacheError.message);
+            return null;
+          }
+        };
         
-        const postCacheKeys = await cache.keys('posts_page_*');
-        clearTimeout(cacheTimeout);
-        
-        for (const key of postCacheKeys) {
-          await cache.del(key);
-        }
-        console.log('Background task: Cache invalidated for posts');
+        // Run cache task without waiting to block the event loop
+        cacheTask().catch(err => console.error('Non-blocking cache error:', err));
       } catch (cacheError) {
-        console.error('Background task error: Error invalidating cache:', cacheError);
+        console.error('Background task error during cache setup:', cacheError);
       }
 
       try {
@@ -227,11 +251,23 @@ const createPost = async (req, res) => {
             }
           };
           
-          emitGlobal(io, "newPost", {
-            post: postForSocket,
-            message: "A new post has been created",
+          // Wrap socket emission in a timeout to prevent hanging
+          const socketTask = new Promise((resolve) => {
+            try {
+              emitGlobal(io, "newPost", {
+                post: postForSocket,
+                message: "A new post has been created",
+              });
+              console.log('Background task: Emitted newPost event via Socket.IO');
+              resolve();
+            } catch (emitError) {
+              console.error('Error in socket emission:', emitError);
+              resolve(); // Resolve even if there's an error so it doesn't hang
+            }
           });
-          console.log('Background task: Emitted newPost event via Socket.IO');
+          
+          // Run socket task without waiting for it to finish
+          socketTask.catch(err => console.error('Non-blocking socket error:', err));
         }
       } catch (socketError) {
         console.error('Background task error: Error emitting Socket.IO event:', socketError);
@@ -245,14 +281,22 @@ const createPost = async (req, res) => {
     // Handle specific MongoDB errors
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
-      if (!res.headersSent) { // Prevent error if headers already sent
+      if (!responseSent && !res.headersSent) { // Prevent error if headers already sent
         return sendErrorResponse(res, 400, "Validation error", errors);
       }
     }
 
     // Only send error response if response has not already been sent
-    if (!res.headersSent) {
+    if (!responseSent && !res.headersSent) {
       sendErrorResponse(res, 500, error.message);
+    } else if (!responseSent && !res.headersSent) {
+      // Fallback error response in case something goes wrong
+      try {
+        sendErrorResponse(res, 500, error.message);
+      } catch (secondaryError) {
+        // If we can't even send the error response, log it
+        console.error("Critical error: Could not send error response:", secondaryError);
+      }
     }
   }
 };

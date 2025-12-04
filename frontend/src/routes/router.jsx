@@ -3,7 +3,6 @@ import { createBrowserRouter } from "react-router-dom";
 import DiscoverPage from "../pages/DiscoverPage/DiscoverPage";
 import LoginPage from "../pages/LoginPage/LoginPage";
 import ProfilePage from "../pages/ProfilePage/ProfilePage";
-import AddPost from "../pages/AddPost/AddPost";
 import AdminLogin from "../pages/AdminLogin/AdminLogin";
 import AdminDashboard from "../components/Admin/AdminDashboard/AdminDashboard";
 import AdminDashboardPage from "../pages/AdminDashboard/AdminDashboard";
@@ -40,12 +39,6 @@ const router = createBrowserRouter([
   {
     element: <ProfilePage />,
     path: "/dashboard",
-    // error:</>
-  },
-
-  {
-    element: <AddPost />,
-    path: "/add-post",
     // error:</>
   },
   {

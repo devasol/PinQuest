@@ -48,15 +48,29 @@ class ApiService {
   // GET request
   get = async (endpoint, authToken = null) => {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      // Create a timeout promise to prevent requests from hanging indefinitely
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 60000); // 60 second timeout
+      });
+      
+      const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'GET',
         headers: this.getAuthHeaders(authToken),
       });
+      
+      // Race the request with a timeout
+      const response = await Promise.race([requestPromise, timeoutPromise]);
       return await this.handleResponse(response);
     } catch (error) {
-      // Show toast notification for network errors except when fetching user data for comments
-      if (!endpoint.includes('/users/')) {
-        toast.error('Network error occurred');
+      // Only show toast error if it's not a timeout error
+      if (error.message !== 'Request timeout') {
+        // Show toast notification for network errors except when fetching user data for comments
+        if (!endpoint.includes('/users/')) {
+          toast.error('Network error occurred');
+        }
+      } else {
+        toast.error('Request timed out. Please try again.');
+        console.error('Request timeout error:', error);
       }
       return { success: false, error: error.message };
     }
@@ -65,14 +79,28 @@ class ApiService {
   // POST request
   post = async (endpoint, data, authToken = null) => {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      // Create a timeout promise to prevent requests from hanging indefinitely
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 60000); // 60 second timeout
+      });
+      
+      const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'POST',
         headers: this.getAuthHeaders(authToken),
         body: JSON.stringify(data),
       });
+      
+      // Race the request with a timeout
+      const response = await Promise.race([requestPromise, timeoutPromise]);
       return await this.handleResponse(response);
     } catch (error) {
-      toast.error('Network error occurred');
+      // Only show toast error if it's not a timeout error
+      if (error.message !== 'Request timeout') {
+        toast.error('Network error occurred');
+      } else {
+        toast.error('Request timed out. Please try again.');
+        console.error('Request timeout error:', error);
+      }
       return { success: false, error: error.message };
     }
   };
@@ -80,14 +108,28 @@ class ApiService {
   // PUT request
   put = async (endpoint, data, authToken = null) => {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      // Create a timeout promise to prevent requests from hanging indefinitely
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 60000); // 60 second timeout
+      });
+      
+      const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'PUT',
         headers: this.getAuthHeaders(authToken),
         body: JSON.stringify(data),
       });
+      
+      // Race the request with a timeout
+      const response = await Promise.race([requestPromise, timeoutPromise]);
       return await this.handleResponse(response);
     } catch (error) {
-      toast.error('Network error occurred');
+      // Only show toast error if it's not a timeout error
+      if (error.message !== 'Request timeout') {
+        toast.error('Network error occurred');
+      } else {
+        toast.error('Request timed out. Please try again.');
+        console.error('Request timeout error:', error);
+      }
       return { success: false, error: error.message };
     }
   };
@@ -95,14 +137,28 @@ class ApiService {
   // PATCH request
   patch = async (endpoint, data, authToken = null) => {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      // Create a timeout promise to prevent requests from hanging indefinitely
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 60000); // 60 second timeout
+      });
+      
+      const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(authToken),
         body: JSON.stringify(data),
       });
+      
+      // Race the request with a timeout
+      const response = await Promise.race([requestPromise, timeoutPromise]);
       return await this.handleResponse(response);
     } catch (error) {
-      toast.error('Network error occurred');
+      // Only show toast error if it's not a timeout error
+      if (error.message !== 'Request timeout') {
+        toast.error('Network error occurred');
+      } else {
+        toast.error('Request timed out. Please try again.');
+        console.error('Request timeout error:', error);
+      }
       return { success: false, error: error.message };
     }
   };
@@ -110,13 +166,27 @@ class ApiService {
   // DELETE request
   delete = async (endpoint, authToken = null) => {
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      // Create a timeout promise to prevent requests from hanging indefinitely
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 60000); // 60 second timeout
+      });
+      
+      const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'DELETE',
         headers: this.getAuthHeaders(authToken),
       });
+      
+      // Race the request with a timeout
+      const response = await Promise.race([requestPromise, timeoutPromise]);
       return await this.handleResponse(response);
     } catch (error) {
-      toast.error('Network error occurred');
+      // Only show toast error if it's not a timeout error
+      if (error.message !== 'Request timeout') {
+        toast.error('Network error occurred');
+      } else {
+        toast.error('Request timed out. Please try again.');
+        console.error('Request timeout error:', error);
+      }
       return { success: false, error: error.message };
     }
   };
@@ -128,15 +198,29 @@ class ApiService {
       const headers = this.getAuthHeaders(authToken);
       delete headers['Content-Type']; // Let browser set content-type for multipart/form-data
       
-      const response = await fetch(`${this.baseURL}${endpoint}`, {
+      // Create a timeout promise to prevent requests from hanging indefinitely
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 90000); // 90 second timeout for large image uploads
+      });
+      
+      const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'POST',
         headers,
         body: formData,
       });
       
+      // Race the request with a timeout
+      const response = await Promise.race([requestPromise, timeoutPromise]);
+      
       return await this.handleResponse(response);
     } catch (error) {
-      toast.error('Upload error occurred');
+      // Only show toast error if it's not a timeout error
+      if (error.message !== 'Request timeout') {
+        toast.error('Upload error occurred');
+      } else {
+        toast.error('Request timed out. Please try again.');
+        console.error('Request timeout error:', error);
+      }
       return { success: false, error: error.message };
     }
   };
@@ -159,7 +243,7 @@ export const postApi = {
     
     // Add text fields
     Object.keys(postData).forEach(key => {
-      if (key !== 'images' && key !== 'image' && key !== 'location') {
+      if (key !== 'images' && key !== 'image' && key !== 'location' && key !== 'imageLinks') {
         if (postData[key] !== null && postData[key] !== undefined) {
           formData.append(key, postData[key]);
         }
@@ -168,7 +252,8 @@ export const postApi = {
     
     // Add location as JSON string if provided
     if (postData.location) {
-      formData.append('location', JSON.stringify(postData.location));
+      formData.append('location[latitude]', postData.location.latitude.toString());
+      formData.append('location[longitude]', postData.location.longitude.toString());
     }
     
     // Add image files
@@ -177,6 +262,13 @@ export const postApi = {
         if (image instanceof File) {
           formData.append('images', image);
         }
+      });
+    }
+    
+    // Add image links if provided
+    if (postData.imageLinks && Array.isArray(postData.imageLinks)) {
+      postData.imageLinks.forEach(link => {
+        formData.append('imageLinks', link);
       });
     }
     

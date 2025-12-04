@@ -16,7 +16,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import './DiscoverMain.css';
 import { useModal } from '../../contexts/ModalContext';
 import { connectSocket } from '../../services/socketService';
-import { postApi } from '../../services/api'; // Import the postApi to use search functionality
+import { postApi } from '../../services/api'; // Import the postApi to handle post creation
+import apiService from '../../services/api'; // Import the default apiService for direct upload functionality
 import Sidebar from '../Sidebar/Sidebar';
 
 // API base URL - adjust based on your backend URL
@@ -1807,7 +1808,8 @@ const DiscoverMain = () => {
         type: 'info',
         confirmText: 'OK'
       });
-      return;
+      // Return a rejected promise so the modal can handle it
+      return Promise.reject(new Error('Authentication required'));
     }
 
     setCreatePostLoading(true);
@@ -1888,36 +1890,30 @@ const DiscoverMain = () => {
         }
       }
 
-      // Send the request with proper network error handling
-      let response;
+      // Prepare the data properly before sending to the API service
+      // Use the appropriate API service method based on the data type
+      // If postPayload is FormData, we need to call upload directly
+      // If it's a regular object, we can use the postApi.createPost method
+      let result;
       try {
-        response = await fetch(`${API_BASE_URL}/posts`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData,
-        });
-      } catch (networkError) {
-        console.error('Network error during post creation:', networkError);
-        throw new Error('Network error: Unable to connect to the server. Please check your connection and try again.');
-      }
-
-      // Check if response is ok before parsing JSON
-      if (!response.ok) {
-        // Try to get error message from response
-        let errorMessage = `HTTP error! status: ${response.status}`;
-        try {
-          const errorResult = await response.json();
-          errorMessage = errorResult.message || errorResult.error || errorMessage;
-        } catch (e) {
-          // If response is not JSON, use status text
-          errorMessage = response.statusText || errorMessage;
+        if (postPayload instanceof FormData) {
+          // Use direct upload for FormData with files
+          result = await apiService.upload('/posts', postPayload, token);
+        } else {
+          // Use the postApi service for regular objects
+          result = await postApi.createPost(postPayload, token);
         }
+      } catch (apiError) {
+        console.error('API call failed:', apiError);
+        throw new Error(apiError.message || 'Failed to connect to server');
+      }
+      
+      // Check if result has the expected structure from our backend
+      if (!result || !result.success || !result.data) {
+        // Safely extract error message, avoiding potential function calls
+        const errorMessage = result?.error || result?.message || 'Invalid response format from server';
         throw new Error(errorMessage);
       }
-
-      const result = await response.json();
 
       if (result.status === 'success') {
         try {
@@ -2060,31 +2056,45 @@ const DiscoverMain = () => {
             type: 'warning',
             confirmText: 'OK'
           });
-        } finally {
-          // Close the modal and reset loading state in the finally block
-          // to ensure they are always reset even if there are errors in post-processing
-          setShowCreatePostModal(false);
-          setSelectedMapPosition(null);
         }
       } else {
         // Handle case where response is not ok but we still got JSON
         const errorMessage = result.message || result.error || 'Failed to create post';
         throw new Error(errorMessage);
       }
+
+      // Return the successful result
+      return result;
     } catch (error) {
       console.error('Error creating post:', error);
       
-      // Show error modal with more specific error message
-      const errorMessage = error.message || 'An error occurred while creating the post';
-      showModal({
-        title: "Error Creating Post",
-        message: errorMessage,
-        type: 'error',
-        confirmText: 'OK'
-      });
+      // Check if it's a timeout error specifically
+      if (error.message && (error.message.includes('timeout') || error.message.includes('timed out'))) {
+        showModal({
+          title: "Request Timeout",
+          message: "The post creation request took too long. The server might be busy or you may have a slow connection. Please try again.",
+          type: 'warning',
+          confirmText: 'OK'
+        });
+      } else {
+        // Show error modal with more specific error message
+        const errorMessage = error.message || 'An error occurred while creating the post';
+        showModal({
+          title: "Error Creating Post",
+          message: errorMessage,
+          type: 'error',
+          confirmText: 'OK'
+        });
+      }
+      
+      // Re-throw the error so the modal can handle the promise rejection
+      throw error;
     } finally {
       // Make sure loading state is reset in all cases
-      setCreatePostLoading(false);
+      // Use setTimeout to ensure smooth UI transition after any modals appear
+      setTimeout(() => {
+        setCreatePostLoading(false);
+      }, 300); // Small delay to allow success/error messages to appear first
     }
   };
 
@@ -2551,6 +2561,43 @@ const DiscoverMain = () => {
                 Calculating...
               </div>
             </motion.div>
+          )}
+          
+          {/* Create Post Floating Action Button */}
+          {isAuthenticated && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                if (!userLocation) {
+                  showModal({
+                    title: "Location Required",
+                    message: 'Please enable location services or click on the map to set a location for your post',
+                    type: 'info',
+                    confirmText: 'OK'
+                  });
+                } else {
+                  // If user has location, center map on it and show the modal
+                  if (mapRef.current) {
+                    mapRef.current.flyTo(userLocation, 15);
+                  }
+                  // Show an instruction modal to click on the map
+                  showModal({
+                    title: "How to Create a Post",
+                    message: 'Click anywhere on the map to create a post at that location',
+                    type: 'info',
+                    confirmText: 'I understand'
+                  });
+                }
+              }}
+              className="absolute bottom-24 right-4 sm:bottom-24 sm:right-20 z-[5995] bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
+              aria-label="Create new post"
+              title="Create new post"
+            >
+              <Plus className="w-6 h-6" />
+            </motion.button>
           )}
           
           {/* Render custom markers for each post */}

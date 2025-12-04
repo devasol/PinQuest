@@ -98,43 +98,60 @@ const CreatePostModal = ({
         return;
       }
       
-      const postPayload = {
-        ...formData,
-        location: {
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lng),
-        },
-      };
-
-      // Prepare files for upload if any
-      const filesToUpload = fileImages.map(img => img.file).filter(file => file); // Get actual files
-      if (filesToUpload.length > 0) {
-        // If we have files to upload, we need to use FormData
+      // Check if we have file images
+      const hasFileImages = fileImages.length > 0;
+      const hasLinkImages = linkImages.length > 0;
+      
+      if (!hasFileImages && !hasLinkImages) {
+        setErrors({ submit: "At least one image is required" });
+        return;
+      }
+      
+      if (hasFileImages) {
+        // Create FormData for file uploads
         const formDataToSend = new FormData();
         
         // Add text fields
-        Object.keys(postPayload).forEach(key => {
-          if (key === 'location') {
-            // Handle location object specially - add as nested properties
-            if (postPayload[key] && postPayload[key].latitude !== undefined && postPayload[key].longitude !== undefined) {
-              formDataToSend.append('location[latitude]', postPayload[key].latitude.toString());
-              formDataToSend.append('location[longitude]', postPayload[key].longitude.toString());
-            }
-          } else if (postPayload[key] !== null && postPayload[key] !== undefined) {
-            formDataToSend.append(key, postPayload[key]);
+        Object.keys(formData).forEach(key => {
+          if (formData[key] !== null && formData[key] !== undefined) {
+            formDataToSend.append(key, formData[key]);
           }
         });
-
-        // Add image files only if they exist
-        filesToUpload.forEach((file) => { // Removed 'index' as it was unused
-          formDataToSend.append('images', file); // Use the same field name as backend expects
+        
+        // Add location data
+        if (lat !== undefined && lng !== undefined) {
+          formDataToSend.append('location[latitude]', lat.toString());
+          formDataToSend.append('location[longitude]', lng.toString());
+        }
+        
+        // Add image files
+        fileImages.forEach(img => {
+          if (img.file) {
+            formDataToSend.append('images', img.file, img.name);
+          }
         });
-
-        // Call onCreatePost with the FormData for file upload
+        
+        // Add image links if any
+        if (hasLinkImages) {
+          linkImages.forEach(img => {
+            if (img.url) {
+              formDataToSend.append('imageLinks', img.url);
+            }
+          });
+        }
+        
         await onCreatePost(formDataToSend);
       } else {
-        // If no files to upload, just send the payload with any image links
-        if (linkImages.length > 0) {
+        // No file images, just image links - send as regular object
+        const postPayload = {
+          ...formData,
+          location: {
+            latitude: parseFloat(lat),
+            longitude: parseFloat(lng),
+          },
+        };
+
+        if (hasLinkImages) {
           postPayload.imageLinks = linkImages.map(img => img.url);
         }
         
@@ -154,6 +171,7 @@ const CreatePostModal = ({
     } catch (error) {
       console.error("Error creating post:", error);
       setErrors({ submit: error.message || "An error occurred while creating the post" });
+      // Don't re-throw the error, just let the parent handle the loading state through the returned promise
     }
   };
 
