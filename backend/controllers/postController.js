@@ -150,24 +150,28 @@ const createPost = async (req, res) => {
 
     const savedPost = await newPost.save();
 
-    // Populate the postedBy field for the immediate response
-    const populatedPost = await Post.findById(savedPost._id).populate(
-      "postedBy",
-      "name email avatar"
-    );
-
     console.log(
-      "Post created successfully (initial save):",
+      "Post saved to database successfully:",
       savedPost._id,
       "by user:",
       req.user._id
     );
 
-    // Send success response IMMEDIATELY
-    sendSuccessResponse(res, 201, populatedPost);
+    // Send success response IMMEDIATELY with basic post data
+    // Populate the postedBy field for response will happen in background
+    sendSuccessResponse(res, 201, {
+      ...savedPost.toObject(),
+      postedBy: {
+        _id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        avatar: req.user.avatar
+      }
+    });
 
     // --- Decouple non-blocking tasks to run AFTER sending response ---
-    process.nextTick(async () => {
+    // Use setImmediate instead of process.nextTick to ensure response is sent
+    setImmediate(async () => {
       try {
         // Log activity
         const activity = new Activity({
@@ -184,7 +188,7 @@ const createPost = async (req, res) => {
           ip: req.ip,
           userAgent: req.get('User-Agent')
         });
-        await activity.save();
+        await activity.save().catch(err => console.error('Background task error: Error saving activity:', err));
         console.log('Background task: Activity logged for post', savedPost._id);
       } catch (activityError) {
         console.error('Background task error: Error saving activity:', activityError);
@@ -192,7 +196,14 @@ const createPost = async (req, res) => {
 
       try {
         // Clear related caches - invalidate all posts pages since new post changes the list
+        // Use a shorter timeout for cache operations to prevent hanging
+        const cacheTimeout = setTimeout(() => {
+          console.log('Cache operation timeout for post creation');
+        }, 5000); // 5 second timeout for cache operations
+        
         const postCacheKeys = await cache.keys('posts_page_*');
+        clearTimeout(cacheTimeout);
+        
         for (const key of postCacheKeys) {
           await cache.del(key);
         }
@@ -202,11 +213,22 @@ const createPost = async (req, res) => {
       }
 
       try {
-        // Emit real-time event for new post
+        // Emit real-time event for new post - only fetch minimal data for socket emission
         const io = req.app.get("io");
         if (io) {
+          // Use the savedPost data that we already have instead of fetching again
+          const postForSocket = {
+            ...savedPost.toObject(),
+            postedBy: {
+              _id: req.user._id,
+              name: req.user.name,
+              email: req.user.email,
+              avatar: req.user.avatar
+            }
+          };
+          
           emitGlobal(io, "newPost", {
-            post: populatedPost, // Use populatedPost for consistency
+            post: postForSocket,
             message: "A new post has been created",
           });
           console.log('Background task: Emitted newPost event via Socket.IO');

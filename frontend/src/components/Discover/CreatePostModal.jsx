@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MapPin, Image as ImageIcon, Plus, Upload, Camera, Link, Trash2, Check, AlertCircle } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import './CreatePostModal.css';
 
 const CreatePostModal = ({ 
@@ -125,7 +126,7 @@ const CreatePostModal = ({
         });
 
         // Add image files only if they exist
-        filesToUpload.forEach((file, index) => {
+        filesToUpload.forEach((file) => { // Removed 'index' as it was unused
           formDataToSend.append('images', file); // Use the same field name as backend expects
         });
 
@@ -178,7 +179,7 @@ const CreatePostModal = ({
     addImagesFromFiles(files);
   };
 
-  const addImagesFromFiles = (files) => {
+  const addImagesFromFiles = useCallback(async (files) => {
     const filesToAdd = files.slice(0, 10 - fileImages.length - linkImages.length);
     
     if (filesToAdd.length === 0) {
@@ -189,35 +190,66 @@ const CreatePostModal = ({
       return;
     }
 
-    filesToAdd.forEach((file) => {
+    const compressionOptions = {
+      maxSizeMB: 1,           // (default is Number.POSITIVE_INFINITY)
+      maxWidthOrHeight: 1920, // (default is undefined)
+      useWebWorker: true,     // (default is false)
+      initialQuality: 0.8, // (default is 1) Initial compression quality
+    };
+
+    for (const file of filesToAdd) { // Changed forEach to for...of to use await properly
       if (!file.type.startsWith("image/")) {
         setErrors((prev) => ({
           ...prev,
           images: "Please select valid image files",
         }));
-        return;
+        return; // Stop processing further files if one is invalid
       }
 
-      if (file.size > 5 * 1024 * 1024) {
+      // Check original file size first (if it's too large, don't even attempt compression)
+      if (file.size > 15 * 1024 * 1024) { // Allow up to 15MB original size
         setErrors((prev) => ({
           ...prev,
-          images: "File size must be less than 5MB",
+          images: `File size for ${file.name} must be less than 15MB (original)`,
         }));
-        return;
+        return; // Stop processing further files if one is too large
       }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const newImage = {
-          id: Date.now() + Math.random(),
-          file: file,
-          preview: reader.result,
-          name: file.name,
+      try {
+        // Compress the image
+        const compressedFile = await imageCompression(file, compressionOptions);
+        console.log(`Original file size: ${file.size / 1024 / 1024} MB`);
+        console.log(`Compressed file size: ${compressedFile.size / 1024 / 1024} MB`);
+        
+        // After compression, check if the compressed file size is within limits
+        if (compressedFile.size > 2 * 1024 * 1024) { // Compressed file should not exceed 2MB
+          setErrors((prev) => ({
+            ...prev,
+            images: `Compressed file size for ${file.name} exceeds 2MB. Please choose a smaller image.`,
+          }));
+          return; // Stop processing further files if compressed size is too large
+        }
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const newImage = {
+            id: Date.now() + Math.random(),
+            file: compressedFile, // Store the compressed file
+            preview: reader.result,
+            name: file.name, // Keep original file name for display
+          };
+          setFileImages((prev) => [...prev, newImage]);
         };
-        setFileImages((prev) => [...prev, newImage]);
-      };
-      reader.readAsDataURL(file);
-    });
+        reader.readAsDataURL(compressedFile); // Read compressed file for preview
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        setErrors((prev) => ({
+          ...prev,
+          images: `Error compressing image ${file.name}. Please try another image.`,
+        }));
+        return; // Stop processing further files if compression fails
+      }
+    }
 
     if (errors.images) {
       setErrors((prev) => {
@@ -226,7 +258,7 @@ const CreatePostModal = ({
         return newErrors;
       });
     }
-  };
+  }, [fileImages, linkImages, errors]); // Dependencies for useCallback
 
   // Handle drag and drop
   const handleDrag = useCallback((e) => {
@@ -297,7 +329,7 @@ const CreatePostModal = ({
     try {
       new URL(string);
       return true;
-    } catch (_) {
+    } catch (_) { // Changed back to _
       return false;
     }
   };
@@ -325,6 +357,9 @@ const CreatePostModal = ({
   };
 
   if (!isOpen) return null;
+
+  const displayLat = selectedPosition?.lat ?? selectedPosition?.latitude;
+  const displayLng = selectedPosition?.lng ?? selectedPosition?.longitude;
 
   return (
     <AnimatePresence>
@@ -462,9 +497,11 @@ const CreatePostModal = ({
               <div className="relative">
                 <input
                   type="text"
-                  value={selectedPosition && (selectedPosition?.lat || selectedPosition?.latitude) && (selectedPosition?.lng || selectedPosition?.longitude) ? 
-                    `Lat: ${(selectedPosition?.lat || selectedPosition?.latitude).toFixed(6)}, Lng: ${(selectedPosition?.lng || selectedPosition?.longitude).toFixed(6)}` : 
-                    "Location not selected"}
+                  value={
+                    selectedPosition && (typeof displayLat === 'number') && (typeof displayLng === 'number')
+                      ? `Lat: ${displayLat.toFixed(6)}, Lng: ${displayLng.toFixed(6)}`
+                      : "Location not selected"
+                  }
                   readOnly
                   className="w-full px-4 py-2.5 sm:py-3 pl-11 sm:pl-12 border-2 border-emerald-200 rounded-lg sm:rounded-xl bg-gray-100 shadow-sm text-xs sm:text-sm"
                   placeholder="Location set from map click"
