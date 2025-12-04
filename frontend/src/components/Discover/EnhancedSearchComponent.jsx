@@ -8,7 +8,7 @@ const EnhancedSearchComponent = ({
   onSearchResults, 
   onLocationSelect, 
   currentLocation = null,
-  placeholder = "Search for places, locations, categories...",
+  placeholder = "Search the world for places, locations, categories...",
   showFilters = true,
   limit = 20,
   searchQuery,
@@ -16,6 +16,7 @@ const EnhancedSearchComponent = ({
 }) => {
  
   const [searchResults, setSearchResults] = useState([]);
+  const [globalLocations, setGlobalLocations] = useState([]); // For global search results
   const [loading, setLoading] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
     category: 'all',
@@ -76,6 +77,7 @@ const EnhancedSearchComponent = ({
   const performSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
+      setGlobalLocations([]);
       if (onSearchResults) {
           onSearchResults([]);
       }
@@ -93,26 +95,48 @@ const EnhancedSearchComponent = ({
         longitude = userLocation.longitude;
       }
 
-      const response = await postApi.advancedSearch(
-        searchQuery,
-        activeFilters.category !== 'all' ? activeFilters.category : null,
-        limit,
-        1, // page
-        activeFilters.sortBy,
-        latitude && !isNaN(latitude) ? latitude : null,
-        longitude && !isNaN(longitude) ? longitude : null,
-        activeFilters.radius
-      );
+      let response;
+      if (latitude && longitude) {
+        // Use advanced search for location-based searches
+        response = await postApi.advancedSearch(
+          searchQuery,
+          activeFilters.category !== 'all' ? activeFilters.category : null,
+          limit,
+          1, // page
+          activeFilters.sortBy,
+          latitude && !isNaN(latitude) ? latitude : null,
+          longitude && !isNaN(longitude) ? longitude : null,
+          activeFilters.radius
+        );
+      } else {
+        // Use global search for worldwide searches
+        response = await postApi.globalSearch(
+          searchQuery,
+          activeFilters.category !== 'all' ? activeFilters.category : null,
+          limit,
+          1, // page
+          activeFilters.sortBy
+        );
+      }
 
       if (response.success && response.data) {
         // Filter out posts without valid IDs to prevent key duplication issues
         const validPosts = (response.data.data.posts || []).filter(post => post._id || post.id);
         setSearchResults(validPosts);
+        
+        // Set global locations if available
+        if (response.data.data.globalLocations) {
+          setGlobalLocations(response.data.data.globalLocations);
+        } else {
+          setGlobalLocations([]);
+        }
+        
         if (onSearchResults) {
           onSearchResults(validPosts);
         }
       } else {
         setSearchResults([]);
+        setGlobalLocations([]);
         if (onSearchResults) {
           onSearchResults([]);
         }
@@ -179,6 +203,8 @@ const EnhancedSearchComponent = ({
       onLocationSelect(post);
     }
     onSearchQueryChange('');
+    setSearchResults([]);
+    setGlobalLocations([]);
   };
 
   const getDistanceText = (post) => {
@@ -212,6 +238,7 @@ const EnhancedSearchComponent = ({
             onClick={() => {
               onSearchQueryChange('');
               setSearchResults([]);
+              setGlobalLocations([]);
               if (onSearchResults) {
                 onSearchResults([]);
               }
@@ -339,7 +366,7 @@ const EnhancedSearchComponent = ({
         <div className="flex items-center justify-center py-8">
           <div className="flex items-center gap-3">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-            <span className="text-gray-600">Searching all locations...</span>
+            <span className="text-gray-600">Searching the entire world...</span>
           </div>
         </div>
       )}
@@ -423,8 +450,252 @@ const EnhancedSearchComponent = ({
         )}
       </AnimatePresence>
 
+      {/* Global Locations Results - Shown when no posts match but global locations exist */}
+      {!loading && filteredResults.length === 0 && searchQuery && globalLocations.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="space-y-3 max-h-96 overflow-y-auto pr-2"
+        >
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <span className="font-medium">{globalLocations.length} global locations found</span>
+            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+              Worldwide
+            </span>
+          </div>
+          
+          {globalLocations.map((location, index) => (
+            <motion.div
+              key={`global-${index}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 shadow-sm border border-blue-100 cursor-pointer hover:shadow-md transition-all"
+              onClick={() => {
+                // Handle global location selection
+                // For now we'll just show an alert, but in the future you could
+                // create a post at this location or show location details
+                showModal({
+                  title: "Location Found",
+                  message: `Location: ${location.name}\nType: ${location.type || 'N/A'}\nCategory: ${location.category || 'N/A'}`,
+                  type: "info",
+                  confirmText: "OK"
+                });
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium min-w-16 text-center flex items-center justify-center">
+                  <Globe className="w-3 h-3 mr-1" />
+                  Global
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-900 truncate">{location.name}</h3>
+                  
+                  {location.address && (
+                    <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                      {location.address.country || location.address.state || location.address.county || 'Location details'}
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center gap-3 mt-2">
+                    {location.type && (
+                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                        {location.type}
+                      </span>
+                    )}
+                    
+                    {location.category && (
+                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                        {location.category}
+                      </span>
+                    )}
+                    
+                    {location.relevance && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                        Relevance: {Math.round(location.relevance * 100)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      {/* Combined Results - When both posts and global locations exist */}
+      {!loading && (filteredResults.length > 0 || globalLocations.length > 0) && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="space-y-3 max-h-96 overflow-y-auto pr-2"
+        >
+          {/* Posts Results */}
+          {filteredResults.length > 0 && (
+            <>
+              <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                <span className="font-medium">{filteredResults.length} locations found</span>
+                {activeTab === 'nearby' && userLocation && (
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                    Near you
+                  </span>
+                )}
+              </div>
+              
+              {filteredResults.map((post, index) => {
+                const relevanceInfo = getRelevanceBadge(post.relevanceScore || 0);
+                return (
+                  <motion.div
+                    key={post._id || post.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    whileHover={{ scale: 1.02 }}
+                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all"
+                    onClick={() => handleResultClick(post)}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Relevance Badge */}
+                      <div className={`${relevanceInfo.color} text-white text-xs px-2 py-1 rounded-full font-medium min-w-16 text-center`}>
+                        {relevanceInfo.text}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between">
+                          <h3 className="font-semibold text-gray-900 truncate">{post.title}</h3>
+                          {post.bookmarked || post.saved ? (
+                            <Bookmark className="w-4 h-4 text-red-500 ml-2 flex-shrink-0" />
+                          ) : null}
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 line-clamp-2 mt-1">{post.description}</p>
+                        
+                        <div className="flex items-center gap-3 mt-2">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                            <span className="text-sm text-gray-600">
+                              {post.averageRating?.toFixed(1) || '0.0'} ({post.totalRatings || 0})
+                            </span>
+                          </div>
+                          
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                            {post.category}
+                          </span>
+                          
+                          {post.distance !== undefined && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full flex items-center gap-1">
+                              <Navigation className="w-3 h-3" />
+                              {getDistanceText(post)}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                          <span>by {post.postedBy?.name || post.postedBy || 'Unknown'}</span>
+                          <span>{new Date(post.datePosted).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </>
+          )}
+
+          {/* Global Locations Results */}
+          {globalLocations.length > 0 && (
+            <>
+              <div className="flex items-center justify-between text-sm text-gray-600 mt-4 mb-2">
+                <span className="font-medium text-blue-600">Global Locations</span>
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                  Worldwide
+                </span>
+              </div>
+              
+              {globalLocations.map((location, index) => (
+                <motion.div
+                  key={`global-${index}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: (index + filteredResults.length) * 0.05 }}
+                  className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 shadow-sm border border-blue-100 cursor-pointer hover:shadow-md transition-all"
+                  onClick={() => {
+                    // Handle global location selection by creating a synthetic post object
+                    const syntheticPost = {
+                      _id: `global-${Math.random().toString(36).substr(2, 9)}`, // Generate a unique ID
+                      title: location.name || 'Global Location',
+                      description: location.address ? 
+                        `${location.address.country || location.address.state || 'World Location'}` : 
+                        'Global location found via external search',
+                      category: location.category || 'global',
+                      location: {
+                        type: "Point",
+                        coordinates: [location.coordinates.longitude, location.coordinates.latitude]
+                      },
+                      averageRating: 0,
+                      totalRatings: 0,
+                      datePosted: new Date().toISOString(),
+                      postedBy: { name: 'Global Search' },
+                      isGlobalLocation: true, // Flag to indicate this is a global location result
+                      globalLocationData: location // Include the original global location data
+                    };
+                    
+                    if (onLocationSelect) {
+                      onLocationSelect(syntheticPost);
+                    }
+                    onSearchQueryChange('');
+                    setSearchResults([]);
+                    setGlobalLocations([]);
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium min-w-16 text-center flex items-center justify-center">
+                      <Globe className="w-3 h-3 mr-1" />
+                      Global
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 truncate">{location.name}</h3>
+                      
+                      {location.address && (
+                        <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                          {location.address.country || location.address.state || location.address.county || 'Location details'}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center gap-3 mt-2">
+                        {location.type && (
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">
+                            {location.type}
+                          </span>
+                        )}
+                        
+                        {location.category && (
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                            {location.category}
+                          </span>
+                        )}
+                        
+                        {location.relevance !== undefined && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                            Relevance: {Math.round(location.relevance * 100)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </>
+          )}
+        </motion.div>
+      )}
+
       {/* No Results */}
-      {!loading && filteredResults.length === 0 && searchQuery && (
+      {!loading && filteredResults.length === 0 && searchQuery && globalLocations.length === 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

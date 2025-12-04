@@ -247,6 +247,19 @@ export const postApi = {
     return apiService.get(`/posts/advanced-search?${params.toString()}`);
   },
   
+  // Global search that searches across all locations with enhanced capabilities
+  globalSearch: (query, category, limit = 20, page = 1, sortBy = 'relevance', tags) => {
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (category) params.append('category', category);
+    params.append('limit', limit);
+    params.append('page', page);
+    params.append('sortBy', sortBy);
+    if (tags) params.append('tags', tags);
+    
+    return apiService.get(`/posts/global-search?${params.toString()}`);
+  },
+  
   // Get posts by location
   getPostsByLocation: (latitude, longitude, radius = 50) => 
     apiService.get(`/posts/by-location?latitude=${latitude}&longitude=${longitude}&radius=${radius}`),

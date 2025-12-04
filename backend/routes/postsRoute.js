@@ -17,6 +17,7 @@ const {
   getComments,
   searchPosts,
   advancedSearch,
+  globalSearch,
   getNearbyPosts,
   getPostsWithinArea,
   getPostDistance,
@@ -37,6 +38,7 @@ router
 // Search routes
 router.route("/search").get(apiLimiter, searchPosts);
 router.route("/advanced-search").get(apiLimiter, advancedSearch);
+router.route("/global-search").get(apiLimiter, globalSearch);
 
 // Route to get posts by location
 router.get("/by-location", apiLimiter, getPostsByLocation);

@@ -1464,6 +1464,207 @@ const getNearbyPosts = async (req, res) => {
   }
 };
 
+const geolocationService = require('../services/geolocationService');
+
+// @desc    Global search across all locations with enhanced capabilities
+// @route   GET /api/v1/posts/global-search
+// @access  Public
+const globalSearch = async (req, res) => {
+  try {
+    const { q, category, limit = 20, page = 1, sortBy = 'relevance', tags } = req.query;
+    
+    // Validate and convert parameters
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 20;
+    
+    // Calculate pagination
+    const skip = (pageNum - 1) * limitNum;
+
+    // First, search posts in the database
+    let postQuery = { status: 'published' }; // Only published posts
+
+    // Text search in title, description, category, and tags
+    if (q) {
+      // Create variations of the query to improve matching (e.g. "Germany" vs "Deutschland")
+      let searchPattern = q;
+      
+      if (q.toLowerCase() === 'germany') searchPattern = '(germany|deutschland)';
+      else if (q.toLowerCase() === 'deutschland') searchPattern = '(germany|deutschland)';
+      else if (q.toLowerCase() === 'united states') searchPattern = '(united states|usa|us|america)';
+      else if (q.toLowerCase() === 'usa' || q.toLowerCase() === 'us') searchPattern = '(united states|usa|us|america)';
+      else if (q.toLowerCase() === 'united kingdom') searchPattern = '(united kingdom|uk|britain)';
+      else if (q.toLowerCase() === 'uk' || q.toLowerCase() === 'britain') searchPattern = '(united kingdom|uk|britain)';
+      
+      postQuery.$or = [
+        { title: { $regex: searchPattern, $options: 'i' } },
+        { description: { $regex: searchPattern, $options: 'i' } },
+        { category: { $regex: searchPattern, $options: 'i' } }
+      ];
+      
+      // If tags exist, include them in search
+      postQuery.$or.push({ tags: { $regex: searchPattern, $options: 'i' } });
+    }
+
+    // Filter by category if provided
+    if (category && category !== 'all') {
+      postQuery.category = { $regex: category, $options: "i" };
+    }
+
+    // Filter by tags if provided
+    if (tags) {
+      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+      postQuery.tags = { $in: tagArray };
+    }
+
+    // Build aggregation pipeline for posts
+    const pipeline = [
+      { $match: postQuery }
+    ];
+    
+    // Add relevance scoring if query term exists
+    if (q) {
+      // Create a regex pattern that includes query variants for scoring calculation
+      let searchPattern = q.toLowerCase();
+      
+      if (q.toLowerCase() === 'germany') searchPattern = '(germany|deutschland)';
+      else if (q.toLowerCase() === 'deutschland') searchPattern = '(germany|deutschland)';
+      else if (q.toLowerCase() === 'united states') searchPattern = '(united states|usa|us|america)';
+      else if (q.toLowerCase() === 'usa' || q.toLowerCase() === 'us') searchPattern = '(united states|usa|us|america)';
+      else if (q.toLowerCase() === 'united kingdom') searchPattern = '(united kingdom|uk|britain)';
+      else if (q.toLowerCase() === 'uk' || q.toLowerCase() === 'britain') searchPattern = '(united kingdom|uk|britain)';
+      
+      pipeline.push({
+        $addFields: {
+          relevanceScore: {
+            $add: [
+              {
+                $cond: {
+                  if: { $regexMatch: { input: "$title", regex: searchPattern, options: "i" } },
+                  then: 10,
+                  else: 0
+                }
+              },
+              {
+                $cond: {
+                  if: { $regexMatch: { input: "$description", regex: searchPattern, options: "i" } },
+                  then: 5,
+                  else: 0
+                }
+              },
+              {
+                $cond: {
+                  if: { $regexMatch: { input: "$category", regex: searchPattern, options: "i" } },
+                  then: 3,
+                  else: 0
+                }
+              },
+              {
+                $cond: {
+                  if: {
+                    $and: [
+                      { $ifNull: ["$tags", false] },
+                      { $isArray: "$tags" },
+                      {
+                        $anyElementTrue: {
+                          $map: {
+                            input: "$tags",
+                            as: "tag",
+                            in: { $regexMatch: { input: "$$tag", regex: searchPattern, options: "i" } }
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  then: 2,
+                  else: 0
+                }
+              }
+            ]
+          }
+        }
+      });
+    } else {
+      pipeline.push({
+        $addFields: {
+          relevanceScore: 0
+        }
+      });
+    }
+    
+    // Add sorting based on parameter
+    if (sortBy === 'relevance' && q) {
+      pipeline.push({ $sort: { relevanceScore: -1, datePosted: -1 } });
+    } else if (sortBy === 'newest') {
+      pipeline.push({ $sort: { datePosted: -1 } });
+    } else if (sortBy === 'oldest') {
+      pipeline.push({ $sort: { datePosted: 1 } });
+    } else if (sortBy === 'rating') {
+      pipeline.push({ $sort: { averageRating: -1, totalRatings: -1 } });
+    } else if (sortBy === 'popular') {
+      pipeline.push({ $sort: { totalRatings: -1, averageRating: -1 } });
+    } else { // Default
+      pipeline.push({ $sort: { datePosted: -1 } });
+    }
+    
+    // Add populate
+    pipeline.push({
+      $lookup: {
+        from: "users",
+        localField: "postedBy",
+        foreignField: "_id",
+        as: "postedBy"
+      }
+    });
+    
+    // Project to shape the data properly
+    pipeline.push({
+      $addFields: {
+        postedBy: { $arrayElemAt: ["$postedBy", 0] }
+      }
+    });
+    
+    // Count total for pagination
+    const total = await Post.countDocuments(postQuery);
+    
+    // Add pagination
+    pipeline.push({ $skip: skip }, { $limit: limitNum });
+    
+    const posts = await Post.aggregate(pipeline);
+
+    // If query term exists, also search globally using external services
+    let globalLocations = [];
+    if (q) {
+      globalLocations = await geolocationService.searchLocations(q);
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        posts: posts,
+        globalLocations: globalLocations, // Include global search results
+        suggestions: {
+          query: q || '',
+          postCount: posts.length,
+          globalLocationCount: globalLocations.length
+        },
+        pagination: {
+          currentPage: pageNum,
+          totalPages: Math.ceil(total / limitNum),
+          totalPosts: total,
+          hasNext: pageNum * limitNum < total,
+          hasPrev: pageNum > 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error in global search:", error);
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
 // @desc    Advanced search that includes all locations and provides comprehensive results
 // @route   GET /api/v1/posts/advanced-search
 // @access  Public
@@ -1781,10 +1982,17 @@ const advancedSearch = async (req, res) => {
       return post;
     });
 
+    // If query term exists and no results found, try global geolocation search
+    let globalLocations = [];
+    if (q && processedPosts.length === 0) {
+      globalLocations = await geolocationService.searchLocations(q);
+    }
+
     res.status(200).json({
       status: "success",
       data: {
         posts: processedPosts,
+        globalLocations: globalLocations, // Include global search results
         suggestions: {
           query: q || '',
           count: processedPosts.length
@@ -2027,6 +2235,7 @@ module.exports = {
   getComments,
   searchPosts,
   advancedSearch,
+  globalSearch,
   getNearbyPosts,
   getPostsWithinArea,
   getPostDistance,
