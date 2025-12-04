@@ -497,6 +497,17 @@ const DiscoverMain = () => {
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     });
+    
+    // Handle post deletion events - remove deleted posts from all states
+    socket.on('post-deleted', (deletedPostId) => {
+      setPosts(prevPosts => prevPosts.filter(post => post._id !== deletedPostId));
+      setFilteredPosts(prevFiltered => prevFiltered.filter(post => post._id !== deletedPostId));
+      
+      // Also close the selected post if it's the one being deleted
+      if (selectedPost && selectedPost._id === deletedPostId) {
+        setSelectedPost(null);
+      }
+    });
 
     // Set up polling as backup if socket fails
     const interval = setInterval(fetchNotifications, 30000);
@@ -505,9 +516,10 @@ const DiscoverMain = () => {
     return () => {
       socket.off('newNotification');
       socket.off('notificationRead');
+      socket.off('post-deleted');
       clearInterval(interval);
     };
-  }, [isAuthenticated, user, API_BASE_URL]);
+  }, [isAuthenticated, user, API_BASE_URL, selectedPost]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handlePostLike = useCallback((postId, isLiked) => {
@@ -1806,186 +1818,272 @@ const DiscoverMain = () => {
         throw new Error('Authentication token not found');
       }
 
-      // Prepare form data for multipart request
-      const formData = new FormData();
+      let formData;
+      let locationData;
       
-      // Add basic post data
-      formData.append('title', postPayload.title);
-      formData.append('description', postPayload.description);
-      formData.append('category', postPayload.category);
-      formData.append('location[latitude]', postPayload.location.latitude.toString());
-      formData.append('location[longitude]', postPayload.location.longitude.toString());
-
-      // Add uploaded file images
-      if (postPayload.images) {
-        postPayload.images.forEach((image) => {
-          if (image.file) {
-            formData.append('images', image.file, image.name);
+      // Check if postPayload is already a FormData object (when files are being uploaded)
+      if (postPayload instanceof FormData) {
+        // Use the FormData object as is
+        formData = postPayload;
+        
+        // Extract location data from FormData for use below
+        const latValue = formData.get('location[latitude]');
+        const lngValue = formData.get('location[longitude]');
+        
+        if (!latValue || !lngValue) {
+          // Try alternative location formats that might be used by different parts of the app
+          const latAlt = formData.get('location.latitude'); // Alternative format
+          const lngAlt = formData.get('location.longitude'); // Alternative format
+          
+          if (latAlt && lngAlt) {
+            locationData = {
+              latitude: parseFloat(latAlt),
+              longitude: parseFloat(lngAlt)
+            };
+          } else {
+            throw new Error('Location data is missing in form data. Expected location[latitude] and location[longitude].');
           }
-        });
+        } else {
+          locationData = {
+            latitude: parseFloat(latValue),
+            longitude: parseFloat(lngValue)
+          };
+        }
+      } else {
+        // Prepare form data for multipart request when we have a regular object
+        formData = new FormData();
+        
+        // Add basic post data
+        formData.append('title', postPayload.title);
+        formData.append('description', postPayload.description);
+        formData.append('category', postPayload.category);
+        
+        // Add location data - ensure location exists and has required properties
+        if (postPayload.location && postPayload.location.latitude !== undefined && postPayload.location.longitude !== undefined) {
+          formData.append('location[latitude]', postPayload.location.latitude.toString());
+          formData.append('location[longitude]', postPayload.location.longitude.toString());
+          
+          locationData = {
+            latitude: parseFloat(postPayload.location.latitude),
+            longitude: parseFloat(postPayload.location.longitude)
+          };
+        } else {
+          throw new Error('Location data is missing or invalid');
+        }
+
+        // Add uploaded file images
+        if (postPayload.images) {
+          postPayload.images.forEach((image) => {
+            if (image.file) {
+              formData.append('images', image.file, image.name);
+            }
+          });
+        }
+
+        // Add image links if any
+        if (postPayload.imageLinks && postPayload.imageLinks.length > 0) {
+          postPayload.imageLinks.forEach((link) => {
+            formData.append('imageLinks', link.url || link);
+          });
+        }
       }
 
-      // Add image links if any
-      if (postPayload.imageLinks && postPayload.imageLinks.length > 0) {
-        postPayload.imageLinks.forEach((link) => {
-          formData.append('imageLinks', link.url || link);
+      // Send the request with proper network error handling
+      let response;
+      try {
+        response = await fetch(`${API_BASE_URL}/posts`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData,
         });
+      } catch (networkError) {
+        console.error('Network error during post creation:', networkError);
+        throw new Error('Network error: Unable to connect to the server. Please check your connection and try again.');
       }
 
-      // Send the request
-      const response = await fetch(`${API_BASE_URL}/posts`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData,
-      });
+      // Check if response is ok before parsing JSON
+      if (!response.ok) {
+        // Try to get error message from response
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorResult = await response.json();
+          errorMessage = errorResult.message || errorResult.error || errorMessage;
+        } catch (e) {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
 
       const result = await response.json();
 
-      if (response.ok && result.status === 'success') {
-        // Add the new post to our local state with the same structure as API-transformed posts
-        // Start with the response data and ensure position is in the right format [lat, lng] for Leaflet
-        let position;
-        if (result.data.location?.coordinates && Array.isArray(result.data.location.coordinates) 
-            && result.data.location.coordinates.length === 2) {
-          // Convert from [longitude, latitude] (GeoJSON) to [latitude, longitude] (Leaflet)
-          position = [result.data.location.coordinates[1], result.data.location.coordinates[0]];
-        } 
-        else if (typeof result.data.location?.latitude === 'number' && 
-                 typeof result.data.location?.longitude === 'number') {
-          position = [result.data.location.latitude, result.data.location.longitude];
-        }
-        else {
-          // Fallback to the original payload if API doesn't return location properly
-          position = [postPayload.location.latitude, postPayload.location.longitude];
-        }
-        
-        const newPost = {
-          _id: result.data._id,
-          id: result.data._id,
-          title: result.data.title || postPayload.title,
-          description: result.data.description || postPayload.description,
-          image: result.data.image || null, // Use image from response if available
-          images: result.data.images || [],
-          averageRating: result.data.averageRating || 0,
-          totalRatings: result.data.totalRatings || 0,
-          postedBy: result.data.postedBy?.name || user?.name || user?.email || "Anonymous",
-          category: result.data.category || postPayload.category,
-          datePosted: result.data.datePosted || new Date().toISOString(),
-          position: position,
-          price: result.data.price || 0,
-          tags: result.data.tags || [],
-          comments: result.data.comments || [],
-          likes: result.data.likes || [], // Use likes from response if available
-          likesCount: result.data.likesCount || 0,
-          location: {
-            // Ensure location has proper latitude and longitude for the directions feature
-            latitude: result.data.location?.latitude || 
-                      (result.data.location?.coordinates && result.data.location.coordinates[1]) || 
-                      postPayload.location.latitude,
-            longitude: result.data.location?.longitude || 
-                       (result.data.location?.coordinates && result.data.location.coordinates[0]) || 
-                       postPayload.location.longitude,
-            // Preserve other location properties if they exist
-            ...result.data.location
-          },
-        };
-        
-        setPosts(prev => [newPost, ...prev]);
-        
-        // Apply current filters to determine if the new post should be in the filtered list
-        let shouldIncludeInFiltered = true;
-        
-        // Apply search filter
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          shouldIncludeInFiltered = 
-            newPost.title.toLowerCase().includes(query) || 
-            newPost.description.toLowerCase().includes(query) ||
-            (typeof newPost.postedBy === 'string' ? newPost.postedBy.toLowerCase() : 
-             (typeof newPost.postedBy === 'object' && newPost.postedBy.name ? newPost.postedBy.name.toLowerCase() : '')
-            ).includes(query) ||
-            newPost.category.toLowerCase().includes(query) ||
-            newPost.tags.some(tag => tag.toLowerCase().includes(query));
-        }
-        
-        // Apply category filter
-        if (selectedCategory !== 'all' && shouldIncludeInFiltered) {
-          shouldIncludeInFiltered = newPost.category.toLowerCase() === selectedCategory.toLowerCase();
-        }
-        
-        // Apply rating filter
-        if (rating > 0 && shouldIncludeInFiltered) {
-          shouldIncludeInFiltered = newPost.averageRating >= rating;
-        }
-        
-        // Apply price range filter
-        if (priceRange !== 'all' && shouldIncludeInFiltered) {
-          if (priceRange === 'free') {
-            shouldIncludeInFiltered = newPost.price === 0;
-          } else if (priceRange === 'low') {
-            shouldIncludeInFiltered = newPost.price > 0 && newPost.price <= 10;
-          } else if (priceRange === 'medium') {
-            shouldIncludeInFiltered = newPost.price > 10 && newPost.price <= 50;
-          } else if (priceRange === 'high') {
-            shouldIncludeInFiltered = newPost.price > 50;
+      if (result.status === 'success') {
+        try {
+          // Add the new post to our local state with the same structure as API-transformed posts
+          // Start with the response data and ensure position is in the right format [lat, lng] for Leaflet
+          let position;
+          if (result.data?.location?.coordinates && Array.isArray(result.data.location.coordinates) 
+              && result.data.location.coordinates.length === 2) {
+            // Convert from [longitude, latitude] (GeoJSON) to [latitude, longitude] (Leaflet)
+            position = [result.data.location.coordinates[1], result.data.location.coordinates[0]];
+          } 
+          else if (result.data?.location && typeof result.data.location.latitude === 'number' && 
+                   typeof result.data.location.longitude === 'number') {
+            position = [result.data.location.latitude, result.data.location.longitude];
           }
-        }
-        
-        // Only add to filtered posts if it passes all current filters
-        if (shouldIncludeInFiltered) {
-          setFilteredPosts(prev => {
-            // Add new post and sort according to current sort setting
-            const updatedList = [newPost, ...prev];
-            
-            // Apply sorting based on current sort setting
-            updatedList.sort((a, b) => {
-              switch (sortBy) {
-                case 'newest':
-                  return new Date(b.datePosted) - new Date(a.datePosted);
-                case 'oldest':
-                  return new Date(a.datePosted) - new Date(b.datePosted);
-                case 'rating':
-                  return b.averageRating - a.averageRating;
-                case 'popular':
-                  return b.totalRatings - a.totalRatings;
-                default:
-                  return 0;
-              }
+          else {
+            // Fallback to the extracted location data if API doesn't return location properly
+            position = [locationData.latitude, locationData.longitude];
+          }
+          
+          const newPost = {
+            _id: result.data?._id,
+            id: result.data?._id,
+            title: result.data?.title || (postPayload instanceof FormData ? 'Untitled' : postPayload.title),
+            description: result.data?.description || (postPayload instanceof FormData ? 'No description' : postPayload.description),
+            image: result.data?.image || null, // Use image from response if available
+            images: result.data?.images || [],
+            averageRating: result.data?.averageRating || 0,
+            totalRatings: result.data?.totalRatings || 0,
+            postedBy: result.data?.postedBy?.name || user?.name || user?.email || "Anonymous",
+            category: result.data?.category || (postPayload instanceof FormData ? 'general' : postPayload.category),
+            datePosted: result.data?.datePosted || new Date().toISOString(),
+            position: position,
+            price: result.data?.price || 0,
+            tags: result.data?.tags || [],
+            comments: result.data?.comments || [],
+            likes: result.data?.likes || [], // Use likes from response if available
+            likesCount: result.data?.likesCount || 0,
+            location: {
+              // Ensure location has proper latitude and longitude for the directions feature
+              latitude: result.data?.location?.latitude || 
+                        (result.data?.location?.coordinates && typeof result.data.location.coordinates[1] === 'number' ? result.data.location.coordinates[1] : null) || 
+                        locationData.latitude,
+              longitude: result.data?.location?.longitude || 
+                         (result.data?.location?.coordinates && typeof result.data.location.coordinates[0] === 'number' ? result.data.location.coordinates[0] : null) || 
+                         locationData.longitude,
+              // Preserve other location properties if they exist
+              ...(result.data?.location || {})
+            },
+          };
+          
+          setPosts(prev => [newPost, ...prev]);
+          
+          // Apply current filters to determine if the new post should be in the filtered list
+          let shouldIncludeInFiltered = true;
+          
+          // Apply search filter
+          if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            shouldIncludeInFiltered = 
+              newPost.title.toLowerCase().includes(query) || 
+              newPost.description.toLowerCase().includes(query) ||
+              (typeof newPost.postedBy === 'string' ? newPost.postedBy.toLowerCase() : 
+               (typeof newPost.postedBy === 'object' && newPost.postedBy.name ? newPost.postedBy.name.toLowerCase() : '')
+              ).includes(query) ||
+              newPost.category.toLowerCase().includes(query) ||
+              newPost.tags.some(tag => tag.toLowerCase().includes(query));
+          }
+          
+          // Apply category filter
+          if (selectedCategory !== 'all' && shouldIncludeInFiltered) {
+            shouldIncludeInFiltered = newPost.category.toLowerCase() === selectedCategory.toLowerCase();
+          }
+          
+          // Apply rating filter
+          if (rating > 0 && shouldIncludeInFiltered) {
+            shouldIncludeInFiltered = newPost.averageRating >= rating;
+          }
+          
+          // Apply price range filter
+          if (priceRange !== 'all' && shouldIncludeInFiltered) {
+            if (priceRange === 'free') {
+              shouldIncludeInFiltered = newPost.price === 0;
+            } else if (priceRange === 'low') {
+              shouldIncludeInFiltered = newPost.price > 0 && newPost.price <= 10;
+            } else if (priceRange === 'medium') {
+              shouldIncludeInFiltered = newPost.price > 10 && newPost.price <= 50;
+            } else if (priceRange === 'high') {
+              shouldIncludeInFiltered = newPost.price > 50;
+            }
+          }
+          
+          // Only add to filtered posts if it passes all current filters
+          if (shouldIncludeInFiltered) {
+            setFilteredPosts(prev => {
+              // Add new post and sort according to current sort setting
+              const updatedList = [newPost, ...prev];
+              
+              // Apply sorting based on current sort setting
+              updatedList.sort((a, b) => {
+                switch (sortBy) {
+                  case 'newest':
+                    return new Date(b.datePosted) - new Date(a.datePosted);
+                  case 'oldest':
+                    return new Date(a.datePosted) - new Date(b.datePosted);
+                  case 'rating':
+                    return b.averageRating - a.averageRating;
+                  case 'popular':
+                    return b.totalRatings - a.totalRatings;
+                  default:
+                    return 0;
+                }
+              });
+              
+              return updatedList;
             });
             
-            return updatedList;
-          });
+            // Fly to the new post location to show it on the map
+            setTimeout(() => {
+              if (newPost.position) {
+                flyToPost(newPost.position);
+              }
+            }, 300); // Small delay to ensure the post is rendered
+          }
           
-          // Fly to the new post location to show it on the map
-          setTimeout(() => {
-            flyToPost(newPost.position);
-          }, 300); // Small delay to ensure the post is rendered
+          // Show success message
+          showModal({
+            title: "Success",
+            message: 'Post created successfully!',
+            type: 'success',
+            confirmText: 'OK'
+          });
+        } catch (postProcessingError) {
+          console.error('Error processing successful post creation response:', postProcessingError);
+          
+          // Still show success since the post was created on the server, but warn about UI issues
+          showModal({
+            title: "Post Created with Issues",
+            message: 'The post was created successfully on the server, but there were issues updating the display. The page may need to be refreshed to see the new post.',
+            type: 'warning',
+            confirmText: 'OK'
+          });
+        } finally {
+          // Close the modal and reset loading state in the finally block
+          // to ensure they are always reset even if there are errors in post-processing
+          setShowCreatePostModal(false);
+          setSelectedMapPosition(null);
         }
-        
-        // Close the modal
-        setShowCreatePostModal(false);
-        setSelectedMapPosition(null);
-        
-        showModal({
-          title: "Success",
-          message: 'Post created successfully!',
-          type: 'success',
-          confirmText: 'OK'
-        });
       } else {
-        throw new Error(result.message || 'Failed to create post');
+        // Handle case where response is not ok but we still got JSON
+        const errorMessage = result.message || result.error || 'Failed to create post';
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Error creating post:', error);
+      
+      // Show error modal with more specific error message
+      const errorMessage = error.message || 'An error occurred while creating the post';
       showModal({
-        title: "Error",
-        message: error.message || 'An error occurred while creating the post',
+        title: "Error Creating Post",
+        message: errorMessage,
         type: 'error',
         confirmText: 'OK'
       });
     } finally {
+      // Make sure loading state is reset in all cases
       setCreatePostLoading(false);
     }
   };

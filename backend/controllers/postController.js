@@ -150,68 +150,88 @@ const createPost = async (req, res) => {
 
     const savedPost = await newPost.save();
 
-    // Log activity
-    try {
-      const activity = new Activity({
-        userId: req.user._id,
-        action: 'created post',
-        targetType: 'post',
-        targetId: savedPost._id,
-        targetTitle: savedPost.title,
-        metadata: {
-          title: savedPost.title,
-          description: savedPost.description,
-          category: savedPost.category
-        },
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-      await activity.save();
-    } catch (activityError) {
-      console.error('Error saving activity:', activityError);
-      // Don't fail the main request if activity logging fails
-    }
-
-    // Clear related caches - invalidate all posts pages since new post changes the list
-    const postCacheKeys = await cache.keys('posts_page_*');
-    for (const key of postCacheKeys) {
-      await cache.del(key);
-    }
-
-    // Populate the postedBy field before sending response to include user info
+    // Populate the postedBy field for the immediate response
     const populatedPost = await Post.findById(savedPost._id).populate(
       "postedBy",
       "name email avatar"
     );
 
     console.log(
-      "Post created successfully:",
+      "Post created successfully (initial save):",
       savedPost._id,
       "by user:",
       req.user._id
     );
 
-    // Emit real-time event for new post
-    const io = req.app.get("io");
-    if (io) {
-      emitGlobal(io, "newPost", {
-        post: populatedPost,
-        message: "A new post has been created",
-      });
-    }
-
+    // Send success response IMMEDIATELY
     sendSuccessResponse(res, 201, populatedPost);
+
+    // --- Decouple non-blocking tasks to run AFTER sending response ---
+    process.nextTick(async () => {
+      try {
+        // Log activity
+        const activity = new Activity({
+          userId: req.user._id,
+          action: 'created post',
+          targetType: 'post',
+          targetId: savedPost._id,
+          targetTitle: savedPost.title,
+          metadata: {
+            title: savedPost.title,
+            description: savedPost.description,
+            category: savedPost.category
+          },
+          ip: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        await activity.save();
+        console.log('Background task: Activity logged for post', savedPost._id);
+      } catch (activityError) {
+        console.error('Background task error: Error saving activity:', activityError);
+      }
+
+      try {
+        // Clear related caches - invalidate all posts pages since new post changes the list
+        const postCacheKeys = await cache.keys('posts_page_*');
+        for (const key of postCacheKeys) {
+          await cache.del(key);
+        }
+        console.log('Background task: Cache invalidated for posts');
+      } catch (cacheError) {
+        console.error('Background task error: Error invalidating cache:', cacheError);
+      }
+
+      try {
+        // Emit real-time event for new post
+        const io = req.app.get("io");
+        if (io) {
+          emitGlobal(io, "newPost", {
+            post: populatedPost, // Use populatedPost for consistency
+            message: "A new post has been created",
+          });
+          console.log('Background task: Emitted newPost event via Socket.IO');
+        }
+      } catch (socketError) {
+        console.error('Background task error: Error emitting Socket.IO event:', socketError);
+      }
+    });
+
   } catch (error) {
-    console.error("Error creating post:", error);
+    console.error("Error creating post (main thread):", error);
     console.error("Error details:", error.message, error.code, error.name);
 
     // Handle specific MongoDB errors
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
-      return sendErrorResponse(res, 400, "Validation error", errors);
+      if (!res.headersSent) { // Prevent error if headers already sent
+        return sendErrorResponse(res, 400, "Validation error", errors);
+      }
     }
 
-    sendErrorResponse(res, 500, error.message);
+    // Only send error response if response has not already been sent
+    if (!res.headersSent) {
+      sendErrorResponse(res, 500, error.message);
+    }
   }
 };
 
@@ -520,7 +540,7 @@ const deletePost = async (req, res) => {
     // Emit real-time event for deleted post
     const io = req.app.get("io");
     if (io) {
-      emitGlobal(io, "postDeleted", {
+      emitGlobal(io, "post-deleted", {
         postId: req.params.id,
         message: "A post was deleted",
       });
@@ -2205,7 +2225,7 @@ const deletePostByAdmin = async (req, res) => {
     // Emit real-time event for deleted post
     const io = req.app.get("io");
     if (io) {
-      emitGlobal(io, "postDeleted", {
+      emitGlobal(io, "post-deleted", {
         postId: req.params.id,
         message: "A post was deleted by admin",
       });

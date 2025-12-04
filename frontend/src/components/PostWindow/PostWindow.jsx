@@ -147,15 +147,24 @@ const PostWindow = ({
       }
     };
     
+    const handlePostDeletion = (deletedPostId) => {
+      if (deletedPostId === currentPost._id) {
+        // Close the post window if the current post was deleted
+        onClose && onClose();
+      }
+    };
+    
     socket.on('post-updated', handlePostUpdate);
     socket.on('post-bookmarked', handlePostUpdate);
     socket.on('new-comment', handlePostUpdate);
+    socket.on('post-deleted', handlePostDeletion);
 
     // Cleanup function
     return () => {
       socket.off('post-updated', handlePostUpdate);
       socket.off('post-bookmarked', handlePostUpdate);
       socket.off('new-comment', handlePostUpdate);
+      socket.off('post-deleted', handlePostDeletion);
       socket.emit('leave-post-room', currentPost._id);
     };
   }, [isOpen, authToken, currentPost?._id]);
@@ -387,7 +396,7 @@ const PostWindow = ({
             stiffness: 300,
             duration: 0.3 
           }}
-          className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-full w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col z-[99999] border border-white/20 backdrop-blur-md"
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-2xl sm:max-w-3xl md:max-w-4xl lg:max-w-5xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col z-[99999] border border-white/20 backdrop-blur-md"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -702,7 +711,7 @@ const PostWindow = ({
                 {/* Comments Modal */}
                 {showCommentsModal && (
                   <div className="fixed inset-0 bg-gradient-to-br from-black/60 to-black/50 backdrop-blur-lg flex items-center justify-center z-[100000] p-2 sm:p-4">
-                    <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-full sm:max-w-2xl max-h-[80vh] flex flex-col border border-white/20 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[80vh] flex flex-col border border-white/20 backdrop-blur-sm">
                       <div className="p-4 sm:p-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 rounded-t-xl sm:rounded-t-2xl">
                         <div className="flex justify-between items-center">
                           <h3 className="text-base sm:text-lg font-bold text-gray-800">Comments</h3>

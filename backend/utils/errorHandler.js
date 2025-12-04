@@ -6,7 +6,7 @@ const handleCastErrorDB = (err) => {
 };
 
 const handleDuplicateFieldsDB = (err) => {
-  const value = err.errmsg?.match(/(["'])(\\?.)*?\1/)?.[0];
+  const value = err.errmsg?.match(/(['"])(\\?.)*?\1/)?.[0];
   const message = `Duplicate field value: ${value}. Please use another value!`;
   return new Error(message);
 };
@@ -48,6 +48,25 @@ const sendErrorProd = (err, res) => {
     });
   }
 };
+
+const sendSuccessResponse = (res, statusCode, data, message = 'Success') => {
+  res.status(statusCode).json({
+    status: 'success',
+    message,
+    data,
+  });
+};
+
+const sendErrorResponse = (res, statusCode, message, errors = null) => {
+  res.status(statusCode).json({
+    status: 'error',
+    message,
+    errors,
+  });
+};
+
+exports.sendSuccessResponse = sendSuccessResponse;
+exports.sendErrorResponse = sendErrorResponse;
 
 module.exports = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;

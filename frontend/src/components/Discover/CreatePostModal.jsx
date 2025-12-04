@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MapPin, Image as ImageIcon, Plus, Upload, Camera, Link, Trash2, Check, AlertCircle } from 'lucide-react';
+import './CreatePostModal.css';
 
 const CreatePostModal = ({ 
   isOpen, 
@@ -28,6 +29,7 @@ const CreatePostModal = ({
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' or 'link'
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
+  const linkInputRef = useRef(null);
 
   const categories = [
     { value: "general", label: "General" },
@@ -78,28 +80,76 @@ const CreatePostModal = ({
       return;
     }
 
-    if (!selectedPosition || !selectedPosition.lat || !selectedPosition.lng) {
+    if (!selectedPosition || 
+        (!selectedPosition?.lat && !selectedPosition?.latitude) || 
+        (!selectedPosition?.lng && !selectedPosition?.longitude)) {
       setErrors({ submit: "Location is required. Please select a location on the map." });
       return;
     }
     
-    const postPayload = {
-      ...formData,
-      location: {
-        latitude: parseFloat(selectedPosition.lat),
-        longitude: parseFloat(selectedPosition.lng),
-      },
-      images: fileImages, // Include the uploaded files
-      imageLinks: linkImages, // Include image links separately
-    };
-
     try {
-      await onCreatePost(postPayload);
-      // Reset form on successful post creation, let parent handle closing modal
+      // Handle different possible location property names
+      const lat = selectedPosition?.lat || selectedPosition?.latitude;
+      const lng = selectedPosition?.lng || selectedPosition?.longitude;
+      
+      if (!lat || !lng) {
+        setErrors({ submit: "Location coordinates are invalid. Please select a location on the map." });
+        return;
+      }
+      
+      const postPayload = {
+        ...formData,
+        location: {
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lng),
+        },
+      };
+
+      // Prepare files for upload if any
+      const filesToUpload = fileImages.map(img => img.file).filter(file => file); // Get actual files
+      if (filesToUpload.length > 0) {
+        // If we have files to upload, we need to use FormData
+        const formDataToSend = new FormData();
+        
+        // Add text fields
+        Object.keys(postPayload).forEach(key => {
+          if (key === 'location') {
+            // Handle location object specially - add as nested properties
+            if (postPayload[key] && postPayload[key].latitude !== undefined && postPayload[key].longitude !== undefined) {
+              formDataToSend.append('location[latitude]', postPayload[key].latitude.toString());
+              formDataToSend.append('location[longitude]', postPayload[key].longitude.toString());
+            }
+          } else if (postPayload[key] !== null && postPayload[key] !== undefined) {
+            formDataToSend.append(key, postPayload[key]);
+          }
+        });
+
+        // Add image files only if they exist
+        filesToUpload.forEach((file, index) => {
+          formDataToSend.append('images', file); // Use the same field name as backend expects
+        });
+
+        // Call onCreatePost with the FormData for file upload
+        await onCreatePost(formDataToSend);
+      } else {
+        // If no files to upload, just send the payload with any image links
+        if (linkImages.length > 0) {
+          postPayload.imageLinks = linkImages.map(img => img.url);
+        }
+        
+        await onCreatePost(postPayload);
+      }
+      
+      // Reset form on successful post creation
       setFormData({ title: "", description: "", category: "general" });
       setFileImages([]);
       setLinkImages([]);
       setErrors({});
+      
+      // Close the modal after successful creation
+      if (onClose) {
+        onClose();
+      }
     } catch (error) {
       console.error("Error creating post:", error);
       setErrors({ submit: error.message || "An error occurred while creating the post" });
@@ -289,19 +339,19 @@ const CreatePostModal = ({
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-full sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col z-[99999]"
+          className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col z-[99999]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 sm:p-6 text-white">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="bg-white/20 p-2 rounded-lg">
-                  <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-3 sm:p-6 text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1">
+                <div className="bg-white/20 p-1.5 sm:p-2 rounded-lg">
+                  <Plus className="w-4 h-4 sm:w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold">Create New Post</h2>
-                  <p className="text-emerald-100 text-sm">Share your discovery with the community</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold truncate">Create New Post</h2>
+                  <p className="text-emerald-100 text-xs sm:text-sm">Share your discovery with the community</p>
                 </div>
               </div>
               <button
@@ -309,7 +359,7 @@ const CreatePostModal = ({
                 className="p-2 rounded-full hover:bg-white/20 transition-colors self-start sm:self-auto"
                 aria-label="Close"
               >
-                <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                <X className="w-4 h-4 sm:w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
           </div>
@@ -327,7 +377,7 @@ const CreatePostModal = ({
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-2.5 sm:py-3 pl-12 border-2 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 ${
+                  className={`w-full px-4 py-2.5 sm:py-3 pl-11 sm:pl-12 border-2 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 ${
                     errors.title
                       ? "border-red-300 focus:border-red-500 focus:ring-red-200"
                       : "border-emerald-200 focus:border-emerald-500"
@@ -335,9 +385,9 @@ const CreatePostModal = ({
                   placeholder="Enter a descriptive title"
                   maxLength="100"
                 />
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-400">
-                  <div className="w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                <div className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-emerald-400">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-emerald-400 flex items-center justify-center">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white"></div>
                   </div>
                 </div>
               </div>
@@ -371,7 +421,7 @@ const CreatePostModal = ({
                   value={formData.description}
                   onChange={handleInputChange}
                   rows="4"
-                  className={`w-full px-4 py-2.5 sm:py-3 pl-12 border-2 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 resize-none ${
+                  className={`w-full px-4 py-2.5 sm:py-3 pl-11 sm:pl-12 border-2 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 resize-none ${
                     errors.description
                       ? "border-red-300 focus:border-red-500 focus:ring-red-200"
                       : "border-emerald-200 focus:border-emerald-500"
@@ -379,9 +429,9 @@ const CreatePostModal = ({
                   placeholder="Describe this location and what makes it special..."
                   maxLength="500"
                 />
-                <div className="absolute left-4 top-4 text-emerald-400">
-                  <div className="w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                <div className="absolute left-3 sm:left-4 top-3 sm:top-4 text-emerald-400">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-emerald-400 flex items-center justify-center">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white"></div>
                   </div>
                 </div>
               </div>
@@ -412,15 +462,15 @@ const CreatePostModal = ({
               <div className="relative">
                 <input
                   type="text"
-                  value={selectedPosition && selectedPosition.lat && selectedPosition.lng ? 
-                    `Lat: ${selectedPosition.lat.toFixed(6)}, Lng: ${selectedPosition.lng.toFixed(6)}` : 
+                  value={selectedPosition && (selectedPosition?.lat || selectedPosition?.latitude) && (selectedPosition?.lng || selectedPosition?.longitude) ? 
+                    `Lat: ${(selectedPosition?.lat || selectedPosition?.latitude).toFixed(6)}, Lng: ${(selectedPosition?.lng || selectedPosition?.longitude).toFixed(6)}` : 
                     "Location not selected"}
                   readOnly
-                  className="w-full px-4 py-3 pl-12 border-2 border-emerald-200 rounded-xl bg-gray-100 shadow-sm"
+                  className="w-full px-4 py-2.5 sm:py-3 pl-11 sm:pl-12 border-2 border-emerald-200 rounded-lg sm:rounded-xl bg-gray-100 shadow-sm text-xs sm:text-sm"
                   placeholder="Location set from map click"
                 />
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-400">
-                  <MapPin className="w-4 h-4" />
+                <div className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-emerald-400">
+                  <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -444,7 +494,7 @@ const CreatePostModal = ({
                   name="category"
                   value={formData.category}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2.5 sm:py-3 pl-12 pr-10 border-2 border-emerald-200 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 bg-gray-50 focus:bg-white appearance-none shadow-sm"
+                  className="w-full px-4 py-2.5 sm:py-3 pl-11 sm:pl-12 pr-8 sm:pr-10 border-2 border-emerald-200 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 bg-gray-50 focus:bg-white appearance-none shadow-sm"
                 >
                   {categories.map((cat) => (
                     <option key={cat.value} value={cat.value}>
@@ -452,13 +502,13 @@ const CreatePostModal = ({
                     </option>
                   ))}
                 </select>
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-400">
-                  <div className="w-4 h-4 rounded-full bg-emerald-400 flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                <div className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-emerald-400">
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-emerald-400 flex items-center justify-center">
+                    <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white"></div>
                   </div>
                 </div>
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                  <svg className="w-3 h-3 sm:w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
@@ -472,11 +522,11 @@ const CreatePostModal = ({
               </label>
 
               {/* Tabs for upload vs link */}
-              <div className="flex border-b border-gray-200 mb-3 sm:mb-4">
+              <div className="flex border-b border-gray-200 mb-2 sm:mb-4 overflow-x-auto pb-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab('upload')}
-                  className={`px-3 py-2 font-medium text-xs sm:text-sm ${
+                  className={`px-2.5 sm:px-3 py-1.5 sm:py-2 font-medium text-xs sm:text-sm flex-shrink-0 ${
                     activeTab === 'upload'
                       ? 'text-emerald-600 border-b-2 border-emerald-600'
                       : 'text-gray-500 hover:text-gray-700'
@@ -485,13 +535,13 @@ const CreatePostModal = ({
                   <div className="flex items-center gap-1 sm:gap-2">
                     <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">Upload</span>
-                    <span className="sm:hidden">Upload</span>
+                    <span className="sm:hidden text-[0.65rem]">Upload</span>
                   </div>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('link')}
-                  className={`px-3 py-2 font-medium text-xs sm:text-sm ${
+                  className={`px-2.5 sm:px-3 py-1.5 sm:py-2 font-medium text-xs sm:text-sm flex-shrink-0 ${
                     activeTab === 'link'
                       ? 'text-emerald-600 border-b-2 border-emerald-600'
                       : 'text-gray-500 hover:text-gray-700'
@@ -500,7 +550,7 @@ const CreatePostModal = ({
                   <div className="flex items-center gap-1 sm:gap-2">
                     <Link className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">From Link</span>
-                    <span className="sm:hidden">Link</span>
+                    <span className="sm:hidden text-[0.65rem]">Link</span>
                   </div>
                 </button>
               </div>
@@ -541,30 +591,32 @@ const CreatePostModal = ({
                 </div>
               ) : (
                 <div>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                  <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-3">
                     <input
+                      ref={linkInputRef}
                       type="text"
                       placeholder="Paste image URL here..."
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 text-sm"
+                      className="flex-1 px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 text-xs sm:text-sm min-w-0"
                       onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'Enter' && linkInputRef.current) {
                           e.preventDefault();
-                          const input = e.target;
-                          handleImageLinkAdd(input.value);
-                          input.value = '';
+                          handleImageLinkAdd(linkInputRef.current.value);
+                          linkInputRef.current.value = '';
                         }
                       }}
                     />
                     <button
                       type="button"
-                      onClick={(e) => {
-                        const input = e.target.parentElement.querySelector('input');
-                        handleImageLinkAdd(input.value);
-                        input.value = '';
+                      onClick={() => {
+                        if (linkInputRef.current) {
+                          handleImageLinkAdd(linkInputRef.current.value);
+                          linkInputRef.current.value = '';
+                          linkInputRef.current.focus(); // Return focus to input after adding
+                        }
                       }}
-                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 text-sm"
+                      className="px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm min-w-0"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span className="hidden sm:inline">Add</span>
                       <span className="sm:hidden">+</span>
                     </button>
@@ -615,7 +667,7 @@ const CreatePostModal = ({
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 sm:gap-3">
                   {[...fileImages, ...linkImages].map((image, index) => (
                     <motion.div
                       key={image.id}
@@ -674,34 +726,34 @@ const CreatePostModal = ({
             )}
 
             {/* Form Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-gray-200">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-3 sm:pt-4 border-t border-gray-200">
               <button
                 type="button"
                 onClick={closeAndReset}
-                className="flex-1 px-4 py-2.5 sm:px-6 sm:py-3 border-2 border-gray-300 text-gray-700 bg-white rounded-lg sm:rounded-xl hover:bg-gray-50 transition-all duration-300 font-medium text-sm sm:text-base"
+                className="flex-1 px-3 py-2 sm:px-4 sm:py-2.5 md:px-6 md:py-3 border-2 border-gray-300 text-gray-700 bg-white rounded-lg sm:rounded-xl hover:bg-gray-50 transition-all duration-300 font-medium text-xs sm:text-sm md:text-base"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg sm:rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden text-sm sm:text-base"
+                className="flex-1 px-3 py-2 sm:px-4 sm:py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg sm:rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden text-xs sm:text-sm md:text-base mb-1 sm:mb-0"
               >
-                <span className="relative z-10 flex items-center justify-center gap-2">
+                <span className="relative z-10 flex items-center justify-center gap-1 sm:gap-2">
                   {loading ? (
                     <>
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4 sm:h-5 sm:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      <span className="hidden sm:inline">Creating...</span>
-                      <span className="sm:hidden">Creating...</span>
+                      <span className="hidden sm:inline text-xs sm:text-sm">Creating...</span>
+                      <span className="sm:hidden text-xs">...</span>
                     </>
                   ) : (
                     <>
-                      <Plus className="w-5 h-5" />
-                      <span className="hidden sm:inline">Create Post</span>
-                      <span className="sm:hidden">Post</span>
+                      <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="hidden sm:inline text-xs sm:text-sm md:text-base">Create Post</span>
+                      <span className="sm:hidden text-xs">Post</span>
                     </>
                   )}
                 </span>

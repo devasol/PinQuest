@@ -162,7 +162,8 @@ const AddPost = () => {
       return;
     }
 
-    setLoading(true);
+    console.log("handleSubmit: Starting post creation process.");
+    setLoading(true); // <-- Loading starts
 
     try {
       // Prepare post data for submission
@@ -179,9 +180,12 @@ const AddPost = () => {
       const token = localStorage.getItem('token');
       
       // Use the postApi service to create the post
+      console.log("handleSubmit: Calling postApi.createPost with data:", postData);
       const result = await postApi.createPost(postData, token);
+      console.log("handleSubmit: postApi.createPost returned result:", result);
 
       if (result.success) {
+        console.log("handleSubmit: Post creation successful. Clearing form and preparing for navigation.");
         // Success - clear form and navigate to success page or home
         setFormData({
           title: '',
@@ -192,23 +196,32 @@ const AddPost = () => {
         setImages([]);
         setErrors({});
         
-        // Remove loading state before navigation to avoid loading state on next page
-        setLoading(false);
+        // Ensure loading state is cleared before navigation
+        setLoading(false); // <-- Set loading to false immediately on success
+
+        // Navigate to discover page without delay
         navigate("/discover");
       } else {
-        throw new Error(result.error || "Failed to create post");
+        console.log("handleSubmit: Post creation failed, result.success is false. Error:", result.error);
+        // Display error message from backend
+        setErrors((prev) => ({
+          ...prev,
+          submit: result.error || "Failed to create post",
+        }));
+        throw new Error(result.error || "Failed to create post"); // Re-throw to hit outer catch if needed
       }
     } catch (error) {
-      console.error("Error creating post:", error);
+      console.error("handleSubmit: Error caught during post creation:", error);
       console.error("Error details:", error.message, error.stack);
       
       setErrors((prev) => ({
         ...prev,
         submit: error.message || "An error occurred while creating the post",
       }));
-      
-      // Remove loading state so user can try again
-      setLoading(false);
+    } finally {
+      // Ensure loading state is always cleared
+      setLoading(false); // <-- Guarantee loading ends
+      console.log("handleSubmit: Finally block executed, ensuring loading state is false.");
     }
   };
 
