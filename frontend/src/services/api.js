@@ -265,11 +265,10 @@ export const postApi = {
       });
     }
     
-    // Add image links if provided
-    if (postData.imageLinks && Array.isArray(postData.imageLinks)) {
-      postData.imageLinks.forEach(link => {
-        formData.append('imageLinks', link);
-      });
+    // Add image links if provided - send as a JSON string so backend can properly parse it
+    // Multer doesn't handle multiple fields with the same name well, so we send as JSON array
+    if (postData.imageLinks && Array.isArray(postData.imageLinks) && postData.imageLinks.length > 0) {
+      formData.append('imageLinks', JSON.stringify(postData.imageLinks));
     }
     
     return apiService.upload('/posts', formData, authToken);

@@ -1913,6 +1913,14 @@ const DiscoverMain = () => {
           // Use the postApi service for regular objects
           result = await postApi.createPost(postPayload, token);
         }
+        
+        // If the API service returns an error result (success: false), handle it here
+        if (result && result.success === false) {
+          clearTimeout(loadingTimeout);
+          const errorMessage = result.error || result.message || 'Failed to create post';
+          console.error('API service returned error:', result);
+          throw new Error(errorMessage);
+        }
       } catch (apiError) {
         clearTimeout(loadingTimeout);
         console.error('API call failed:', apiError);
@@ -1922,18 +1930,18 @@ const DiscoverMain = () => {
           throw new Error('Request timed out. This may be due to large image files. Please try uploading smaller images or check your internet connection.');
         }
         
-        // Don't throw here immediately, check if it's a validation error response
-        if (apiError && apiError.status >= 400 && apiError.status < 500) {
-          // Validation error from the API
-          throw new Error(apiError.error || 'Validation error: ' + JSON.stringify(apiError));
+        // Handle case where apiError has the service wrapper format
+        if (apiError && typeof apiError === 'object' && apiError.success === false) {
+          throw new Error(apiError.error || apiError.message || 'API request failed');
         }
+        
         throw new Error(apiError.message || 'Failed to connect to server');
       } finally {
         clearTimeout(loadingTimeout);
       }
       
-      // Check if result has the expected structure from our backend
-      // Backend returns: { status: 'success', data: {...}, message: '...' }
+      // Check if result has the expected structure from our API service
+      // API service returns: {success: boolean, data: {status: 'success', data: {...}, message: '...'}}
       if (!result) {
         console.error('Post creation: No response received from server');
         throw new Error('No response received from server');
@@ -1941,31 +1949,36 @@ const DiscoverMain = () => {
       
       // Log the result for debugging
       console.log('Post creation response received:', {
-        status: result.status,
-        hasData: !!result.data,
-        dataKeys: result.data ? Object.keys(result.data) : [],
-        images: result.data?.images,
-        image: result.data?.image
+        serviceSuccess: result.success,
+        backendStatus: result.data?.status,
+        hasBackendData: !!result.data?.data,
+        dataKeys: result.data?.data ? Object.keys(result.data.data) : [],
+        images: result.data?.data?.images,
+        image: result.data?.data?.image
       });
       
-      // Handle different response formats
-      if (result.status === 'success' && result.data) {
-        // Valid success response - continue processing
+      // Handle different response formats from the API service
+      // The API service returns {success: true/false, data: {...}} wrapper
+      // The actual backend response is nested in result.data when the API call succeeds
+      if (result.success && result.data && result.data.status === 'success' && result.data.data) {
+        // Valid success response - continue processing with the actual post data from the backend
         console.log('Post creation successful, processing response data...');
         
-        // Process successful response 
+        // Process successful response using the actual post data from backend
+        const actualPostData = result.data.data; // Extract the actual post data from backend response
+        
         try {
         // Add the new post to our local state with the same structure as API-transformed posts
         // Start with the response data and ensure position is in the right format [lat, lng] for Leaflet
         let position;
-        if (result.data?.location?.coordinates && Array.isArray(result.data.location.coordinates) 
-            && result.data.location.coordinates.length === 2) {
+        if (actualPostData?.location?.coordinates && Array.isArray(actualPostData.location.coordinates) 
+            && actualPostData.location.coordinates.length === 2) {
           // Convert from [longitude, latitude] (GeoJSON) to [latitude, longitude] (Leaflet)
-          position = [result.data.location.coordinates[1], result.data.location.coordinates[0]];
+          position = [actualPostData.location.coordinates[1], actualPostData.location.coordinates[0]];
         } 
-        else if (result.data?.location && typeof result.data.location.latitude === 'number' && 
-                 typeof result.data.location.longitude === 'number') {
-          position = [result.data.location.latitude, result.data.location.longitude];
+        else if (actualPostData?.location && typeof actualPostData.location.latitude === 'number' && 
+                 typeof actualPostData.location.longitude === 'number') {
+          position = [actualPostData.location.latitude, actualPostData.location.longitude];
         }
         else {
           // Fallback to the extracted location data if API doesn't return location properly
@@ -1973,58 +1986,58 @@ const DiscoverMain = () => {
         }
         
         const newPost = {
-            _id: result.data?._id,
-            id: result.data?._id,
-            title: result.data?.title || (postPayload instanceof FormData ? 'Untitled' : postPayload.title),
-            description: result.data?.description || (postPayload instanceof FormData ? 'No description' : postPayload.description),
+            _id: actualPostData?._id,
+            id: actualPostData?._id,
+            title: actualPostData?.title || (postPayload instanceof FormData ? 'Untitled' : postPayload.title),
+            description: actualPostData?.description || (postPayload instanceof FormData ? 'No description' : postPayload.description),
             // Handle images - backend returns image objects with {url, publicId} structure
             // Use the same logic as PostWindow component to ensure consistency
-            image: result.data?.image 
-              ? (typeof result.data.image === 'string' 
-                  ? result.data.image 
-                  : (result.data.image?.url || result.data.image.url || null))
-              : (Array.isArray(result.data?.images) && result.data.images.length > 0
-                  ? (typeof result.data.images[0] === 'string' 
-                      ? result.data.images[0] 
-                      : (result.data.images[0]?.url || result.data.images[0].url || null))
+            image: actualPostData?.image 
+              ? (typeof actualPostData.image === 'string' 
+                  ? actualPostData.image 
+                  : (actualPostData.image?.url || actualPostData.image.url || null))
+              : (Array.isArray(actualPostData?.images) && actualPostData.images.length > 0
+                  ? (typeof actualPostData.images[0] === 'string' 
+                      ? actualPostData.images[0] 
+                      : (actualPostData.images[0]?.url || actualPostData.images[0].url || null))
                   : null),
             // Extract URLs from images array - backend returns array of {url, publicId} objects
             // Use the same image URL formatting as PostWindow uses via getImageUrl utility
-            images: Array.isArray(result.data?.images) && result.data.images.length > 0
-              ? result.data.images
+            images: Array.isArray(actualPostData?.images) && actualPostData.images.length > 0
+              ? actualPostData.images
                   .map(img => {
                     // Use the existing getImageUrl utility function to ensure proper URL formatting
                     return getImageUrl(img);
                   })
                   .filter(url => url && url.trim() !== '')
-              : (result.data?.image 
-                  ? [result.data?.image]
+              : (actualPostData?.image 
+                  ? [actualPostData?.image]
                       .map(img => {
                         return getImageUrl(img);
                       })
                       .filter(url => url && url.trim() !== '')
                   : []),
-          averageRating: result.data?.averageRating || 0,
-          totalRatings: result.data?.totalRatings || 0,
-          postedBy: result.data?.postedBy?.name || user?.name || user?.email || "Anonymous",
-          category: result.data?.category || (postPayload instanceof FormData ? 'general' : postPayload.category),
-          datePosted: result.data?.datePosted || new Date().toISOString(),
+          averageRating: actualPostData?.averageRating || 0,
+          totalRatings: actualPostData?.totalRatings || 0,
+          postedBy: actualPostData?.postedBy?.name || user?.name || user?.email || "Anonymous",
+          category: actualPostData?.category || (postPayload instanceof FormData ? 'general' : postPayload.category),
+          datePosted: actualPostData?.datePosted || new Date().toISOString(),
           position: position,
-          price: result.data?.price || 0,
-          tags: result.data?.tags || [],
-          comments: result.data?.comments || [],
-          likes: result.data?.likes || [], // Use likes from response if available
-          likesCount: result.data?.likesCount || 0,
+          price: actualPostData?.price || 0,
+          tags: actualPostData?.tags || [],
+          comments: actualPostData?.comments || [],
+          likes: actualPostData?.likes || [], // Use likes from response if available
+          likesCount: actualPostData?.likesCount || 0,
           location: {
             // Ensure location has proper latitude and longitude for the directions feature
-            latitude: result.data?.location?.latitude || 
-                      (result.data?.location?.coordinates && typeof result.data.location.coordinates[1] === 'number' ? result.data.location.coordinates[1] : null) || 
+            latitude: actualPostData?.location?.latitude || 
+                      (actualPostData?.location?.coordinates && typeof actualPostData.location.coordinates[1] === 'number' ? actualPostData.location.coordinates[1] : null) || 
                       locationData.latitude,
-            longitude: result.data?.location?.longitude || 
-                       (result.data?.location?.coordinates && typeof result.data.location.coordinates[0] === 'number' ? result.data.location.coordinates[0] : null) || 
+            longitude: actualPostData?.location?.longitude || 
+                       (actualPostData?.location?.coordinates && typeof actualPostData.location.coordinates[0] === 'number' ? actualPostData.location.coordinates[0] : null) || 
                        locationData.longitude,
             // Preserve other location properties if they exist
-            ...(result.data?.location || {})
+            ...(actualPostData?.location || {})
           },
         };
         
@@ -2131,10 +2144,24 @@ const DiscoverMain = () => {
         setCreatePostLoading(false);
       }
     } else {
-      // Handle case where response is not ok but we still got JSON
-      const errorMessage = result.message || result.error || 'Failed to create post';
-      console.error('Post creation failed - unexpected response format:', result);
-      throw new Error(errorMessage);
+      // Handle case where API service call was successful but backend returned an error
+      // or API service call failed
+      if (result.success === false) {
+        // API service call failed (network error, etc.)
+        const errorMessage = result.error || result.message || 'Failed to connect to server';
+        console.error('Post creation failed - API service error:', result);
+        throw new Error(errorMessage);
+      } else if (result.success === true && (!result.data || result.data.status !== 'success')) {
+        // API service call succeeded but backend returned an error
+        const errorMessage = result.data?.message || result.data?.error || 'Failed to create post';
+        console.error('Post creation failed - backend error:', result);
+        throw new Error(errorMessage);
+      } else {
+        // Unexpected response format
+        const errorMessage = result.message || result.error || 'Failed to create post';
+        console.error('Post creation failed - unexpected response format:', result);
+        throw new Error(errorMessage);
+      }
     }
 
     // Return the successful result
