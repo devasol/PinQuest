@@ -7,15 +7,33 @@ export const postsApi = {
   // Create a new post
   createPost: async (postData) => {
     try {
+      // Get fresh token before making request
+      let token = localStorage.getItem("token");
+      try {
+        const { auth } = await import('../config/firebase');
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          token = await currentUser.getIdToken(true);
+          localStorage.setItem("token", token);
+        }
+      } catch (tokenError) {
+        console.warn('Could not refresh token:', tokenError);
+      }
+      
+      // Use apiRequest with timeout support
       const response = await apiRequest('/posts', {
         method: 'POST',
         body: JSON.stringify(postData),
         skipAuth: false,
+        timeout: 30000, // 30 second timeout for JSON posts
       });
-
+      
       return response;
     } catch (error) {
       console.error('Error creating post:', error);
+      if (error.message?.includes('timeout')) {
+        throw new Error('Request timed out. Please check your connection and try again.');
+      }
       throw error;
     }
   },
@@ -24,26 +42,42 @@ export const postsApi = {
   createPostWithFiles: async (formData) => {
     try {
       // For file uploads, we need to use fetch directly since FormData can't use the apiRequest function
-      // But we can still use the token refresh logic from api.jsx
-      const { getFreshToken } = await import('./api.jsx');
-      let token = await getFreshToken();
+      // Get fresh token from Firebase if user is logged in
+      let token = localStorage.getItem("token");
+      
+      // Try to get fresh token from Firebase auth if available
+      try {
+        const { auth } = await import('../config/firebase');
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          token = await currentUser.getIdToken(true); // Force refresh
+          localStorage.setItem("token", token);
+        }
+      } catch (tokenError) {
+        console.warn('Could not refresh token, using stored token:', tokenError);
+        // Continue with stored token
+      }
       
       if (!token) {
-        // If we couldn't get a fresh token, try to get current token
-        token = localStorage.getItem("token");
-        if (!token) {
-          throw new Error('Authentication required. Please login again.');
-        }
+        throw new Error('Authentication required. Please login again.');
       }
 
-      // First attempt with the initial token
-      let response = await fetch(`${API_BASE_URL}/posts`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      // Create AbortController for timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for file uploads
+
+      try {
+        // First attempt with the initial token
+        let response = await fetch(`${API_BASE_URL}/posts`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+          signal: controller.signal, // Add abort signal
+        });
+        
+        clearTimeout(timeoutId); // Clear timeout if request completes
 
       // Check if the response is likely an HTML error page
       const contentType = response.headers.get('content-type');
@@ -67,40 +101,63 @@ export const postsApi = {
              errorText.includes('invalid'))) {
               
           console.log('Token expired during file upload, attempting refresh...');
-          const refreshedToken = await getFreshToken();
-          if (refreshedToken) {
-            // Retry the request with the fresh token
-            const retryResponse = await fetch(`${API_BASE_URL}/posts`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${refreshedToken}`,
-              },
-              body: formData,
-            });
-            
-            // Check if retry response is HTML
-            const retryContentType = retryResponse.headers.get('content-type');
-            if (retryContentType && retryContentType.includes('text/html')) {
-              const retryHtmlError = await retryResponse.text();
-              if (retryHtmlError.includes('<!DOCTYPE html') || retryHtmlError.includes('<html')) {
-                throw new Error(`Server error occurred. The server returned an error page instead of a valid response. Error: ${retryHtmlError.substring(0, 200)}...`);
-              }
-            }
-            
-            if (!retryResponse.ok) {
-              const retryErrorText = await retryResponse.text();
-              let retryErrorData;
+          try {
+            const { auth } = await import('../config/firebase');
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+              const refreshedToken = await currentUser.getIdToken(true);
+              localStorage.setItem("token", refreshedToken);
+              
+              // Create new AbortController for retry
+              const retryController = new AbortController();
+              const retryTimeoutId = setTimeout(() => retryController.abort(), 60000);
+              
               try {
-                retryErrorData = JSON.parse(retryErrorText);
-              } catch {
-                retryErrorData = { message: retryErrorText };
+                // Retry the request with the fresh token
+                const retryResponse = await fetch(`${API_BASE_URL}/posts`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${refreshedToken}`,
+                  },
+                  body: formData,
+                  signal: retryController.signal,
+                });
+                
+                clearTimeout(retryTimeoutId);
+                
+                // Check if retry response is HTML
+                const retryContentType = retryResponse.headers.get('content-type');
+                if (retryContentType && retryContentType.includes('text/html')) {
+                  const retryHtmlError = await retryResponse.text();
+                  if (retryHtmlError.includes('<!DOCTYPE html') || retryHtmlError.includes('<html')) {
+                    throw new Error(`Server error occurred. The server returned an error page instead of a valid response. Error: ${retryHtmlError.substring(0, 200)}...`);
+                  }
+                }
+                
+                if (!retryResponse.ok) {
+                  const retryErrorText = await retryResponse.text();
+                  let retryErrorData;
+                  try {
+                    retryErrorData = JSON.parse(retryErrorText);
+                  } catch {
+                    retryErrorData = { message: retryErrorText };
+                  }
+                  throw new Error(retryErrorData.message || `HTTP error! status: ${retryResponse.status}`);
+                }
+                
+                return await retryResponse.json();
+              } catch (retryError) {
+                clearTimeout(retryTimeoutId);
+                if (retryError.name === 'AbortError') {
+                  throw new Error('Request timed out. Please try again with smaller images.');
+                }
+                throw retryError;
               }
-              throw new Error(retryErrorData.message || `HTTP error! status: ${retryResponse.status}`);
+            } else {
+              throw new Error('Token expired and could not be refreshed.');
             }
-            
-            return await retryResponse.json();
-          } else {
-            throw new Error('Token expired and could not be refreshed.');
+          } catch (refreshError) {
+            throw new Error('Token expired and could not be refreshed. Please login again.');
           }
         }
         
@@ -119,17 +176,39 @@ export const postsApi = {
         }
       }
 
+      // If we get here, the response was successful
       // Try to parse response as JSON
       let result;
       try {
         result = await response.json();
+        console.log('Post creation successful, response:', result);
+        return result;
       } catch (parseError) {
         // If JSON parsing fails
+        console.error('Failed to parse response as JSON:', parseError);
         throw new Error('Server returned invalid response. Please try again later.');
       }
-      return result;
+    } catch (fetchError) {
+        clearTimeout(timeoutId); // Ensure timeout is cleared
+        
+        // Check if it's a timeout/abort error
+        if (fetchError.name === 'AbortError' || fetchError.message.includes('aborted')) {
+          throw new Error('Request timed out. Please check your connection and try again. If the problem persists, try uploading smaller images.');
+        }
+        
+        // Re-throw other errors
+        throw fetchError;
+      }
     } catch (error) {
       console.error('Error creating post with files:', error);
+      
+      // Provide user-friendly error messages
+      if (error.message.includes('timeout') || error.message.includes('timed out')) {
+        throw new Error('Request timed out. Please check your connection and try again. If uploading images, try smaller file sizes.');
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      }
+      
       throw error;
     }
   },

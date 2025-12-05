@@ -1,19 +1,35 @@
 const Post = require("../models/posts");
 const Activity = require("../models/Activity");
-const validator = require('validator');
-const cache = require('../utils/cache'); // Using enhanced cache (Redis with memory fallback)
+const validator = require("validator");
+const cache = require("../utils/cache"); // Using enhanced cache (Redis with memory fallback)
 const {
   createLikeNotification,
   createCommentNotification,
 } = require("../utils/notificationUtils");
 const { emitToUser, emitToPost, emitGlobal } = require("../utils/socketUtils");
-const { processUploadedImages, deleteLocalImages } = require("../utils/imageUtils");
-const { sendSuccessResponse, sendErrorResponse } = require("../utils/errorHandler");
+const {
+  processUploadedImages,
+  deleteLocalImages,
+} = require("../utils/imageUtils");
+const {
+  sendSuccessResponse,
+  sendErrorResponse,
+} = require("../utils/errorHandler");
 const path = require("path");
 
 const createPost = async (req, res) => {
   let responseSent = false; // Flag to track if response has been sent
 
+  console.log(
+    "POST /api/v1/posts: Received post creation request for user:",
+    req.user ? req.user._id : "unknown"
+  );
+  if (req.files) {
+    console.log(
+      "POST /api/v1/posts: Number of uploaded files:",
+      req.files.length
+    );
+  }
   try {
     const { title, description, postedBy, location, category } = req.body;
 
@@ -25,53 +41,99 @@ const createPost = async (req, res) => {
     // Sanitize inputs
     const sanitizedTitle = validator.escape(validator.trim(title));
     const sanitizedDescription = validator.escape(validator.trim(description));
-    const sanitizedCategory = category ? validator.escape(validator.trim(category)) : "general";
+    const sanitizedCategory = category
+      ? validator.escape(validator.trim(category))
+      : "general";
 
     // Validate inputs
     if (!validator.isLength(sanitizedTitle, { min: 1, max: 200 })) {
-      return sendErrorResponse(res, 400, "Title must be between 1 and 200 characters");
+      return sendErrorResponse(
+        res,
+        400,
+        "Title must be between 1 and 200 characters"
+      );
     }
 
     if (!validator.isLength(sanitizedDescription, { min: 1, max: 10000 })) {
-      return sendErrorResponse(res, 400, "Description must be between 1 and 10000 characters");
+      return sendErrorResponse(
+        res,
+        400,
+        "Description must be between 1 and 10000 characters"
+      );
     }
 
-    // Parse location if it's a JSON string (FormData sends strings)
-    let parsedLocation = location;
-    if (typeof parsedLocation === "string") {
-      try {
-        parsedLocation = JSON.parse(parsedLocation);
-      } catch (e) {
-        // leave as string; validation will capture missing fields
+    let parsedLocation = null;
+    let lat, lng; // Declare variables outside the conditional block
+
+    // Handle location data in different formats
+    if (location) {
+      // First, try parsing as JSON string (for direct API calls)
+      if (typeof location === "string") {
+        try {
+          parsedLocation = JSON.parse(location);
+        } catch (e) {
+          // If parsing fails, leave as is for later validation checks
+        }
+      } else {
+        // If it's already an object, use it directly
+        parsedLocation = location;
       }
     }
 
-    let lat, lng; // Declare variables outside the conditional block
+    // If location is still not parsed and we have individual coordinates from form data
+    if (
+      !parsedLocation &&
+      req.body["location[latitude]"] !== undefined &&
+      req.body["location[longitude]"] !== undefined
+    ) {
+      // Handle form data format where location fields are separate
+      parsedLocation = {
+        latitude: req.body["location[latitude]"],
+        longitude: req.body["location[longitude]"],
+      };
+    }
+
     // Check if location is provided and validate if it exists
     if (parsedLocation) {
       if (
         typeof parsedLocation.latitude === "undefined" ||
-        typeof parsedLocation.longitude === "undefined"
+        typeof parsedLocation.longitude === "undefined" ||
+        parsedLocation.latitude === null ||
+        parsedLocation.longitude === null
       ) {
-        return sendErrorResponse(res, 400, "Location with latitude and longitude is required");
+        return sendErrorResponse(
+          res,
+          400,
+          "Location with latitude and longitude is required"
+        );
       }
 
       // Validate coordinates are real numbers within valid ranges
       lat = parseFloat(parsedLocation.latitude);
       lng = parseFloat(parsedLocation.longitude);
       if (
-        isNaN(lat) || 
-        isNaN(lng) || 
-        lat < -90 || lat > 90 || 
-        lng < -180 || lng > 180
+        isNaN(lat) ||
+        isNaN(lng) ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180
       ) {
-        return sendErrorResponse(res, 400, "Invalid latitude or longitude values");
+        return sendErrorResponse(
+          res,
+          400,
+          "Invalid latitude or longitude values"
+        );
       }
     }
 
     // Verify that the user is authenticated
     if (!req.user) {
-      return sendErrorResponse(res, 401, "Authentication required to create a post");
+      return sendErrorResponse(
+        res,
+        401,
+        "Authentication required to create a post"
+      );
     }
 
     console.log(
@@ -82,54 +144,76 @@ const createPost = async (req, res) => {
     );
 
     // Process uploaded images using utility - add safety checks
-    let image = null, imagesArr = [];
+    let image = null,
+      imagesArr = [];
     try {
-      ({ image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host") || req.headers.host || 'localhost'));
+      ({ image, imagesArr } = processUploadedImages(
+        req,
+        req.protocol,
+        req.get("host") || req.headers.host || "localhost"
+      ));
     } catch (imageError) {
       console.error("Error processing uploaded images:", imageError);
-      return sendErrorResponse(res, 400, `Error processing uploaded images: ${imageError.message}`);
+      return sendErrorResponse(
+        res,
+        400,
+        `Error processing uploaded images: ${imageError.message}`
+      );
     }
-    
+
     // Add image links if provided in the request body
     if (req.body.imageLinks) {
       try {
-        // Parse imageLinks if it's a string (happens with FormData)
         let imageLinks = req.body.imageLinks;
-        if (typeof imageLinks === 'string') {
+        // If FormData, imageLinks may be a comma-separated string or multiple fields
+        if (typeof imageLinks === "string") {
+          // Try to parse as JSON array first
           try {
             imageLinks = JSON.parse(imageLinks);
           } catch (e) {
-            // If it's not JSON, try to parse as comma-separated string or just wrap in an array
-            if (imageLinks.startsWith('http')) {
+            // If not JSON, split by comma or wrap as array
+            if (imageLinks.startsWith("http")) {
               imageLinks = [imageLinks];
             } else {
-              imageLinks = imageLinks.split(',').map(link => link.trim()).filter(link => link);
+              imageLinks = imageLinks
+                .split(",")
+                .map((link) => link.trim())
+                .filter((link) => link);
             }
           }
         }
-        
+        // If FormData sent multiple imageLinks fields, req.body.imageLinks may be an array
+        if (!Array.isArray(imageLinks) && imageLinks) {
+          imageLinks = [imageLinks];
+        }
         // Convert image links to proper format and add to imagesArr
         if (Array.isArray(imageLinks) && imageLinks.length > 0) {
           const imageLinkObjects = imageLinks
-            .filter(link => typeof link === 'string' && link.startsWith('http'))
-            .map(link => ({ 
-              url: link, 
+            .filter(
+              (link) => typeof link === "string" && link.startsWith("http")
+            )
+            .map((link) => ({
+              url: link,
               publicId: null,
-              source: 'url' // Mark as URL source
+              source: "url", // Mark as URL source
             }));
-          
-          // Add image links to the images array
           imagesArr = [...imagesArr, ...imageLinkObjects];
-          
-          // If image is null and we have image links, set the first one as the main image
           if (!image && imageLinkObjects.length > 0) {
             image = imageLinkObjects[0];
           }
         }
       } catch (error) {
         console.error("Error processing image links:", error);
-        // Continue without image links if there's an error
       }
+    }
+
+    // Require at least one image (file or link)
+    if ((!imagesArr || imagesArr.length === 0) && !image) {
+      return sendErrorResponse(
+        res,
+        400,
+        "At least one image (file or link) is required to create a post."
+      );
     }
 
     // Use authenticated user ID for postedBy (from middleware)
@@ -164,19 +248,25 @@ const createPost = async (req, res) => {
       "by user:",
       req.user._id
     );
+    console.log(
+      "POST /api/v1/posts: Finished post creation for user:",
+      req.user._id
+    );
 
-    // Send success response IMMEDIATELY with basic post data
-    // Populate the postedBy field for response will happen in background
+    // Ensure that all essential data is properly associated before sending response
+    // The most important thing is the post is saved with images; other tasks can be background
+    // Send success response with basic post data
+    // Populate the postedBy field for response
     sendSuccessResponse(res, 201, {
       ...savedPost.toObject(),
       postedBy: {
         _id: req.user._id,
         name: req.user.name,
         email: req.user.email,
-        avatar: req.user.avatar
-      }
+        avatar: req.user.avatar,
+      },
     });
-    
+
     // Set the responseSent flag to true so we don't send another error response
     responseSent = true;
 
@@ -187,22 +277,29 @@ const createPost = async (req, res) => {
         // Log activity
         const activity = new Activity({
           userId: req.user._id,
-          action: 'created post',
-          targetType: 'post',
+          action: "created post",
+          targetType: "post",
           targetId: savedPost._id,
           targetTitle: savedPost.title,
           metadata: {
             title: savedPost.title,
             description: savedPost.description,
-            category: savedPost.category
+            category: savedPost.category,
           },
           ip: req.ip,
-          userAgent: req.get('User-Agent')
+          userAgent: req.get("User-Agent"),
         });
-        await activity.save().catch(err => console.error('Background task error: Error saving activity:', err));
-        console.log('Background task: Activity logged for post', savedPost._id);
+        await activity
+          .save()
+          .catch((err) =>
+            console.error("Background task error: Error saving activity:", err)
+          );
+        console.log("Background task: Activity logged for post", savedPost._id);
       } catch (activityError) {
-        console.error('Background task error: Error saving activity:', activityError);
+        console.error(
+          "Background task error: Error saving activity:",
+          activityError
+        );
       }
 
       try {
@@ -213,27 +310,38 @@ const createPost = async (req, res) => {
             // Use Promise.race with a timeout to prevent hanging
             const result = await Promise.race([
               (async () => {
-                const postCacheKeys = await cache.keys('posts_page_*');
-                const deletePromises = postCacheKeys.map(key => cache.del(key));
+                const postCacheKeys = await cache.keys("posts_page_*");
+                const deletePromises = postCacheKeys.map((key) =>
+                  cache.del(key)
+                );
                 await Promise.all(deletePromises);
-                return 'success';
+                return "success";
               })(),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Cache operation timeout')), 2000) // 2 second timeout
-              )
+              new Promise(
+                (_, reject) =>
+                  setTimeout(
+                    () => reject(new Error("Cache operation timeout")),
+                    2000
+                  ) // 2 second timeout
+              ),
             ]);
-            console.log('Background task: Cache invalidated for posts');
+            console.log("Background task: Cache invalidated for posts");
             return result;
           } catch (cacheError) {
-            console.error('Background task error: Error invalidating cache:', cacheError.message);
+            console.error(
+              "Background task error: Error invalidating cache:",
+              cacheError.message
+            );
             return null;
           }
         };
-        
+
         // Run cache task without waiting to block the event loop
-        cacheTask().catch(err => console.error('Non-blocking cache error:', err));
+        cacheTask().catch((err) =>
+          console.error("Non-blocking cache error:", err)
+        );
       } catch (cacheError) {
-        console.error('Background task error during cache setup:', cacheError);
+        console.error("Background task error during cache setup:", cacheError);
       }
 
       try {
@@ -247,10 +355,10 @@ const createPost = async (req, res) => {
               _id: req.user._id,
               name: req.user.name,
               email: req.user.email,
-              avatar: req.user.avatar
-            }
+              avatar: req.user.avatar,
+            },
           };
-          
+
           // Wrap socket emission in a timeout to prevent hanging
           const socketTask = new Promise((resolve) => {
             try {
@@ -258,22 +366,28 @@ const createPost = async (req, res) => {
                 post: postForSocket,
                 message: "A new post has been created",
               });
-              console.log('Background task: Emitted newPost event via Socket.IO');
+              console.log(
+                "Background task: Emitted newPost event via Socket.IO"
+              );
               resolve();
             } catch (emitError) {
-              console.error('Error in socket emission:', emitError);
+              console.error("Error in socket emission:", emitError);
               resolve(); // Resolve even if there's an error so it doesn't hang
             }
           });
-          
+
           // Run socket task without waiting for it to finish
-          socketTask.catch(err => console.error('Non-blocking socket error:', err));
+          socketTask.catch((err) =>
+            console.error("Non-blocking socket error:", err)
+          );
         }
       } catch (socketError) {
-        console.error('Background task error: Error emitting Socket.IO event:', socketError);
+        console.error(
+          "Background task error: Error emitting Socket.IO event:",
+          socketError
+        );
       }
     });
-
   } catch (error) {
     console.error("Error creating post (main thread):", error);
     console.error("Error details:", error.message, error.code, error.name);
@@ -281,7 +395,8 @@ const createPost = async (req, res) => {
     // Handle specific MongoDB errors
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
-      if (!responseSent && !res.headersSent) { // Prevent error if headers already sent
+      if (!responseSent && !res.headersSent) {
+        // Prevent error if headers already sent
         return sendErrorResponse(res, 400, "Validation error", errors);
       }
     }
@@ -295,7 +410,10 @@ const createPost = async (req, res) => {
         sendErrorResponse(res, 500, error.message);
       } catch (secondaryError) {
         // If we can't even send the error response, log it
-        console.error("Critical error: Could not send error response:", secondaryError);
+        console.error(
+          "Critical error: Could not send error response:",
+          secondaryError
+        );
       }
     }
   }
@@ -309,24 +427,26 @@ const getAllPosts = async (req, res) => {
     const skip = (page - 1) * limit;
 
     // Filtering options
-    const filter = { status: 'published' }; // Only show published posts by default
-    
+    const filter = { status: "published" }; // Only show published posts by default
+
     // Add category filter if provided
     if (req.query.category) {
       filter.category = validator.escape(validator.trim(req.query.category));
     }
-    
+
     // Add search filter if provided
     if (req.query.search) {
       const search = validator.escape(validator.trim(req.query.search));
       filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
       ];
     }
 
     // Create cache key based on query parameters
-    const cacheKey = `posts_page_${page}_limit_${limit}_category_${filter.category || 'all'}_search_${req.query.search || 'none'}`;
+    const cacheKey = `posts_page_${page}_limit_${limit}_category_${
+      filter.category || "all"
+    }_search_${req.query.search || "none"}`;
 
     // Try to get from cache first
     const cachedResult = await cache.get(cacheKey);
@@ -355,17 +475,19 @@ const getAllPosts = async (req, res) => {
         totalPages: Math.ceil(total / limit),
         totalPosts: total,
         hasNext: page * limit < total,
-        hasPrev: page > 1
-      }
+        hasPrev: page > 1,
+      },
     };
 
-    console.log(`Fetched ${posts.length} posts from database, total matching: ${total}`);
-    
+    console.log(
+      `Fetched ${posts.length} posts from database, total matching: ${total}`
+    );
+
     // Cache the result for 5 minutes (300 seconds) for non-search queries
     if (!req.query.search) {
       await cache.set(cacheKey, response, 300); // Cache for 5 minutes
     }
-    
+
     res.status(200).json(response);
   } catch (error) {
     console.error("Error fetching posts:", error);
@@ -424,13 +546,13 @@ const getPostById = async (req, res) => {
     const post = await Post.findById(req.params.id)
       .populate("postedBy", "name email avatar")
       .populate({
-              path: "comments.user",
-              select: "name _id", // Standardize to name and _id
-            })
-              .populate({
-                path: "comments.replies.user",
-                select: "name _id", // Standardize to name and _id
-              }); // Populate the user data for the poster and comments
+        path: "comments.user",
+        select: "name _id", // Standardize to name and _id
+      })
+      .populate({
+        path: "comments.replies.user",
+        select: "name _id", // Standardize to name and _id
+      }); // Populate the user data for the poster and comments
     if (!post) {
       return sendErrorResponse(res, 404, "Post not found");
     }
@@ -460,46 +582,61 @@ const updatePost = async (req, res) => {
     // Delete existing images if new images are being uploaded
     if (req.files && Array.isArray(req.files) && req.files.length > 0) {
       // Delete any existing local files referenced by the post prior to replacing
-      await deleteLocalImages(existingPost.images, path.join(__dirname, "..", "uploads"));
+      await deleteLocalImages(
+        existingPost.images,
+        path.join(__dirname, "..", "uploads")
+      );
     } else if (req.body.image === null || req.body.image === "") {
       // If image is explicitly set to null or empty string, clear it
-      await deleteLocalImages(existingPost.images, path.join(__dirname, "..", "uploads"));
+      await deleteLocalImages(
+        existingPost.images,
+        path.join(__dirname, "..", "uploads")
+      );
     }
 
     // Process uploaded images using utility
-    let { image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host"));
-    
+    let { image, imagesArr } = processUploadedImages(
+      req,
+      req.protocol,
+      req.get("host")
+    );
+
     // Add image links if provided in the request body
     if (req.body.imageLinks) {
       try {
         // Parse imageLinks if it's a string (happens with FormData)
         let imageLinks = req.body.imageLinks;
-        if (typeof imageLinks === 'string') {
+        if (typeof imageLinks === "string") {
           try {
             imageLinks = JSON.parse(imageLinks);
           } catch (e) {
             // If it's not JSON, try to parse as comma-separated string or just wrap in an array
-            if (imageLinks.startsWith('http')) {
+            if (imageLinks.startsWith("http")) {
               imageLinks = [imageLinks];
             } else {
-              imageLinks = imageLinks.split(',').map(link => link.trim()).filter(link => link);
+              imageLinks = imageLinks
+                .split(",")
+                .map((link) => link.trim())
+                .filter((link) => link);
             }
           }
         }
-        
+
         // Convert image links to proper format and add to imagesArr
         if (Array.isArray(imageLinks) && imageLinks.length > 0) {
           const imageLinkObjects = imageLinks
-            .filter(link => typeof link === 'string' && link.startsWith('http'))
-            .map(link => ({ 
-              url: link, 
+            .filter(
+              (link) => typeof link === "string" && link.startsWith("http")
+            )
+            .map((link) => ({
+              url: link,
               publicId: null,
-              source: 'url' // Mark as URL source
+              source: "url", // Mark as URL source
             }));
-          
+
           // Add image links to the images array
           imagesArr = [...imagesArr, ...imageLinkObjects];
-          
+
           // If image is null and we have image links, set the first one as the main image
           if (!image && imageLinkObjects.length > 0) {
             image = imageLinkObjects[0];
@@ -527,7 +664,11 @@ const updatePost = async (req, res) => {
         typeof location.latitude === "undefined" ||
         typeof location.longitude === "undefined"
       ) {
-        return sendErrorResponse(res, 400, "Location with latitude and longitude is required");
+        return sendErrorResponse(
+          res,
+          400,
+          "Location with latitude and longitude is required"
+        );
       }
       updateData.location = {
         type: "Point",
@@ -549,7 +690,7 @@ const updatePost = async (req, res) => {
 
     // Clear related caches
     // Invalidation: Remove any posts cache that might contain this updated post
-    const postCacheKeys = await cache.keys('posts_page_*');
+    const postCacheKeys = await cache.keys("posts_page_*");
     for (const key of postCacheKeys) {
       await cache.del(key);
     }
@@ -589,14 +730,17 @@ const deletePost = async (req, res) => {
     await deleteLocalImages(post.images, path.join(__dirname, "..", "uploads"));
     if (post.image && post.image.localPath) {
       // Fallback for posts using legacy single image field stored locally
-      await deleteLocalImages([post.image], path.join(__dirname, "..", "uploads"));
+      await deleteLocalImages(
+        [post.image],
+        path.join(__dirname, "..", "uploads")
+      );
     }
 
     await Post.findByIdAndDelete(req.params.id);
 
     // Clear related caches
     // Invalidation: Remove any posts cache that might contain this deleted post
-    const postCacheKeys = await cache.keys('posts_page_*');
+    const postCacheKeys = await cache.keys("posts_page_*");
     for (const key of postCacheKeys) {
       await cache.del(key);
     }
@@ -646,7 +790,7 @@ const likePost = async (req, res) => {
         postId: post._id,
         likes: post.likes,
         likesCount: post.likesCount,
-        message: "Post already liked"
+        message: "Post already liked",
       });
     }
 
@@ -660,20 +804,20 @@ const likePost = async (req, res) => {
     try {
       const activity = new Activity({
         userId: req.user._id,
-        action: 'liked post',
-        targetType: 'post',
+        action: "liked post",
+        targetType: "post",
         targetId: post._id,
         targetTitle: post.title,
         metadata: {
           postTitle: post.title,
-          postDescription: post.description
+          postDescription: post.description,
         },
         ip: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get("User-Agent"),
       });
       await activity.save();
     } catch (activityError) {
-      console.error('Error saving activity:', activityError);
+      console.error("Error saving activity:", activityError);
       // Don't fail the main request if activity logging fails
     }
 
@@ -735,7 +879,7 @@ const unlikePost = async (req, res) => {
         postId: post._id,
         likes: post.likes,
         likesCount: post.likesCount,
-        message: "Post was not liked"
+        message: "Post was not liked",
       });
     }
 
@@ -751,20 +895,20 @@ const unlikePost = async (req, res) => {
     try {
       const activity = new Activity({
         userId: req.user._id,
-        action: 'unliked post',
-        targetType: 'post',
+        action: "unliked post",
+        targetType: "post",
         targetId: post._id,
         targetTitle: post.title,
         metadata: {
           postTitle: post.title,
-          postDescription: post.description
+          postDescription: post.description,
         },
         ip: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get("User-Agent"),
       });
       await activity.save();
     } catch (activityError) {
-      console.error('Error saving activity:', activityError);
+      console.error("Error saving activity:", activityError);
       // Don't fail the main request if activity logging fails
     }
 
@@ -921,21 +1065,21 @@ const addComment = async (req, res) => {
     try {
       const activity = new Activity({
         userId: req.user._id,
-        action: 'commented on post',
-        targetType: 'comment',
+        action: "commented on post",
+        targetType: "comment",
         targetId: newComment._id, // Using newComment._id which will be set by MongoDB
-        targetTitle: text.substring(0, 50) + (text.length > 50 ? '...' : ''), // First 50 chars of comment
+        targetTitle: text.substring(0, 50) + (text.length > 50 ? "..." : ""), // First 50 chars of comment
         metadata: {
           commentText: text,
           postId: post._id,
-          postTitle: post.title
+          postTitle: post.title,
         },
         ip: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get("User-Agent"),
       });
       await activity.save();
     } catch (activityError) {
-      console.error('Error saving activity:', activityError);
+      console.error("Error saving activity:", activityError);
       // Don't fail the main request if activity logging fails
     }
 
@@ -1033,13 +1177,15 @@ const updateComment = async (req, res) => {
     await post.save();
 
     // Populate the user info for the returned comment
-    const populatedPost = await post.populate({
-      path: "comments.user",
-      select: "name _id", // Explicitly select name and _id
-    }).populate({
-      path: "comments.replies.user",
-      select: "name _id", // Explicitly select name and _id
-    });
+    const populatedPost = await post
+      .populate({
+        path: "comments.user",
+        select: "name _id", // Explicitly select name and _id
+      })
+      .populate({
+        path: "comments.replies.user",
+        select: "name _id", // Explicitly select name and _id
+      });
 
     const updatedComment = populatedPost.comments.find(
       (c) => c._id.toString() === commentId
@@ -1131,16 +1277,16 @@ const getComments = async (req, res) => {
       });
     }
 
-          // Populate user info for all comments on the fetched post object
-          const populatedPost = await post
-            .populate({
-              path: "comments.user",
-              select: "name _id", // Explicitly select name and _id for comment users
-            })
-            .populate({
-              path: "comments.replies.user",
-              select: "name _id", // Explicitly select name and _id for reply users
-            });
+    // Populate user info for all comments on the fetched post object
+    const populatedPost = await post
+      .populate({
+        path: "comments.user",
+        select: "name _id", // Explicitly select name and _id for comment users
+      })
+      .populate({
+        path: "comments.replies.user",
+        select: "name _id", // Explicitly select name and _id for reply users
+      });
     res.status(200).json({
       status: "success",
       data: populatedPost.comments,
@@ -1168,10 +1314,11 @@ const likeComment = async (req, res) => {
     }
 
     // Find the comment index - ensure comments exist before calling findIndex
-    const commentIndex = post.comments && post.comments.findIndex 
-      ? post.comments.findIndex(c => c._id.toString() === commentId)
-      : -1;
-      
+    const commentIndex =
+      post.comments && post.comments.findIndex
+        ? post.comments.findIndex((c) => c._id.toString() === commentId)
+        : -1;
+
     if (commentIndex === -1) {
       return sendErrorResponse(res, 404, "Comment not found");
     }
@@ -1179,11 +1326,12 @@ const likeComment = async (req, res) => {
     const comment = post.comments[commentIndex];
 
     // Check if user already liked this comment - ensure likes array exists
-    const userLikeIndex = comment.likes && comment.likes.findIndex
-      ? comment.likes.findIndex(
-          (like) => like.user.toString() === req.user._id.toString()
-        )
-      : -1;
+    const userLikeIndex =
+      comment.likes && comment.likes.findIndex
+        ? comment.likes.findIndex(
+            (like) => like.user.toString() === req.user._id.toString()
+          )
+        : -1;
 
     if (userLikeIndex !== -1) {
       // User has already liked, so remove the like (toggle off)
@@ -1192,20 +1340,22 @@ const likeComment = async (req, res) => {
       // User has not liked, so add the like (toggle on)
       comment.likes.push({ user: req.user._id });
     }
-    
+
     // Update likes count
     comment.likesCount = comment.likes.length;
 
     await post.save();
 
     // Populate the updated comment with user info
-    const updatedPost = await Post.findById(postId).populate({
-      path: "comments.user",
-      select: "name _id", // Standardize to name and _id
-    }).populate({
-      path: "comments.replies.user",
-      select: "name _id", // Standardize to name and _id
-    });
+    const updatedPost = await Post.findById(postId)
+      .populate({
+        path: "comments.user",
+        select: "name _id", // Standardize to name and _id
+      })
+      .populate({
+        path: "comments.replies.user",
+        select: "name _id", // Standardize to name and _id
+      });
 
     const updatedComment = updatedPost.comments.id(commentId);
 
@@ -1262,13 +1412,15 @@ const replyToComment = async (req, res) => {
     await post.save();
 
     // Populate the updated comment with user info
-    const updatedPost = await Post.findById(postId).populate({
-      path: "comments.user",
-      select: "name _id", // Standardize to name and _id
-    }).populate({
-      path: "comments.replies.user",
-      select: "name _id", // Standardize to name and _id
-    });
+    const updatedPost = await Post.findById(postId)
+      .populate({
+        path: "comments.user",
+        select: "name _id", // Standardize to name and _id
+      })
+      .populate({
+        path: "comments.replies.user",
+        select: "name _id", // Standardize to name and _id
+      });
 
     const updatedComment = updatedPost.comments.id(commentId);
 
@@ -1293,8 +1445,17 @@ const replyToComment = async (req, res) => {
 // @access  Public
 const searchPosts = async (req, res) => {
   try {
-    const { q, category, limit = 10, page = 1, sortBy = 'relevance', radius = 50, latitude, longitude } = req.query;
-    
+    const {
+      q,
+      category,
+      limit = 10,
+      page = 1,
+      sortBy = "relevance",
+      radius = 50,
+      latitude,
+      longitude,
+    } = req.query;
+
     // Validate and convert parameters
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
@@ -1303,7 +1464,7 @@ const searchPosts = async (req, res) => {
     const lng = parseFloat(longitude);
 
     // Build search query
-    let query = { status: 'published' }; // Only published posts
+    let query = { status: "published" }; // Only published posts
 
     // Text search in title, description, category, and tags with fuzzy matching
     if (q) {
@@ -1312,7 +1473,7 @@ const searchPosts = async (req, res) => {
     }
 
     // Filter by category if provided
-    if (category && category !== 'all') {
+    if (category && category !== "all") {
       query.category = { $regex: category, $options: "i" };
     }
 
@@ -1340,43 +1501,56 @@ const searchPosts = async (req, res) => {
           // Calculate text score for relevance if using text search
           textScore: { $meta: "textScore" },
           // Calculate distance if location provided
-          distance: lat && lng ? {
-            $sqrt: {
-              $add: [
-                { $pow: [{ $subtract: ["$location.coordinates.1", lat] }, 2] },
-                { $pow: [{ $subtract: ["$location.coordinates.0", lng] }, 2] }
-              ]
-            }
-          } : null
-        }
-      }
+          distance:
+            lat && lng
+              ? {
+                  $sqrt: {
+                    $add: [
+                      {
+                        $pow: [
+                          { $subtract: ["$location.coordinates.1", lat] },
+                          2,
+                        ],
+                      },
+                      {
+                        $pow: [
+                          { $subtract: ["$location.coordinates.0", lng] },
+                          2,
+                        ],
+                      },
+                    ],
+                  },
+                }
+              : null,
+        },
+      },
     ];
 
     // Add sorting based on parameter
     let sort = {};
     switch (sortBy) {
-      case 'relevance':
+      case "relevance":
         if (q) {
           sort.textScore = { $meta: "textScore" };
         } else {
           sort.datePosted = -1; // Default to newest if no search query
         }
         break;
-      case 'newest':
+      case "newest":
         sort.datePosted = -1;
         break;
-      case 'oldest':
+      case "oldest":
         sort.datePosted = 1;
         break;
-      case 'rating':
+      case "rating":
         sort.averageRating = -1;
         sort.totalRatings = -1;
         break;
-      case 'popular':
+      case "popular":
         sort.totalRatings = -1;
         sort.averageRating = -1;
         break;
-      case 'distance':
+      case "distance":
         if (lat && lng) {
           sort.distance = 1; // Closest first
         } else {
@@ -1397,31 +1571,31 @@ const searchPosts = async (req, res) => {
           from: "users",
           localField: "postedBy",
           foreignField: "_id",
-          as: "postedBy"
-        }
+          as: "postedBy",
+        },
       },
       {
         $lookup: {
           from: "users",
           localField: "comments.user",
           foreignField: "_id",
-          as: "commentUsers"
-        }
+          as: "commentUsers",
+        },
       },
       {
         $addFields: {
-          "postedBy": {
+          postedBy: {
             $map: {
               input: "$postedBy",
               as: "user",
               in: {
                 _id: "$$user._id",
                 name: "$$user.name",
-                avatar: "$$user.avatar"
-              }
-            }
+                avatar: "$$user.avatar",
+              },
+            },
           },
-          "comments": {
+          comments: {
             $map: {
               input: "$comments",
               as: "comment",
@@ -1434,17 +1608,17 @@ const searchPosts = async (req, res) => {
                     {
                       $filter: {
                         input: "$commentUsers",
-                        cond: { $eq: ["$$this._id", "$$comment.user"] }
-                      }
+                        cond: { $eq: ["$$this._id", "$$comment.user"] },
+                      },
                     },
-                    0
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
     ]);
 
     // Execute search with aggregation
@@ -1454,7 +1628,7 @@ const searchPosts = async (req, res) => {
     const total = await Post.countDocuments(query);
 
     // Add distance to response if location was provided
-    const processedPosts = posts.map(post => {
+    const processedPosts = posts.map((post) => {
       const processedPost = { ...post };
       if (post.distance !== undefined && post.distance !== null) {
         processedPost.distance = parseFloat(post.distance.toFixed(2)); // Round to 2 decimal places
@@ -1506,35 +1680,35 @@ const getNearbyPosts = async (req, res) => {
         $geoNear: {
           near: {
             type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)]
+            coordinates: [parseFloat(longitude), parseFloat(latitude)],
           },
           distanceField: "distance",
           maxDistance: radiusInMeters,
           spherical: true,
-          limit: parseInt(limit)
-        }
+          limit: parseInt(limit),
+        },
       },
       {
         $lookup: {
           from: "users",
           localField: "postedBy",
           foreignField: "_id",
-          as: "postedBy"
-        }
+          as: "postedBy",
+        },
       },
       {
         $lookup: {
           from: "users",
           localField: "comments.user",
           foreignField: "_id",
-          as: "comments.user"
-        }
+          as: "comments.user",
+        },
       },
       {
         $addFields: {
-          postedBy: { $arrayElemAt: ["$postedBy", 0] }
-        }
-      }
+          postedBy: { $arrayElemAt: ["$postedBy", 0] },
+        },
+      },
     ]);
 
     res.status(200).json({
@@ -1550,99 +1724,134 @@ const getNearbyPosts = async (req, res) => {
   }
 };
 
-const geolocationService = require('../services/geolocationService');
+const geolocationService = require("../services/geolocationService");
 
 // @desc    Global search across all locations with enhanced capabilities
 // @route   GET /api/v1/posts/global-search
 // @access  Public
 const globalSearch = async (req, res) => {
   try {
-    const { q, category, limit = 20, page = 1, sortBy = 'relevance', tags } = req.query;
-    
+    const {
+      q,
+      category,
+      limit = 20,
+      page = 1,
+      sortBy = "relevance",
+      tags,
+    } = req.query;
+
     // Validate and convert parameters
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 20;
-    
+
     // Calculate pagination
     const skip = (pageNum - 1) * limitNum;
 
     // First, search posts in the database
-    let postQuery = { status: 'published' }; // Only published posts
+    let postQuery = { status: "published" }; // Only published posts
 
     // Text search in title, description, category, and tags
     if (q) {
       // Create variations of the query to improve matching (e.g. "Germany" vs "Deutschland")
       let searchPattern = q;
-      
-      if (q.toLowerCase() === 'germany') searchPattern = '(germany|deutschland)';
-      else if (q.toLowerCase() === 'deutschland') searchPattern = '(germany|deutschland)';
-      else if (q.toLowerCase() === 'united states') searchPattern = '(united states|usa|us|america)';
-      else if (q.toLowerCase() === 'usa' || q.toLowerCase() === 'us') searchPattern = '(united states|usa|us|america)';
-      else if (q.toLowerCase() === 'united kingdom') searchPattern = '(united kingdom|uk|britain)';
-      else if (q.toLowerCase() === 'uk' || q.toLowerCase() === 'britain') searchPattern = '(united kingdom|uk|britain)';
-      
+
+      if (q.toLowerCase() === "germany")
+        searchPattern = "(germany|deutschland)";
+      else if (q.toLowerCase() === "deutschland")
+        searchPattern = "(germany|deutschland)";
+      else if (q.toLowerCase() === "united states")
+        searchPattern = "(united states|usa|us|america)";
+      else if (q.toLowerCase() === "usa" || q.toLowerCase() === "us")
+        searchPattern = "(united states|usa|us|america)";
+      else if (q.toLowerCase() === "united kingdom")
+        searchPattern = "(united kingdom|uk|britain)";
+      else if (q.toLowerCase() === "uk" || q.toLowerCase() === "britain")
+        searchPattern = "(united kingdom|uk|britain)";
+
       postQuery.$or = [
-        { title: { $regex: searchPattern, $options: 'i' } },
-        { description: { $regex: searchPattern, $options: 'i' } },
-        { category: { $regex: searchPattern, $options: 'i' } }
+        { title: { $regex: searchPattern, $options: "i" } },
+        { description: { $regex: searchPattern, $options: "i" } },
+        { category: { $regex: searchPattern, $options: "i" } },
       ];
-      
+
       // If tags exist, include them in search
-      postQuery.$or.push({ tags: { $regex: searchPattern, $options: 'i' } });
+      postQuery.$or.push({ tags: { $regex: searchPattern, $options: "i" } });
     }
 
     // Filter by category if provided
-    if (category && category !== 'all') {
+    if (category && category !== "all") {
       postQuery.category = { $regex: category, $options: "i" };
     }
 
     // Filter by tags if provided
     if (tags) {
-      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+      const tagArray = Array.isArray(tags) ? tags : tags.split(",");
       postQuery.tags = { $in: tagArray };
     }
 
     // Build aggregation pipeline for posts
-    const pipeline = [
-      { $match: postQuery }
-    ];
-    
+    const pipeline = [{ $match: postQuery }];
+
     // Add relevance scoring if query term exists
     if (q) {
       // Create a regex pattern that includes query variants for scoring calculation
       let searchPattern = q.toLowerCase();
-      
-      if (q.toLowerCase() === 'germany') searchPattern = '(germany|deutschland)';
-      else if (q.toLowerCase() === 'deutschland') searchPattern = '(germany|deutschland)';
-      else if (q.toLowerCase() === 'united states') searchPattern = '(united states|usa|us|america)';
-      else if (q.toLowerCase() === 'usa' || q.toLowerCase() === 'us') searchPattern = '(united states|usa|us|america)';
-      else if (q.toLowerCase() === 'united kingdom') searchPattern = '(united kingdom|uk|britain)';
-      else if (q.toLowerCase() === 'uk' || q.toLowerCase() === 'britain') searchPattern = '(united kingdom|uk|britain)';
-      
+
+      if (q.toLowerCase() === "germany")
+        searchPattern = "(germany|deutschland)";
+      else if (q.toLowerCase() === "deutschland")
+        searchPattern = "(germany|deutschland)";
+      else if (q.toLowerCase() === "united states")
+        searchPattern = "(united states|usa|us|america)";
+      else if (q.toLowerCase() === "usa" || q.toLowerCase() === "us")
+        searchPattern = "(united states|usa|us|america)";
+      else if (q.toLowerCase() === "united kingdom")
+        searchPattern = "(united kingdom|uk|britain)";
+      else if (q.toLowerCase() === "uk" || q.toLowerCase() === "britain")
+        searchPattern = "(united kingdom|uk|britain)";
+
       pipeline.push({
         $addFields: {
           relevanceScore: {
             $add: [
               {
                 $cond: {
-                  if: { $regexMatch: { input: "$title", regex: searchPattern, options: "i" } },
+                  if: {
+                    $regexMatch: {
+                      input: "$title",
+                      regex: searchPattern,
+                      options: "i",
+                    },
+                  },
                   then: 10,
-                  else: 0
-                }
+                  else: 0,
+                },
               },
               {
                 $cond: {
-                  if: { $regexMatch: { input: "$description", regex: searchPattern, options: "i" } },
+                  if: {
+                    $regexMatch: {
+                      input: "$description",
+                      regex: searchPattern,
+                      options: "i",
+                    },
+                  },
                   then: 5,
-                  else: 0
-                }
+                  else: 0,
+                },
               },
               {
                 $cond: {
-                  if: { $regexMatch: { input: "$category", regex: searchPattern, options: "i" } },
+                  if: {
+                    $regexMatch: {
+                      input: "$category",
+                      regex: searchPattern,
+                      options: "i",
+                    },
+                  },
                   then: 3,
-                  else: 0
-                }
+                  else: 0,
+                },
               },
               {
                 $cond: {
@@ -1655,66 +1864,73 @@ const globalSearch = async (req, res) => {
                           $map: {
                             input: "$tags",
                             as: "tag",
-                            in: { $regexMatch: { input: "$$tag", regex: searchPattern, options: "i" } }
-                          }
-                        }
-                      }
-                    ]
+                            in: {
+                              $regexMatch: {
+                                input: "$$tag",
+                                regex: searchPattern,
+                                options: "i",
+                              },
+                            },
+                          },
+                        },
+                      },
+                    ],
                   },
                   then: 2,
-                  else: 0
-                }
-              }
-            ]
-          }
-        }
+                  else: 0,
+                },
+              },
+            ],
+          },
+        },
       });
     } else {
       pipeline.push({
         $addFields: {
-          relevanceScore: 0
-        }
+          relevanceScore: 0,
+        },
       });
     }
-    
+
     // Add sorting based on parameter
-    if (sortBy === 'relevance' && q) {
+    if (sortBy === "relevance" && q) {
       pipeline.push({ $sort: { relevanceScore: -1, datePosted: -1 } });
-    } else if (sortBy === 'newest') {
+    } else if (sortBy === "newest") {
       pipeline.push({ $sort: { datePosted: -1 } });
-    } else if (sortBy === 'oldest') {
+    } else if (sortBy === "oldest") {
       pipeline.push({ $sort: { datePosted: 1 } });
-    } else if (sortBy === 'rating') {
+    } else if (sortBy === "rating") {
       pipeline.push({ $sort: { averageRating: -1, totalRatings: -1 } });
-    } else if (sortBy === 'popular') {
+    } else if (sortBy === "popular") {
       pipeline.push({ $sort: { totalRatings: -1, averageRating: -1 } });
-    } else { // Default
+    } else {
+      // Default
       pipeline.push({ $sort: { datePosted: -1 } });
     }
-    
+
     // Add populate
     pipeline.push({
       $lookup: {
         from: "users",
         localField: "postedBy",
         foreignField: "_id",
-        as: "postedBy"
-      }
+        as: "postedBy",
+      },
     });
-    
+
     // Project to shape the data properly
     pipeline.push({
       $addFields: {
-        postedBy: { $arrayElemAt: ["$postedBy", 0] }
-      }
+        postedBy: { $arrayElemAt: ["$postedBy", 0] },
+      },
     });
-    
+
     // Count total for pagination
     const total = await Post.countDocuments(postQuery);
-    
+
     // Add pagination
     pipeline.push({ $skip: skip }, { $limit: limitNum });
-    
+
     const posts = await Post.aggregate(pipeline);
 
     // If query term exists, also search globally using external services
@@ -1729,9 +1945,9 @@ const globalSearch = async (req, res) => {
         posts: posts,
         globalLocations: globalLocations, // Include global search results
         suggestions: {
-          query: q || '',
+          query: q || "",
           postCount: posts.length,
-          globalLocationCount: globalLocations.length
+          globalLocationCount: globalLocations.length,
         },
         pagination: {
           currentPage: pageNum,
@@ -1756,62 +1972,72 @@ const globalSearch = async (req, res) => {
 // @access  Public
 const advancedSearch = async (req, res) => {
   try {
-    const { q, category, limit = 20, page = 1, sortBy = 'relevance', radius = 50, latitude, longitude, tags } = req.query;
-    
+    const {
+      q,
+      category,
+      limit = 20,
+      page = 1,
+      sortBy = "relevance",
+      radius = 50,
+      latitude,
+      longitude,
+      tags,
+    } = req.query;
+
     // Validate and convert parameters
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 20;
     const radiusNum = parseFloat(radius) || 50;
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
-    
+
     // Calculate pagination
     const skip = (pageNum - 1) * limitNum;
 
     // Build search query
-    let query = { status: 'published' }; // Only published posts
+    let query = { status: "published" }; // Only published posts
 
     // Text search in title, description, category, and tags
     if (q) {
       // Use MongoDB text search or regex-based search
       query.$or = [
-        { title: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } },
-        { category: { $regex: q, $options: 'i' } }
+        { title: { $regex: q, $options: "i" } },
+        { description: { $regex: q, $options: "i" } },
+        { category: { $regex: q, $options: "i" } },
       ];
-      
+
       // If tags exist, include them in search
-      query.$or.push({ tags: { $regex: q, $options: 'i' } });
+      query.$or.push({ tags: { $regex: q, $options: "i" } });
     }
 
     // Filter by category if provided
-    if (category && category !== 'all') {
+    if (category && category !== "all") {
       query.category = { $regex: category, $options: "i" };
     }
 
     // Filter by tags if provided
     if (tags) {
-      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+      const tagArray = Array.isArray(tags) ? tags : tags.split(",");
       query.tags = { $in: tagArray };
     }
 
     let result;
     let total;
-    
+
     // Location-based search if coordinates provided
     if (lat && lng) {
       // For $geoNear, we can't use $or with text search, so create a separate query
       // without the text search conditions ($or array)
-      let geoQuery = { status: 'published' }; // Start with basic published filter
-      
+      let geoQuery = { status: "published" }; // Start with basic published filter
+
       // Add category filter if provided
-      if (category && category !== 'all') {
+      if (category && category !== "all") {
         geoQuery.category = { $regex: category, $options: "i" };
       }
-      
+
       // Add tags filter if provided
       if (tags) {
-        const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+        const tagArray = Array.isArray(tags) ? tags : tags.split(",");
         geoQuery.tags = { $in: tagArray };
       }
 
@@ -1821,17 +2047,17 @@ const advancedSearch = async (req, res) => {
           $geoNear: {
             near: {
               type: "Point",
-              coordinates: [lng, lat]
+              coordinates: [lng, lat],
             },
             distanceField: "distanceFromCenter",
             maxDistance: radiusNum * 1000, // Convert km to meters
             spherical: true,
             query: geoQuery, // Use simplified query that works with $geoNear
-            key: "location" // Specify the field with the geospatial index
-          }
-        }
+            key: "location", // Specify the field with the geospatial index
+          },
+        },
       ];
-      
+
       // Add relevance scoring if query term exists
       if (q) {
         const queryLower = q.toLowerCase();
@@ -1841,24 +2067,42 @@ const advancedSearch = async (req, res) => {
               $add: [
                 {
                   $cond: {
-                    if: { $regexMatch: { input: "$title", regex: queryLower, options: "i" } },
+                    if: {
+                      $regexMatch: {
+                        input: "$title",
+                        regex: queryLower,
+                        options: "i",
+                      },
+                    },
                     then: 10,
-                    else: 0
-                  }
+                    else: 0,
+                  },
                 },
                 {
                   $cond: {
-                    if: { $regexMatch: { input: "$description", regex: queryLower, options: "i" } },
+                    if: {
+                      $regexMatch: {
+                        input: "$description",
+                        regex: queryLower,
+                        options: "i",
+                      },
+                    },
                     then: 5,
-                    else: 0
-                  }
+                    else: 0,
+                  },
                 },
                 {
                   $cond: {
-                    if: { $regexMatch: { input: "$category", regex: queryLower, options: "i" } },
+                    if: {
+                      $regexMatch: {
+                        input: "$category",
+                        regex: queryLower,
+                        options: "i",
+                      },
+                    },
                     then: 3,
-                    else: 0
-                  }
+                    else: 0,
+                  },
                 },
                 {
                   $cond: {
@@ -1871,75 +2115,80 @@ const advancedSearch = async (req, res) => {
                             $map: {
                               input: "$tags",
                               as: "tag",
-                              in: { $regexMatch: { input: "$$tag", regex: queryLower, options: "i" } }
-                            }
-                          }
-                        }
-                      ]
+                              in: {
+                                $regexMatch: {
+                                  input: "$$tag",
+                                  regex: queryLower,
+                                  options: "i",
+                                },
+                              },
+                            },
+                          },
+                        },
+                      ],
                     },
                     then: 2,
-                    else: 0
-                  }
-                }
-              ]
-            }
-          }
+                    else: 0,
+                  },
+                },
+              ],
+            },
+          },
         });
       } else {
         pipeline.push({
           $addFields: {
-            relevanceScore: 0
-          }
+            relevanceScore: 0,
+          },
         });
       }
-      
+
       // Add sorting based on parameter
-      if (sortBy === 'distance') {
+      if (sortBy === "distance") {
         // Already sorted by distance from $geoNear
-      } else if (sortBy === 'relevance' && q) {
+      } else if (sortBy === "relevance" && q) {
         pipeline.push({ $sort: { relevanceScore: -1, datePosted: -1 } });
-      } else if (sortBy === 'newest') {
+      } else if (sortBy === "newest") {
         pipeline.push({ $sort: { datePosted: -1 } });
-      } else if (sortBy === 'oldest') {
+      } else if (sortBy === "oldest") {
         pipeline.push({ $sort: { datePosted: 1 } });
-      } else if (sortBy === 'rating') {
+      } else if (sortBy === "rating") {
         pipeline.push({ $sort: { averageRating: -1, totalRatings: -1 } });
-      } else if (sortBy === 'popular') {
+      } else if (sortBy === "popular") {
         pipeline.push({ $sort: { totalRatings: -1, averageRating: -1 } });
-      } else { // Default
+      } else {
+        // Default
         pipeline.push({ $sort: { datePosted: -1 } });
       }
-      
+
       // Add populate by referencing the user in a separate step or using lookup
       pipeline.push({
         $lookup: {
           from: "users",
           localField: "postedBy",
           foreignField: "_id",
-          as: "postedBy"
-        }
+          as: "postedBy",
+        },
       });
-      
+
       // Project to shape the data properly
       pipeline.push({
         $addFields: {
-          postedBy: { $arrayElemAt: ["$postedBy", 0] }
-        }
+          postedBy: { $arrayElemAt: ["$postedBy", 0] },
+        },
       });
-      
+
       // Count total for pagination - use geoQuery for geospatial case
       total = await Post.countDocuments(geoQuery);
-      
+
       // Add pagination
       pipeline.push({ $skip: skip }, { $limit: limitNum });
-      
+
       result = await Post.aggregate(pipeline);
     } else {
       // For non-geospatial searches, use aggregation pipeline for consistency
-      const pipeline = [
-        { $match: query }
-      ];
-      
+      const pipeline = [{ $match: query }];
+
       // Add relevance scoring if query term exists
       if (q) {
         const queryLower = q.toLowerCase();
@@ -1949,24 +2198,42 @@ const advancedSearch = async (req, res) => {
               $add: [
                 {
                   $cond: {
-                    if: { $regexMatch: { input: "$title", regex: queryLower, options: "i" } },
+                    if: {
+                      $regexMatch: {
+                        input: "$title",
+                        regex: queryLower,
+                        options: "i",
+                      },
+                    },
                     then: 10,
-                    else: 0
-                  }
+                    else: 0,
+                  },
                 },
                 {
                   $cond: {
-                    if: { $regexMatch: { input: "$description", regex: queryLower, options: "i" } },
+                    if: {
+                      $regexMatch: {
+                        input: "$description",
+                        regex: queryLower,
+                        options: "i",
+                      },
+                    },
                     then: 5,
-                    else: 0
-                  }
+                    else: 0,
+                  },
                 },
                 {
                   $cond: {
-                    if: { $regexMatch: { input: "$category", regex: queryLower, options: "i" } },
+                    if: {
+                      $regexMatch: {
+                        input: "$category",
+                        regex: queryLower,
+                        options: "i",
+                      },
+                    },
                     then: 3,
-                    else: 0
-                  }
+                    else: 0,
+                  },
                 },
                 {
                   $cond: {
@@ -1979,92 +2246,103 @@ const advancedSearch = async (req, res) => {
                             $map: {
                               input: "$tags",
                               as: "tag",
-                              in: { $regexMatch: { input: "$$tag", regex: queryLower, options: "i" } }
-                            }
-                          }
-                        }
-                      ]
+                              in: {
+                                $regexMatch: {
+                                  input: "$$tag",
+                                  regex: queryLower,
+                                  options: "i",
+                                },
+                              },
+                            },
+                          },
+                        },
+                      ],
                     },
                     then: 2,
-                    else: 0
-                  }
-                }
-              ]
-            }
-          }
+                    else: 0,
+                  },
+                },
+              ],
+            },
+          },
         });
       } else {
         pipeline.push({
           $addFields: {
-            relevanceScore: 0
-          }
+            relevanceScore: 0,
+          },
         });
       }
-      
+
       // Add sorting based on parameter
-      if (sortBy === 'relevance' && q) {
+      if (sortBy === "relevance" && q) {
         pipeline.push({ $sort: { relevanceScore: -1, datePosted: -1 } });
-      } else if (sortBy === 'newest') {
+      } else if (sortBy === "newest") {
         pipeline.push({ $sort: { datePosted: -1 } });
-      } else if (sortBy === 'oldest') {
+      } else if (sortBy === "oldest") {
         pipeline.push({ $sort: { datePosted: 1 } });
-      } else if (sortBy === 'rating') {
+      } else if (sortBy === "rating") {
         pipeline.push({ $sort: { averageRating: -1, totalRatings: -1 } });
-      } else if (sortBy === 'popular') {
+      } else if (sortBy === "popular") {
         pipeline.push({ $sort: { totalRatings: -1, averageRating: -1 } });
-      } else { // Default
+      } else {
+        // Default
         pipeline.push({ $sort: { datePosted: -1 } });
       }
-      
+
       // Add populate
       pipeline.push({
         $lookup: {
           from: "users",
           localField: "postedBy",
           foreignField: "_id",
-          as: "postedBy"
-        }
+          as: "postedBy",
+        },
       });
-      
+
       // Project to shape the data properly
       pipeline.push({
         $addFields: {
-          postedBy: { $arrayElemAt: ["$postedBy", 0] }
-        }
+          postedBy: { $arrayElemAt: ["$postedBy", 0] },
+        },
       });
-      
+
       // Count total for pagination
       total = await Post.countDocuments(query);
-      
+
       // Add pagination
       pipeline.push({ $skip: skip }, { $limit: limitNum });
-      
+
       result = await Post.aggregate(pipeline);
     }
 
     // Calculate distance for each post if location provided
-    const processedPosts = result.map(post => {
+    const processedPosts = result.map((post) => {
       // Calculate distance if location provided and not already calculated
       if (lat && lng && post.location && post.location.coordinates) {
         // If using geoNear, distance is calculated by MongoDB as distanceFromCenter
         if (post.distanceFromCenter !== undefined) {
-          post.distance = parseFloat((post.distanceFromCenter / 1000).toFixed(2)); // Convert meters to km
+          post.distance = parseFloat(
+            (post.distanceFromCenter / 1000).toFixed(2)
+          ); // Convert meters to km
         } else {
           // Calculate distance manually if not using geoNear
           const [postLng, postLat] = post.location.coordinates;
           const R = 6371; // Earth's radius in km
-          const dLat = (postLat - lat) * Math.PI / 180;
-          const dLon = (postLng - lng) * Math.PI / 180;
-          const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat * Math.PI / 180) * Math.cos(postLat * Math.PI / 180) * 
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const dLat = ((postLat - lat) * Math.PI) / 180;
+          const dLon = ((postLng - lng) * Math.PI) / 180;
+          const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((lat * Math.PI) / 180) *
+              Math.cos((postLat * Math.PI) / 180) *
+              Math.sin(dLon / 2) *
+              Math.sin(dLon / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
           const distance = R * c; // Distance in km
           post.distance = parseFloat(distance.toFixed(2));
         }
       }
-      
+
       return post;
     });
 
@@ -2080,8 +2358,8 @@ const advancedSearch = async (req, res) => {
         posts: processedPosts,
         globalLocations: globalLocations, // Include global search results
         suggestions: {
-          query: q || '',
-          count: processedPosts.length
+          query: q || "",
+          count: processedPosts.length,
         },
         pagination: {
           currentPage: pageNum,
@@ -2239,10 +2517,10 @@ const getPostDistance = async (req, res) => {
 const getAllPostsForAdmin = async (req, res) => {
   try {
     // Check if user is admin (this should be handled by admin middleware)
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
-        status: 'fail',
-        message: 'Access denied. Admin privileges required.',
+        status: "fail",
+        message: "Access denied. Admin privileges required.",
       });
     }
 
@@ -2252,13 +2530,13 @@ const getAllPostsForAdmin = async (req, res) => {
       .sort({ datePosted: -1 });
 
     res.status(200).json({
-      status: 'success',
+      status: "success",
       data: posts,
     });
   } catch (error) {
-    console.error('Error fetching posts for admin:', error);
+    console.error("Error fetching posts for admin:", error);
     res.status(500).json({
-      status: 'error',
+      status: "error",
       message: error.message,
     });
   }
@@ -2270,20 +2548,27 @@ const getAllPostsForAdmin = async (req, res) => {
 const deletePostByAdmin = async (req, res) => {
   try {
     // Check if user is admin (this should be handled by admin middleware)
-    if (req.user.role !== 'admin') {
-      return sendErrorResponse(res, 403, 'Access denied. Admin privileges required.');
+    if (req.user.role !== "admin") {
+      return sendErrorResponse(
+        res,
+        403,
+        "Access denied. Admin privileges required."
+      );
     }
 
     const post = await Post.findById(req.params.id);
     if (!post) {
-      return sendErrorResponse(res, 404, 'Post not found');
+      return sendErrorResponse(res, 404, "Post not found");
     }
 
     // Delete local images if they exist
     await deleteLocalImages(post.images, path.join(__dirname, "..", "uploads"));
     if (post.image && post.image.localPath) {
       // Fallback for posts using legacy single image field stored locally
-      await deleteLocalImages([post.image], path.join(__dirname, "..", "uploads"));
+      await deleteLocalImages(
+        [post.image],
+        path.join(__dirname, "..", "uploads")
+      );
     }
 
     await Post.findByIdAndDelete(req.params.id);
@@ -2297,7 +2582,9 @@ const deletePostByAdmin = async (req, res) => {
       });
     }
 
-    sendSuccessResponse(res, 200, null, { message: 'Post deleted successfully' });
+    sendSuccessResponse(res, 200, null, {
+      message: "Post deleted successfully",
+    });
   } catch (error) {
     console.error("Error deleting post by admin:", error);
     sendErrorResponse(res, 500, error.message);

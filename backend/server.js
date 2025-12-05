@@ -26,10 +26,23 @@ const messagesRoute = require("./routes/messagesRoute");
 const analyticsRoute = require("./routes/analyticsRoute");
 const globalErrorHandler = require("./utils/errorHandler");
 const logger = require("./utils/logger");
+
+// Initialize Redis if enabled
+if (process.env.USE_REDIS === 'true') {
+  const redisUtils = require('./utils/redis');
+  redisUtils.initializeRedis().catch(error => {
+    logger.warn('Redis initialization failed, continuing without cache:', error.message);
+  });
+}
+
 require("./config/passport");
 
 const app = express();
 const server = http.createServer(app);
+
+// Increase timeout for server to handle image uploads properly
+server.timeout = 120000; // 2 minutes timeout
+server.keepAliveTimeout = 65000; // 65 seconds keep-alive timeout
 
 // Security Headers
 app.use(helmet({
@@ -180,8 +193,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 // Serve uploaded files from /uploads
 const uploadsDir = path.join(__dirname, "uploads");

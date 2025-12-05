@@ -69,6 +69,12 @@ const processImageFile = (file, protocol, host) => {
       }
     }
 
+    // If we have a filename but no path, this might be a URL or other format
+    if (file && file.filename && !file.path) {
+      const url = `${protocol}://${host}/uploads/${file.filename}`;
+      return { url, filename: file.filename, localPath: path.join(__dirname, "..", "uploads", file.filename) };
+    }
+
     // Unsupported file object
     return null;
   } catch (uploadError) {

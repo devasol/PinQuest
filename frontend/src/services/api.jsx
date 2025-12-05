@@ -57,8 +57,30 @@ const apiRequest = async (endpoint, options = {}) => {
     config.headers['Authorization'] = `Bearer ${trimmedToken}`;
   }
 
+  // Create AbortController if timeout is specified or if signal is not provided
+  let controller = options.signal ? null : new AbortController();
+  let timeoutId = null;
+  
+  // Set default timeout of 30 seconds if no signal provided
+  if (!options.signal && !options.timeout) {
+    timeoutId = setTimeout(() => {
+      if (controller) controller.abort();
+    }, 30000); // 30 second default timeout
+  } else if (!options.signal && options.timeout) {
+    timeoutId = setTimeout(() => {
+      if (controller) controller.abort();
+    }, options.timeout);
+  }
+  
+  if (controller) {
+    config.signal = controller.signal;
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    
+    // Clear timeout if request completes
+    if (timeoutId) clearTimeout(timeoutId);
 
     // Handle different response types appropriately
     const contentType = response.headers.get('content-type');
@@ -84,7 +106,15 @@ const apiRequest = async (endpoint, options = {}) => {
 
     return data;
   } catch (error) {
+    // Clear timeout on error
+    if (timeoutId) clearTimeout(timeoutId);
+    
     console.error(`API request error for ${endpoint}:`, error.message);
+    
+    // Handle abort/timeout errors
+    if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      throw new Error('Request timed out. Please check your connection and try again.');
+    }
     
     // If it's a network error, provide more context
     if (error instanceof TypeError) {

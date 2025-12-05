@@ -171,7 +171,8 @@ const CreatePostModal = ({
     } catch (error) {
       console.error("Error creating post:", error);
       setErrors({ submit: error.message || "An error occurred while creating the post" });
-      // Don't re-throw the error, just let the parent handle the loading state through the returned promise
+      // Re-throw the error so the parent component can handle loading state
+      throw error;
     }
   };
 

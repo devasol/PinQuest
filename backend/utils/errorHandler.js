@@ -65,10 +65,15 @@ const sendErrorResponse = (res, statusCode, message, errors = null) => {
   });
 };
 
-exports.sendSuccessResponse = sendSuccessResponse;
-exports.sendErrorResponse = sendErrorResponse;
+// Create an object for utility functions
+const utils = {
+  sendSuccessResponse,
+  sendErrorResponse
+};
 
+// Export the utility functions separately
 module.exports = (err, req, res, next) => {
+  // This is the error handling middleware (default export)
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
@@ -87,3 +92,7 @@ module.exports = (err, req, res, next) => {
     sendErrorProd(error, res);
   }
 };
+
+// Also make the utility functions available as properties of the exported function
+module.exports.sendSuccessResponse = sendSuccessResponse;
+module.exports.sendErrorResponse = sendErrorResponse;

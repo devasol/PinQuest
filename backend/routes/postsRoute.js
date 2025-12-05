@@ -32,7 +32,27 @@ const { createPostLimiter, apiLimiter } = require("../middleware/rateLimiters");
 router
   .route("/")
   // Accept up to 10 images uploaded with field name 'images'
-  .post(protect, createPostLimiter, upload.array("images", 10), createPost)
+  .post(
+    protect,
+    createPostLimiter,
+    (req, res, next) => {
+      upload.array("images", 10)(req, res, function (err) {
+        if (err instanceof require("multer").MulterError) {
+          // Multer-specific errors (file size, file count, etc)
+          return res
+            .status(400)
+            .json({ status: "error", message: `Upload error: ${err.message}` });
+        } else if (err) {
+          // Other errors
+          return res
+            .status(400)
+            .json({ status: "error", message: `Upload error: ${err.message}` });
+        }
+        next();
+      });
+    },
+    createPost
+  )
   .get(apiLimiter, getAllPosts); // Apply API rate limiter to public endpoint
 
 // Search routes
@@ -56,7 +76,8 @@ router
   .delete(protect, deletePost);
 
 // Ratings route - POST for adding/updating rating, GET for fetching ratings
-router.route("/:id/ratings")
+router
+  .route("/:id/ratings")
   .post(protect, addOrUpdateRating)
   .get(protect, getPostRatings);
 
@@ -73,6 +94,8 @@ router
 
 // Comment like and reply routes
 router.route("/:postId/comments/:commentId/like").post(protect, likeComment);
-router.route("/:postId/comments/:commentId/reply").post(protect, replyToComment);
+router
+  .route("/:postId/comments/:commentId/reply")
+  .post(protect, replyToComment);
 
 module.exports = router;

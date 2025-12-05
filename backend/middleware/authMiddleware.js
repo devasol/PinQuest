@@ -125,7 +125,7 @@ const protect = async (req, res, next) => {
             });
 
             // Find user in our database based on Firebase UID or email
-            const user = await User.findOne({ 
+            let user = await User.findOne({ 
               $or: [
                 { googleId: decodedToken.uid }, // For Google auth users
                 { email: decodedToken.email }   // For email/password users
@@ -133,11 +133,27 @@ const protect = async (req, res, next) => {
             });
 
             if (!user) {
-              logger.warn('User not found in database for Firebase token', { 
+              logger.info('User not found in database for Firebase token, creating new user', { 
                 firebaseUid: decodedToken.uid,
                 email: decodedToken.email 
               });
-              return sendErrorResponse(res, 401, 'User not found in database');
+              
+              // Create the user automatically since they authenticated via Firebase
+              user = await User.create({
+                name: decodedToken.name || decodedToken.email.split('@')[0],
+                email: decodedToken.email,
+                googleId: decodedToken.uid,
+                isVerified: decodedToken.email_verified || true,
+                avatar: decodedToken.picture ? {
+                  url: decodedToken.picture,
+                  publicId: null // Will be set if uploaded to Cloudinary
+                } : null
+              });
+              
+              logger.info('New user created from Firebase authentication', { 
+                userId: user._id, 
+                email: user.email 
+              });
             }
 
             // Check if user is banned
@@ -206,7 +222,7 @@ const protect = async (req, res, next) => {
                     
                     if (uid && email) {
                       // Find user in our database based on Firebase UID or email
-                      const user = await User.findOne({ 
+                      let user = await User.findOne({ 
                         $or: [
                           { googleId: uid }, // For Google auth users
                           { email: email }   // For email/password users
@@ -214,11 +230,27 @@ const protect = async (req, res, next) => {
                       });
 
                       if (!user) {
-                        logger.warn('User not found in database for development Firebase token', { 
+                        logger.info('User not found in database for development Firebase token, creating new user', { 
                           firebaseUid: uid,
                           email: email 
                         });
-                        return sendErrorResponse(res, 401, 'User not found in database');
+                        
+                        // Create the user automatically since they authenticated via Firebase
+                        user = await User.create({
+                          name: decodedPayload.name || email.split('@')[0],
+                          email: email,
+                          googleId: uid,
+                          isVerified: decodedPayload.email_verified || true,
+                          avatar: decodedPayload.picture ? {
+                            url: decodedPayload.picture,
+                            publicId: null // Will be set if uploaded to Cloudinary
+                          } : null
+                        });
+                        
+                        logger.info('New user created from development Firebase authentication', { 
+                          userId: user._id, 
+                          email: user.email 
+                        });
                       }
 
                       // Check if user is banned
@@ -284,7 +316,7 @@ const protect = async (req, res, next) => {
                 
                 if (uid && email) {
                   // Find user in our database based on Firebase UID or email
-                  const user = await User.findOne({ 
+                  let user = await User.findOne({ 
                     $or: [
                       { googleId: uid }, // For Google auth users
                       { email: email }   // For email/password users
@@ -292,11 +324,27 @@ const protect = async (req, res, next) => {
                   });
 
                   if (!user) {
-                    logger.warn('User not found in database for development Firebase token', { 
+                    logger.info('User not found in database for development Firebase token, creating new user', { 
                       firebaseUid: uid,
                       email: email 
                     });
-                    return sendErrorResponse(res, 401, 'User not found in database');
+                    
+                    // Create the user automatically since they authenticated via Firebase
+                    user = await User.create({
+                      name: decodedPayload.name || email.split('@')[0],
+                      email: email,
+                      googleId: uid,
+                      isVerified: decodedPayload.email_verified || true,
+                      avatar: decodedPayload.picture ? {
+                        url: decodedPayload.picture,
+                        publicId: null // Will be set if uploaded to Cloudinary
+                      } : null
+                    });
+                    
+                    logger.info('New user created from development Firebase authentication', { 
+                      userId: user._id, 
+                      email: user.email 
+                    });
                   }
 
                   // Check if user is banned

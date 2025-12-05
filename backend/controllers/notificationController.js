@@ -1,37 +1,37 @@
-const Notification = require('../models/Notification');
-const User = require('../models/User');
-const Post = require('../models/posts');
-const { emitToUser } = require('../utils/socketUtils');
+const Notification = require("../models/Notification");
+const User = require("../models/User");
+const Post = require("../models/posts");
+const { emitToUser } = require("../utils/socketUtils");
 
 // @desc    Get user notifications
 // @route   GET /api/v1/notifications
 // @access  Private
 const getNotifications = async (req, res) => {
   try {
-    const { page = 1, limit = 10, read = 'all' } = req.query;
-    
+    const { page = 1, limit = 10, read = "all" } = req.query;
+
     // Build query based on read status
     let query = { recipient: req.user._id };
-    if (read === 'read') {
+    if (read === "read") {
       query.read = true;
-    } else if (read === 'unread') {
+    } else if (read === "unread") {
       query.read = false;
     }
-    
+
     // Calculate pagination
     const skip = (page - 1) * limit;
-    
+
     const notifications = await Notification.find(query)
-      .populate('sender', 'name avatar')
-      .populate('post', 'title')
+      .populate("sender", "name avatar")
+      .populate("post", "title")
       .sort({ date: -1 })
       .skip(skip)
       .limit(parseInt(limit));
-    
+
     const total = await Notification.countDocuments(query);
-    
+
     res.status(200).json({
-      status: 'success',
+      status: "success",
       data: {
         notifications,
         pagination: {
@@ -39,15 +39,15 @@ const getNotifications = async (req, res) => {
           totalPages: Math.ceil(total / limit),
           totalNotifications: total,
           hasNext: parseInt(page) * limit < total,
-          hasPrev: parseInt(page) > 1
-        }
-      }
+          hasPrev: parseInt(page) > 1,
+        },
+      },
     });
   } catch (error) {
-    console.error('Error fetching notifications:', error);
+    console.error("Error fetching notifications:", error);
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -59,37 +59,37 @@ const markAsRead = async (req, res) => {
   try {
     const notification = await Notification.findOne({
       _id: req.params.id,
-      recipient: req.user._id
+      recipient: req.user._id,
     });
-    
+
     if (!notification) {
       return res.status(404).json({
-        status: 'fail',
-        message: 'Notification not found'
+        status: "fail",
+        message: "Notification not found",
       });
     }
-    
+
     notification.read = true;
     await notification.save();
-    
+
     // Emit real-time event for read notification
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     if (io) {
-      emitToUser(io, req.user._id, 'notificationRead', {
+      emitToUser(io, req.user._id, "notificationRead", {
         notificationId: notification._id,
-        message: 'A notification was marked as read'
+        message: "A notification was marked as read",
       });
     }
-    
+
     res.status(200).json({
-      status: 'success',
-      data: notification
+      status: "success",
+      data: notification,
     });
   } catch (error) {
-    console.error('Error marking notification as read:', error);
+    console.error("Error marking notification as read:", error);
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -103,16 +103,16 @@ const markAllAsRead = async (req, res) => {
       { recipient: req.user._id, read: false },
       { read: true }
     );
-    
+
     res.status(200).json({
-      status: 'success',
-      message: 'All notifications marked as read'
+      status: "success",
+      message: "All notifications marked as read",
     });
   } catch (error) {
-    console.error('Error marking all notifications as read:', error);
+    console.error("Error marking all notifications as read:", error);
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -124,25 +124,25 @@ const deleteNotification = async (req, res) => {
   try {
     const notification = await Notification.findOneAndDelete({
       _id: req.params.id,
-      recipient: req.user._id
+      recipient: req.user._id,
     });
-    
+
     if (!notification) {
       return res.status(404).json({
-        status: 'fail',
-        message: 'Notification not found'
+        status: "fail",
+        message: "Notification not found",
       });
     }
-    
+
     res.status(200).json({
-      status: 'success',
-      data: null
+      status: "success",
+      data: null,
     });
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    console.error("Error deleting notification:", error);
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -152,20 +152,33 @@ const deleteNotification = async (req, res) => {
 // @access  Private
 const getUnreadCount = async (req, res) => {
   try {
+    if (!req.user || !req.user._id) {
+      console.error("Unread notifications count: No user found in request");
+      return res
+        .status(401)
+        .json({ status: "error", message: "Not authorized" });
+    }
+    console.log("Unread notifications count: Querying for user", req.user._id);
     const count = await Notification.countDocuments({
       recipient: req.user._id,
-      read: false
+      read: false,
     });
-    
+    console.log(
+      "Unread notifications count: Found",
+      count,
+      "unread notifications for user",
+      req.user._id
+    );
     res.status(200).json({
-      status: 'success',
-      data: { count }
+      status: "success",
+      data: { count },
     });
   } catch (error) {
-    console.error('Error fetching unread notifications count:', error);
+    console.error("Error fetching unread notifications count:", error);
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message:
+        error.message || "Server error fetching unread notifications count",
     });
   }
 };
@@ -175,5 +188,5 @@ module.exports = {
   markAsRead,
   markAllAsRead,
   deleteNotification,
-  getUnreadCount
+  getUnreadCount,
 };

@@ -48,6 +48,11 @@ const memoryCache = new MemoryCache();
 // Enhanced cache manager that uses Redis when available, otherwise falls back to memory
 const getCache = async (key) => {
   const redisUtils = require('./redis');
+  // Initialize Redis if not already done
+  if (process.env.USE_REDIS === 'true' && !redisUtils.isRedisConnected()) {
+    await redisUtils.initializeRedis();
+  }
+  
   if (redisUtils.isRedisConnected()) {
     return await redisUtils.get(key);
   }
@@ -56,6 +61,11 @@ const getCache = async (key) => {
 
 const setCache = async (key, value, expiration = 300) => {
   const redisUtils = require('./redis');
+  // Initialize Redis if not already done
+  if (process.env.USE_REDIS === 'true' && !redisUtils.isRedisConnected()) {
+    await redisUtils.initializeRedis();
+  }
+  
   if (redisUtils.isRedisConnected()) {
     await redisUtils.set(key, value, expiration);
   } else {
@@ -65,6 +75,11 @@ const setCache = async (key, value, expiration = 300) => {
 
 const delCache = async (key) => {
   const redisUtils = require('./redis');
+  // Initialize Redis if not already done
+  if (process.env.USE_REDIS === 'true' && !redisUtils.isRedisConnected()) {
+    await redisUtils.initializeRedis();
+  }
+  
   if (redisUtils.isRedisConnected()) {
     await redisUtils.del(key);
   } else {
@@ -74,6 +89,11 @@ const delCache = async (key) => {
 
 const keysCache = async (pattern) => {
   const redisUtils = require('./redis');
+  // Initialize Redis if not already done
+  if (process.env.USE_REDIS === 'true' && !redisUtils.isRedisConnected()) {
+    await redisUtils.initializeRedis();
+  }
+  
   if (redisUtils.isRedisConnected()) {
     return await redisUtils.keys(pattern);
   }

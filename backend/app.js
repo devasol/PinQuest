@@ -27,6 +27,15 @@ const analyticsRoute = require("./routes/analyticsRoute");
 const globalErrorHandler = require("./utils/errorHandler");
 const logger = require("./utils/logger");
 const { healthCheck, livenessCheck, readinessCheck, getMetrics } = require('./controllers/healthController');
+
+// Initialize Redis if enabled
+if (process.env.USE_REDIS === 'true') {
+  const redisUtils = require('./utils/redis');
+  redisUtils.initializeRedis().catch(error => {
+    logger.warn('Redis initialization failed, continuing without cache:', error.message);
+  });
+}
+
 require("./config/passport");
 
 const app = express();
