@@ -71,7 +71,8 @@ app.use(helmet({
   dnsPrefetchControl: true,
   frameguard: {
     action: 'deny' // Prevent embedding in frames
-  }
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin resource access for images
 }));
 
 // Rate Limiting - Only enable in production
@@ -193,13 +194,30 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Serve uploaded files from /uploads
+// Serve uploaded files from /uploads with proper CORS headers
 const uploadsDir = path.join(__dirname, "uploads");
 try {
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
-  app.use("/uploads", express.static(uploadsDir));
+  // Add specific CORS headers for uploads
+  app.use("/uploads", (req, res, next) => {
+    // Apply CORS headers for uploaded files
+    res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL || "http://localhost:5173");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Cross-Origin-Embedder-Policy", "unsafe-none"); // Allow image embedding
+    res.header("Cross-Origin-Resource-Policy", "cross-origin"); // Allow cross-origin resource access
+    res.header("Cross-Origin-Opener-Policy", "unsafe-none");
+    
+    // Handle preflight requests for uploads
+    if (req.method === "OPTIONS") {
+      res.sendStatus(200);
+      return;
+    }
+    
+    next();
+  }, express.static(uploadsDir));
 } catch (e) {
   console.error(
     "Failed to ensure uploads directory exists or mount static:",
