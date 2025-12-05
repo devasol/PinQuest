@@ -14,7 +14,9 @@ import {
   Calendar,
   ExternalLink,
   Eye,
-  EyeOff
+  EyeOff,
+  Send,
+  ImageIcon
 } from "lucide-react";
 import OptimizedImage from "../OptimizedImage";
 import { postApi, userApi } from "../../services/api.js";
@@ -52,7 +54,7 @@ const ModernSidebarPostWindow = ({
   const [showComments, setShowComments] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showInfo, setShowInfo] = useState(true);
-  const [sidebarWidth, setSidebarWidth] = useState(getResponsiveWidth()); // New state
+  const [sidebarWidth, setSidebarWidth] = useState(getResponsiveWidth());
 
   useEffect(() => {
     const handleResize = () => {
@@ -359,6 +361,7 @@ const ModernSidebarPostWindow = ({
   };
 
   const handleClose = () => {
+    console.log("handleClose called");
     onClose && onClose(); 
   };
 
@@ -367,7 +370,7 @@ const ModernSidebarPostWindow = ({
   return (
     <AnimatePresence>
       <motion.div 
-        className="fixed top-0 bottom-0 z-[6999] sidebar-window h-full bg-gray-900 shadow-2xl border-l border-gray-700"
+        className="fixed top-0 bottom-0 z-[100000] sidebar-window h-full bg-gray-900 shadow-2xl border-l border-gray-700"
         style={{ 
           width: sidebarWidth, 
           left: isSidebarExpanded && window.innerWidth >= 768 ? '16rem' : '5rem' 

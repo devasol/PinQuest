@@ -31,6 +31,8 @@
   box-shadow: 0 2px 6px rgba(66, 133, 244, 0.3) !important;
 }
 
+
+
 /* Enhanced sidebar windows */
 .sidebar-window {
   background: white !important;
@@ -86,6 +88,18 @@
   overflow-y: auto !important;
   padding-top: 16px !important;
   padding-bottom: 16px !important;
+  pointer-events: auto !important;
+}
+
+/* Prevent map interactions when sidebar is open */
+.sidebar-window-open {
+  pointer-events: auto !important;
+  z-index: 7000 !important;
+}
+
+/* Ensure map doesn't receive interactions when sidebar is open */
+.map-container.sidebar-window-open {
+  pointer-events: none !important;
 }
 
 /* Inputs inside sidebar windows */
@@ -366,7 +380,57 @@
     min-height: 44px !important;
     min-width: 44px !important;
   }
+  
+  /* Responsive map container */
+  .map-container {
+    padding-top: 70px !important;
+  }
+  
+  /* Adjust map height for mobile */
+  .leaflet-container {
+    height: calc(100vh - 70px) !important;
+  }
 }
+
+/* Extra small devices (phones, 320px and up) */
+@media (max-width: 480px) {
+  .map-container {
+    padding-top: 80px !important;
+  }
+  
+  .leaflet-container {
+    height: calc(100vh - 80px) !important;
+  }
+  
+  /* Smaller sidebar control icons on very small screens */
+  .sidebar-control {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  
+  .sidebar-control-icon {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  
+  /* Adjust search bar for very small screens */
+  .top-search-bar input {
+    padding: 12px 16px 12px 40px !important;
+  }
+}
+
+/* Landscape mode fixes */
+@media (orientation: landscape) and (max-height: 500px) {
+  .map-container {
+    padding-top: 60px !important;
+  }
+  
+  .leaflet-container {
+    height: calc(100vh - 60px) !important;
+  }
+}
+
+
 
 
 

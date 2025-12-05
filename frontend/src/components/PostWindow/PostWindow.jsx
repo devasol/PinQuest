@@ -383,49 +383,57 @@ const PostWindow = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-gradient-to-br from-black/70 to-black/60 backdrop-blur-xl z-[99998] flex items-center justify-center p-2 sm:p-4 md:p-6 min-h-full"
-        onClick={handleClose}
+        className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[99998] flex items-center justify-center p-2 sm:p-4 min-h-full"
+        onClick={(e) => {
+          // Only close if the click was directly on the backdrop, not on the modal itself
+          if (e.target === e.currentTarget) {
+            handleClose();
+          }
+        }}
       >
         <motion.div
-          initial={{ scale: 0.85, opacity: 0, y: 40 }}
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.85, opacity: 0, y: 40 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
           transition={{ 
             type: "spring", 
-            damping: 25, 
+            damping: 20, 
             stiffness: 300,
             duration: 0.3 
           }}
-          className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-2xl sm:max-w-3xl md:max-w-4xl lg:max-w-5xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col z-[99999] border border-white/20 backdrop-blur-md"
+          className="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl sm:max-w-3xl md:max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col z-[99999] border border-slate-700"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="p-4 sm:p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center shadow-xl">
+          <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-800 to-slate-700 border-b border-slate-600 flex justify-between items-center">
             <div>
-              <h3 className="font-bold text-base sm:text-lg">
+              <h3 className="font-bold text-white text-base sm:text-lg">
                 {typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}
               </h3>
-              <p className="text-xs sm:text-sm opacity-90 flex items-center">
+              <p className="text-xs sm:text-sm text-slate-300 flex items-center">
                 <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
                 {formatDate(currentPost.datePosted)}
               </p>
             </div>
             <button
-              onClick={handleClose}
-              className="p-2 rounded-full sm:p-2.5 bg-white/20 hover:bg-white/30 transition-all duration-200 backdrop-blur-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClose();
+              }}
+              className="p-2 rounded-full hover:bg-slate-600 transition-colors"
               aria-label="Close"
             >
-              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5 text-slate-200" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="post-window-container flex flex-col flex-1 overflow-y-auto bg-gray-50">
+          <div className="post-window-container flex flex-col flex-1 overflow-y-auto">
             {/* Image Gallery */}
             <div className="w-full">
               <div className="relative">
                 {hasImages && images.length > 0 ? (
-                  <div className="post-window-image-container relative w-full h-48 sm:h-60 md:h-80 lg:h-96 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                  <div className="relative w-full h-48 sm:h-60 md:h-80 flex items-center justify-center bg-gray-100">
                     <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
                       <div className="transition-transform duration-300 ease-out">
                         <OptimizedImage
@@ -441,33 +449,33 @@ const PostWindow = ({
                     {images.length > 1 && (
                       <>
                         <button
-                          className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 sm:p-3 transition-all shadow-lg z-10 border border-gray-200 backdrop-blur-sm"
+                          className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 transition-all shadow-md z-10 border border-gray-300"
                           aria-label="Previous image"
                           onClick={prevImage}
                         >
-                          <ChevronLeft className="w-4 sm:w-5 h-4 sm:h-5 text-gray-800" />
+                          <ChevronLeft className="w-4 sm:w-5 h-4 sm:h-5 text-gray-700" />
                         </button>
                         <button
-                          className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 sm:p-3 transition-all shadow-lg z-10 border border-gray-200 backdrop-blur-sm"
+                          className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 transition-all shadow-md z-10 border border-gray-300"
                           aria-label="Next image"
                           onClick={nextImage}
                         >
-                          <ChevronRight className="w-4 sm:w-5 h-4 sm:h-5 text-gray-800" />
+                          <ChevronRight className="w-4 sm:w-5 h-4 sm:h-5 text-gray-700" />
                         </button>
                       </>
                     )}
 
                     {/* Image Counter */}
                     {images.length > 1 && (
-                      <div className="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-2 sm:px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-2 py-1 rounded-full text-xs font-medium">
                         {currentImageIndex + 1} / {images.length}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="w-full h-48 sm:h-60 md:h-80 lg:h-96 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-8">
+                  <div className="w-full h-48 sm:h-60 md:h-80 flex flex-col items-center justify-center bg-gray-50 p-4">
                     <div className="text-center max-w-sm">
-                      <div className="mx-auto w-16 sm:w-24 h-16 sm:h-24 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mb-3 sm:mb-6 shadow-sm">
+                      <div className="mx-auto w-16 sm:w-24 h-16 sm:h-24 bg-gray-200 rounded-xl flex items-center justify-center mb-3 sm:mb-6">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           className="h-8 sm:h-12 w-8 sm:w-12 text-gray-500"
@@ -485,7 +493,7 @@ const PostWindow = ({
                       </div>
                       <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-1 sm:mb-2">No Images Available</h3>
                       <p className="text-sm sm:text-base text-gray-600">
-                        This post doesn't have any images yet. Check back later for updates!
+                        This post doesn't have any images yet.
                       </p>
                     </div>
                   </div>
@@ -494,8 +502,8 @@ const PostWindow = ({
 
               {/* Thumbnail Gallery */}
               {hasImages && images.length > 1 && (
-                <div className="p-3 sm:p-5 bg-white/90 border-t border-gray-200 backdrop-blur-sm overflow-x-auto">
-                  <div className="flex space-x-2 sm:space-x-3 pb-2">
+                <div className="p-3 bg-slate-700/50 border-t border-slate-600 overflow-x-auto">
+                  <div className="flex space-x-2 pb-2">
                     {images.map((img, index) => {
                       const isSelected = currentImageIndex === index;
                       
@@ -507,8 +515,8 @@ const PostWindow = ({
                           }}
                           className={`flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
                             isSelected 
-                              ? 'border-emerald-500 shadow-lg scale-105' 
-                              : 'border-gray-200 hover:border-gray-400'
+                              ? 'border-emerald-500 shadow-md scale-105' 
+                              : 'border-slate-600 hover:border-slate-400'
                           }`}
                         >
                           <OptimizedImage
@@ -525,53 +533,53 @@ const PostWindow = ({
             </div>
 
             {/* Post Details */}
-            <div className="bg-white">
-              <div className="post-window-content p-4 sm:p-5 md:p-7">
+            <div className="bg-slate-800">
+              <div className="post-window-content p-4 sm:p-5">
                 {showInfo ? (
                   <>
                     <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3 mb-4">
-                      <h1 className="post-window-title text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-0 leading-tight">
+                      <h1 className="post-window-title text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-0 leading-tight">
                         {currentPost.title || 'Untitled Post'}
                       </h1>
                       {currentPost.category && (
-                        <span className="bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800 text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold inline-flex items-center shadow-sm border border-emerald-200">
+                        <span className="bg-emerald-900/50 text-emerald-400 text-xs px-3 py-1.5 rounded-full font-semibold border border-emerald-700">
                           <span className="capitalize">{currentPost.category}</span>
                         </span>
                       )}
                     </div>
 
-                    <p className="text-gray-700 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base">{currentPost.description || 'No description available.'}</p>
+                    <p className="text-slate-300 mb-4 leading-relaxed text-sm sm:text-base">{currentPost.description || 'No description available.'}</p>
 
                     {/* Location */}
                     {currentPost.location?.latitude && currentPost.location?.longitude && (
-                      <div className="flex flex-col sm:flex-row items-start text-gray-700 mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl sm:rounded-2xl border border-blue-100 shadow-sm">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-100 to-indigo-100 flex items-center justify-center mb-2 sm:mb-0 sm:mr-3 sm:mr-4 flex-shrink-0 shadow-sm">
-                          <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                      <div className="flex items-start text-slate-300 mb-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center mr-3 flex-shrink-0">
+                          <MapPin className="w-5 h-5 text-emerald-400" />
                         </div>
                         <div className="w-full">
-                          <p className="font-bold text-gray-800 mb-1 text-sm sm:text-base">Location</p>
-                          <p className="text-gray-700 text-sm sm:text-base break-all">
+                          <p className="font-bold text-slate-200 mb-1 text-sm sm:text-base">Location</p>
+                          <p className="text-slate-300 text-sm sm:text-base break-all">
                             {currentPost.location.latitude.toFixed(6)}, {currentPost.location.longitude.toFixed(6)}
                           </p>
                           {currentPost.location.address && (
-                            <p className="text-gray-600 text-xs sm:text-sm mt-1">{currentPost.location.address}</p>
+                            <p className="text-slate-400 text-xs sm:text-sm mt-1">{currentPost.location.address}</p>
                           )}
                         </div>
                       </div>
                     )}
 
                     {/* Ratings */}
-                    <div className="mb-4 sm:mb-6 p-4 sm:p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl sm:rounded-2xl border border-gray-200 shadow-sm">
+                    <div className="mb-4 p-4 bg-slate-700/50 rounded-lg border border-slate-600">
                       <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3 mb-2 sm:mb-3">
-                        <h3 className="font-bold text-base sm:text-lg text-gray-800">Ratings & Reviews</h3>
+                        <h3 className="font-bold text-base sm:text-lg text-slate-200">Ratings & Reviews</h3>
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
                               key={`star-${star}`}
                               className={`w-5 h-5 sm:w-6 sm:h-6 cursor-pointer ${
                                 star <= (rating > 0 ? rating : (hoverRating || currentPost.averageRating || 0)) 
-                                  ? 'text-yellow-500 fill-current' 
-                                  : 'text-gray-300'
+                                  ? 'text-yellow-400 fill-current' 
+                                  : 'text-slate-500'
                               }`}
                               onClick={() => {
                                 if (authToken) {
@@ -589,19 +597,19 @@ const PostWindow = ({
                               onMouseLeave={() => setHoverRating(0)}
                             />
                           ))}
-                          <span className="ml-2 sm:ml-3 text-gray-800 font-bold text-base sm:text-lg">
+                          <span className="ml-2 sm:ml-3 text-slate-200 font-bold text-base sm:text-lg">
                             {(currentPost.averageRating || 0).toFixed(1)}
                           </span>
                         </div>
                       </div>
                       <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <p className="text-xs sm:text-sm text-gray-600">
-                          <span className="font-medium text-gray-800">{currentPost.totalRatings || 0}</span> 
-                          <span className="mx-1 sm:mx-2 text-gray-400">•</span>
+                        <p className="text-xs sm:text-sm text-slate-400">
+                          <span className="font-medium text-slate-300">{currentPost.totalRatings || 0}</span> 
+                          <span className="mx-1 sm:mx-2 text-slate-600">•</span>
                           <span>{(currentPost.comments || []).length || 0} {(currentPost.comments || []).length === 1 ? 'comment' : 'comments'}</span>
                         </p>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs sm:text-sm text-gray-700 font-medium">Rate this:</span>
+                          <span className="text-xs sm:text-sm text-slate-400 font-medium">Rate this:</span>
                           <button
                             onClick={() => {
                               if (rating > 0) {
@@ -615,10 +623,10 @@ const PostWindow = ({
                                 });
                               }
                             }}
-                            className={`px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl transition-all font-medium text-xs sm:text-sm ${
+                            className={`px-3 sm:px-4 py-2 rounded-lg transition-all font-medium text-xs sm:text-sm ${
                               rating > 0 
-                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md hover:shadow-lg' 
-                                : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                ? 'bg-yellow-500 text-slate-900 hover:bg-yellow-400' 
+                                : 'bg-slate-700 text-slate-500 cursor-not-allowed'
                             }`}
                             disabled={rating === 0 || !authToken}
                           >
@@ -629,27 +637,27 @@ const PostWindow = ({
                     </div>
 
                     {/* Additional Info */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200 shadow-sm">
-                        <p className="text-xs sm:text-sm text-gray-600 mb-1 font-semibold">Posted By</p>
-                        <p className="font-bold text-gray-800 text-sm sm:text-base">{typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                      <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                        <p className="text-xs sm:text-sm text-slate-400 mb-1 font-semibold">Posted By</p>
+                        <p className="font-bold text-slate-200 text-sm sm:text-base">{typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}</p>
                       </div>
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-200 shadow-sm">
-                        <p className="text-xs sm:text-sm text-gray-600 mb-1 font-semibold">Posted On</p>
-                        <p className="font-bold text-gray-800 text-sm sm:text-base">{formatDate(currentPost.datePosted)}</p>
+                      <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                        <p className="text-xs sm:text-sm text-slate-400 mb-1 font-semibold">Posted On</p>
+                        <p className="font-bold text-slate-200 text-sm sm:text-base">{formatDate(currentPost.datePosted)}</p>
                       </div>
                     </div>
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-                    <div className="mb-6 p-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full">
-                      <MapPin className="w-12 h-12 text-gray-600" />
+                    <div className="mb-6 p-4 bg-slate-700 rounded-full">
+                      <MapPin className="w-12 h-12 text-slate-400" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">Information Hidden</h3>
-                    <p className="text-gray-600 mb-4">Press 'I' key or close the window to show details again</p>
+                    <h3 className="text-xl font-bold text-slate-200 mb-2">Information Hidden</h3>
+                    <p className="text-slate-400 mb-4">Press 'I' key or close the window to show details again</p>
                     <button 
                       onClick={() => setShowInfo(true)}
-                      className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md font-medium"
+                      className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all font-medium"
                     >
                       Show Information
                     </button>
@@ -658,101 +666,103 @@ const PostWindow = ({
               </div>
 
               {/* Action Bar */}
-              <div className="post-window-actions p-4 sm:p-6 border-t border-gray-200 bg-white shadow-lg">
-                <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-between gap-3 sm:gap-4">
-                  <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="post-window-actions p-4 border-t border-slate-700 bg-slate-700/50">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2">
                     <motion.button
                       onClick={handleComment}
-                      className="flex items-center space-x-1 sm:space-x-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 transition-all shadow-sm text-xs sm:text-sm"
+                      className="flex items-center space-x-1 px-3 py-2.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-all text-sm"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <MessageCircle className="w-4 h-4" />
                       <span className="font-semibold">{currentPost.comments?.length || 0}</span>
                     </motion.button>
 
                     <motion.button
                       onClick={handleBookmark}
                       disabled={loading} // Disable button when loading
-                      className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl transition-all shadow-sm text-xs sm:text-sm ${
+                      className={`flex items-center space-x-1 px-3 py-2.5 rounded-lg transition-all text-sm ${
                         bookmarked
-                          ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-lg"
-                          : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300"
+                          ? "bg-yellow-500 text-slate-900 hover:bg-yellow-400"
+                          : "bg-slate-700 text-slate-200 hover:bg-slate-600"
                       } ${loading ? 'cursor-not-allowed opacity-70' : ''}`}
                       whileTap={{ scale: 0.95 }}
                     >
                       <Bookmark
-                        className={`w-4 h-4 sm:w-5 sm:h-5 ${bookmarked ? "fill-current text-white" : ""}`}
+                        className={`w-4 h-4 ${bookmarked ? "fill-current text-slate-900" : ""}`}
                       />
                     </motion.button>
                   </div>
 
-                  <div className="flex items-center space-x-1 sm:space-x-2">
+                  <div className="flex items-center space-x-2">
                     <motion.button
                       onClick={handleShare}
-                      className="flex items-center space-x-1 sm:space-x-2 text-gray-700 hover:text-gray-900 bg-gradient-to-r from-white to-gray-50 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl border border-gray-200 hover:shadow-sm transition-all font-medium text-xs sm:text-sm"
+                      className="flex items-center space-x-1 text-slate-200 hover:text-slate-100 bg-slate-700 hover:bg-slate-600 px-3 py-2.5 rounded-lg transition-all text-sm"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <Share className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="hidden sm:inline">Share</span>
-                      <span className="sm:hidden">Share</span>
+                      <Share className="w-4 h-4" />
+                      <span>Share</span>
                     </motion.button>
                     <motion.button
                       onClick={handleGetDirections}
-                      className="flex items-center space-x-1 sm:space-x-2 text-gray-700 hover:text-gray-900 bg-gradient-to-r from-white to-gray-50 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl border border-gray-200 hover:shadow-sm transition-all font-medium text-xs sm:text-sm"
+                      className="flex items-center space-x-1 text-slate-200 hover:text-slate-100 bg-slate-700 hover:bg-slate-600 px-3 py-2.5 rounded-lg transition-all text-sm"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="hidden sm:inline">Directions</span>
-                      <span className="sm:hidden">Dir</span>
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Directions</span>
                     </motion.button>
                   </div>
                 </div>
                 
                 {/* Comments Modal */}
                 {showCommentsModal && (
-                  <div className="fixed inset-0 bg-gradient-to-br from-black/60 to-black/50 backdrop-blur-lg flex items-center justify-center z-[100000] p-2 sm:p-4">
-                    <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[80vh] flex flex-col border border-white/20 backdrop-blur-sm">
-                      <div className="p-4 sm:p-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 rounded-t-xl sm:rounded-t-2xl">
+                  <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center z-[100000] p-2">
+                    <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col border border-slate-700">
+                      <div className="p-4 border-b border-slate-700 bg-slate-700/50 rounded-t-xl">
                         <div className="flex justify-between items-center">
-                          <h3 className="text-base sm:text-lg font-bold text-gray-800">Comments</h3>
+                          <h3 className="text-base font-bold text-slate-200">Comments</h3>
                           <button 
-                            onClick={() => setShowCommentsModal(false)}
-                            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowCommentsModal(false);
+                            }}
+                            className="p-2 rounded-full hover:bg-slate-600 transition-colors"
                           >
-                            <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                            <X className="w-4 h-4 text-slate-300" />
                           </button>
                         </div>
                       </div>
                       
                       {/* Comments List */}
-                      <div className="flex-1 overflow-y-auto max-h-48 sm:max-h-96 p-4 sm:p-5">
+                      <div className="flex-1 overflow-y-auto max-h-48 p-4 bg-slate-800/50">
                         {comments && comments.length > 0 ? (
-                          <div className="space-y-3 sm:space-y-4">
+                          <div className="space-y-3">
                             {comments.map((comment) => (
                               <CommentItem 
                                 key={comment._id || `comment-${Math.random()}`}
                                 comment={comment}
                                 authToken={authToken}
+                                currentUser={currentUser}
                               />
                             ))}
                           </div>
                         ) : (
-                          <div className="text-center py-6 sm:py-8">
-                            <MessageCircle className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3" />
-                            <p className="text-sm sm:text-base text-gray-500">No comments yet. Be the first to comment!</p>
+                          <div className="text-center py-6">
+                            <MessageCircle className="w-10 h-10 text-slate-500 mx-auto mb-2" />
+                            <p className="text-sm text-slate-400">No comments yet. Be the first to comment!</p>
                           </div>
                         )}
                       </div>
                       
                       {/* Comment Input */}
-                      <div className="p-4 sm:p-5 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 rounded-b-xl sm:rounded-b-2xl">
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                      <div className="p-4 border-t border-slate-700 bg-slate-700/50 rounded-b-xl">
+                        <div className="flex gap-2">
                           <input
                             type="text"
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}
                             placeholder="Write your comment..."
-                            className="flex-1 px-3 py-2.5 sm:px-4 sm:py-3 bg-white/90 backdrop-blur-sm rounded-lg sm:rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm text-sm"
+                            className="flex-1 px-3 py-2 bg-slate-700 rounded-lg border border-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none text-sm text-white placeholder:text-slate-400"
                             onKeyPress={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
@@ -762,7 +772,7 @@ const PostWindow = ({
                           />
                           <motion.button
                             onClick={handleAddComment}
-                            className="px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg sm:rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all font-medium shadow-md text-sm"
+                            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all font-medium text-sm"
                             whileTap={{ scale: 0.95 }}
                           >
                             Post

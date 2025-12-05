@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MapPin, Image as ImageIcon, Plus, Upload, Link, Trash2, Check, AlertCircle, Navigation, Globe } from 'lucide-react';
+import { X, MapPin, Image as ImageIcon, Plus, Upload, Camera, Link, Trash2, Check, AlertCircle, Navigation } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 
 const categories = [
@@ -15,15 +15,15 @@ const categories = [
 ];
 
 const getResponsiveWidth = () => {
-  if (window.innerWidth >= 1280) return '400px';
-  if (window.innerWidth >= 1024) return '360px';
-  if (window.innerWidth >= 768) return '340px';
-  if (window.innerWidth >= 640) return '320px';
-  if (window.innerWidth >= 480) return '300px';
-  return '280px';
+  if (window.innerWidth >= 1280) return '380px';
+  if (window.innerWidth >= 1024) return '340px';
+  if (window.innerWidth >= 768) return '320px';
+  if (window.innerWidth >= 640) return '300px';
+  if (window.innerWidth >= 480) return '280px';
+  return '260px';
 };
 
-const ModernSidebarCreatePostWindow = ({ 
+const SidebarCreatePostWindow = ({ 
   isVisible, 
   onClose, 
   onCreatePost, 
@@ -40,16 +40,6 @@ const ModernSidebarCreatePostWindow = ({
     category: "general"
   });
   const formRef = useRef(null);
-  const [sidebarWidth, setSidebarWidth] = useState(getResponsiveWidth());
-
-  useEffect(() => {
-    const handleResize = () => {
-      setSidebarWidth(getResponsiveWidth());
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Prevent map zoom when scrolling in the sidebar window
   useEffect(() => {
@@ -97,6 +87,9 @@ const ModernSidebarCreatePostWindow = ({
     } else if (formData.description.length > 500) {
       newErrors.description = "Description must be less than 500 characters";
     }
+
+    // Location is automatically set from the map click, no need to validate here
+    // since the modal only opens when a location has been selected
 
     if ((fileImages.length + linkImages.length) === 0) {
       newErrors.images = "At least one image is required";
@@ -250,27 +243,28 @@ const ModernSidebarCreatePostWindow = ({
     }
 
     const compressionOptions = {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1920,
-      useWebWorker: true,
-      initialQuality: 0.8,
+      maxSizeMB: 1,           // (default is Number.POSITIVE_INFINITY)
+      maxWidthOrHeight: 1920, // (default is undefined)
+      useWebWorker: true,     // (default is false)
+      initialQuality: 0.8, // (default is 1) Initial compression quality
     };
 
-    for (const file of filesToAdd) {
+    for (const file of filesToAdd) { // Changed forEach to for...of to use await properly
       if (!file.type.startsWith("image/")) {
         setErrors((prev) => ({
           ...prev,
           images: "Please select valid image files",
         }));
-        return;
+        return; // Stop processing further files if one is invalid
       }
 
-      if (file.size > 15 * 1024 * 1024) {
+      // Check original file size first (if it's too large, don't even attempt compression)
+      if (file.size > 15 * 1024 * 1024) { // Allow up to 15MB original size
         setErrors((prev) => ({
           ...prev,
           images: `File size for ${file.name} must be less than 15MB (original)`,
         }));
-        return;
+        return; // Stop processing further files if one is too large
       }
 
       try {
@@ -280,12 +274,12 @@ const ModernSidebarCreatePostWindow = ({
         console.log(`Compressed file size: ${compressedFile.size / 1024 / 1024} MB`);
         
         // After compression, check if the compressed file size is within limits
-        if (compressedFile.size > 2 * 1024 * 1024) {
+        if (compressedFile.size > 2 * 1024 * 1024) { // Compressed file should not exceed 2MB
           setErrors((prev) => ({
             ...prev,
             images: `Compressed file size for ${file.name} exceeds 2MB. Please choose a smaller image.`,
           }));
-          return;
+          return; // Stop processing further files if compressed size is too large
         }
 
         const reader = new FileReader();
@@ -305,7 +299,7 @@ const ModernSidebarCreatePostWindow = ({
           ...prev,
           images: `Error compressing image ${file.name}. Please try another image.`,
         }));
-        return;
+        return; // Stop processing further files if compression fails
       }
     }
 
@@ -316,7 +310,7 @@ const ModernSidebarCreatePostWindow = ({
         return newErrors;
       });
     }
-  }, [fileImages, linkImages, errors]);
+  }, [fileImages, linkImages, errors]); // Dependencies for useCallback
 
   // Handle drag and drop
   const handleDrag = useCallback((e) => {
@@ -387,7 +381,7 @@ const ModernSidebarCreatePostWindow = ({
     try {
       new URL(string);
       return true;
-    } catch (_) {
+    } catch (_) { // Changed back to _
       return false;
     }
   };
@@ -406,7 +400,6 @@ const ModernSidebarCreatePostWindow = ({
 
   // Close modal and reset form
   const closeAndReset = () => {
-    console.log("closeAndReset called");
     setFormData({ title: "", description: "", category: "general" });
     setFileImages([]);
     setLinkImages([]);
@@ -422,18 +415,18 @@ const ModernSidebarCreatePostWindow = ({
   return (
     <AnimatePresence>
       <motion.div 
-        className="fixed top-0 bottom-0 z-[100000] sidebar-window h-full bg-gray-900 shadow-2xl border-l border-gray-700 sidebar-create-post-window"
+        className="fixed top-0 bottom-0 z-[99999] sidebar-window h-full"
         style={{ 
-          width: sidebarWidth, 
+          width: getResponsiveWidth(), 
           left: isSidebarExpanded && window.innerWidth >= 768 ? '16rem' : '5rem' 
         }}
-        initial={{ opacity: 0, x: -30 }}
+        initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -30 }}
+        exit={{ opacity: 0, x: -20 }}
         transition={{ 
           type: "spring", 
-          damping: 25, 
-          stiffness: 200,
+          damping: 20, 
+          stiffness: 300,
           duration: 0.4 
         }}
         role="dialog"
@@ -441,29 +434,26 @@ const ModernSidebarCreatePostWindow = ({
         aria-labelledby="create-post-window-title"
         tabIndex={-1}
       >
-        {/* Header */}
-        <div className="bg-gray-800 text-white p-4 shadow-lg">
+        <div className="sidebar-window-header bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-3 shadow-lg">
           <div className="flex items-center justify-between">
-            <h2 id="create-post-window-title" className="font-bold text-lg">Create a New Pin</h2>
-            <motion.button 
+            <h2 id="create-post-window-title" className="font-bold text-base">Create New Post</h2>
+            <button 
               onClick={closeAndReset}
               aria-label="Close create post window"
-              className="p-1.5 rounded-full hover:bg-gray-700 transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              className="p-1.5 rounded-full hover:bg-white/20 transition-colors"
+              ref={el => el && el.focus()}
             >
-              <X className="h-5 w-5 text-white" />
-            </motion.button>
+              <X className="h-4 w-4 text-white" />
+            </button>
           </div>
         </div>
         
         {/* Form Content */}
-        <div className="sidebar-window-content overflow-y-auto h-[calc(100%-80px)]">
-          <form ref={formRef} onSubmit={handleSubmit} className="p-6 space-y-6" onClick={(e) => e.stopPropagation()}>
-            
+        <div className="sidebar-window-content overflow-y-auto">
+          <form ref={formRef} onSubmit={handleSubmit} className="p-3 max-h-[calc(100vh-120px)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Title Field */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.1 } }}>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Title *
               </label>
               <div className="relative">
@@ -472,18 +462,23 @@ const ModernSidebarCreatePostWindow = ({
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
-                  className={`w-full pl-4 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition-all text-white ${
+                  className={`w-full px-3 py-1.5 pl-8 border rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 ${
                     errors.title
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-300"
-                      : "border-gray-700 focus:border-teal-500"
-                  } bg-gray-800 focus:bg-gray-700 shadow-sm`}
-                  placeholder="e.g. Amazing view from the top"
+                      ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                      : "border-emerald-200 focus:border-emerald-500"
+                  } bg-gray-50 focus:bg-white shadow-sm text-sm`}
+                  placeholder="Enter a descriptive title"
                   maxLength="100"
                 />
+                <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-emerald-400">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 flex items-center justify-center shadow-sm">
+                    <div className="w-1 h-1 rounded-full bg-white"></div>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-center mt-2">
+              <div className="flex justify-between items-center mt-0.5">
                 {errors.title && (
-                  <p className="text-red-400 text-xs flex items-center gap-1">
+                  <p className="text-red-500 text-xs flex items-center gap-0.5">
                     <AlertCircle className="w-3 h-3" />
                     {errors.title}
                   </p>
@@ -491,18 +486,18 @@ const ModernSidebarCreatePostWindow = ({
                 <p
                   className={`text-xs ml-auto ${
                     formData.title.length > 90
-                      ? "text-red-400"
-                      : "text-gray-400"
+                      ? "text-red-500"
+                      : "text-gray-500"
                   }`}
                 >
                   {formData.title.length}/100
                 </p>
               </div>
-            </motion.div>
+            </div>
 
             {/* Description Field */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.2 } }}>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
+            <div className="mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Description *
               </label>
               <div className="relative">
@@ -510,19 +505,24 @@ const ModernSidebarCreatePostWindow = ({
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  rows="4"
-                  className={`w-full pl-4 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition-all resize-none text-white ${
+                  rows="3"
+                  className={`w-full px-3 py-1.5 pl-8 border rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 resize-none ${
                     errors.description
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-300"
-                      : "border-gray-700 focus:border-teal-500"
-                  } bg-gray-800 focus:bg-gray-700 shadow-sm`}
-                  placeholder="Share your experience..."
+                      ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                      : "border-emerald-200 focus:border-emerald-500"
+                  } bg-gray-50 focus:bg-white shadow-sm text-sm`}
+                  placeholder="Describe this location and what makes it special..."
                   maxLength="500"
                 />
+                <div className="absolute left-2 top-2 text-emerald-400">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 flex items-center justify-center shadow-sm">
+                    <div className="w-1 h-1 rounded-full bg-white"></div>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-center mt-2">
+              <div className="flex justify-between items-center mt-0.5">
                 {errors.description && (
-                  <p className="text-red-400 text-xs flex items-center gap-1">
+                  <p className="text-red-500 text-xs flex items-center gap-0.5">
                     <AlertCircle className="w-3 h-3" />
                     {errors.description}
                   </p>
@@ -530,41 +530,50 @@ const ModernSidebarCreatePostWindow = ({
                 <p
                   className={`text-xs ml-auto ${
                     formData.description.length > 450
-                      ? "text-red-400"
-                      : "text-gray-400"
+                      ? "text-red-500"
+                      : "text-gray-500"
                   }`}
                 >
                   {formData.description.length}/500
                 </p>
               </div>
-            </motion.div>
+            </div>
 
-            {/* Location Field */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.3 } }}>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
+            {/* Location Field - This is pre-filled and fixed based on user's map click */}
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Location *
               </label>
               <div className="relative">
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-teal-400">
-                  <MapPin className="w-5 h-5" />
-                </div>
                 <input
                   type="text"
                   value={
                     actualSelectedPosition && (typeof displayLat === 'number') && (typeof displayLng === 'number')
-                      ? `Lat: ${displayLat.toFixed(4)}, Lng: ${displayLng.toFixed(4)}`
+                      ? `Lat: ${displayLat.toFixed(6)}, Lng: ${displayLng.toFixed(6)}`
                       : "Location not selected"
                   }
                   readOnly
-                  className="w-full pl-12 pr-4 py-3 border border-gray-700 rounded-xl bg-gray-800 shadow-sm text-gray-400"
+                  className="w-full px-3 py-1.5 pl-8 border border-emerald-200 rounded-lg bg-gray-100 shadow-sm text-xs"
                   placeholder="Location set from map click"
                 />
+                <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-emerald-400">
+                  <MapPin className="w-3 h-3" />
+                </div>
               </div>
-            </motion.div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                This location is fixed based on where you clicked on the map
+              </p>
+              {errors.location && (
+                <p className="mt-0.5 text-red-500 text-xs flex items-center gap-0.5">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.location}
+                </p>
+              )}
+            </div>
 
             {/* Category Field */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.4 } }}>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
+            <div className="mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Category *
               </label>
               <div className="relative">
@@ -572,57 +581,106 @@ const ModernSidebarCreatePostWindow = ({
                   name="category"
                   value={formData.category}
                   onChange={handleInputChange}
-                  className="w-full pl-4 pr-8 py-3 border border-gray-700 rounded-xl focus:ring-2 focus:ring-teal-400 focus:border-teal-500 transition-all bg-gray-800 text-white appearance-none shadow-sm"
+                  className="w-full px-3 py-1.5 pl-8 pr-6 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 transition-all duration-300 bg-gray-50 focus:bg-white appearance-none shadow-sm text-sm"
                 >
                   {categories.map((cat) => (
-                    <option key={cat.value} value={cat.value} className="bg-gray-800 text-white">
+                    <option key={cat.value} value={cat.value}>
                       {cat.label}
                     </option>
                   ))}
                 </select>
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-emerald-400">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 flex items-center justify-center shadow-sm">
+                    <div className="w-1 h-1 rounded-full bg-white"></div>
+                  </div>
+                </div>
+                <div className="absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
             {/* Images Section */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0, transition: { delay: 0.5 } }}>
-              <label className="block text-sm font-semibold text-gray-300 mb-2">
+            <div className="mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Images * (Up to 10)
               </label>
 
+              {/* Tabs for upload vs link */}
+              <div className="flex border-b border-gray-200 mb-1.5 overflow-x-auto pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('upload')}
+                  className={`px-2 py-1 font-medium text-xs flex-shrink-0 ${
+                    activeTab === 'upload'
+                      ? 'text-emerald-600 border-b-2 border-emerald-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-0.5">
+                    <Upload className="w-3 h-3" />
+                    <span>Upload</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('link')}
+                  className={`px-2 py-1 font-medium text-xs flex-shrink-0 ${
+                    activeTab === 'link'
+                      ? 'text-emerald-600 border-b-2 border-emerald-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-0.5">
+                    <Link className="w-3 h-3" />
+                    <span>From Link</span>
+                  </div>
+                </button>
+              </div>
+
               {activeTab === 'upload' ? (
-                <motion.div
-                    className={`border-2 border-dashed rounded-xl transition-all duration-300 cursor-pointer ${
+                <div>
+                  {/* Upload area */}
+                  <div
+                    className={`border border-dashed rounded-lg transition-all duration-300 cursor-pointer ${
                       dragActive
-                        ? 'border-teal-400 bg-gray-800'
-                        : 'border-gray-700 hover:border-teal-500 hover:bg-gray-800'
+                        ? 'border-emerald-400 bg-emerald-50'
+                        : 'border-emerald-300 hover:border-emerald-400 hover:bg-emerald-50'
                     }`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
                     onDragOver={handleDrag}
                     onDrop={handleDrop}
                     onClick={() => (fileImages.length + linkImages.length) < 10 && fileInputRef.current?.click()}
-                    whileHover={{ scale: 1.02 }}
                   >
-                    <div className="p-6 text-center">
-                      <motion.div whileHover={{ scale: 1.1 }} className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Upload className="w-8 h-8 text-teal-400" />
-                      </motion.div>
-                      <p className="text-gray-300 font-medium mb-1">Click to upload or drag and drop</p>
-                      <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                    <div className="p-3 text-center">
+                      <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-1">
+                        <Upload className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <p className="text-emerald-800 font-medium text-xs mb-0.5">Click to upload or drag and drop</p>
+                      <p className="text-[0.6rem] text-emerald-600">JPG, PNG, GIF up to 5MB each</p>
                     </div>
-                </motion.div>
+                  </div>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageChange}
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                  />
+                </div>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div>
+                  <div className="flex flex-col sm:flex-row gap-1">
                     <input
                       ref={linkInputRef}
                       type="text"
                       placeholder="Paste image URL here..."
-                      className="flex-1 px-4 py-3 border border-gray-700 rounded-xl focus:ring-2 focus:ring-teal-400 focus:border-teal-500 bg-gray-800 text-white"
+                      className="flex-1 px-2.5 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 text-xs min-w-0"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter' && linkInputRef.current) {
                           e.preventDefault();
@@ -637,78 +695,71 @@ const ModernSidebarCreatePostWindow = ({
                         if (linkInputRef.current) {
                           handleImageLinkAdd(linkInputRef.current.value);
                           linkInputRef.current.value = '';
-                          linkInputRef.current.focus();
+                          linkInputRef.current.focus(); // Return focus to input after adding
                         }
                       }}
-                      className="px-4 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors flex items-center justify-center gap-2"
+                      className="px-2.5 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-0.5 text-xs min-w-0"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3 h-3" />
                       <span>Add</span>
                     </button>
                   </div>
+                </div>
               )}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                accept="image/*"
-                multiple
-                className="hidden"
-              />
 
               {errors.images && (
-                <p className="mt-2 text-red-400 text-xs flex items-center gap-1">
+                <p className="mt-1.5 text-red-500 text-xs flex items-center gap-0.5">
                   <AlertCircle className="w-3 h-3" />
                   {errors.images}
                 </p>
               )}
 
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-gray-400 mb-1">
+              {/* Progress bar */}
+              <div className="mt-2">
+                <div className="flex justify-between text-xs text-gray-600 mb-0.5">
                   <span>Progress</span>
                   <span>{(fileImages.length + linkImages.length)}/10</span>
                 </div>
-                <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-teal-500"
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
                     initial={{ width: 0 }}
                     animate={{ width: `${((fileImages.length + linkImages.length) / 10) * 100}%` }}
                     transition={{ duration: 0.5 }}
                   />
                 </div>
               </div>
-            </motion.div>
+            </div>
 
+            {/* Preview of uploaded images */}
             {(fileImages.length + linkImages.length) > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-3"
+                className="mb-3"
               >
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-semibold text-gray-300">
-                    Your Images
-                  </h3>
+                <div className="flex justify-between items-center mb-1.5">
+                  <h3 className="text-xs font-semibold text-gray-700">Your Images ({fileImages.length + linkImages.length})</h3>
                   <button
                     type="button"
                     onClick={clearAllImages}
-                    className="text-red-400 hover:text-red-500 text-sm flex items-center gap-1"
+                    className="text-red-500 hover:text-red-700 text-xs flex items-center gap-0.5"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3 h-3" />
                     <span>Clear all</span>
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-1">
                   {[...fileImages, ...linkImages].map((image, index) => (
                     <motion.div
                       key={image.id}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
-                      className="relative aspect-square rounded-lg overflow-hidden shadow-lg group"
+                      className="relative group aspect-square rounded-lg overflow-hidden shadow-sm"
                     >
-                      <div className="w-full h-full bg-gray-800 relative">
+                      <div className="w-full h-full bg-gray-200 relative">
                         {image.preview ? (
                           <img
                             src={image.preview}
@@ -716,7 +767,7 @@ const ModernSidebarCreatePostWindow = ({
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                          <div className="w-full h-full flex items-center justify-center bg-gray-100">
                             <img
                               src={image.url}
                               alt={`Preview ${index + 1}`}
@@ -726,25 +777,31 @@ const ModernSidebarCreatePostWindow = ({
                                 e.target.nextSibling.style.display = 'flex';
                               }}
                             />
-                            <div className="fallback absolute inset-0 flex items-center justify-center text-gray-500 text-xs">
-                              <Globe className="w-4 h-4 mr-1" />
+                            <div className="fallback absolute inset-0 flex items-center justify-center text-gray-500 text-[0.6rem]">
+                              <Link className="w-3 h-3 mr-0.5" />
                               {image.name}
                             </div>
                           </div>
                         )}
                         
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                          <motion.button
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                          <button
                             type="button"
                             onClick={() => removeImage(image.id)}
-                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
+                            className="bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-all duration-300"
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </motion.button>
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
                         </div>
                       </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => removeImage(image.id)}
+                        className="absolute top-0.5 right-0.5 bg-red-500 text-white p-0.5 rounded-full hover:bg-red-600 transition-all duration-300 shadow-lg z-10"
+                      >
+                        <X className="w-2 h-2" />
+                      </button>
                     </motion.div>
                   ))}
                 </div>
@@ -752,45 +809,44 @@ const ModernSidebarCreatePostWindow = ({
             )}
 
             {/* Form Actions */}
-            <div className="flex gap-3 pt-6 border-t border-gray-700">
-              <motion.button
+            <div className="flex gap-1.5 pt-2 border-t border-gray-200">
+              <button
                 type="button"
                 onClick={closeAndReset}
-                className="flex-1 px-4 py-3 border border-gray-700 text-gray-300 bg-gray-800 rounded-xl hover:bg-gray-700 transition-all font-medium shadow-sm"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition-all font-medium text-sm shadow-sm"
               >
                 Cancel
-              </motion.button>
-              <motion.button
+              </button>
+              <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-4 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                className="flex-1 px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-md"
               >
                 {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span className="flex items-center justify-center gap-1">
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                     <span>Creating...</span>
-                  </div>
+                  </span>
                 ) : (
-                  <div className="flex items-center justify-center gap-2">
-                    <Plus className="w-5 h-5" />
-                    <span>Create Pin</span>
-                  </div>
+                  <span className="flex items-center justify-center gap-1">
+                    <Plus className="w-4 h-4" />
+                    <span>Create Post</span>
+                  </span>
                 )}
-              </motion.button>
+              </button>
             </div>
 
             {errors.submit && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-4 p-3 bg-red-900/50 border border-red-500 rounded-xl"
+                className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg"
               >
-                <p className="text-red-400 text-sm flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
+                <p className="text-red-700 text-xs flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
                   {errors.submit}
                 </p>
               </motion.div>
@@ -802,4 +858,4 @@ const ModernSidebarCreatePostWindow = ({
   );
 };
 
-export default ModernSidebarCreatePostWindow;
+export default SidebarCreatePostWindow;

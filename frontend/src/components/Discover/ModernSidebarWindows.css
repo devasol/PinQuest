@@ -1,0 +1,427 @@
+/* Modern Sidebar Window Styles */
+
+/* Main container */
+.modern-sidebar-window-container {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Input and textarea styles */
+.modern-sidebar-input,
+.modern-sidebar-textarea {
+  transition: all 0.2s ease;
+  border-radius: 0.75rem;
+}
+
+.modern-sidebar-input:focus,
+.modern-sidebar-textarea:focus {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+/* Button styles */
+.modern-sidebar-button {
+  transition: all 0.2s ease;
+  border-radius: 0.75rem;
+}
+
+.modern-sidebar-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Image preview grid */
+.modern-sidebar-image-grid {
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 0.5rem;
+}
+
+/* Smooth animations for interactions */
+.modern-sidebar-input,
+.modern-sidebar-textarea,
+.modern-sidebar-button {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced input animations */
+.modern-sidebar-input:focus,
+.modern-sidebar-textarea:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+/* Enhanced button animations */
+.modern-sidebar-button {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-sidebar-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modern-sidebar-button:active {
+  transform: translateY(0);
+}
+
+/* Upload area animations */
+.modern-sidebar-upload-area {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-sidebar-upload-area:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Image preview animations */
+.modern-sidebar-image-preview {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-sidebar-image-preview:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Tab animations */
+.modern-sidebar-tab {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-sidebar-tab:hover {
+  background-color: rgba(16, 185, 129, 0.05);
+  transform: translateY(-1px);
+}
+
+/* Progress bar animations */
+.modern-sidebar-progress {
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Loading animations */
+.modern-sidebar-loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Pulse animation for interactive elements */
+.modern-sidebar-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Scale animations */
+.modern-sidebar-scale {
+  transition: transform 0.2s ease;
+}
+
+.modern-sidebar-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Slide animations */
+.modern-sidebar-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Responsive adjustments for sidebar windows */
+@media (max-width: 1200px) {
+  .modern-sidebar-window-container {
+    max-width: 95% !important;
+    margin: 1rem !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .modern-sidebar-window-container {
+    max-width: 95% !important;
+    margin: 0.75rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .modern-sidebar-window-container {
+    max-width: 98% !important;
+    margin: 0.5rem !important;
+  }
+  
+  .modern-sidebar-input,
+  .modern-sidebar-textarea,
+  .modern-sidebar-select {
+    padding: 0.75rem !important;
+    font-size: 0.9rem !important;
+  }
+  
+  .modern-sidebar-input.pl-12,
+  .modern-sidebar-textarea.pl-12 {
+    padding-left: 3rem !important;
+  }
+  
+  .modern-sidebar-category-select {
+    padding: 0.75rem 2.5rem 0.75rem 3rem !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+  
+  .modern-sidebar-actions {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .modern-sidebar-window-container {
+    max-width: 100vw !important;
+    margin: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  
+  .modern-sidebar-input,
+  .modern-sidebar-textarea,
+  .modern-sidebar-select {
+    padding: 0.75rem !important;
+    font-size: 0.875rem !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .modern-sidebar-window-container {
+    max-width: 100vw !important;
+    margin: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  
+  .modern-sidebar-input,
+  .modern-sidebar-textarea,
+  .modern-sidebar-select {
+    padding: 0.75rem !important;
+    font-size: 0.875rem !important;
+  }
+  
+  .modern-sidebar-input.pl-12,
+  .modern-sidebar-textarea.pl-12 {
+    padding-left: 2.5rem !important;
+  }
+  
+  .modern-sidebar-category-select {
+    padding: 0.75rem 2rem 0.75rem 2.5rem !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+  
+  .modern-sidebar-actions {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+}
+
+/* Additional responsive adjustments */
+@media (max-width: 360px) {
+  .modern-sidebar-window-container {
+    font-size: 0.8rem !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .modern-sidebar-header h2 {
+    font-size: 1.1rem !important;
+  }
+  
+  .modern-sidebar-header p {
+    font-size: 0.8rem !important;
+  }
+  
+  .modern-sidebar-input,
+  .modern-sidebar-textarea,
+  .modern-sidebar-select {
+    font-size: 0.8rem !important;
+  }
+}
+
+/* Landscape mobile adjustments */
+@media (max-height: 500px) and (orientation: landscape) and (max-width: 768px) {
+  .modern-sidebar-window-container {
+    max-height: 90vh !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  
+  .modern-sidebar-form {
+    overflow-y: auto !important;
+  }
+}
+
+/* Adjust image preview size on mobile */
+@media (max-width: 480px) {
+  .modern-sidebar-image-preview {
+    aspect-ratio: 1 !important;
+  }
+  
+  .modern-sidebar-image-preview .text-xs {
+    font-size: 0.7rem !important;
+  }
+}
+
+/* Adjust text sizes for better readability on small screens */
+@media (max-width: 480px) {
+  .modern-sidebar-label {
+    font-size: 0.85rem !important;
+  }
+  
+  .modern-sidebar-help-text {
+    font-size: 0.7rem !important;
+  }
+  
+  .modern-sidebar-error-text {
+    font-size: 0.75rem !important;
+  }
+}
+
+/* Ensure dropdowns and selects are usable on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .modern-sidebar-select {
+    min-height: 50px !important;
+    font-size: 1rem !important;
+  }
+  
+  .modern-sidebar-select option {
+    padding: 0.5rem !important;
+    font-size: 1rem !important;
+  }
+  
+  .modern-sidebar-button {
+    min-height: 50px !important;
+  }
+  
+  .modern-sidebar-input,
+  .modern-sidebar-textarea {
+    min-height: 50px !important;
+  }
+}
+
+/* Tablet portrait adjustments */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .modern-sidebar-window-container {
+    max-width: 90% !important;
+    margin: 1.5rem auto !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+/* Large mobile devices */
+@media (min-width: 600px) and (max-width: 768px) {
+  .modern-sidebar-window-container {
+    max-width: 95% !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* Small tablet adjustments */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .modern-sidebar-window-container {
+    max-width: 80% !important;
+    margin: 2rem auto !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+  }
+}
+
+/* Foldable device support */
+@media (max-width: 768px) and (min-height: 400px) and (max-height: 600px) {
+  .modern-sidebar-form {
+    padding: 0.875rem !important;
+    max-height: 85vh !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* High DPI screen optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .modern-sidebar-window-container {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Extra small height devices */
+@media (max-height: 500px) {
+  .modern-sidebar-form {
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+  }
+  
+  .modern-sidebar-image-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* Glassmorphism effects */
+.modern-sidebar-glass {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Smooth transitions */
+.modern-sidebar-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover scale effects */
+.modern-sidebar-hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.modern-sidebar-hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Focus glow effects */
+.modern-sidebar-focus-glow:focus {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapView.css';
@@ -392,7 +392,8 @@ const MapView = () => {
 
   const categories = ['all', 'nature', 'culture', 'shopping', 'food', 'event', 'general'];
 
-
+  // Memoize the filtered posts to prevent unnecessary re-renders
+  const memoizedFilteredPosts = useMemo(() => filteredPosts, [filteredPosts]);
 
   if (error) {
     return (
@@ -508,9 +509,9 @@ const MapView = () => {
           <div className="flex-1 overflow-y-auto p-4">
             {activePanel === 'posts' && (
               <div>
-                <h3 className="font-semibold text-gray-800 mb-3">All Posts ({filteredPosts.length})</h3>
+                <h3 className="font-semibold text-gray-800 mb-3">All Posts ({memoizedFilteredPosts.length})</h3>
                 <div className="space-y-3">
-                  {filteredPosts.map(post => (
+                  {memoizedFilteredPosts.map(post => (
                     <div 
                       key={`panel-post-${post.id}`} 
                       className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors"
@@ -527,7 +528,7 @@ const MapView = () => {
                       </div>
                     </div>
                   ))}
-                  {filteredPosts.length === 0 && (
+                  {memoizedFilteredPosts.length === 0 && (
                     <p className="text-gray-500 text-center py-4">No posts found</p>
                   )}
                 </div>
@@ -547,7 +548,7 @@ const MapView = () => {
                   />
                 </div>
                 <div className="space-y-3">
-                  {filteredPosts.slice(0, 10).map(post => (
+                  {memoizedFilteredPosts.slice(0, 10).map(post => (
                     <div 
                       key={`search-post-${post.id}`} 
                       className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors"
@@ -564,7 +565,7 @@ const MapView = () => {
                       </div>
                     </div>
                   ))}
-                  {filteredPosts.length === 0 && searchQuery && (
+                  {memoizedFilteredPosts.length === 0 && searchQuery && (
                     <p className="text-gray-500 text-center py-4">No posts match your search</p>
                   )}
                 </div>
@@ -717,7 +718,7 @@ const MapView = () => {
           />
           
           {/* Render custom markers for each post */}
-          {filteredPosts.map((post) => {
+          {memoizedFilteredPosts.map((post) => {
             // Only render markers if the post has valid position data and a valid id
             if (!post.position || !Array.isArray(post.position) || post.position.length < 2 || !post.id) {
               return null;
@@ -726,7 +727,7 @@ const MapView = () => {
               <CustomMarker 
                 key={`post-${post.id}`} 
                 post={post}
-                onClick={(post) => {
+                onClick={(post, screenPosition) => {
                   setSelectedPost(post);
                   // Handle click on marker
                   console.log('Marker clicked for post:', post.title);
@@ -737,7 +738,7 @@ const MapView = () => {
           })}
           
           {/* Loading overlay for posts */}
-          {loading && filteredPosts.length === 0 && (
+          {loading && memoizedFilteredPosts.length === 0 && (
             <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[49999] flex items-center justify-center">
               <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>

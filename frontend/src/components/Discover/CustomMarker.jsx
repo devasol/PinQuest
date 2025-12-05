@@ -88,8 +88,15 @@ const CustomMarker = React.memo(({ post, isLiked, onSave, isSaved, onGetDirectio
   React.useEffect(() => {
     const marker = markerRef.current;
     if (marker && onClick) {
-      const handleClick = () => {
-        onClick(post);
+      const handleClick = (e) => {
+        // Get the screen coordinates of the click
+        const map = e.target._map;
+        const latlng = e.latlng;
+        
+        // Convert the latitude/longitude to pixel coordinates on the screen
+        const point = map.latLngToContainerPoint(latlng);
+        
+        onClick(post, { x: point.x, y: point.y });
       };
       
       marker.on('click', handleClick);

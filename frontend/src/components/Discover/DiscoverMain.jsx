@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import CustomMarker from './CustomMarker';
-import PostWindow from '../PostWindow/PostWindow';
 import CurrentLocationMarker from './CurrentLocationMarker';
 import MapRouting from './MapRouting';
-import CreatePostModal from './CreatePostModal';
+import ModernSidebarPostWindow from './ModernSidebarPostWindow';
+import ModernSidebarCreatePostWindow from './ModernSidebarCreatePostWindow';
+
 import EnhancedSidebarWindows from './EnhancedSidebarWindows';
 
 import { Link, useNavigate } from 'react-router-dom';
@@ -26,18 +27,38 @@ import { getImageUrl } from '../../utils/imageUtils'; // Import the getImageUrl 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 
 // Custom hook for map events
-const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
+const MapClickHandler = ({ onMapClick, onMapPositionSelected, setMapClickPosition }) => {
   useMapEvents({
     click: (e) => {
       if (onMapClick) onMapClick(e.latlng);
       
-      // If user is authenticated, allow them to create a post at the clicked location
-      if (onMapPositionSelected) {
+      // Convert the Leaflet LatLng to screen coordinates and store the position
+      const screenPoint = e.containerPoint;
+      
+      // Check if the click occurred inside the create post modal or any other modal/ui element
+      // to prevent updating the location when user clicks inside the modal
+      const clickedElement = e.originalEvent.target;
+      const isInsideModal = clickedElement.closest('.create-post-modal-container') || 
+                           clickedElement.closest('.sidebar-create-post-window') ||
+                           clickedElement.closest('.post-window-container') || 
+                           clickedElement.closest('.leaflet-control') ||
+                           clickedElement.closest('.map-click-handler-ignore');
+      
+      // Only update the map position if the click is not inside a modal or UI element
+      if (!isInsideModal && onMapPositionSelected) {
         // Convert the Leaflet LatLng object to a simple position object
         onMapPositionSelected({
           lat: e.latlng.lat,
           lng: e.latlng.lng
         });
+        
+        // Store the screen coordinates for positioning the create post window
+        if (setMapClickPosition) {
+          setMapClickPosition({
+            x: screenPoint.x,
+            y: screenPoint.y
+          });
+        }
       }
       
       // Hide all control windows when clicking on map
@@ -71,6 +92,7 @@ const DiscoverMain = () => {
   const [showSavedLocationsOnMap, setShowSavedLocationsOnMap] = useState(false); // Toggle to show saved locations
   const [selectedPost, setSelectedPost] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false); // Track if create post modal is open
   const [sortBy, setSortBy] = useState('newest');
   const [priceRange, setPriceRange] = useState('all');
   const [rating, setRating] = useState(0);
@@ -106,7 +128,6 @@ const DiscoverMain = () => {
   const [routingActive, setRoutingActive] = useState(false); // Track if routing is active
   const [routingDestination, setRoutingDestination] = useState(null); // Store destination for routing
   const [routingLoading, setRoutingLoading] = useState(false); // Track if routing is being calculated
-  const [showCreatePostModal, setShowCreatePostModal] = useState(false); // Track if create post modal is open
   const [selectedMapPosition, setSelectedMapPosition] = useState(null); // Store selected position for post creation
   const [createPostLoading, setCreatePostLoading] = useState(false); // Track if post creation is in progress
   const [locationLoading, setLocationLoading] = useState(false); // Track if updating user location is in progress
@@ -425,6 +446,17 @@ const DiscoverMain = () => {
   const fetchIntervalRef = useRef(null);
   const selectedPostRef = useRef(selectedPost); // Create a ref to track selectedPost
   const { isAuthenticated, user } = useAuth();
+
+  // Effect to control map scroll wheel zoom when create post modal is open
+  useEffect(() => {
+    if (mapRef.current) {
+      if (showCreatePostModal) {
+        mapRef.current.scrollWheelZoom.disable();
+      } else {
+        mapRef.current.scrollWheelZoom.enable();
+      }
+    }
+  }, [showCreatePostModal, mapRef]);
 
   // Update the ref when selectedPost changes
   useEffect(() => {
@@ -1024,16 +1056,26 @@ const DiscoverMain = () => {
         })
       );
       
-      // Also update selected post if it exists
+      // Also update selected post if it exists, but avoid triggering this effect again
+      // Use a ref to track the previous favoritePosts to prevent infinite loop
       if (selectedPost && selectedPost._id) {
         setSelectedPost(prev => {
-          // Check if prev is null to avoid the error
+          // Only update if the bookmark status has actually changed
           if (!prev || !prev._id) return prev;
-          return {
-            ...prev,
-            bookmarked: favoritePosts.has(prev._id),
-            saved: favoritePosts.has(prev._id)
-          };
+          
+          const isCurrentlyBookmarked = favoritePosts.has(prev._id);
+          const wasPreviouslyBookmarked = prev.bookmarked || prev.saved;
+          
+          // Only update if bookmark status has changed
+          if (isCurrentlyBookmarked !== wasPreviouslyBookmarked) {
+            return {
+              ...prev,
+              bookmarked: isCurrentlyBookmarked,
+              saved: isCurrentlyBookmarked
+            };
+          }
+          // Return the same object if no change to avoid unnecessary re-renders
+          return prev;
         });
       }
     }
@@ -2146,21 +2188,244 @@ const DiscoverMain = () => {
     } else {
       // Handle case where API service call was successful but backend returned an error
       // or API service call failed
-      if (result.success === false) {
+      if (result && result.success === false) {
         // API service call failed (network error, etc.)
         const errorMessage = result.error || result.message || 'Failed to connect to server';
         console.error('Post creation failed - API service error:', result);
         throw new Error(errorMessage);
-      } else if (result.success === true && (!result.data || result.data.status !== 'success')) {
+      } else if (result && result.success === true && result.data && result.data.status !== 'success') {
         // API service call succeeded but backend returned an error
         const errorMessage = result.data?.message || result.data?.error || 'Failed to create post';
         console.error('Post creation failed - backend error:', result);
         throw new Error(errorMessage);
+      } else if (result && typeof result === 'object' && result.status === 'success' && result.data) {
+        // This is the case where the API response has the format {status: 'success', data: {...}}
+        // This means the post was created successfully
+        console.log('Post creation successful with direct API response format');
+        // Process the direct API response format
+        const actualPostData = result.data;
+        
+        // Add the new post to our local state with the same structure as API-transformed posts
+        let position;
+        if (actualPostData?.location?.coordinates && Array.isArray(actualPostData.location.coordinates) 
+            && actualPostData.location.coordinates.length === 2) {
+          // Convert from [longitude, latitude] (GeoJSON) to [latitude, longitude] (Leaflet)
+          position = [actualPostData.location.coordinates[1], actualPostData.location.coordinates[0]];
+        } 
+        else if (actualPostData?.location && typeof actualPostData.location.latitude === 'number' && 
+                 typeof actualPostData.location.longitude === 'number') {
+          position = [actualPostData.location.latitude, actualPostData.location.longitude];
+        }
+        else {
+          // Fallback to the extracted location data if API doesn't return location properly
+          position = [locationData.latitude, locationData.longitude];
+        }
+        
+        const newPost = {
+            _id: actualPostData?._id,
+            id: actualPostData?._id,
+            title: actualPostData?.title || (postPayload instanceof FormData ? 'Untitled' : postPayload.title),
+            description: actualPostData?.description || (postPayload instanceof FormData ? 'No description' : postPayload.description),
+            // Handle images - backend returns image objects with {url, publicId} structure
+            // Use the same logic as PostWindow component to ensure consistency
+            image: actualPostData?.image 
+              ? (typeof actualPostData.image === 'string' 
+                  ? actualPostData.image 
+                  : (actualPostData.image?.url || actualPostData.image.url || null))
+              : (Array.isArray(actualPostData?.images) && actualPostData.images.length > 0
+                  ? (typeof actualPostData.images[0] === 'string' 
+                      ? actualPostData.images[0] 
+                      : (actualPostData.images[0]?.url || actualPostData.images[0].url || null))
+                  : null),
+            // Extract URLs from images array - backend returns array of {url, publicId} objects
+            // Use the same image URL formatting as PostWindow uses via getImageUrl utility
+            images: Array.isArray(actualPostData?.images) && actualPostData.images.length > 0
+              ? actualPostData.images
+                  .map(img => {
+                    // Use the existing getImageUrl utility function to ensure proper URL formatting
+                    return getImageUrl(img);
+                  })
+                  .filter(url => url && url.trim() !== '')
+              : (actualPostData?.image 
+                  ? [actualPostData?.image]
+                      .map(img => {
+                        return getImageUrl(img);
+                      })
+                      .filter(url => url && url.trim() !== '')
+                  : []),
+          averageRating: actualPostData?.averageRating || 0,
+          totalRatings: actualPostData?.totalRatings || 0,
+          postedBy: actualPostData?.postedBy?.name || user?.name || user?.email || "Anonymous",
+          category: actualPostData?.category || (postPayload instanceof FormData ? 'general' : postPayload.category),
+          datePosted: actualPostData?.datePosted || new Date().toISOString(),
+          position: position,
+          price: actualPostData?.price || 0,
+          tags: actualPostData?.tags || [],
+          comments: actualPostData?.comments || [],
+          likes: actualPostData?.likes || [], // Use likes from response if available
+          likesCount: actualPostData?.likesCount || 0,
+          location: {
+            // Ensure location has proper latitude and longitude for the directions feature
+            latitude: actualPostData?.location?.latitude || 
+                      (actualPostData?.location?.coordinates && typeof actualPostData.location.coordinates[1] === 'number' ? actualPostData.location.coordinates[1] : null) || 
+                      locationData.latitude,
+            longitude: actualPostData?.location?.longitude || 
+                       (actualPostData?.location?.coordinates && typeof actualPostData.location.coordinates[0] === 'number' ? actualPostData.location.coordinates[0] : null) || 
+                       locationData.longitude,
+            // Preserve other location properties if they exist
+            ...(actualPostData?.location || {})
+          },
+        };
+        
+        setPosts(prev => [newPost, ...prev]);
+        
+        // Apply current filters to determine if the new post should be in the filtered list
+        let shouldIncludeInFiltered = true;
+        
+        // Apply search filter
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          shouldIncludeInFiltered = 
+            newPost.title.toLowerCase().includes(query) || 
+            newPost.description.toLowerCase().includes(query) ||
+            (typeof newPost.postedBy === 'string' ? newPost.postedBy.toLowerCase() : 
+             (typeof newPost.postedBy === 'object' && newPost.postedBy.name ? newPost.postedBy.name.toLowerCase() : '')
+            ).includes(query) ||
+            newPost.category.toLowerCase().includes(query) ||
+            newPost.tags.some(tag => tag.toLowerCase().includes(query));
+        }
+        
+        // Apply category filter
+        if (selectedCategory !== 'all' && shouldIncludeInFiltered) {
+          shouldIncludeInFiltered = newPost.category.toLowerCase() === selectedCategory.toLowerCase();
+        }
+        
+        // Apply rating filter
+        if (rating > 0 && shouldIncludeInFiltered) {
+          shouldIncludeInFiltered = newPost.averageRating >= rating;
+        }
+        
+        // Apply price range filter
+        if (priceRange !== 'all' && shouldIncludeInFiltered) {
+          if (priceRange === 'free') {
+            shouldIncludeInFiltered = newPost.price === 0;
+          } else if (priceRange === 'low') {
+            shouldIncludeInFiltered = newPost.price > 0 && newPost.price <= 10;
+          } else if (priceRange === 'medium') {
+            shouldIncludeInFiltered = newPost.price > 10 && newPost.price <= 50;
+          } else if (priceRange === 'high') {
+            shouldIncludeInFiltered = newPost.price > 50;
+          }
+        }
+        
+        // Only add to filtered posts if it passes all current filters
+        if (shouldIncludeInFiltered) {
+          setFilteredPosts(prev => {
+            // Add new post and sort according to current sort setting
+            const updatedList = [newPost, ...prev];
+            
+            // Apply sorting based on current sort setting
+            updatedList.sort((a, b) => {
+              switch (sortBy) {
+                case 'newest':
+                  return new Date(b.datePosted) - new Date(a.datePosted);
+                case 'oldest':
+                  return new Date(a.datePosted) - new Date(b.datePosted);
+                case 'rating':
+                  return b.averageRating - a.averageRating;
+                case 'popular':
+                  return b.totalRatings - a.totalRatings;
+                default:
+                  return 0;
+              }
+            });
+            
+            return updatedList;
+          });
+          
+          // Fly to the new post location to show it on the map
+          setTimeout(() => {
+            if (newPost.position) {
+              flyToPost(newPost.position);
+            }
+          }, 300); // Small delay to ensure the post is rendered
+        }
+        
+        // Show success message
+        showModal({
+          title: "Success",
+          message: 'Post created successfully!',
+          type: 'success',
+          confirmText: 'OK'
+        });
+        
+        // Open the new post in the PostWindow after successful creation
+        // This provides immediate feedback to the user showing their created post
+        setSelectedPost(newPost);
+        
+        // Clear loading state immediately after success
+        setCreatePostLoading(false);
+        
+        // Return the successful result
+        return { success: true, data: result };
       } else {
         // Unexpected response format
-        const errorMessage = result.message || result.error || 'Failed to create post';
-        console.error('Post creation failed - unexpected response format:', result);
-        throw new Error(errorMessage);
+        // Check if the result itself might be the "Success" string that's causing the error
+        if (result === 'Success' || (typeof result === 'object' && result.message === 'Success')) {
+          // This is likely the problematic case where the API returns just "Success" as a string
+          console.log('Received "Success" string response from API - treating as success');
+          
+          // Show success message
+          showModal({
+            title: "Success",
+            message: 'Post created successfully!',
+            type: 'success',
+            confirmText: 'OK'
+          });
+          
+          // Reset form state
+          setCreatePostLoading(false);
+          
+          // Return success
+          return { success: true, data: result };
+        } else {
+          // Unexpected response format
+          // Check if the result itself might be the "Success" string that's causing the error
+          if (result === 'Success' || (typeof result === 'object' && result.message === 'Success')) {
+            // This is likely the problematic case where the API returns just "Success" as a string
+            console.log('Received "Success" string response from API - treating as success');
+            
+            // Show success message
+            showModal({
+              title: "Success",
+              message: 'Post created successfully!',
+              type: 'success',
+              confirmText: 'OK'
+            });
+            
+            // Reset form state
+            setCreatePostLoading(false);
+            
+            // Return success
+            return { success: true, data: result };
+          } else {
+            // Try to extract meaningful error message from various possible response formats
+            let errorMessage = 'Failed to create post';
+            
+            if (typeof result === 'string') {
+              // If result is just a string like "Success" that was intended as an error
+              errorMessage = result;
+            } else if (result && typeof result === 'object') {
+              // Check for various possible error message locations
+              errorMessage = result.message || result.error || result.msg || 
+                            (result.data ? (result.data.message || result.data.error) : null) || 
+                            'Failed to create post';
+            }
+            
+            console.error('Post creation failed - unexpected response format:', result);
+            throw new Error(errorMessage);
+          }
+        }
       }
     }
 
@@ -2350,6 +2615,7 @@ const DiscoverMain = () => {
       
       {/* Map and results area - adjust to account for sidebar and windows */}
       <div className={`map-container transition-all duration-300 ease-in-out ${
+        (showCreatePostModal || selectedPost) ? 'sidebar-window-open ' : ''} ${
         (isSidebarExpanded && window.innerWidth >= 768) || Object.values(showWindows).some(open => open) ?
           (Object.values(showWindows).some(open => open) ? 
             (isSidebarExpanded && window.innerWidth >= 768 ? 'ml-[calc(16rem+380px)]' : 'ml-[calc(5rem+380px)]') 
@@ -2602,17 +2868,26 @@ const DiscoverMain = () => {
           
           <MapClickHandler 
             onMapClick={() => {
-              // Handle map click
+              // Handle map click - this can be used for other click handling if needed
             }} 
             onMapPositionSelected={(position) => {
+              console.log("Map clicked at position:", position); // Debug log
+              console.log("isAuthenticated:", isAuthenticated); // Debug log
+              console.log("routingActive:", routingActive); // Debug log
+              
               // Only allow authenticated users to create posts and only when routing is not active
               if (isAuthenticated && !routingActive) {
+                console.log("Opening create post modal"); // Debug log
+                // Set both the map position (lat/lng) and the screen position (x/y) for the modal
                 setSelectedMapPosition(position);
+                
+                // Make sure to update the screen position as well
                 setShowCreatePostModal(true);
               } else if (isAuthenticated && routingActive) {
                 // If routing is active, just clear the routing and don't open the create post modal
                 clearRouting();
               } else if (!isAuthenticated) {
+                console.log("User not authenticated, showing login modal"); // Debug log
                 showModal({
                   title: "Authentication Required",
                   message: 'Please login to create posts',
@@ -2621,6 +2896,7 @@ const DiscoverMain = () => {
                 });
               }
             }}
+
           />
           
           {/* Show user's current location on the map */}
@@ -2733,7 +3009,7 @@ const DiscoverMain = () => {
                   onSave={togglePostBookmark}
                   isSaved={isSaved}
                   onGetDirections={getDirections}
-                  onClick={(post) => {
+                  onClick={(post, screenPosition) => {
                     setSelectedPost(post);
                     // Handle click on marker
                     console.log('Marker clicked for post:', post.title);
@@ -2804,7 +3080,7 @@ const DiscoverMain = () => {
                   onSave={saveLocation}
                   isSaved={true} // Mark as saved since this is from the saved locations list
                   onGetDirections={getDirections}
-                  onClick={(post) => {
+                  onClick={(post, screenPosition) => {
                     setSelectedPost(post);
                     console.log('Saved location marker clicked:', savedLocation.name);
                   }}
@@ -2822,6 +3098,40 @@ const DiscoverMain = () => {
               clearRoute={!routingActive}
             />
           )}
+          
+          {/* Map Position Updater - handles updating window positions when map moves */}
+
+          
+          {/* Modern Sidebar Post Window */}
+          <ModernSidebarPostWindow
+            post={selectedPost}
+            currentUser={isAuthenticated ? user : null}
+            authToken={isAuthenticated ? localStorage.getItem('token') : null}
+            isAuthenticated={isAuthenticated}
+            isVisible={!!selectedPost}
+            onClose={() => {
+              setSelectedPost(null);
+              // Clear routing when closing the post window
+              clearRouting();
+            }}
+            onSave={handlePostSave}
+            onRate={handlePostRate}
+            onGetDirections={getDirections}
+            isSidebarExpanded={isSidebarExpanded}
+          />
+          
+          {/* Modern Sidebar Create Post Window - positioned where user clicked */}
+          <ModernSidebarCreatePostWindow
+            isVisible={showCreatePostModal}
+            onClose={() => {
+              setShowCreatePostModal(false);
+              setSelectedMapPosition(null);
+            }}
+            initialPosition={selectedMapPosition}
+            onCreatePost={handleCreatePost}
+            loading={createPostLoading}
+            isSidebarExpanded={isSidebarExpanded}
+          />
         </MapContainer>
         
         {/* Top Banner - Shown when saved locations are displayed - Updated for new layout */}
@@ -3231,43 +3541,7 @@ const DiscoverMain = () => {
         </AnimatePresence>
       </div>
       
-      {/* Post Window Modal */}
-      <AnimatePresence>
-        {selectedPost ? (
-          <PostWindow
-            post={selectedPost}
-            currentUser={isAuthenticated ? user : null}
-            authToken={isAuthenticated ? localStorage.getItem('token') : null}
-            isAuthenticated={isAuthenticated}
-            isOpen={!!selectedPost}
-            onClose={() => {
-              setSelectedPost(null);
-              // Clear routing when closing the post window
-              clearRouting();
-            }}
-            onLike={handlePostLike}
-            onSave={handlePostSave}
-            onRate={handlePostRate}
-            onGetDirections={getDirections}
-            onComment={(postId) => {
-              console.log('Comment clicked for post:', postId);
-              // Handle comment click if needed
-            }}
-          />
-        ) : null}
-      </AnimatePresence>
-      
-      {/* Create Post Modal */}
-      <CreatePostModal
-        isOpen={showCreatePostModal}
-        onClose={() => {
-          setShowCreatePostModal(false);
-          setSelectedMapPosition(null);
-        }}
-        initialPosition={selectedMapPosition}
-        onCreatePost={handleCreatePost}
-        loading={createPostLoading}
-      />
+
     </div>
   );
 };
