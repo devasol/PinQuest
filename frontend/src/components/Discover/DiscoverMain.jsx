@@ -20,6 +20,7 @@ import { postApi } from '../../services/api'; // Import the postApi to handle po
 import apiService from '../../services/api'; // Import the default apiService for direct upload functionality
 import { postsApi } from '../../services/postsApi'; // Import the postsApi service for file uploads
 import Sidebar from '../Sidebar/Sidebar';
+import { getImageUrl } from '../../utils/imageUtils'; // Import the getImageUrl utility
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
@@ -1977,7 +1978,7 @@ const DiscoverMain = () => {
             title: result.data?.title || (postPayload instanceof FormData ? 'Untitled' : postPayload.title),
             description: result.data?.description || (postPayload instanceof FormData ? 'No description' : postPayload.description),
             // Handle images - backend returns image objects with {url, publicId} structure
-            // Extract URL from image object or use string directly
+            // Use the same logic as PostWindow component to ensure consistency
             image: result.data?.image 
               ? (typeof result.data.image === 'string' 
                   ? result.data.image 
@@ -1988,20 +1989,20 @@ const DiscoverMain = () => {
                       : (result.data.images[0]?.url || result.data.images[0].url || null))
                   : null),
             // Extract URLs from images array - backend returns array of {url, publicId} objects
+            // Use the same image URL formatting as PostWindow uses via getImageUrl utility
             images: Array.isArray(result.data?.images) && result.data.images.length > 0
               ? result.data.images
                   .map(img => {
-                    if (typeof img === 'string') return img;
-                    if (img && typeof img === 'object') {
-                      return img.url || null;
-                    }
-                    return null;
+                    // Use the existing getImageUrl utility function to ensure proper URL formatting
+                    return getImageUrl(img);
                   })
-                  .filter(url => url !== null)
+                  .filter(url => url && url.trim() !== '')
               : (result.data?.image 
-                  ? [typeof result.data.image === 'string' 
-                      ? result.data.image 
-                      : (result.data.image?.url || result.data.image.url || null)].filter(url => url !== null)
+                  ? [result.data?.image]
+                      .map(img => {
+                        return getImageUrl(img);
+                      })
+                      .filter(url => url && url.trim() !== '')
                   : []),
           averageRating: result.data?.averageRating || 0,
           totalRatings: result.data?.totalRatings || 0,
@@ -2108,6 +2109,10 @@ const DiscoverMain = () => {
           type: 'success',
           confirmText: 'OK'
         });
+        
+        // Open the new post in the PostWindow after successful creation
+        // This provides immediate feedback to the user showing their created post
+        setSelectedPost(newPost);
         
         // Clear loading state immediately after success
         setCreatePostLoading(false);

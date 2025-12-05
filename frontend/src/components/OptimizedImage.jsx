@@ -139,6 +139,7 @@ const OptimizedImage = ({
               isLoading ? 'opacity-0' : 'opacity-100'
             }`}
             loading={priority ? 'eager' : loading}
+            crossOrigin="anonymous"  // Add this to handle CORS for images from different origins
             onLoad={handleLoad}
             onError={handleError}
             {...props}
