@@ -403,6 +403,8 @@ const PostWindow = ({
           }}
           className="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl sm:max-w-3xl md:max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col z-[99999] border border-slate-700"
           onClick={(e) => e.stopPropagation()}
+        className="bg-slate-800 rounded-2xl shadow-2xl max-w-2xl sm:max-w-3xl md:max-w-4xl w-full max-h-[90vh] overflow-y-auto flex flex-col z-[99999] border border-slate-700"
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-800 to-slate-700 border-b border-slate-600 flex justify-between items-center">
@@ -428,7 +430,7 @@ const PostWindow = ({
           </div>
 
           {/* Content */}
-          <div className="post-window-container flex flex-col flex-1 overflow-y-auto">
+          <div className="post-window-container flex flex-col flex-1 overflow-y-hidden">
             {/* Image Gallery */}
             <div className="w-full">
               <div className="relative">
@@ -474,7 +476,7 @@ const PostWindow = ({
                   </div>
                 ) : (
                   <div className="w-full h-48 sm:h-60 md:h-80 flex flex-col items-center justify-center bg-gray-50 p-4">
-                    <div className="text-center max-w-sm">
+                    <div className="text-center max-w-md">
                       <div className="mx-auto w-16 sm:w-24 h-16 sm:h-24 bg-gray-200 rounded-xl flex items-center justify-center mb-3 sm:mb-6">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -734,7 +736,7 @@ const PostWindow = ({
                       </div>
                       
                       {/* Comments List */}
-                      <div className="flex-1 overflow-y-auto max-h-48 p-4 bg-slate-800/50">
+                      <div className="flex-1 overflow-y-auto p-4 bg-slate-800/50">
                         {comments && comments.length > 0 ? (
                           <div className="space-y-3">
                             {comments.map((comment) => (

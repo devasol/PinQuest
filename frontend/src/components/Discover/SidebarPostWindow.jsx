@@ -22,12 +22,13 @@ import { useModal } from "../../contexts/ModalContext";
 import { connectSocket } from "../../services/socketService";
 
 const getResponsiveWidth = () => {
-  if (window.innerWidth >= 1280) return '380px';
-  if (window.innerWidth >= 1024) return '340px';
-  if (window.innerWidth >= 768) return '320px';
-  if (window.innerWidth >= 640) return '300px';
-  if (window.innerWidth >= 480) return '280px';
-  return '260px';
+  // Wider defaults to provide more room for post content beside the sidebar
+  if (window.innerWidth >= 1280) return '520px';
+  if (window.innerWidth >= 1024) return '480px';
+  if (window.innerWidth >= 768) return '440px';
+  if (window.innerWidth >= 640) return '380px';
+  if (window.innerWidth >= 480) return '340px';
+  return '320px';
 };
 
 const SidebarPostWindow = ({ 
@@ -388,7 +389,7 @@ const SidebarPostWindow = ({
   return (
     <AnimatePresence>
       <motion.div 
-        className="fixed top-0 bottom-0 z-[6999] sidebar-window h-full"
+        className="fixed top-0 bottom-0 z-[6999] sidebar-window h-full overflow-hidden"
         style={{ 
           width: getResponsiveWidth(), 
           left: isSidebarExpanded && window.innerWidth >= 768 ? '16rem' : '5rem' 
@@ -418,7 +419,7 @@ const SidebarPostWindow = ({
         </div>
         
         {/* Content */}
-        <div className="sidebar-window-content overflow-y-auto">
+        <div className="sidebar-window-content overflow-y-auto h-[calc(100%-70px)]">
           {/* Image Gallery */}
           <div className="w-full mb-4">
             <div className="relative">

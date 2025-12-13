@@ -16,17 +16,18 @@ import {
   Eye,
   EyeOff,
   Image as ImageIcon,
-  MoreHorizontal
+  MoreHorizontal,
+  Send,
+  ThumbsUp,
+  Bookmark as BookmarkIcon
 } from "lucide-react";
 import OptimizedImage from "../OptimizedImage";
 import { postApi, userApi } from "../../services/api.js";
 import { getImageUrl, formatDate } from "../../utils/imageUtils";
-import CommentItem from './CommentItem';
 import { useModal } from "../../contexts/ModalContext";
 import { connectSocket } from "../../services/socketService";
-import './ModernPostWindow.css';
 
-const ModernPostWindow = ({ 
+const EnhancedPostWindow = ({ 
   post, 
   currentUser, 
   authToken, 
@@ -42,66 +43,21 @@ const ModernPostWindow = ({
   const [newComment, setNewComment] = useState('');
   const [rating, setRating] = useState(post?.userRating || 0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showInfo, setShowInfo] = useState(true);
   const [showImageControls, setShowImageControls] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [commentLoading, setCommentLoading] = useState(false);
 
   const { showModal } = useModal();
   const [bookmarked, setBookmarked] = useState(post?.bookmarked || post?.saved || false);
-  const [loading, setLoading] = useState(false);
-
-  // Simple local bookmark functionality
-  const handleBookmarkFromHook = async () => {
-    if (!authToken) {
-      showModal({
-        title: "Authentication Required",
-        message: "Please login to bookmark posts",
-        type: 'info',
-        confirmText: 'OK'
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      let result;
-      if (bookmarked) {
-        result = await userApi.removeFavorite(currentPost._id, authToken);
-      } else {
-        result = await userApi.addFavorite(currentPost._id, authToken);
-      }
-
-      if (result.success) {
-        // Update local state optimistically
-        setBookmarked(!bookmarked);
-        
-        // Call parent callback to notify of the change
-        onSave && onSave(currentPost._id, !bookmarked);
-        
-        // Show success message
-        showModal({
-          title: "Success",
-          message: `Post ${!bookmarked ? 'saved' : 'removed from saved'}`,
-          type: 'success',
-          confirmText: 'OK'
-        });
-      } else {
-        throw new Error(result.error || 'Failed to update bookmark status');
-      }
-    } catch (error) {
-      console.error('Error handling bookmark:', error);
-      showModal({
-        title: "Error",
-        message: error.message || 'An error occurred. Please try again.',
-        type: 'error',
-        confirmText: 'OK'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [liked, setLiked] = useState(post?.likes?.some(like => 
+    like.user && 
+    (like.user._id === currentUser?._id || 
+     (typeof like.user === 'string' && like.user === currentUser?._id) ||
+     (typeof like.user === 'object' && like.user._id === currentUser?._id))
+  ) || false);
 
   // Update currentPost when the post prop changes
   useEffect(() => {
@@ -116,13 +72,21 @@ const ModernPostWindow = ({
           comments: post.comments || [],
           averageRating: post.averageRating || prevCurrentPost.averageRating,
           totalRatings: post.totalRatings || prevCurrentPost.totalRatings,
+          likes: post.likes || prevCurrentPost.likes,
+          likesCount: post.likesCount || prevCurrentPost.likesCount,
         };
       });
       setComments(post.comments || []);
       setRating(post.userRating || 0);
       setBookmarked(post.bookmarked || post.saved || false);
+      setLiked(post.likes?.some(like => 
+        like.user && 
+        (like.user._id === currentUser?._id || 
+         (typeof like.user === 'string' && like.user === currentUser?._id) ||
+         (typeof like.user === 'object' && like.user._id === currentUser?._id))
+      ) || false);
     }
-  }, [post]);
+  }, [post, currentUser]);
 
   // Set up real-time updates via socket
   useEffect(() => {
@@ -135,8 +99,13 @@ const ModernPostWindow = ({
     const handlePostUpdate = (updatedPost) => {
       if (updatedPost._id === currentPost._id) {
         setCurrentPost(prevPost => ({
+          ...prevPost,
           ...updatedPost,
-          comments: updatedPost.comments || []
+          comments: updatedPost.comments || [],
+          likes: updatedPost.likes || [],
+          averageRating: updatedPost.averageRating || prevPost.averageRating,
+          totalRatings: updatedPost.totalRatings || prevPost.totalRatings,
+          likesCount: updatedPost.likesCount || prevPost.likesCount,
         }));
         setComments(updatedPost.comments || []);
       }
@@ -152,15 +121,17 @@ const ModernPostWindow = ({
     socket.on('post-bookmarked', handlePostUpdate);
     socket.on('new-comment', handlePostUpdate);
     socket.on('post-deleted', handlePostDeletion);
+    socket.on('post-like', handlePostUpdate);
 
     return () => {
       socket.off('post-updated', handlePostUpdate);
       socket.off('post-bookmarked', handlePostUpdate);
       socket.off('new-comment', handlePostUpdate);
       socket.off('post-deleted', handlePostDeletion);
+      socket.off('post-like', handlePostUpdate);
       socket.emit('leave-post-room', currentPost._id);
     };
-  }, [isOpen, authToken, currentPost?._id]);
+  }, [isOpen, authToken, currentPost?._id, onClose]);
 
   // Create stable images array
   const hasImages = useMemo(() => {
@@ -201,16 +172,81 @@ const ModernPostWindow = ({
       return;
     }
 
+    setLoading(true);
     try {
-      await handleBookmarkFromHook();
-      onSave && onSave(currentPost._id, !bookmarked);
+      let result;
+      if (bookmarked) {
+        result = await userApi.removeFavorite(currentPost._id, authToken);
+      } else {
+        result = await userApi.addFavorite(currentPost._id, authToken);
+      }
+
+      if (result.success) {
+        setBookmarked(!bookmarked);
+        onSave && onSave(currentPost._id, !bookmarked);
+        
+        showModal({
+          title: "Success",
+          message: `Post ${!bookmarked ? 'saved' : 'removed from saved'}`,
+          type: 'success',
+          confirmText: 'OK'
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update bookmark status');
+      }
     } catch (error) {
       console.error('Error handling bookmark:', error);
+      showModal({
+        title: "Error",
+        message: error.message || 'An error occurred. Please try again.',
+        type: 'error',
+        confirmText: 'OK'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!authToken) {
+      showModal({
+        title: "Authentication Required",
+        message: "Please login to like posts",
+        type: 'info',
+        confirmText: 'OK'
+      });
+      return;
+    }
+
+    try {
+      // Check if the post is currently liked to determine if we should like or unlike
+      const response = liked 
+        ? await postApi.unlikePost(currentPost._id, authToken)
+        : await postApi.likePost(currentPost._id, authToken);
+        
+      if (response.success) {
+        setLiked(!liked); // Toggle the liked state
+        setCurrentPost(prev => ({
+          ...prev,
+          likes: response.data?.likes || [],
+          likesCount: response.data?.likesCount || (liked ? Math.max(0, prev.likesCount - 1) : (prev.likesCount || 0) + 1)
+        }));
+      } else {
+        throw new Error(response.error || 'Failed to update like status');
+      }
+    } catch (error) {
+      console.error('Error handling like:', error);
+      showModal({
+        title: "Error",
+        message: error.message || 'An error occurred. Please try again.',
+        type: 'error',
+        confirmText: 'OK'
+      });
     }
   };
 
   const handleComment = () => {
-    setShowCommentsModal(true);
+    setShowComments(!showComments);
   };
 
   const handleShare = () => {
@@ -312,6 +348,7 @@ const ModernPostWindow = ({
 
     if (!newComment.trim() || !currentPost?._id) return;
 
+    setCommentLoading(true);
     try {
       const response = await postApi.addComment(currentPost._id, { text: newComment }, authToken);
 
@@ -319,7 +356,10 @@ const ModernPostWindow = ({
         const newCommentObj = {
           _id: response.data?._id || `temp-${Date.now()}`,
           text: newComment,
-          user: currentUser,
+          user: {
+            name: currentUser?.name || currentUser?.email || "Anonymous",
+            _id: currentUser?._id
+          },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
@@ -333,7 +373,10 @@ const ModernPostWindow = ({
           totalComments: (prevPost.totalComments || prevPost.comments?.length || 0) + 1
         }));
         
-        setShowCommentsModal(false);
+        // Close comments if user just submitted a comment
+        if (showComments) {
+          setTimeout(() => setShowComments(false), 1000);
+        }
       } else {
         throw new Error(response.error || 'Failed to add comment');
       }
@@ -345,6 +388,8 @@ const ModernPostWindow = ({
         type: 'error',
         confirmText: 'OK'
       });
+    } finally {
+      setCommentLoading(false);
     }
   };
 
@@ -365,12 +410,14 @@ const ModernPostWindow = ({
         prevImage();
       } else if (e.key === 'i' || e.key === 'I') {
         setShowInfo(prev => !prev);
+      } else if (e.key === 'c' || e.key === 'C') {
+        setShowComments(prev => !prev);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, hasImages, images.length, nextImage, prevImage]);
+  }, [isOpen, hasImages, images.length, nextImage, prevImage, showComments]);
 
   if (!isOpen || !currentPost) return null;
 
@@ -393,49 +440,53 @@ const ModernPostWindow = ({
             stiffness: 300,
             duration: 0.4 
           }}
-          className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto flex flex-col z-[99999] border border-emerald-100"
+          className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col z-[99999] border border-gray-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 flex justify-between items-center relative">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <User className="w-5 h-5" />
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-6 flex justify-between items-center relative">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-emerald-600" />
+                </div>
               </div>
               <div>
-                <h3 className="font-bold text-sm">
+                <h3 className="font-bold text-lg">
                   {typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}
                 </h3>
-                <p className="text-xs opacity-90 flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
+                <p className="text-sm opacity-90 flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
                   {formatDate(currentPost.datePosted)}
                 </p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowInfo(!showInfo)}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-200"
                 aria-label={showInfo ? "Hide info" : "Show info"}
               >
-                {showInfo ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showInfo ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleClose}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+                className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-200"
                 aria-label="Close"
               >
-                <X className="w-4 h-4" />
-              </button>
+                <X className="w-5 h-5" />
+              </motion.button>
             </div>
           </div>
 
           {/* Content */}
-          <div className="flex flex-col md:flex-row h-full">
+          <div className="flex flex-col md:flex-row h-full overflow-hidden">
             {/* Image Gallery */}
             <div className="md:w-1/2">
-              <div className="relative h-64 md:h-full">
+              <div className="relative h-64 md:h-80 lg:h-96">
                 {hasImages && images.length > 0 ? (
                   <div className="relative w-full h-full">
                     <div 
@@ -453,26 +504,30 @@ const ModernPostWindow = ({
                       {/* Navigation Arrows */}
                       {images.length > 1 && showImageControls && (
                         <>
-                          <button
-                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all z-10"
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-all z-10"
                             aria-label="Previous image"
                             onClick={prevImage}
                           >
-                            <ChevronLeft className="w-5 h-5" />
-                          </button>
-                          <button
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all z-10"
+                            <ChevronLeft className="w-6 h-6" />
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-3 transition-all z-10"
                             aria-label="Next image"
                             onClick={nextImage}
                           >
-                            <ChevronRight className="w-5 h-5" />
-                          </button>
+                            <ChevronRight className="w-6 h-6" />
+                          </motion.button>
                         </>
                       )}
                       
                       {/* Image Counter */}
                       {images.length > 1 && (
-                        <div className="absolute bottom-3 left-3 bg-black/50 text-white px-2 py-1 rounded-full text-xs font-medium">
+                        <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-medium">
                           {currentImageIndex + 1} / {images.length}
                         </div>
                       )}
@@ -481,11 +536,11 @@ const ModernPostWindow = ({
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-8">
                     <div className="text-center">
-                      <div className="mx-auto w-16 h-16 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mb-4">
-                        <ImageIcon className="h-8 w-8 text-gray-500" />
+                      <div className="mx-auto w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mb-4">
+                        <ImageIcon className="h-10 w-10 text-gray-500" />
                       </div>
-                      <h3 className="text-lg font-bold text-gray-800 mb-2">No Images Available</h3>
-                      <p className="text-gray-600 text-sm">
+                      <h3 className="text-xl font-bold text-gray-800 mb-2">No Images Available</h3>
+                      <p className="text-gray-600">
                         This post doesn't have any images yet.
                       </p>
                     </div>
@@ -495,16 +550,18 @@ const ModernPostWindow = ({
               
               {/* Thumbnail Gallery */}
               {hasImages && images.length > 1 && (
-                <div className="p-3 bg-gray-50 border-t border-gray-200">
-                  <div className="flex space-x-2 overflow-x-auto pb-1">
+                <div className="p-4 bg-gray-50 border-t border-gray-200">
+                  <div className="flex space-x-3 overflow-x-auto pb-2">
                     {images.map((img, index) => {
                       const isSelected = currentImageIndex === index;
                       
                       return (
-                        <button
+                        <motion.button
                           key={`thumb-${index}`} 
                           onClick={() => setCurrentImageIndex(index)}
-                          className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-3 transition-all duration-200 ${
                             isSelected 
                               ? 'border-emerald-500 shadow-lg scale-105' 
                               : 'border-gray-200 hover:border-gray-400'
@@ -515,7 +572,7 @@ const ModernPostWindow = ({
                             alt={`Thumbnail ${index + 1}`}
                             className="w-full h-full object-cover"
                           />
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -524,57 +581,56 @@ const ModernPostWindow = ({
             </div>
 
             {/* Post Details */}
-            <div className="md:w-1/2 flex flex-col">
+            <div className="md:w-1/2 flex flex-col overflow-hidden">
               {showInfo ? (
-                <div className="flex-1 overflow-y-auto p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <h1 className="text-xl font-bold text-gray-900 leading-tight">
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h1 className="text-2xl font-bold text-gray-900 leading-tight">
                       {currentPost.title || 'Untitled Post'}
                     </h1>
                     {currentPost.category && (
-                      <span className="bg-emerald-100 text-emerald-800 text-xs px-3 py-1.5 rounded-full font-semibold">
+                      <span className="bg-emerald-100 text-emerald-800 text-sm px-4 py-2 rounded-full font-semibold">
                         {currentPost.category}
                       </span>
                     )}
                   </div>
 
-                  <p className="text-gray-700 mb-4 leading-relaxed">
+                  <p className="text-gray-700 mb-5 leading-relaxed">
                     {currentPost.description || 'No description available.'}
                   </p>
 
                   {/* Location */}
                   {currentPost.location?.latitude && currentPost.location?.longitude && (
-                    <div className="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                      <div className="flex items-center gap-2 mb-1">
-                        <MapPin className="w-4 h-4 text-blue-600" />
+                    <div className="mb-5 p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                      <div className="flex items-center gap-3 mb-2">
+                        <MapPin className="w-5 h-5 text-blue-600" />
                         <span className="font-semibold text-gray-800">Location</span>
                       </div>
-                      <p className="text-sm text-gray-700">
+                      <p className="text-base text-gray-700">
                         {currentPost.location.latitude.toFixed(6)}, {currentPost.location.longitude.toFixed(6)}
                       </p>
                       {currentPost.location.address && (
-                        <p className="text-xs text-gray-600 mt-1">{currentPost.location.address}</p>
+                        <p className="text-sm text-gray-600 mt-1">{currentPost.location.address}</p>
                       )}
                     </div>
                   )}
 
                   {/* Ratings */}
-                  <div className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                      <h3 className="font-bold text-gray-800">Ratings & Reviews</h3>
-                      <div className="flex items-center gap-2">
+                  <div className="mb-5 p-5 bg-gray-50 rounded-2xl border border-gray-200">
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                      <h3 className="font-bold text-lg text-gray-800">Ratings & Reviews</h3>
+                      <div className="flex items-center gap-3">
                         <div className="flex">
                           {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
+                            <motion.button
                               key={`star-${star}`}
-                              className={`w-5 h-5 cursor-pointer ${
-                                star <= (rating > 0 ? rating : (hoverRating || currentPost.averageRating || 0)) 
-                                  ? 'text-yellow-500 fill-current' 
-                                  : 'text-gray-300'
-                              }`}
+                              whileHover={{ scale: 1.2 }}
+                              whileTap={{ scale: 0.9 }}
+                              className="p-1 rounded-full"
                               onClick={() => {
                                 if (authToken) {
                                   setRating(star);
+                                  handleRate(star);
                                 } else {
                                   showModal({
                                     title: "Authentication Required",
@@ -584,213 +640,220 @@ const ModernPostWindow = ({
                                   });
                                 }
                               }}
-                              onMouseEnter={() => authToken && rating === 0 && setHoverRating(star)}
+                              onMouseEnter={() => authToken && setHoverRating(star)}
                               onMouseLeave={() => setHoverRating(0)}
-                            />
+                              aria-label={`Rate ${star} stars`}
+                            >
+                              <Star
+                                className={`w-7 h-7 transition-colors duration-200 ${
+                                  star <= (hoverRating || rating || currentPost.averageRating || 0) 
+                                    ? 'text-yellow-400 fill-current' 
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            </motion.button>
                           ))}
                         </div>
-                        <span className="text-gray-800 font-bold">
+                        <span className="text-xl font-bold text-gray-800">
                           {(currentPost.averageRating || 0).toFixed(1)}
                         </span>
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                      <div className="flex gap-2 text-gray-600">
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                      <div className="flex gap-3 text-gray-600">
                         <span className="font-medium">{currentPost.totalRatings || 0} ratings</span>
                         <span>•</span>
                         <span>{(currentPost.comments || []).length || 0} comments</span>
                       </div>
-                      <button
-                        onClick={() => {
-                          if (rating > 0) {
-                            handleRate(rating);
-                          } else {
-                            showModal({
-                              title: "Select a Rating",
-                              message: 'Please select a rating first',
-                              type: 'info',
-                              confirmText: 'OK'
-                            });
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-lg font-medium text-sm ${
-                          rating > 0 
-                            ? 'bg-yellow-500 text-white hover:bg-yellow-600' 
-                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                        }`}
-                        disabled={rating === 0 || !authToken}
-                      >
-                        {rating > 0 ? 'Submit Rating' : 'Select Stars'}
-                      </button>
                     </div>
                   </div>
 
                   {/* Additional Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                      <p className="text-xs text-gray-600 font-semibold mb-1">Posted By</p>
-                      <p className="font-bold text-gray-800">{typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                      <p className="text-sm text-gray-600 font-semibold mb-1">Posted By</p>
+                      <p className="font-bold text-lg text-gray-800">{typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}</p>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-200">
-                      <p className="text-xs text-gray-600 font-semibold mb-1">Posted On</p>
-                      <p className="font-bold text-gray-800">{formatDate(currentPost.datePosted)}</p>
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                      <p className="text-sm text-gray-600 font-semibold mb-1">Posted On</p>
+                      <p className="font-bold text-lg text-gray-800">{formatDate(currentPost.datePosted)}</p>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50">
-                  <div className="mb-4 p-3 bg-gray-200 rounded-full">
-                    <EyeOff className="w-8 h-8 text-gray-600" />
+                  <div className="mb-5 p-4 bg-gray-200 rounded-full">
+                    <EyeOff className="w-10 h-10 text-gray-600" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-800 mb-2">Information Hidden</h3>
-                  <p className="text-gray-600 mb-4 text-sm">Press 'I' key or close the window to show details again</p>
-                  <button 
+                  <h3 className="text-xl font-bold text-gray-800 mb-3">Information Hidden</h3>
+                  <p className="text-gray-600 mb-5">Press 'I' key or close the window to show details again</p>
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setShowInfo(true)}
-                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium"
                   >
                     Show Information
-                  </button>
+                  </motion.button>
                 </div>
               )}
 
               {/* Action Bar */}
-              <div className="p-4 border-t border-gray-200 bg-white">
+              <div className="p-5 border-t border-gray-200 bg-white">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3">
                     <motion.button
                       onClick={handleComment}
-                      className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-all"
+                      className="flex items-center gap-2.5 px-4 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-xl transition-all"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <MessageCircle className="w-4 h-4" />
+                      <MessageCircle className="w-5 h-5" />
                       <span className="font-semibold">{currentPost.comments?.length || 0}</span>
+                    </motion.button>
+
+                    <motion.button
+                      onClick={handleLike}
+                      className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl transition-all ${
+                        liked
+                          ? "bg-red-500 text-white hover:bg-red-600"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <ThumbsUp
+                        className={`w-5 h-5 ${liked ? "fill-current text-white" : ""}`}
+                      />
                     </motion.button>
 
                     <motion.button
                       onClick={handleBookmark}
                       disabled={loading}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                      className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl transition-all ${
                         bookmarked
                           ? "bg-amber-500 text-white hover:bg-amber-600"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       } ${loading ? 'cursor-not-allowed opacity-70' : ''}`}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <Bookmark
-                        className={`w-4 h-4 ${bookmarked ? "fill-current text-white" : ""}`}
+                      <BookmarkIcon
+                        className={`w-5 h-5 ${bookmarked ? "fill-current text-white" : ""}`}
                       />
                     </motion.button>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3">
                     <motion.button
                       onClick={handleShare}
-                      className="flex items-center gap-2 text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-all"
+                      className="flex items-center gap-2.5 text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-4 py-2.5 rounded-xl transition-all"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <Share className="w-4 h-4" />
+                      <Share className="w-5 h-5" />
                       <span className="hidden sm:inline">Share</span>
                     </motion.button>
                     <motion.button
                       onClick={handleGetDirections}
-                      className="flex items-center gap-2 text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-all"
+                      className="flex items-center gap-2.5 text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-4 py-2.5 rounded-xl transition-all"
                       whileTap={{ scale: 0.95 }}
                     >
-                      <ExternalLink className="w-4 h-4" />
+                      <ExternalLink className="w-5 h-5" />
                       <span className="hidden sm:inline">Directions</span>
                     </motion.button>
                   </div>
                 </div>
+
+                {/* Comments Section */}
+                <AnimatePresence>
+                  {showComments && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="mt-5 bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden"
+                    >
+                      <div className="p-4 border-b border-gray-200">
+                        <h3 className="font-bold text-gray-800 text-lg">Comments ({comments.length})</h3>
+                      </div>
+                      
+                      {/* Comments List */}
+                      <div className="p-4 flex-1 overflow-y-auto">
+                        {comments && comments.length > 0 ? (
+                          <div className="space-y-4">
+                            {comments.map((comment, index) => (
+                              <motion.div
+                                key={comment._id || `comment-${index}`}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="bg-white p-3 rounded-xl border border-gray-200"
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <User className="w-4 h-4 text-gray-600" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold text-sm text-gray-800">
+                                        {typeof comment.user === 'object' ? comment.user.name : comment.user || "Anonymous"}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {formatDate(comment.createdAt)}
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-700 mt-1">{comment.text}</p>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 text-gray-500">
+                            <MessageCircle className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+                            <p className="text-base">No comments yet. Be the first!</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Comment Input */}
+                      <div className="p-4 border-t border-gray-200 bg-white">
+                        <div className="flex gap-3">
+                          <input
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Add a comment..."
+                            className="flex-1 px-4 py-3 bg-gray-100 rounded-xl border border-gray-200 focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 outline-none"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAddComment();
+                              }
+                            }}
+                          />
+                          <motion.button
+                            onClick={handleAddComment}
+                            disabled={commentLoading}
+                            className="px-5 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium disabled:opacity-50"
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            {commentLoading ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <Send className="w-5 h-5" />
+                            )}
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
-
-          {/* Comments Modal */}
-          <AnimatePresence>
-            {showCommentsModal && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100000] p-4"
-                onClick={() => setShowCommentsModal(false)}
-              >
-                <motion.div
-                  initial={{ scale: 0.85, opacity: 0, y: 20 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.85, opacity: 0, y: 20 }}
-                  transition={{ 
-                    type: "spring", 
-                    damping: 20, 
-                    stiffness: 300,
-                    duration: 0.3 
-                  }}
-                  className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-96 flex flex-col border border-gray-200"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="p-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-bold text-gray-800">Comments</h3>
-                      <button 
-                        onClick={() => setShowCommentsModal(false)}
-                        className="p-2 rounded-full hover:bg-gray-200 transition-colors"
-                      >
-                        <X className="w-4 h-4 text-gray-600" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1 overflow-y-auto p-4">
-                    {comments && comments.length > 0 ? (
-                      <div className="space-y-3">
-                        {comments.map((comment) => (
-                          <CommentItem 
-                            key={comment._id || `comment-${Math.random()}`}
-                            comment={comment}
-                            authToken={authToken}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <MessageCircle className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                        <p className="text-gray-500">No comments yet. Be the first to comment!</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Write your comment..."
-                        className="flex-1 px-3 py-2 bg-white rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 outline-none"
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleAddComment();
-                          }
-                        }}
-                      />
-                      <motion.button
-                        onClick={handleAddComment}
-                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all font-medium"
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        Post
-                      </motion.button>
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
       </motion.div>
     </AnimatePresence>
   );
 };
 
-export default ModernPostWindow;
+export default EnhancedPostWindow;

@@ -160,8 +160,8 @@ const PostPopup = ({ post, onClose, onSave, isSaved, onGetDirections, onClick })
   };
 
   return (
-    <Popup className="post-popup max-w-sm">
-      <div className="w-80 max-w-full">
+    <Popup className="post-popup max-w-md">
+      <div className="w-[420px] md:w-[520px] max-w-full">
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-bold text-lg text-gray-800 truncate max-w-[70%]">{post.title}</h3>
           <button 

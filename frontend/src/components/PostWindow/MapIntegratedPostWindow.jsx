@@ -475,7 +475,7 @@ const MapIntegratedPostWindow = ({
         </div>
 
         {/* Content */}
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="max-h-[60vh] flex flex-col flex-1 overflow-y-auto">
           {/* Image Gallery */}
           <div className="w-full">
             <div className="relative">
@@ -727,7 +727,7 @@ const MapIntegratedPostWindow = ({
                 </div>
                 
                 {/* Comments List */}
-                <div className="p-4 max-h-48 overflow-y-auto">
+                <div className="p-4 flex-1 overflow-y-auto">
                   {comments && comments.length > 0 ? (
                     <div className="space-y-3">
                       {comments.map((comment) => (
