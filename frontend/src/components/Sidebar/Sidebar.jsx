@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, User, Settings, LogOut, Heart, Star, Bell, Compass, Layers } from 'lucide-react';
 import './Sidebar.css';
 
@@ -153,7 +154,7 @@ const Sidebar = ({
   // Mobile bottom navigation items (non-auth items only)
   const mobileNavItems = sidebarItems.filter(item =>
     (!item.requiresAuth || user) && !item.mobileOnly
-  ).slice(0, 5); // Limit to 5 items for mobile
+  ).slice(0, 4); // Limit to 4 items for mobile to make room for login button
 
   if (isMobile) {
     return (
@@ -180,18 +181,41 @@ const Sidebar = ({
             );
           })}
 
-          {/* Menu button for additional options */}
-          <button
-            className={`bottom-nav-item ${mobileBottomNavActive === 'menu' ? 'active' : ''}`}
-            onClick={() => {
-              setMobileBottomNavActive('menu');
-              toggleSidebar();
-            }}
-            title="Menu"
-          >
-            <Menu className="bottom-nav-icon" />
-            <span className="bottom-nav-label">Menu</span>
-          </button>
+          {/* Login/Profile button for mobile */}
+          {!user ? (
+            <Link
+              to="/login"
+              className="bottom-nav-item"
+              title="Login"
+            >
+              <User className="bottom-nav-icon" />
+              <span className="bottom-nav-label">Login</span>
+            </Link>
+          ) : (
+            <Link
+              to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
+              className="bottom-nav-item"
+              title="Profile"
+            >
+              <User className="bottom-nav-icon" />
+              <span className="bottom-nav-label">Profile</span>
+            </Link>
+          )}
+
+          {/* Menu button for additional options - only show if user is authenticated */}
+          {user && (
+            <button
+              className={`bottom-nav-item ${mobileBottomNavActive === 'menu' ? 'active' : ''}`}
+              onClick={() => {
+                setMobileBottomNavActive('menu');
+                toggleSidebar();
+              }}
+              title="Menu"
+            >
+              <Menu className="bottom-nav-icon" />
+              <span className="bottom-nav-label">Menu</span>
+            </button>
+          )}
         </div>
 
         {/* Mobile Sidebar Drawer */}

@@ -63,6 +63,17 @@
   }
 }
 
+/* Top user controls container */
+.top-user-controls {
+  z-index: 7010;
+  transition: all 0.3s ease;
+}
+
+/* Login control wrapper */
+.login-control {
+  display: inline-block;
+}
+
 /* Centered search bar container */
 .search-bar-centered {
   position: absolute;
@@ -75,11 +86,91 @@
   transition: all 0.3s ease;
 }
 
+/* Search input container */
+.search-input-container {
+  width: 100%;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 14px 20px;
+  padding-left: 50px;
+  padding-right: 50px;
+  border-radius: 24px;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  font-size: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-search-btn:hover {
+  background-color: #f3f4f6;
+}
+
+/* Search results dropdown */
+.search-results-dropdown {
+  position: absolute;
+  top: 60px; /* Adjusted to match the height of the search bar container */
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  z-index: 1001;
+  margin-top: 8px;
+}
+
+/* Responsive adjustments for mobile */
 @media (max-width: 767px) {
   .search-bar-centered {
     top: 16px;
     width: 95%;
     max-width: none;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .login-control {
+    display: none; /* Hide login button on mobile */
+  }
+
+  .search-results-dropdown {
+    width: 95%;
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
 

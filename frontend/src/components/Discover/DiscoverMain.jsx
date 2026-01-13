@@ -2099,42 +2099,34 @@ const DiscoverMain = () => {
 
   return (
     <div className="responsive-map-layout">
-      {/* Top-right user controls positioned above the map (adjusted for sidebar) */}
-      <div className="top-right-controls absolute top-4 z-[7010] flex flex-wrap items-center gap-2 sm:gap-3" style={{ right: isSidebarExpanded && !isMobile ? '4rem' : '1rem' }}>
-        {/* User controls - login, notifications, name */}
-        {isAuthenticated ? (
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-white/90 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 shadow-md border border-gray-200">
-            {/* User profile - logout and notifications moved to sidebar */}
-            <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-              <Link
-                to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                </div>
-                <span className="text-xs hidden sm:block font-medium max-w-[60px) sm:max-w-[100px] truncate">
-                  {user?.name ||
-                    (user?.role === "admin" ? "Admin" : "Profile")}
-                </span>
-              </Link>
-              {/* Logout and notifications moved to sidebar */}
+      {/* User profile button in top-left corner - only show when authenticated */}
+      {isAuthenticated && !isMobile && (
+        <div className="top-user-controls absolute top-4 left-4 z-[7010]" style={{ left: isSidebarExpanded ? '4rem' : '1rem' }}>
+          <div className="login-control">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-white/90 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 shadow-md border border-gray-200">
+              {/* User profile - logout and notifications moved to sidebar */}
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                <Link
+                  to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
+                  </div>
+                  <span className="text-xs hidden sm:block font-medium max-w-[60px) sm:max-w-[100px] truncate">
+                    {user?.name ||
+                      (user?.role === "admin" ? "Admin" : "Profile")}
+                  </span>
+                </Link>
+                {/* Logout and notifications moved to sidebar */}
+              </div>
             </div>
           </div>
-        ) : (
-          // Login button for unauthenticated users
-          <Link
-            to="/login"
-            className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
-          >
-            <span className="text-sm sm:text-base font-medium">Login</span>
-            <User className="h-4 w-4 sm:h-5 sm:w-5" />
-          </Link>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Centered search bar */}
-      <div className="search-bar-centered">
+      {/* Centered search bar on desktop, top-positioned on mobile */}
+      <div className="search-bar-centered" style={{ top: '20px' }}>
         <div className="search-input-container" ref={searchContainerRef}>
           <Search className="search-icon" />
           <input
@@ -2173,52 +2165,62 @@ const DiscoverMain = () => {
             </button>
           )}
         </div>
-
-        {/* Search Results Dropdown - only appears when search query exists AND search is focused */}
-        {searchFocused && searchQuery && (
-          <div className="search-results-dropdown">
-            {searchLoading ? (
-              <div className="p-4 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-              </div>
-            ) : enhancedSearchResults.length > 0 ? (
-              enhancedSearchResults.map((post) => (
-                <div
-                  key={post._id || post.id}
-                  className="search-result-item"
-                  onClick={() => {
-                    setSelectedPost(post);
-                    flyToPost(post.position);
-                    setSearchQuery(''); // Clear search after selection
-                    setEnhancedSearchResults([]); // Clear results after selection
-                    setSearchFocused(false); // Hide the results window after selection
-                  }}
-                >
-                  <div className="search-result-title">{post.title}</div>
-                  <div className="search-result-description">{post.description}</div>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                      {post.category}
-                    </span>
-                    <span className="text-xs text-gray-500 flex items-center">
-                      <Star size={12} className="mr-1" />
-                      {post.averageRating?.toFixed(1) || '0.0'}
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : searchQuery ? (
-              <div className="p-4 text-center text-gray-500">
-                No results found for "{searchQuery}"
-              </div>
-            ) : (
-              <div className="p-4 text-center text-gray-500">
-                Enter a search term to find locations
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      {/* Search Results Dropdown - only appears when search query exists AND search is focused */}
+      {searchFocused && searchQuery && (
+        <div
+          className="search-results-dropdown"
+          ref={(el) => {
+            if (el && searchContainerRef.current) {
+              // Position the dropdown below the search input
+              const searchRect = searchContainerRef.current.getBoundingClientRect();
+              el.style.left = `${searchRect.left}px`;
+              el.style.width = `${searchRect.width}px`;
+            }
+          }}
+        >
+          {searchLoading ? (
+            <div className="p-4 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            </div>
+          ) : enhancedSearchResults.length > 0 ? (
+            enhancedSearchResults.map((post) => (
+              <div
+                key={post._id || post.id}
+                className="search-result-item"
+                onClick={() => {
+                  setSelectedPost(post);
+                  flyToPost(post.position);
+                  setSearchQuery(''); // Clear search after selection
+                  setEnhancedSearchResults([]); // Clear results after selection
+                  setSearchFocused(false); // Hide the results window after selection
+                }}
+              >
+                <div className="search-result-title">{post.title}</div>
+                <div className="search-result-description">{post.description}</div>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                    {post.category}
+                  </span>
+                  <span className="text-xs text-gray-500 flex items-center">
+                    <Star size={12} className="mr-1" />
+                    {post.averageRating?.toFixed(1) || '0.0'}
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : searchQuery ? (
+            <div className="p-4 text-center text-gray-500">
+              No results found for "{searchQuery}"
+            </div>
+          ) : (
+            <div className="p-4 text-center text-gray-500">
+              Enter a search term to find locations
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Map container */}
       <div className={`map-container-responsive ${
