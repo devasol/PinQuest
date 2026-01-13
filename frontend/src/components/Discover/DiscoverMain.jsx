@@ -29,7 +29,7 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
   useMapEvents({
     click: (e) => {
       if (onMapClick) onMapClick(e.latlng);
-      
+
       // If user is authenticated, allow them to create a post at the clicked location
       if (onMapPositionSelected) {
         // Convert the Leaflet LatLng object to a simple position object
@@ -38,7 +38,7 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
           lng: e.latlng.lng
         });
       }
-      
+
       // Hide all control windows when clicking on map
       const windows = ['category-window', 'view-mode-window', 'map-type-window', 'saved-locations-window', 'notifications-window'];
       windows.forEach(windowId => {
@@ -59,14 +59,14 @@ const DiscoverMain = () => {
   const [loading, setLoading] = useState(false); // Don't block initial render
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  
+
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [mapType, setMapType] = useState('google'); // street, satellite, terrain, dark, light, topographic, navigation, cycle, google
   const [savedLocations, setSavedLocations] = useState([]); // For saved locations (separate from bookmarks)
   const [favoritePosts, setFavoritePosts] = useState(new Set()); // Track which posts are bookmarked/favorited
-  
+
   const [showSavedLocationsOnMap, setShowSavedLocationsOnMap] = useState(false); // Toggle to show saved locations
   const [selectedPost, setSelectedPost] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid', 'list'
@@ -139,16 +139,16 @@ const DiscoverMain = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
+
   // Notification states
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef();
-  
+
   const { showModal } = useModal();
   const { logout: authLogout } = useAuth(); // Get logout from auth context
-  
+
   const handleLogout = () => {
     authLogout(); // Clear authentication state
     navigate("/"); // Redirect to home page after logout
@@ -157,13 +157,13 @@ const DiscoverMain = () => {
   // Memoized search suggestions (for backward compatibility)
   const searchSuggestions = useMemo(() => {
     if (!searchQuery || searchQuery.trim().length === 0) return [];
-    
+
     const searchTerms = searchQuery.toLowerCase().split(/\s+/).filter(term => term.length > 0);
     if (searchTerms.length === 0) return [];
-    
+
     // Create a set to store unique suggestions
     const suggestions = new Set();
-    
+
     // Look for posts that have similar terms or related content
     posts.forEach(post => {
       // Check title for similar terms
@@ -182,7 +182,7 @@ const DiscoverMain = () => {
           }
         });
       }
-      
+
       // Check description for similar terms
       if (post.description && typeof post.description === 'string') {
         const description = post.description.toLowerCase();
@@ -199,7 +199,7 @@ const DiscoverMain = () => {
           }
         });
       }
-      
+
       // Check category for similar terms
       if (post.category && typeof post.category === 'string') {
         const category = post.category.toLowerCase();
@@ -216,7 +216,7 @@ const DiscoverMain = () => {
           }
         });
       }
-      
+
       // Check tags for similar terms
       if (Array.isArray(post.tags)) {
         post.tags.forEach(tag => {
@@ -237,11 +237,11 @@ const DiscoverMain = () => {
           }
         });
       }
-      
+
       // Check poster name for similar terms
       if (post.postedBy) {
-        const posterName = typeof post.postedBy === 'string' 
-          ? post.postedBy.toLowerCase() 
+        const posterName = typeof post.postedBy === 'string'
+          ? post.postedBy.toLowerCase()
           : (post.postedBy.name || post.postedBy.email || '').toLowerCase();
         searchTerms.forEach(term => {
           if (posterName.includes(term) && !posterName.includes(searchQuery.toLowerCase())) {
@@ -257,7 +257,7 @@ const DiscoverMain = () => {
         });
       }
     });
-    
+
     // Also include popular posts as suggestions
     const popularPosts = [...posts]
       .sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0))
@@ -270,23 +270,23 @@ const DiscoverMain = () => {
         post: post,
         relevance: 'popular'
       }));
-    
+
     // Convert to array and limit results
     const allSuggestions = [
       ...Array.from(suggestions),
       ...popularPosts.filter(pop => !Array.from(suggestions).some(sugg => sugg.post._id === pop.post._id))
     ];
-    
+
     return allSuggestions.slice(0, 5); // Return top 5 suggestions
   }, [searchQuery, posts]);
-  
+
   // State for enhanced search results
   const [enhancedSearchResults, setEnhancedSearchResults] = useState([]);
-  
+
   // State for responsive search bar functionality
   const searchContainerRef = useRef(null);
   const [isSearchBarVisible, setIsSearchBarVisible] = useState(false); // Start with search bar hidden, will be shown by default on larger screens through CSS
-  
+
   // Effect to handle responsive search bar visibility
   useEffect(() => {
     const handleResize = () => {
@@ -298,15 +298,15 @@ const DiscoverMain = () => {
         setIsSearchBarVisible(true);
       }
     };
-    
+
     window.addEventListener('resize', handleResize);
-    
+
     // Clean up event listener
     return () => {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
-  
+
   // Close search results when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -327,13 +327,13 @@ const DiscoverMain = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [searchFocused, isSearchBarVisible, searchQuery]);
-  
-  
-  // State for geocoding search results
-  
-  
 
-  
+
+  // State for geocoding search results
+
+
+
+
   // Function to mark a notification as read
   const markNotificationAsRead = async (notificationId) => {
     if (!isAuthenticated) return;
@@ -355,8 +355,8 @@ const DiscoverMain = () => {
 
       if (response.ok) {
         // Update local state
-        setNotifications(prev => 
-          prev.map(notif => 
+        setNotifications(prev =>
+          prev.map(notif =>
             notif._id === notificationId ? { ...notif, read: true } : notif
           )
         );
@@ -388,7 +388,7 @@ const DiscoverMain = () => {
 
       if (response.ok) {
         // Update local state
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(notif => ({ ...notif, read: true }))
         );
         setUnreadCount(0);
@@ -404,11 +404,11 @@ const DiscoverMain = () => {
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 1) return 'Today';
     if (diffDays === 2) return 'Yesterday';
     if (diffDays <= 7) return `${diffDays - 1} days ago`;
-    
+
     return date.toLocaleDateString();
   };
 
@@ -417,7 +417,7 @@ const DiscoverMain = () => {
     const handleClickOutside = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         const notificationButton = event.target.closest('button[aria-label="Notifications"]');
-        
+
         if (isNotificationOpen && !notificationButton) {
           setIsNotificationOpen(false);
         }
@@ -429,9 +429,9 @@ const DiscoverMain = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isNotificationOpen]);
-  
 
-  
+
+
   const mapRef = useRef();
   const fetchIntervalRef = useRef(null);
   const selectedPostRef = useRef(selectedPost); // Create a ref to track selectedPost
@@ -441,7 +441,7 @@ const DiscoverMain = () => {
   useEffect(() => {
     selectedPostRef.current = selectedPost;
   }, [selectedPost]);
-  
+
   // Fetch notifications when user is authenticated and set up socket connection
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -504,19 +504,19 @@ const DiscoverMain = () => {
 
     socket.on('notificationRead', (data) => {
       // Update local state when a notification is marked as read from elsewhere
-      setNotifications(prev => 
-        prev.map(notif => 
+      setNotifications(prev =>
+        prev.map(notif =>
           notif._id === data.notificationId ? { ...notif, read: true } : notif
         )
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     });
-    
+
     // Handle post deletion events - remove deleted posts from all states
     socket.on('post-deleted', (deletedPostId) => {
       setPosts(prevPosts => prevPosts.filter(post => post._id !== deletedPostId));
       setFilteredPosts(prevFiltered => prevFiltered.filter(post => post._id !== deletedPostId));
-      
+
       // Also close the selected post if it's the one being deleted
       if (selectedPost && selectedPost._id === deletedPostId) {
         setSelectedPost(null);
@@ -541,8 +541,8 @@ const DiscoverMain = () => {
     if (selectedPost && selectedPost._id === postId) {
       setSelectedPost(prev => ({
         ...prev,
-        likes: isLiked 
-          ? [...(prev.likes || []), { user: user?._id }] 
+        likes: isLiked
+          ? [...(prev.likes || []), { user: user?._id }]
           : (prev.likes || []).filter(like => {
               const userId = typeof like.user === 'object' ? like.user._id : like.user;
               return userId !== user?._id;
@@ -550,14 +550,14 @@ const DiscoverMain = () => {
         likesCount: isLiked ? (prev.likesCount || 0) + 1 : (prev.likesCount || 0) - 1
       }));
     }
-    
+
     // Also update the main posts array to reflect the change
     setPosts(prevPosts => prevPosts.map(post => {
       if (post._id === postId) {
         return {
           ...post,
-          likes: isLiked 
-            ? [...(post.likes || []), { user: user?._id }] 
+          likes: isLiked
+            ? [...(post.likes || []), { user: user?._id }]
             : (post.likes || []).filter(like => {
                 const userId = typeof like.user === 'object' ? like.user._id : like.user;
                 return userId !== user?._id;
@@ -567,14 +567,14 @@ const DiscoverMain = () => {
       }
       return post;
     }));
-    
+
     // Update filtered posts as well
     setFilteredPosts(prevFiltered => prevFiltered.map(post => {
       if (post._id === postId) {
         return {
           ...post,
-          likes: isLiked 
-            ? [...(post.likes || []), { user: user?._id }] 
+          likes: isLiked
+            ? [...(post.likes || []), { user: user?._id }]
             : (post.likes || []).filter(like => {
                 const userId = typeof like.user === 'object' ? like.user._id : like.user;
                 return userId !== user?._id;
@@ -641,7 +641,7 @@ const DiscoverMain = () => {
         totalRatings: newTotalRatings
       }));
     }
-    
+
     // Also update the main posts array to reflect the rating change
     setPosts(prevPosts => prevPosts.map(post => {
       if (post._id === postId) {
@@ -653,7 +653,7 @@ const DiscoverMain = () => {
       }
       return post;
     }));
-    
+
     // Update filtered posts as well
     setFilteredPosts(prevFiltered => prevFiltered.map(post => {
       if (post._id === postId) {
@@ -675,7 +675,7 @@ const DiscoverMain = () => {
       console.log("Request already in progress, skipping duplicate fetch");
       return;
     }
-    
+
     // Set a flag to indicate we're currently fetching
     fetchPostsRef.current = true;
 
@@ -685,22 +685,22 @@ const DiscoverMain = () => {
       if (limit) {
         url += `?limit=${limit}`;
       }
-      
+
       // Set loading state for posts
       setLoading(true);
-      
+
       // Add a timeout to the fetch request to avoid hanging
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
+
       const response = await fetch(url, {
         // Use cache to improve performance
         cache: 'default',
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         // Handle 429 specifically to avoid UI spam
         if (response.status === 429) {
@@ -710,9 +710,9 @@ const DiscoverMain = () => {
         }
         throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
       }
-      
+
       const result = await response.json();
-      
+
       if (result.status === 'success' && Array.isArray(result.data)) {
         // Transform the API data to match the format expected by the frontend
         // Handle both location formats: coordinates array and latitude/longitude fields
@@ -722,17 +722,17 @@ const DiscoverMain = () => {
             if (!post || !post.location) {
               return false;
             }
-            
+
             // Check if the post has valid location data in either format
             // Check GeoJSON format: [longitude, latitude]
-            if (post.location.coordinates && Array.isArray(post.location.coordinates) 
-                && post.location.coordinates.length === 2 
-                && typeof post.location.coordinates[0] === 'number' 
+            if (post.location.coordinates && Array.isArray(post.location.coordinates)
+                && post.location.coordinates.length === 2
+                && typeof post.location.coordinates[0] === 'number'
                 && typeof post.location.coordinates[1] === 'number') {
               return true;
             }
             // Check separate latitude/longitude format
-            if (typeof post.location.latitude === 'number' && 
+            if (typeof post.location.latitude === 'number' &&
                 typeof post.location.longitude === 'number' &&
                 !isNaN(post.location.latitude) &&
                 !isNaN(post.location.longitude)) {
@@ -743,17 +743,17 @@ const DiscoverMain = () => {
           .map(post => {
             let position;
             // Handle GeoJSON format [longitude, latitude]
-            if (post && post.location && post.location.coordinates && Array.isArray(post.location.coordinates) 
+            if (post && post.location && post.location.coordinates && Array.isArray(post.location.coordinates)
                 && post.location.coordinates.length === 2) {
               // Convert to [latitude, longitude] for Leaflet
               position = [post.location.coordinates[1] || 0, post.location.coordinates[0] || 0];
-            } 
+            }
             // Handle separate latitude/longitude format
-            else if (post && post.location && typeof post.location.latitude === 'number' && 
+            else if (post && post.location && typeof post.location.latitude === 'number' &&
                      typeof post.location.longitude === 'number') {
               position = [post.location.latitude, post.location.longitude];
             }
-            
+
             return {
               _id: post && post._id ? post._id : null,
               id: post && post._id ? post._id : null, // Keep both for compatibility
@@ -774,28 +774,28 @@ const DiscoverMain = () => {
               likesCount: (post && post.likesCount) || 0, // Add likes count
               location: {
                 // Ensure location has proper latitude and longitude for the directions feature
-                latitude: (post && post.location?.latitude) || 
-                         (post && post.location?.coordinates && post.location.coordinates[1]) || 
+                latitude: (post && post.location?.latitude) ||
+                         (post && post.location?.coordinates && post.location.coordinates[1]) ||
                          (position && position[0]), // fallback to position[0] if available
-                longitude: (post && post.location?.longitude) || 
-                          (post && post.location?.coordinates && post.location.coordinates[0]) || 
+                longitude: (post && post.location?.longitude) ||
+                          (post && post.location?.coordinates && post.location.coordinates[0]) ||
                           (position && position[1]), // fallback to position[1] if available
                 // Preserve other location properties if they exist
                 ...(post && post.location ? post.location : {})
               },
             };
           });
-        
+
         // Apply client-side limit if specified
         if (limit && limit > 0) {
           transformedPosts = transformedPosts.slice(0, limit);
         }
-        
+
         // If we're preserving a selected post, we need to handle it specially
         if (preserveSelectedPost && preserveSelectedPost._id) {
           // Find if the selected post exists in the newly fetched data
           const updatedSelectedPost = transformedPosts.find(p => p._id === preserveSelectedPost._id);
-          
+
           if (updatedSelectedPost) {
             // Update the selected post with only the fresh volatile data while preserving detailed data
             setSelectedPost(prev => {
@@ -808,7 +808,7 @@ const DiscoverMain = () => {
             });
           }
         }
-        
+
         // Filter out any null or undefined posts before setting state
         const validTransformedPosts = transformedPosts.filter(post => post && post._id);
         setPosts(validTransformedPosts);
@@ -851,9 +851,9 @@ const DiscoverMain = () => {
         console.log("Saved locations fetch already in progress, skipping duplicate request");
         return;
       }
-      
+
       fetchSavedLocationsRef.current = true;
-      
+
       try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -861,14 +861,14 @@ const DiscoverMain = () => {
           setSavedLocations([]);
           return;
         }
-        
+
         const response = await fetch(`${API_BASE_URL}/users/saved-locations`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
-        
+
         if (!response.ok) {
           if (response.status === 429) {
             console.log("Rate limit exceeded for saved locations API. Skipping this request...");
@@ -877,7 +877,7 @@ const DiscoverMain = () => {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        
+
         const result = await response.json();
         if (result.status === 'success' && Array.isArray(result.data?.savedLocations)) {
           setSavedLocations(result.data.savedLocations);
@@ -908,22 +908,22 @@ const DiscoverMain = () => {
         console.log("Favorite posts fetch already in progress, skipping duplicate request");
         return;
       }
-      
+
       fetchUserFavoritePostsRef.current = true;
-      
+
       try {
         const token = localStorage.getItem('token');
         if (!token) {
           console.error("No authentication token found");
           return;
         }
-        
+
         const response = await fetch(`${API_BASE_URL}/users/favorites`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (!response.ok) {
           if (response.status === 429) {
             console.log("Rate limit exceeded for favorites API. Skipping this request...");
@@ -931,7 +931,7 @@ const DiscoverMain = () => {
           }
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const result = await response.json();
         if (result.status === 'success' && Array.isArray(result.data?.favorites)) {
           // Extract post IDs from favorites to create a Set of favorite post IDs
@@ -951,9 +951,9 @@ const DiscoverMain = () => {
               .filter(id => id !== null) // Remove any null/undefined values
           );
           setFavoritePosts(favoritePostIds);
-          
+
           // Update the posts array to mark them as bookmarked
-          setPosts(prevPosts => 
+          setPosts(prevPosts =>
             prevPosts.map(post => {
               if (post && post._id) {
                 return {
@@ -965,9 +965,9 @@ const DiscoverMain = () => {
               return post;
             })
           );
-          
+
           // Also update filtered posts
-          setFilteredPosts(prevFilteredPosts => 
+          setFilteredPosts(prevFilteredPosts =>
             prevFilteredPosts.map(post => {
               if (post && post._id) {
                 return {
@@ -979,7 +979,7 @@ const DiscoverMain = () => {
               return post;
             })
           );
-          
+
           // Also update selected post if it exists
           if (selectedPost && selectedPost._id) {
             setSelectedPost(prev => {
@@ -1008,7 +1008,7 @@ const DiscoverMain = () => {
   useEffect(() => {
     if (favoritePosts) {
       // Update the posts array to mark them as bookmarked based on favoritePosts
-      setPosts(prevPosts => 
+      setPosts(prevPosts =>
         prevPosts.map(post => {
           if (post && post._id) {
             return {
@@ -1020,9 +1020,9 @@ const DiscoverMain = () => {
           return post;
         })
       );
-      
+
       // Also update filtered posts
-      setFilteredPosts(prevFilteredPosts => 
+      setFilteredPosts(prevFilteredPosts =>
         prevFilteredPosts.map(post => {
           if (post && post._id) {
             return {
@@ -1034,7 +1034,7 @@ const DiscoverMain = () => {
           return post;
         })
       );
-      
+
       // Also update selected post if it exists
       if (selectedPost && selectedPost._id) {
         setSelectedPost(prev => {
@@ -1055,7 +1055,7 @@ const DiscoverMain = () => {
   // Initial data fetch - non-blocking
     useEffect(() => {
     // Immediately show the map without waiting for data
-    
+
     // Fetch saved locations and favorite posts in background (not blocking)
     if (isAuthenticated) {
       setTimeout(() => {
@@ -1063,7 +1063,7 @@ const DiscoverMain = () => {
         fetchUserFavoritePosts(); // Fetch favorite posts as well
       }, 0);
     }
-    
+
     // Fetch posts in background
     fetchPosts(null, 50); // Fetch limited posts initially
 
@@ -1072,14 +1072,14 @@ const DiscoverMain = () => {
       // Preserve the selected post if it exists before refreshing
       // Use ref to get the current value instead of closure value
       fetchPosts(selectedPostRef.current, 50);
-      
+
       if (isAuthenticated) {
         // Stagger the API calls to avoid overloading
         setTimeout(() => fetchSavedLocations(), 500);
         setTimeout(() => fetchUserFavoritePosts(), 1000);
       }
     }, 120000); // Changed from 60 to 120 seconds to avoid rate limiting
-    
+
     return () => {
       if (fetchIntervalRef.current) {
         clearInterval(fetchIntervalRef.current);
@@ -1092,17 +1092,17 @@ const DiscoverMain = () => {
     // If we have enhanced search results, use them instead of filtering posts
     if (enhancedSearchResults.length > 0) {
       let result = [...enhancedSearchResults];
-      
+
       // Apply category filter
       if (selectedCategory !== 'all') {
         result = result.filter(post => post.category.toLowerCase() === selectedCategory.toLowerCase());
       }
-      
+
       // Apply rating filter
       if (rating > 0) {
         result = result.filter(post => post.averageRating >= rating);
       }
-      
+
       // Apply price range filter
       if (priceRange !== 'all') {
         if (priceRange === 'free') {
@@ -1115,7 +1115,7 @@ const DiscoverMain = () => {
           result = result.filter(post => post.price > 50);
         }
       }
-      
+
       // Apply sorting
       result.sort((a, b) => {
         switch (sortBy) {
@@ -1131,36 +1131,36 @@ const DiscoverMain = () => {
             return 0;
         }
       });
-      
+
       setFilteredPosts(result);
     } else {
       // Use the original filtering logic when no enhanced search results
       let result = [...posts];
-      
+
       // Apply search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        result = result.filter(post => 
-          post.title.toLowerCase().includes(query) || 
+        result = result.filter(post =>
+          post.title.toLowerCase().includes(query) ||
           post.description.toLowerCase().includes(query) ||
-          (typeof post.postedBy === 'string' ? post.postedBy.toLowerCase() : 
+          (typeof post.postedBy === 'string' ? post.postedBy.toLowerCase() :
            (typeof post.postedBy === 'object' && post.postedBy.name ? post.postedBy.name.toLowerCase() : '')
           ).includes(query) ||
           post.category.toLowerCase().includes(query) ||
           post.tags.some(tag => tag.toLowerCase().includes(query))
         );
       }
-      
+
       // Apply category filter
       if (selectedCategory !== 'all') {
         result = result.filter(post => post.category.toLowerCase() === selectedCategory.toLowerCase());
       }
-      
+
       // Apply rating filter
       if (rating > 0) {
         result = result.filter(post => post.averageRating >= rating);
       }
-      
+
       // Apply price range filter
       if (priceRange !== 'all') {
         if (priceRange === 'free') {
@@ -1173,7 +1173,7 @@ const DiscoverMain = () => {
           result = result.filter(post => post.price > 50);
         }
       }
-      
+
       // Apply sorting
       result.sort((a, b) => {
         switch (sortBy) {
@@ -1189,7 +1189,7 @@ const DiscoverMain = () => {
             return 0;
         }
       });
-      
+
       setFilteredPosts(result);
     }
   }, [searchQuery, selectedCategory, rating, priceRange, sortBy, posts, enhancedSearchResults]);
@@ -1197,12 +1197,12 @@ const DiscoverMain = () => {
   // Get user location for initial centering - non-blocking
   useEffect(() => {
     let watchId;
-    
+
     // Set a quick default location immediately to avoid world view
     const defaultLocation = [20.5937, 78.9629]; // India coordinates as a default
     setMapCenter(defaultLocation);
     setMapZoom(3); // Start with a reasonable zoom level immediately (not too zoomed out)
-    
+
     if (navigator.geolocation) {
       // Try to get initial position with high accuracy first
       navigator.geolocation.getCurrentPosition(
@@ -1210,7 +1210,7 @@ const DiscoverMain = () => {
           const { latitude, longitude } = position.coords;
           const userPos = [latitude, longitude];
           setUserLocation(userPos);
-          
+
           // Center the map on the user's location when page loads with a nice zoom level
           if (mapRef.current) {
             mapRef.current.setView(userPos, 13); // Use zoom 13 for better initial experience
@@ -1222,7 +1222,7 @@ const DiscoverMain = () => {
         },
         (error) => {
           console.log("Geolocation error on first attempt:", error.message);
-          
+
           // If first attempt fails, try with fallback settings
           if (error.code === error.TIMEOUT) {
             navigator.geolocation.getCurrentPosition(
@@ -1230,7 +1230,7 @@ const DiscoverMain = () => {
                 const { latitude, longitude } = position.coords;
                 const userPos = [latitude, longitude];
                 setUserLocation(userPos);
-                
+
                 // Center the map on the user's location when page loads with a nice zoom level
                 if (mapRef.current) {
                   mapRef.current.setView(userPos, 13); // Use zoom 13 for better initial experience
@@ -1266,14 +1266,14 @@ const DiscoverMain = () => {
           maximumAge: 0, // Do not use cached location - get fresh location
         }
       );
-      
+
       // Watch for position updates to track user movement in real-time
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           const userPos = [latitude, longitude];
           setUserLocation(userPos);
-          
+
           // Update map to follow user if they've enabled follow mode
           if (followUser && mapRef.current) {
             mapRef.current.setView(userPos, 15); // Use zoom level 15 for better focus on current location
@@ -1296,7 +1296,7 @@ const DiscoverMain = () => {
         mapRef.current.setView(defaultLocation, 3);
       }
     }
-    
+
     // Cleanup function to stop watching position
     return () => {
       if (watchId !== undefined) {
@@ -1305,7 +1305,7 @@ const DiscoverMain = () => {
     };
   }, []); // Run once when component mounts
 
-  
+
   // Always request location when component mounts to ensure permission is requested
   useEffect(() => {
     // Only request location if user location doesn't exist yet
@@ -1323,11 +1323,11 @@ const DiscoverMain = () => {
               }
             );
           });
-          
+
           const { latitude, longitude } = position.coords;
           const userPos = [latitude, longitude];
           setUserLocation(userPos);
-          
+
           // Center the map on the user's location
           if (mapRef.current) {
             mapRef.current.setView(userPos, 13);
@@ -1337,7 +1337,7 @@ const DiscoverMain = () => {
           }
         } catch (error) {
           console.log("Location permission denied or unavailable on first attempt:", error.message);
-          
+
           // If the first attempt with high accuracy fails, try with fallback settings
           if (error.code === error.TIMEOUT) {
             try {
@@ -1353,11 +1353,11 @@ const DiscoverMain = () => {
                   }
                 );
               });
-              
+
               const { latitude, longitude } = position.coords;
               const userPos = [latitude, longitude];
               setUserLocation(userPos);
-              
+
               // Center the map on the user's location
               if (mapRef.current) {
                 mapRef.current.setView(userPos, 13);
@@ -1371,7 +1371,7 @@ const DiscoverMain = () => {
           }
         }
       };
-      
+
       requestLocation();
     }
   }, [userLocation]);
@@ -1394,7 +1394,7 @@ const DiscoverMain = () => {
       });
       return;
     }
-    
+
     const token = localStorage.getItem('token');
     if (!token) {
       showModal({
@@ -1405,21 +1405,21 @@ const DiscoverMain = () => {
       });
       return;
     }
-    
+
     // Check if post exists before accessing its properties
     if (!post || !post.id) {
       console.error("Invalid post provided to togglePostBookmark:", post);
       return;
     }
-    
+
     // Set loading state for this specific post
     setBookmarkLoading(post.id);
-    
+
     let isBookmarked;
-    
+
     try {
       isBookmarked = favoritePosts.has(post.id);
-      
+
       let response;
       if (isBookmarked) {
         // Unbookmark the post
@@ -1442,7 +1442,7 @@ const DiscoverMain = () => {
           })
         });
       }
-      
+
       if (response.ok) {
         const result = await response.json();
         if (result.status === 'success') {
@@ -1456,7 +1456,7 @@ const DiscoverMain = () => {
             }
             return newFavorites;
           });
-          
+
           console.log(`Post ${isBookmarked ? 'un' : ''}bookmarked successfully`);
         }
       } else {
@@ -1492,12 +1492,12 @@ const DiscoverMain = () => {
       });
       return;
     }
-    
+
     try {
       const token = localStorage.getItem('token');
       // Check if the location is already saved
       const isAlreadySaved = savedLocations.some(loc => loc.id === locationData.id);
-      
+
       if (isAlreadySaved) {
         // If already saved, remove it
         const response = await fetch(`${API_BASE_URL}/users/saved-locations/${locationData.id}`, {
@@ -1506,7 +1506,7 @@ const DiscoverMain = () => {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           // Refresh saved locations
           fetchSavedLocations(); // Fetch from server to ensure consistency
@@ -1529,7 +1529,7 @@ const DiscoverMain = () => {
           },
           body: JSON.stringify(locationData)
         });
-        
+
         if (response.ok) {
           const result = await response.json();
           if (result.status === 'success') {
@@ -1590,16 +1590,16 @@ const DiscoverMain = () => {
       (userPosition) => {
         const userLat = userPosition.coords.latitude;
         const userLng = userPosition.coords.longitude;
-        
+
         // Store the destination and activate routing visualization
         setRoutingDestination({ origin: [userLat, userLng], destination: position });
         setRoutingActive(true);
-        
+
         // Fly to the destination to show it on the map
         if (mapRef.current) {
           mapRef.current.flyTo(position, 13);
         }
-        
+
         // Set loading to false after a delay to allow route to load
         setTimeout(() => {
           setRoutingLoading(false);
@@ -1609,13 +1609,13 @@ const DiscoverMain = () => {
         console.error("Error getting user location:", error.message);
         // Fallback: ask user for a starting location or use current map center
         setRoutingLoading(false);
-        
+
         // Check if we have a user location from earlier
         if (userLocation) {
           // Use the last known user location as origin
           setRoutingDestination({ origin: userLocation, destination: position });
           setRoutingActive(true);
-          
+
           // Fly to the destination to show it on the map
           if (mapRef.current) {
             mapRef.current.flyTo(position, 13);
@@ -1626,7 +1626,7 @@ const DiscoverMain = () => {
             const currentCenter = mapRef.current.getCenter();
             setRoutingDestination({ origin: [currentCenter.lat, currentCenter.lng], destination: position });
             setRoutingActive(true);
-            
+
             // Fly to the destination to show it on the map
             mapRef.current.flyTo(position, 13);
           } else {
@@ -1682,7 +1682,7 @@ const DiscoverMain = () => {
       const { latitude, longitude } = position.coords;
       const userPos = [latitude, longitude];
       setUserLocation(userPos);
-      
+
       // Center the map on the new location
       if (mapRef.current) {
         mapRef.current.flyTo(userPos, 15);
@@ -1691,12 +1691,12 @@ const DiscoverMain = () => {
         setMapCenter(userPos);
         setMapZoom(15);
       }
-      
+
       // Show success message to confirm location update
       console.log(`Location updated to: [${latitude}, ${longitude}]`);
     } catch (error) {
       console.error("Geolocation error on first attempt:", error);
-      
+
       // If first attempt with high accuracy fails due to timeout, try with less strict settings
       if (error.code === error.TIMEOUT) {
         try {
@@ -1714,7 +1714,7 @@ const DiscoverMain = () => {
           const { latitude, longitude } = position.coords;
           const userPos = [latitude, longitude];
           setUserLocation(userPos);
-          
+
           // Center the map on the new location
           if (mapRef.current) {
             mapRef.current.flyTo(userPos, 15);
@@ -1723,7 +1723,7 @@ const DiscoverMain = () => {
             setMapCenter(userPos);
             setMapZoom(15);
           }
-          
+
           // Success after retry
           console.log(`Location updated to: [${latitude}, ${longitude}] with fallback settings`);
           return; // Exit successfully after retry
@@ -1731,10 +1731,10 @@ const DiscoverMain = () => {
           console.error("Geolocation error on retry:", retryError);
         }
       }
-      
+
       // If both attempts fail, show appropriate error message
       let errorMessage = "Could not get your current location. ";
-      
+
       switch(error.code) {
         case error.PERMISSION_DENIED:
           errorMessage += "Location access was denied. Please allow location access in your browser settings.";
@@ -1749,7 +1749,7 @@ const DiscoverMain = () => {
           errorMessage += "Please make sure location services are enabled and you have allowed location access. For local development, try opening this site over HTTPS.";
           break;
       }
-      
+
       // Show the error message in a modal to the user
       showModal({
         title: "Location Error",
@@ -1773,7 +1773,7 @@ const DiscoverMain = () => {
   // Function to handle creating a post directly on the map
   const handleMapPostCreation = useCallback(async (e) => {
     e.preventDefault();
-    
+
     // Validate form data
     if (!postCreationForm.title.trim() || !postCreationForm.description.trim()) {
       setPostCreationForm(prev => ({
@@ -1849,33 +1849,33 @@ const DiscoverMain = () => {
         };
 
         setPosts(prev => [newPost, ...prev]);
-        
+
         // Apply current filters to determine if the new post should be in the filtered list
         let shouldIncludeInFiltered = true;
-        
+
         // Apply search filter
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
-          shouldIncludeInFiltered = 
-            newPost.title.toLowerCase().includes(query) || 
+          shouldIncludeInFiltered =
+            newPost.title.toLowerCase().includes(query) ||
             newPost.description.toLowerCase().includes(query) ||
-            (typeof newPost.postedBy === 'string' ? newPost.postedBy.toLowerCase() : 
+            (typeof newPost.postedBy === 'string' ? newPost.postedBy.toLowerCase() :
              (typeof newPost.postedBy === 'object' && newPost.postedBy.name ? newPost.postedBy.name.toLowerCase() : '')
             ).includes(query) ||
             newPost.category.toLowerCase().includes(query) ||
             newPost.tags.some(tag => tag.toLowerCase().includes(query));
         }
-        
+
         // Apply category filter
         if (selectedCategory !== 'all' && shouldIncludeInFiltered) {
           shouldIncludeInFiltered = newPost.category.toLowerCase() === selectedCategory.toLowerCase();
         }
-        
+
         // Apply rating filter
         if (rating > 0 && shouldIncludeInFiltered) {
           shouldIncludeInFiltered = newPost.averageRating >= rating;
         }
-        
+
         // Apply price range filter
         if (priceRange !== 'all' && shouldIncludeInFiltered) {
           if (priceRange === 'free') {
@@ -1888,12 +1888,12 @@ const DiscoverMain = () => {
             shouldIncludeInFiltered = newPost.price > 50;
           }
         }
-        
+
         // Only add to filtered posts if it passes all current filters
         if (shouldIncludeInFiltered) {
           setFilteredPosts(prev => {
             const updatedList = [newPost, ...prev];
-            
+
             // Apply sorting based on current sort setting
             updatedList.sort((a, b) => {
               switch (sortBy) {
@@ -1909,7 +1909,7 @@ const DiscoverMain = () => {
                   return 0;
               }
             });
-            
+
             return updatedList;
           });
         }
@@ -1924,7 +1924,7 @@ const DiscoverMain = () => {
 
         // Close the creation form
         setCreatingPostAt(null);
-        
+
         // Fly to the new post location to show it on the map
         setTimeout(() => {
           if (newPost.position) {
@@ -2076,7 +2076,7 @@ const DiscoverMain = () => {
           <div className="text-center p-6 bg-white rounded-xl shadow-xl max-w-md z-[50001] relative">
             <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Discover Page</h2>
             <p className="text-gray-600 mb-4">{error}</p>
-            <button 
+            <button
               onClick={() => {
                 setError(null); // Clear the error state first
                 fetchPosts();
@@ -2285,7 +2285,10 @@ const DiscoverMain = () => {
 
           <MapClickHandler
             onMapClick={() => {
-              // Handle map click
+              // Handle map click only when routing is not active
+              if (!routingActive) {
+                // Handle map click
+              }
             }}
             onMapPositionSelected={(position) => {
               // Only allow authenticated users to create posts and only when routing is not active
@@ -2328,31 +2331,17 @@ const DiscoverMain = () => {
             />
           )}
 
-          {/* Close Directions Button - appears when routing is active */}
-          {routingActive && (
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="absolute top-20 right-4 z-[5993] sm:right-20"
-            >
-              <button
-                onClick={clearRouting}
-                className="px-3 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition-colors flex items-center gap-2 text-sm"
-              >
-                <X className="h-4 w-4" />
-                Close
-              </button>
-            </motion.div>
-          )}
-
           {/* Loading indicator - appears when routing is loading */}
           {routingLoading && (
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              className="absolute top-20 right-4 z-[5992] sm:right-20"
+              className="absolute top-24 z-[5992]"
+              style={{
+                right: isMobile ? '0.5rem' : (isSidebarExpanded ? 'calc(4rem + 0.5rem)' : '0.5rem')
+              }}
             >
-              <div className="px-3 py-2 bg-blue-500 text-white rounded-lg shadow-md flex items-center gap-2 text-sm">
+              <div className="px-3 py-2 bg-blue-500 text-white rounded-lg flex items-center gap-2 text-sm">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 Calculating...
               </div>
@@ -2531,14 +2520,45 @@ const DiscoverMain = () => {
           )}
         </MapContainer>
 
+        {/* Close Directions Button - appears when routing is active - positioned outside MapContainer to prevent click conflicts */}
+        {routingActive && (
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="absolute top-24 z-[5993]"
+            style={{
+              right: isMobile ? '0.5rem' : (isSidebarExpanded ? 'calc(4rem + 0.5rem)' : '0.5rem')
+            }}
+          >
+            <button
+              onClick={(e) => {
+                e.preventDefault(); // Prevent default behavior
+                e.stopPropagation(); // Prevent click from propagating to the map
+                clearRouting();
+              }}
+              className="directions-close-button px-3 py-2 bg-red-500 text-white rounded-lg flex items-center gap-2 text-sm"
+              onMouseDown={(e) => {
+                e.preventDefault(); // Prevent mouse down from affecting map
+                e.stopPropagation();
+              }}
+            >
+              <X className="h-4 w-4" />
+              Close
+            </button>
+          </motion.div>
+        )}
+
         {/* Top Banner - Shown when saved locations are displayed */}
         {isAuthenticated && showSavedLocationsOnMap && (
           <motion.div
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-20 right-4 z-[5994] sm:right-20"
+            className="absolute top-24 z-[5994]"
+            style={{
+              right: isMobile ? '0.5rem' : (isSidebarExpanded ? 'calc(4rem + 0.5rem)' : '0.5rem')
+            }}
           >
-            <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2 px-3 rounded-lg shadow-md flex items-center justify-between text-sm">
+            <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2 px-3 rounded-lg flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <Bookmark className="h-4 w-4 fill-current" />
                 <span>Saved</span>

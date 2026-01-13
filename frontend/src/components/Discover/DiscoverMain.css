@@ -506,6 +506,46 @@
   }
 }
 
+/* Responsive fixes for directions close button */
+.directions-close-button {
+  min-width: 80px !important;
+  padding: 0.5rem 0.75rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.directions-close-button:hover {
+  background-color: #dc2626 !important; /* Darker red on hover */
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.directions-close-button:active {
+  transform: translateY(0) !important;
+}
+
+@media (max-width: 768px) {
+  .directions-close-button {
+    min-width: 70px !important;
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.8rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .directions-close-button {
+    min-width: 65px !important;
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+/* Ensure proper spacing between UI elements */
+.directions-ui-elements {
+  margin-bottom: 0.5rem !important;
+}
+
 /* Bottom navigation for mobile devices */
 @media (max-width: 768px) {
   .bottom-nav {
