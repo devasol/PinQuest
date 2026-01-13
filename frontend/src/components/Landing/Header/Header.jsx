@@ -3,13 +3,13 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Search, Menu, X, Bell, User, MapPin, ChevronDown, Check, Trash2 } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext.jsx";
 import { connectSocket, getSocket, disconnectSocket } from "../../../services/socketService";
+import SearchBar from "../../Search/SearchBar";
 
 const Header = ({ isDiscoverPage = false }) => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   // Notification states
   const [notifications, setNotifications] = useState([]);
@@ -112,14 +112,6 @@ const Header = ({ isDiscoverPage = false }) => {
     };
   }, [isAuthenticated, user]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      console.log("Searching for:", searchQuery);
-      // Add your search logic here
-      setIsMobileSearchOpen(false); // Close mobile search after submitting
-    }
-  };
 
   // Function to mark a notification as read
   const markNotificationAsRead = async (notificationId) => {
@@ -294,18 +286,15 @@ const Header = ({ isDiscoverPage = false }) => {
 
           {/* Search Bar - Hidden on mobile until search icon is clicked */}
           <div className="hidden lg:flex flex-1 max-w-xs lg:max-w-md mx-4 xl:mx-8">
-            <form onSubmit={handleSearch} className="relative w-full">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Search locations, pins, users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
-                />
-              </div>
-            </form>
+            <SearchBar
+              placeholder="Search locations, pins, users..."
+              className="w-full"
+              onLocationSelect={(location) => {
+                // Navigate to discover page and show the selected location
+                navigate('/discover');
+                // In a real implementation, you might want to pass the location data to the discover page
+              }}
+            />
           </div>
 
           {/* Right Side Actions */}
@@ -470,19 +459,16 @@ const Header = ({ isDiscoverPage = false }) => {
         {/* Mobile Search Bar - Only shown when mobile search is open */}
         {isMobileSearchOpen && (
           <div className="lg:hidden px-4 pb-3">
-            <form onSubmit={handleSearch} className="relative">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Search locations, pins, users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  autoFocus
-                />
-              </div>
-            </form>
+            <SearchBar
+              placeholder="Search locations, pins, users..."
+              autoFocus={true}
+              onLocationSelect={(location) => {
+                // Navigate to discover page and show the selected location
+                navigate('/discover');
+                setIsMobileSearchOpen(false);
+                // In a real implementation, you might want to pass the location data to the discover page
+              }}
+            />
           </div>
         )}
       </div>

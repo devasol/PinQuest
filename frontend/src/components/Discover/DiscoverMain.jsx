@@ -20,6 +20,7 @@ import { connectSocket } from '../../services/socketService';
 import { postApi } from '../../services/api'; // Import the postApi to handle post creation
 import apiService from '../../services/api'; // Import the default apiService for direct upload functionality
 import Sidebar from '../Sidebar/Sidebar';
+import SearchBar from '../Search/SearchBar';
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
@@ -57,11 +58,7 @@ const DiscoverMain = () => {
   const [posts, setPosts] = useState([]);
   const [filteredPosts, setFilteredPosts] = useState([]);
   const [loading, setLoading] = useState(false); // Don't block initial render
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
-
   const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [mapType, setMapType] = useState('google'); // street, satellite, terrain, dark, light, topographic, navigation, cycle, google
   const [savedLocations, setSavedLocations] = useState([]); // For saved locations (separate from bookmarks)
@@ -89,9 +86,8 @@ const DiscoverMain = () => {
 
   const toggleSidebar = () => {
     setIsSidebarExpanded(!isSidebarExpanded);
-    // Close search bar when opening sidebar
+    // Close any open sidebar windows
     if (!isSidebarExpanded) { // If sidebar is being opened
-      setSearchFocused(false);
       if (window.innerWidth < 640) {
         setIsSearchBarVisible(false);
       }
@@ -154,131 +150,6 @@ const DiscoverMain = () => {
     navigate("/"); // Redirect to home page after logout
   };
 
-  // Memoized search suggestions (for backward compatibility)
-  const searchSuggestions = useMemo(() => {
-    if (!searchQuery || searchQuery.trim().length === 0) return [];
-
-    const searchTerms = searchQuery.toLowerCase().split(/\s+/).filter(term => term.length > 0);
-    if (searchTerms.length === 0) return [];
-
-    // Create a set to store unique suggestions
-    const suggestions = new Set();
-
-    // Look for posts that have similar terms or related content
-    posts.forEach(post => {
-      // Check title for similar terms
-      if (post.title && typeof post.title === 'string') {
-        const title = post.title.toLowerCase();
-        searchTerms.forEach(term => {
-          if (title.includes(term) && !title.includes(searchQuery.toLowerCase())) {
-            suggestions.add({
-              id: `title-suggestion-${post.id}`,
-              type: 'title-matching-term',
-              title: post.title,
-              description: post.description,
-              post: post,
-              relevance: 'related'
-            });
-          }
-        });
-      }
-
-      // Check description for similar terms
-      if (post.description && typeof post.description === 'string') {
-        const description = post.description.toLowerCase();
-        searchTerms.forEach(term => {
-          if (description.includes(term) && !description.includes(searchQuery.toLowerCase())) {
-            suggestions.add({
-              id: `desc-suggestion-${post.id}`,
-              type: 'description-matching-term',
-              title: post.title,
-              description: post.description,
-              post: post,
-              relevance: 'related'
-            });
-          }
-        });
-      }
-
-      // Check category for similar terms
-      if (post.category && typeof post.category === 'string') {
-        const category = post.category.toLowerCase();
-        searchTerms.forEach(term => {
-          if (category.includes(term) && !category.includes(searchQuery.toLowerCase())) {
-            suggestions.add({
-              id: `cat-suggestion-${post.id}`,
-              type: 'category-matching-term',
-              title: post.title,
-              description: post.description,
-              post: post,
-              relevance: 'related'
-            });
-          }
-        });
-      }
-
-      // Check tags for similar terms
-      if (Array.isArray(post.tags)) {
-        post.tags.forEach(tag => {
-          if (typeof tag === 'string') {
-            const tagLower = tag.toLowerCase();
-            searchTerms.forEach(term => {
-              if (tagLower.includes(term) && !tagLower.includes(searchQuery.toLowerCase())) {
-                suggestions.add({
-                  id: `tag-suggestion-${post.id}`,
-                  type: 'tag-matching-term',
-                  title: post.title,
-                  description: post.description,
-                  post: post,
-                  relevance: 'related'
-                });
-              }
-            });
-          }
-        });
-      }
-
-      // Check poster name for similar terms
-      if (post.postedBy) {
-        const posterName = typeof post.postedBy === 'string'
-          ? post.postedBy.toLowerCase()
-          : (post.postedBy.name || post.postedBy.email || '').toLowerCase();
-        searchTerms.forEach(term => {
-          if (posterName.includes(term) && !posterName.includes(searchQuery.toLowerCase())) {
-            suggestions.add({
-              id: `poster-suggestion-${post.id}`,
-              type: 'poster-matching-term',
-              title: post.title,
-              description: post.description,
-              post: post,
-              relevance: 'related'
-            });
-          }
-        });
-      }
-    });
-
-    // Also include popular posts as suggestions
-    const popularPosts = [...posts]
-      .sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0))
-      .slice(0, 3)
-      .map(post => ({
-        id: `popular-${post.id}`,
-        type: 'popular',
-        title: post.title,
-        description: post.description,
-        post: post,
-        relevance: 'popular'
-      }));
-
-    // Convert to array and limit results
-    const allSuggestions = [
-      ...Array.from(suggestions),
-      ...popularPosts.filter(pop => !Array.from(suggestions).some(sugg => sugg.post._id === pop.post._id))
-    ];
-
-    return allSuggestions.slice(0, 5); // Return top 5 suggestions
-  }, [searchQuery, posts]);
 
   // State for enhanced search results
   const [enhancedSearchResults, setEnhancedSearchResults] = useState([]);
@@ -307,26 +178,6 @@ const DiscoverMain = () => {
     };
   }, []);
 
-  // Close search results when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
-        if (searchFocused) {
-          setSearchFocused(false);
-        }
-        if (!isSearchBarVisible && searchQuery) {
-          // On mobile, when clicking outside, clear search query to avoid showing results
-          setSearchQuery('');
-          setEnhancedSearchResults([]);
-        }
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [searchFocused, isSearchBarVisible, searchQuery]);
 
 
   // State for geocoding search results
@@ -1087,9 +938,9 @@ const DiscoverMain = () => {
     };
   }, [fetchPosts, fetchSavedLocations, fetchUserFavoritePosts, isAuthenticated]); // Remove selectedPost to avoid interval recreation
 
-  // Apply filters when search query, category, or other filters change
+  // Apply filters when category, or other filters change (search is handled by SearchBar component)
   useEffect(() => {
-    // If we have enhanced search results, use them instead of filtering posts
+    // If we have enhanced search results, apply filters to them
     if (enhancedSearchResults.length > 0) {
       let result = [...enhancedSearchResults];
 
@@ -1137,20 +988,6 @@ const DiscoverMain = () => {
       // Use the original filtering logic when no enhanced search results
       let result = [...posts];
 
-      // Apply search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        result = result.filter(post =>
-          post.title.toLowerCase().includes(query) ||
-          post.description.toLowerCase().includes(query) ||
-          (typeof post.postedBy === 'string' ? post.postedBy.toLowerCase() :
-           (typeof post.postedBy === 'object' && post.postedBy.name ? post.postedBy.name.toLowerCase() : '')
-          ).includes(query) ||
-          post.category.toLowerCase().includes(query) ||
-          post.tags.some(tag => tag.toLowerCase().includes(query))
-        );
-      }
-
       // Apply category filter
       if (selectedCategory !== 'all') {
         result = result.filter(post => post.category.toLowerCase() === selectedCategory.toLowerCase());
@@ -1192,7 +1029,7 @@ const DiscoverMain = () => {
 
       setFilteredPosts(result);
     }
-  }, [searchQuery, selectedCategory, rating, priceRange, sortBy, posts, enhancedSearchResults]);
+  }, [selectedCategory, rating, priceRange, sortBy, posts, enhancedSearchResults]);
 
   // Get user location for initial centering - non-blocking
   useEffect(() => {
@@ -1853,19 +1690,6 @@ const DiscoverMain = () => {
         // Apply current filters to determine if the new post should be in the filtered list
         let shouldIncludeInFiltered = true;
 
-        // Apply search filter
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          shouldIncludeInFiltered =
-            newPost.title.toLowerCase().includes(query) ||
-            newPost.description.toLowerCase().includes(query) ||
-            (typeof newPost.postedBy === 'string' ? newPost.postedBy.toLowerCase() :
-             (typeof newPost.postedBy === 'object' && newPost.postedBy.name ? newPost.postedBy.name.toLowerCase() : '')
-            ).includes(query) ||
-            newPost.category.toLowerCase().includes(query) ||
-            newPost.tags.some(tag => tag.toLowerCase().includes(query));
-        }
-
         // Apply category filter
         if (selectedCategory !== 'all' && shouldIncludeInFiltered) {
           shouldIncludeInFiltered = newPost.category.toLowerCase() === selectedCategory.toLowerCase();
@@ -1942,7 +1766,7 @@ const DiscoverMain = () => {
         error: error.message || error.toString() || 'An error occurred while creating the post'
       }));
     }
-  }, [postCreationForm, creatingPostAt, searchQuery, selectedCategory, rating, priceRange, sortBy, user, showModal, flyToPost, apiService]);
+  }, [postCreationForm, creatingPostAt, selectedCategory, rating, priceRange, sortBy, user, showModal, flyToPost, apiService]);
 
   // Close all windows using ESC key
   useEffect(() => {
@@ -1983,52 +1807,6 @@ const DiscoverMain = () => {
 
 
 
-  // Debounced search function
-  useEffect(() => {
-    const performSearch = async () => {
-      if (!searchQuery.trim()) {
-        setEnhancedSearchResults([]);
-        return;
-      }
-
-      setSearchLoading(true);
-      try {
-        const response = await postApi.advancedSearch(
-          searchQuery,
-          null, // category
-          20, // limit
-          1, // page
-          'relevance', // sortBy
-          userLocation ? userLocation[0] : null, // latitude
-          userLocation ? userLocation[1] : null, // longitude
-          50 // radius
-        );
-
-        if (response.success && response.data) {
-          const validPosts = (response.data.data?.posts || []).filter(post => post._id || post.id);
-          setEnhancedSearchResults(validPosts);
-        } else {
-          setEnhancedSearchResults([]);
-        }
-      } catch (error) {
-        console.error('Search error:', error);
-        setEnhancedSearchResults([]);
-      } finally {
-        setSearchLoading(false);
-      }
-    };
-
-    if (searchQuery.trim()) {
-      const delaySearch = setTimeout(() => {
-        performSearch();
-      }, 500); // 500ms delay
-
-      return () => clearTimeout(delaySearch);
-    } else {
-      // If search query is empty, clear results immediately
-      setEnhancedSearchResults([]);
-    }
-  }, [searchQuery, userLocation]); // Only re-run when searchQuery or userLocation changes
 
   // Get the appropriate tile layer URL based on map type
   const getTileLayerUrl = () => {
@@ -2128,99 +1906,27 @@ const DiscoverMain = () => {
       {/* Centered search bar on desktop, top-positioned on mobile */}
       <div className="search-bar-centered" style={{ top: '20px' }}>
         <div className="search-input-container" ref={searchContainerRef}>
-          <Search className="search-icon" />
-          <input
-            type="text"
+          <SearchBar
             placeholder="Search for places, locations, categories..."
-            className="search-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => {
-              setSearchFocused(true);
-              // Close sidebar when search bar is focused on mobile
-              if (isMobile && isSidebarExpanded) {
-                setIsSidebarExpanded(false);
-                // Close any open sidebar windows
-                setShowWindows(prev => Object.keys(prev).reduce((acc, key) => {
-                  acc[key] = false;
-                  return acc;
-                }, {}));
+            autoFocus
+            onSearchResults={(results) => {
+              setFilteredPosts(results);
+              // Update the enhanced search results state
+              setEnhancedSearchResults(results);
+            }}
+            onLocationSelect={(post) => {
+              // Only navigate to the location without opening the post window
+              // Ensure the post has a valid position before flying to it
+              if (post.position && Array.isArray(post.position) && post.position.length >= 2) {
+                flyToPost(post.position);
+              } else if (post.location && typeof post.location.latitude !== 'undefined' && typeof post.location.longitude !== 'undefined') {
+                // Fallback to location object if position is not available
+                flyToPost([post.location.latitude, post.location.longitude]);
               }
             }}
-            onBlur={() => {
-              // Only hide the results window after a short delay to allow clicks on results
-              setTimeout(() => setSearchFocused(false), 200);
-            }}
-            autoFocus
           />
-          {searchQuery && (
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setEnhancedSearchResults([]);
-              }}
-              className="clear-search-btn"
-            >
-              <X size={18} />
-            </button>
-          )}
         </div>
       </div>
-
-      {/* Search Results Dropdown - only appears when search query exists AND search is focused */}
-      {searchFocused && searchQuery && (
-        <div
-          className="search-results-dropdown"
-          ref={(el) => {
-            if (el && searchContainerRef.current) {
-              // Position the dropdown below the search input
-              const searchRect = searchContainerRef.current.getBoundingClientRect();
-              el.style.left = `${searchRect.left}px`;
-              el.style.width = `${searchRect.width}px`;
-            }
-          }}
-        >
-          {searchLoading ? (
-            <div className="p-4 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-            </div>
-          ) : enhancedSearchResults.length > 0 ? (
-            enhancedSearchResults.map((post) => (
-              <div
-                key={post._id || post.id}
-                className="search-result-item"
-                onClick={() => {
-                  setSelectedPost(post);
-                  flyToPost(post.position);
-                  setSearchQuery(''); // Clear search after selection
-                  setEnhancedSearchResults([]); // Clear results after selection
-                  setSearchFocused(false); // Hide the results window after selection
-                }}
-              >
-                <div className="search-result-title">{post.title}</div>
-                <div className="search-result-description">{post.description}</div>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                    {post.category}
-                  </span>
-                  <span className="text-xs text-gray-500 flex items-center">
-                    <Star size={12} className="mr-1" />
-                    {post.averageRating?.toFixed(1) || '0.0'}
-                  </span>
-                </div>
-              </div>
-            ))
-          ) : searchQuery ? (
-            <div className="p-4 text-center text-gray-500">
-              No results found for "{searchQuery}"
-            </div>
-          ) : (
-            <div className="p-4 text-center text-gray-500">
-              Enter a search term to find locations
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Map container */}
       <div className={`map-container-responsive ${
@@ -2809,132 +2515,38 @@ const DiscoverMain = () => {
               ) : (
                 // Show search suggestions when search query exists but no results found
                 searchQuery ? (
-                  <div className="space-y-4">
-                    <div className="text-center py-4">
-                      <MapPin className="mx-auto h-10 w-10 text-gray-300" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No places match your search</h3>
-                      <p className="mt-1 text-xs text-gray-500">Here are some suggestions based on your search:</p>
+                  <div className="text-center py-8">
+                    <MapPin className="mx-auto h-10 w-10 text-gray-300" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No places match your search</h3>
+                    <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
+
+                    {/* Show popular posts as fallback */}
+                    <div className="mt-6">
+                      <h4 className="text-xs font-medium text-gray-700 mb-3">Popular locations you might like:</h4>
+                      <div className="space-y-2">
+                        {posts
+                          .filter(post => post.id)
+                          .sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0))
+                          .slice(0, 3)
+                          .map((post, index) => (
+                            <motion.div
+                              key={`popular-${post.id}`}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              className="text-left bg-white rounded-lg p-2 cursor-pointer hover:bg-gray-50 transition-colors border border-gray-100"
+                              onClick={() => {
+                                setSelectedPost(post);
+                                flyToPost(post.position);
+                                setShowListings(false);
+                              }}
+                            >
+                              <div className="text-xs font-medium text-gray-800 truncate">{post.title}</div>
+                              <div className="text-xs text-gray-600">{post.totalRatings || 0} ratings</div>
+                            </motion.div>
+                          ))}
+                      </div>
                     </div>
-
-                    {/* Search suggestions */}
-                    {searchSuggestions.length > 0 ? (
-                      <div className="space-y-3">
-                        {searchSuggestions.map((suggestion, index) => (
-                          <motion.div
-                            key={suggestion.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 15 }}
-                            whileHover={{ y: -2, scale: 1.01 }}
-                            className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer border border-gray-200 smooth-transition discover-card p-3"
-                            onClick={() => {
-                              setSelectedPost(suggestion.post);
-                              flyToPost(suggestion.post.position);
-                              setShowListings(false); // Close the panel after selection
-                              // Clear the search query to show the selected post
-                              setSearchQuery('');
-                            }}
-                          >
-                            <div className="flex items-start gap-3">
-                              {suggestion.post.image && (
-                                <div className="relative">
-                                  <img
-                                    src={suggestion.post.image}
-                                    alt={suggestion.post.title}
-                                    className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                                    onError={(e) => {
-                                      e.target.style.display = 'none';
-                                    }}
-                                  />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg"></div>
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-gray-900 truncate text-sm">{suggestion.post.title}</h3>
-                                <p className="text-xs text-gray-600 line-clamp-2 mt-1">{suggestion.post.description}</p>
-                                <div className="flex items-center gap-1 mt-1">
-                                  <div className="flex items-center">
-                                    {[...Array(5)].map((_, i) => (
-                                      <Star
-                                        key={i}
-                                        className={`w-3 h-3 ${
-                                          i < Math.floor(suggestion.post.averageRating)
-                                            ? 'text-yellow-400 fill-current'
-                                            : 'text-gray-300'
-                                        }`}
-                                      />
-                                    ))}
-                                    <span className="ml-1 text-xs text-gray-600">
-                                      {suggestion.post.averageRating.toFixed(1)} ({suggestion.post.totalRatings})
-                                    </span>
-                                  </div>
-                                  <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
-                                    {suggestion.post.category}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center mt-1">
-                                  <span className="text-xs text-gray-500">by {typeof suggestion.post.postedBy === 'string' ? suggestion.post.postedBy : (suggestion.post.postedBy?.name || suggestion.post.postedBy?.email || 'Unknown')}</span>
-                                  {isAuthenticated && (
-                                    <motion.button
-                                      whileHover={{ scale: 1.1 }}
-                                      whileTap={{ scale: 0.9 }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        togglePostBookmark(suggestion.post);
-                                      }}
-                                      className="text-red-500 hover:text-red-700 transition-colors"
-                                      disabled={bookmarkLoading === suggestion.post.id}
-                                    >
-                                      {bookmarkLoading === suggestion.post.id ? (
-                                        <div className="w-4 h-4 flex items-center justify-center">
-                                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                                        </div>
-                                      ) : (
-                                        <Heart className={`w-4 h-4 ${favoritePosts.has(suggestion.post.id) ? 'fill-current' : ''}`} />
-                                      )}
-                                    </motion.button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <MapPin className="mx-auto h-10 w-10 text-gray-300" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No places match your search</h3>
-                        <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
-
-                        {/* Show popular posts as fallback */}
-                        <div className="mt-6">
-                          <h4 className="text-xs font-medium text-gray-700 mb-3">Popular locations you might like:</h4>
-                          <div className="space-y-2">
-                            {posts
-                              .filter(post => post.id)
-                              .sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0))
-                              .slice(0, 3)
-                              .map((post, index) => (
-                                <motion.div
-                                  key={`popular-${post.id}`}
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: index * 0.05 }}
-                                  className="text-left bg-white rounded-lg p-2 cursor-pointer hover:bg-gray-50 transition-colors border border-gray-100"
-                                  onClick={() => {
-                                    setSelectedPost(post);
-                                    flyToPost(post.position);
-                                    setShowListings(false);
-                                  }}
-                                >
-                                  <div className="text-xs font-medium text-gray-800 truncate">{post.title}</div>
-                                  <div className="text-xs text-gray-600">{post.totalRatings || 0} ratings</div>
-                                </motion.div>
-                              ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   // Original "no places found" message when no search query
