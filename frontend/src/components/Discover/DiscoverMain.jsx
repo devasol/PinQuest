@@ -14,6 +14,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users, Bell, User, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './DiscoverMain.css';
+import './ResponsiveLayout.css'; // Import the new responsive layout CSS
 import { useModal } from '../../contexts/ModalContext';
 import { connectSocket } from '../../services/socketService';
 import { postApi } from '../../services/api'; // Import the postApi to handle post creation
@@ -2090,10 +2091,16 @@ const DiscoverMain = () => {
     );
   }
 
+  // State for mobile bottom navigation
+  const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
+
+  // Determine if we're on mobile
+  const isMobile = screenWidth < 768;
+
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
+    <div className="responsive-map-layout">
       {/* Top-right user controls positioned above the map (adjusted for sidebar) */}
-      <div className="top-right-controls absolute top-4 z-[7010] flex flex-wrap items-center gap-2 sm:gap-3" style={{ right: isSidebarExpanded && window.innerWidth >= 768 ? '4rem' : '1rem' }}>
+      <div className="top-right-controls absolute top-4 z-[7010] flex flex-wrap items-center gap-2 sm:gap-3" style={{ right: isSidebarExpanded && !isMobile ? '4rem' : '1rem' }}>
         {/* User controls - login, notifications, name */}
         {isAuthenticated ? (
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-white/90 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 shadow-md border border-gray-200">
@@ -2125,204 +2132,100 @@ const DiscoverMain = () => {
           </Link>
         )}
       </div>
-      
-      {/* Map and results area - adjust to account for sidebar and windows */}
-      <div className={`map-container transition-all duration-300 ease-in-out ${
-        (isSidebarExpanded && window.innerWidth >= 768) || Object.values(showWindows).some(open => open) ?
-          (Object.values(showWindows).some(open => open) ? 
-            (isSidebarExpanded && window.innerWidth >= 768 ? 'ml-[calc(16rem+380px)]' : 'ml-[calc(5rem+380px)]') 
-            : 'ml-[16rem]') 
-          : 'ml-[5rem]'
-      }`} style={{ 
-        marginLeft: (isSidebarExpanded && window.innerWidth >= 768) || Object.values(showWindows).some(open => open) ?
-          (Object.values(showWindows).some(open => open) ? 
-            (isSidebarExpanded && window.innerWidth >= 768 ? 'calc(16rem + 380px)' : 'calc(5rem + 380px)') 
-            : '16rem') 
-          : '5rem'
-      }}>
-        {/* Responsive search bar: show full bar on bigger screens, icon only on mobile */}
-        <div className="top-search-bar absolute top-4 sm:top-6 md:top-8 left-1/2 transform -translate-x-1/2 z-[7000] w-full px-4" 
-             style={{
-               left: isSidebarExpanded && window.innerWidth >= 768 
-                 ? 'calc(50% + 8rem)' // Position at center of remaining space when sidebar is expanded
-                 : '50%'
-             }}>
-          <div className="max-w-2xl mx-auto relative" ref={searchContainerRef}>
-            {/* Always show search bar on bigger screens, only icon on mobile */}
-            <div className="flex items-center sm:block hidden gap-2"> {/* Changed to flex for desktop, keeping block for mobile */}
-              <div className="relative w-full">
-                <input
-                  type="text"
-                  placeholder="Search for places, locations, categories..."
-                  className="w-full pl-12 pr-4 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base sm:text-lg bg-white"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={() => {
-                    setSearchFocused(true);
-                    // Close sidebar when search bar is focused
-                    if (isSidebarExpanded) {
-                      setIsSidebarExpanded(false);
-                      // Close any open sidebar windows
-                      setShowWindows(prev => Object.keys(prev).reduce((acc, key) => {
-                        acc[key] = false;
-                        return acc;
-                      }, {}));
-                    }
-                  }}
-                  onBlur={() => {
-                    // Only hide the results window after a short delay to allow clicks on results
-                    setTimeout(() => setSearchFocused(false), 200);
-                  }}
-                  autoFocus
-                />
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-6 sm:w-6" />
+
+      {/* Centered search bar */}
+      <div className="search-bar-centered">
+        <div className="search-input-container" ref={searchContainerRef}>
+          <Search className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search for places, locations, categories..."
+            className="search-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => {
+              setSearchFocused(true);
+              // Close sidebar when search bar is focused on mobile
+              if (isMobile && isSidebarExpanded) {
+                setIsSidebarExpanded(false);
+                // Close any open sidebar windows
+                setShowWindows(prev => Object.keys(prev).reduce((acc, key) => {
+                  acc[key] = false;
+                  return acc;
+                }, {}));
+              }
+            }}
+            onBlur={() => {
+              // Only hide the results window after a short delay to allow clicks on results
+              setTimeout(() => setSearchFocused(false), 200);
+            }}
+            autoFocus
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setEnhancedSearchResults([]);
+              }}
+              className="clear-search-btn"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Search Results Dropdown - only appears when search query exists AND search is focused */}
+        {searchFocused && searchQuery && (
+          <div className="search-results-dropdown">
+            {searchLoading ? (
+              <div className="p-4 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
               </div>
-              {searchQuery && (
-                <button
+            ) : enhancedSearchResults.length > 0 ? (
+              enhancedSearchResults.map((post) => (
+                <div
+                  key={post._id || post.id}
+                  className="search-result-item"
                   onClick={() => {
-                    setSearchQuery('');
-                    setEnhancedSearchResults([]);
+                    setSelectedPost(post);
+                    flyToPost(post.position);
+                    setSearchQuery(''); // Clear search after selection
+                    setEnhancedSearchResults([]); // Clear results after selection
+                    setSearchFocused(false); // Hide the results window after selection
                   }}
-                  className="ml-2 p-3 rounded-full hover:bg-gray-100 transition-colors self-center"
                 >
-                  <X className="h-4 w-4 sm:h-6 sm:w-6 text-gray-500" />
-                </button>
-              )}
-            </div>
-            
-            {/* Show search icon when on mobile screens */}
-            <div className="sm:hidden flex items-center justify-center">
-              <button
-                onClick={() => {
-                  // If search bar is currently hidden, we're opening it
-                  const isCurrentlyHidden = !isSearchBarVisible;
-                  setIsSearchBarVisible(!isSearchBarVisible);
-                  
-                  if (isCurrentlyHidden && isSidebarExpanded) {
-                    // Close sidebar when opening mobile search bar
-                    setIsSidebarExpanded(false);
-                    // Close any open sidebar windows
-                    setShowWindows(prev => Object.keys(prev).reduce((acc, key) => {
-                      acc[key] = false;
-                      return acc;
-                    }, {}));
-                  }
-                  
-                  setTimeout(() => {
-                    // Focus the search input after it appears
-                    const searchInput = document.querySelector('.top-search-bar input');
-                    if (searchInput) {
-                      searchInput.focus();
-                    }
-                  }, 100);
-                }}
-                className="w-14 h-14 rounded-xl border border-gray-200 bg-white shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
-                aria-label="Open search"
-              >
-                <Search className="h-6 w-6 text-gray-600" />
-              </button>
-            </div>
-            
-            {/* Conditional search bar for mobile when icon is clicked */}
-            {isSearchBarVisible && window.innerWidth < 640 && (
-              <div className="flex items-center sm:hidden mt-2 w-full max-w-md mx-auto gap-2">
-                <div className="relative w-full">
-                  <input
-                    type="text"
-                    placeholder="Search for places, locations, categories..."
-                    className="w-full pl-12 pr-10 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg text-base bg-white"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => {
-                    setSearchFocused(true);
-                    // Close sidebar when search bar is focused
-                    if (isSidebarExpanded) {
-                      setIsSidebarExpanded(false);
-                      // Close any open sidebar windows
-                      setShowWindows(prev => Object.keys(prev).reduce((acc, key) => {
-                        acc[key] = false;
-                        return acc;
-                      }, {}));
-                    }
-                  }}
-                    onBlur={() => {
-                      // Only hide the results window after a short delay to allow clicks on results
-                      setTimeout(() => setSearchFocused(false), 200);
-                    }}
-                  />
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  
-                  {/* Clear button for mobile search bar (only shows when there's a query) */}
-                  {searchQuery && (
-                    <button
-                      onClick={() => {
-                        setSearchQuery('');
-                        setEnhancedSearchResults([]);
-                        // On mobile, after clearing, close the search bar 
-                        setTimeout(() => {
-                          setIsSearchBarVisible(false);
-                        }, 100);
-                      }}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-full hover:bg-gray-100 transition-colors"
-                    >
-                      <X className="h-5 w-5 text-gray-500" />
-                    </button>
-                  )}
+                  <div className="search-result-title">{post.title}</div>
+                  <div className="search-result-description">{post.description}</div>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      {post.category}
+                    </span>
+                    <span className="text-xs text-gray-500 flex items-center">
+                      <Star size={12} className="mr-1" />
+                      {post.averageRating?.toFixed(1) || '0.0'}
+                    </span>
+                  </div>
                 </div>
+              ))
+            ) : searchQuery ? (
+              <div className="p-4 text-center text-gray-500">
+                No results found for "{searchQuery}"
               </div>
-            )}
-            
-            {/* Search Results Window - only appears when search query exists AND search is focused (for both mobile and desktop) */}
-            {searchFocused && searchQuery && (
-              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-full max-w-sm sm:max-w-sm md:max-w-md lg:max-w-2xl mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-[7001] max-h-60 sm:max-h-80 md:max-h-96 lg:max-h-[500px] overflow-y-auto`}>
-                <div className="p-3 sm:p-4 space-y-2 sm:space-y-2">
-                  {searchLoading ? (
-                    <div className="flex items-center justify-center py-6">
-                      <div className="animate-spin rounded-full h-6 w-6 sm:h-6 sm:w-6 border-b-2 border-blue-500"></div>
-                    </div>
-                  ) : enhancedSearchResults.length > 0 ? (
-                    enhancedSearchResults.map((post) => (
-                      <div 
-                        key={post._id || post.id}
-                        className="p-3 sm:p-4 bg-white hover:bg-gray-50 rounded-xl cursor-pointer border border-gray-100 transition-colors duration-150"
-                        onClick={() => {
-                          setSelectedPost(post);
-                          flyToPost(post.position);
-                          setSearchQuery(''); // Clear search after selection
-                          setEnhancedSearchResults([]); // Clear results after selection
-                          setSearchFocused(false); // Hide the results window after selection
-                          setIsSearchBarVisible(false); // Hide the search bar
-                        }}
-                      >
-                        <div className="font-medium text-gray-900 text-base sm:text-base truncate">{post.title}</div>
-                        <div className="text-sm sm:text-sm text-gray-600 truncate mt-1">{post.description}</div>
-                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                          <span className="text-xs sm:text-xs bg-blue-100 text-blue-800 px-2 sm:px-2 py-1 sm:py-1 rounded-full">
-                            {post.category}
-                          </span>
-                          <span className="text-xs sm:text-xs text-gray-500 flex items-center">
-                            <Star className="h-3 w-3 sm:h-3 sm:w-3 mr-0.5" />
-                            {post.averageRating?.toFixed(1) || '0.0'}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : searchQuery ? (
-                    <div className="text-center py-6 text-gray-500 text-base">
-                      No results found for "{searchQuery}"
-                    </div>
-                  ) : (
-                    <div className="text-center py-6 text-gray-500 text-base">
-                      Enter a search term to find locations
-                    </div>
-                  )}
-                </div>
+            ) : (
+              <div className="p-4 text-center text-gray-500">
+                Enter a search term to find locations
               </div>
             )}
           </div>
-        </div>
-      {/* Map */}
-      <MapContainer
+        )}
+      </div>
+
+      {/* Map container */}
+      <div className={`map-container-responsive ${
+        isMobile ? '' :
+        (isSidebarExpanded ? 'map-container-sidebar-expanded' : 'map-container-sidebar-collapsed')
+      }`}>
+        <MapContainer
           center={mapCenter}
           zoom={mapZoom}
           minZoom={2}
@@ -2333,7 +2236,7 @@ const DiscoverMain = () => {
           dragging={true}
           animate={true}
           easeLinearity={0.35}
-          style={{ height: '100vh', width: '100%' }}
+          style={{ height: '100%', width: '100%' }}
           ref={mapRef}
           className="z-0 w-full"
           maxBounds={[
@@ -2351,8 +2254,8 @@ const DiscoverMain = () => {
           }}
         >
           <TileLayer
-            attribution={mapType === 'satellite' 
-              ? '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' 
+            attribution={mapType === 'satellite'
+              ? '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
               : mapType === 'terrain'
               ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles courtesy of <a href="https://opentopomap.org/">OpenTopoMap</a>'
               : mapType === 'dark' || mapType === 'light'
@@ -2377,11 +2280,11 @@ const DiscoverMain = () => {
             reuseTiles={true}
             keepBuffer={2}
           />
-          
-          <MapClickHandler 
+
+          <MapClickHandler
             onMapClick={() => {
               // Handle map click
-            }} 
+            }}
             onMapPositionSelected={(position) => {
               // Only allow authenticated users to create posts and only when routing is not active
               if (isAuthenticated && !routingActive) {
@@ -2407,11 +2310,11 @@ const DiscoverMain = () => {
               }
             }}
           />
-          
+
           {/* Show user's current location on the map */}
           {userLocation && (
-            <CurrentLocationMarker 
-              position={userLocation} 
+            <CurrentLocationMarker
+              position={userLocation}
               onClick={(position) => {
                 // Optional: Add click functionality for user location marker
                 console.log('User location marker clicked');
@@ -2422,10 +2325,10 @@ const DiscoverMain = () => {
               }}
             />
           )}
-          
-          {/* Close Directions Button - appears when routing is active - Updated position for new layout */}
+
+          {/* Close Directions Button - appears when routing is active */}
           {routingActive && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               className="absolute top-20 right-4 z-[5993] sm:right-20"
@@ -2439,10 +2342,10 @@ const DiscoverMain = () => {
               </button>
             </motion.div>
           )}
-          
-          {/* Loading indicator - appears when routing is loading - Updated position for new layout */}
+
+          {/* Loading indicator - appears when routing is loading */}
           {routingLoading && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               className="absolute top-20 right-4 z-[5992] sm:right-20"
@@ -2453,7 +2356,7 @@ const DiscoverMain = () => {
               </div>
             </motion.div>
           )}
-          
+
           {/* Create Post Floating Action Button */}
           {isAuthenticated && (
             <motion.button
@@ -2490,29 +2393,29 @@ const DiscoverMain = () => {
               <Plus className="w-6 h-6" />
             </motion.button>
           )}
-          
+
           {/* Render custom markers for each post */}
           <AnimatePresence>
             {filteredPosts.map((post) => {
               // Determine if the current user has liked this post based on the likes array
-              const userHasLiked = post.likes?.some(like => 
-                like.user && 
-                (like.user._id === user?._id || 
+              const userHasLiked = post.likes?.some(like =>
+                like.user &&
+                (like.user._id === user?._id ||
                  (typeof like.user === 'string' && like.user === user?._id) ||
                  (typeof like.user === 'object' && like.user._id === user?._id))
               );
-              
+
               // Check if this post is also in the saved locations to avoid duplicate markers
               const isSaved = favoritePosts.has(post.id);
-              
+
               // Only render markers for posts with valid IDs to prevent duplicate key errors
               if (!post.id) {
                 return null;
               }
-              
+
               return (
-                <CustomMarker 
-                  key={`post-${post.id}`} 
+                <CustomMarker
+                  key={`post-${post.id}`}
                   post={post}
                   isLiked={userHasLiked}
                   onSave={togglePostBookmark}
@@ -2527,7 +2430,7 @@ const DiscoverMain = () => {
               );
             })}
           </AnimatePresence>
-          
+
           {/* Loading overlay for posts */}
           {loading && filteredPosts.length === 0 && (
             <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[49999] flex items-center justify-center">
@@ -2538,26 +2441,26 @@ const DiscoverMain = () => {
               </div>
             </div>
           )}
-          
+
           {/* Render markers for saved locations when toggle is enabled */}
           {isAuthenticated && showSavedLocationsOnMap && savedLocations.map((savedLocation) => {
             // Check if this saved location is also in the filtered posts to avoid duplicate markers
             const isAlreadyDisplayed = filteredPosts.some(post => post.id === savedLocation.id);
-            
+
             // Skip if it's already shown as a regular post marker
             if (isAlreadyDisplayed) {
               return null;
             }
-            
+
             // Check if this saved location is also a post to determine if it's liked
             const associatedPost = posts.find(post => post.id === savedLocation.id);
-            const userHasLiked = associatedPost?.likes?.some(like => 
-              like.user && 
-              (like.user._id === user?._id || 
+            const userHasLiked = associatedPost?.likes?.some(like =>
+              like.user &&
+              (like.user._id === user?._id ||
                (typeof like.user === 'string' && like.user === user?._id) ||
                (typeof like.user === 'object' && like.user._id === user?._id))
             );
-            
+
             // Only render if the location has valid position data
             if (savedLocation.position) {
               // Create a temporary post object for the saved location marker
@@ -2580,10 +2483,10 @@ const DiscoverMain = () => {
                 likes: associatedPost?.likes || [],
                 likesCount: associatedPost?.likesCount || 0,
               };
-              
+
               return (
-                <CustomMarker 
-                  key={`saved-${savedLocation.id}`} 
+                <CustomMarker
+                  key={`saved-${savedLocation.id}`}
                   post={tempPost}
                   isLiked={userHasLiked}
                   onSave={saveLocation}
@@ -2598,24 +2501,24 @@ const DiscoverMain = () => {
             }
             return null;
           })}
-          
+
           {/* Show route on the map when routing is active */}
           {routingActive && routingDestination && (
-            <MapRouting 
+            <MapRouting
               origin={routingDestination.origin}
               destination={routingDestination.destination}
               clearRoute={!routingActive}
             />
           )}
-          
-          
+
+
           {/* Map-based Post Creation Popup */}
           {creatingPostAt && (
             <Popup
               position={[creatingPostAt.lat, creatingPostAt.lng]}
               onClose={() => setCreatingPostAt(null)}
             >
-              <PostCreationForm 
+              <PostCreationForm
                 creatingPostAt={creatingPostAt}
                 postCreationForm={postCreationForm}
                 handlePostCreationFormChange={handlePostCreationFormChange}
@@ -2625,10 +2528,10 @@ const DiscoverMain = () => {
             </Popup>
           )}
         </MapContainer>
-        
-        {/* Top Banner - Shown when saved locations are displayed - Updated for new layout */}
+
+        {/* Top Banner - Shown when saved locations are displayed */}
         {isAuthenticated && showSavedLocationsOnMap && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             className="absolute top-20 right-4 z-[5994] sm:right-20"
@@ -2638,7 +2541,7 @@ const DiscoverMain = () => {
                 <Bookmark className="h-4 w-4 fill-current" />
                 <span>Saved</span>
               </div>
-              <button 
+              <button
                 onClick={() => setShowSavedLocationsOnMap(false)}
                 className="text-white hover:text-gray-200"
               >
@@ -2647,393 +2550,389 @@ const DiscoverMain = () => {
             </div>
           </motion.div>
         )}
-        {/* Universal Sidebar - Full height from top to bottom */}
-        <Sidebar 
-          onLogout={handleLogout} 
-          user={isAuthenticated ? user : null} 
-          toggleWindow={toggleWindow}
-          showSavedLocationsOnMap={showSavedLocationsOnMap}
-          updateUserLocation={updateUserLocation}
-          followUser={followUser}
-          locationLoading={locationLoading}
-          setFollowUser={setFollowUser}
-          isSidebarExpanded={isSidebarExpanded}
-          toggleSidebar={toggleSidebar}
-        />
-        
-        {/* Mobile-friendly overlay when sidebar is expanded on smaller screens */}
-        {isSidebarExpanded && screenWidth < 768 && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-[4999] backdrop-blur-sm transition-opacity duration-300"
-            onClick={toggleSidebar}
-          ></div>
-        )}
-        
-        {/* Enhanced Sidebar Windows */}
-        <EnhancedSidebarWindows
-          showWindows={showWindows}
-          setShowWindows={setShowWindows}
-          selectedCategory={selectedCategory}
-          setSelectedCategory={setSelectedCategory}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          mapType={mapType}
-          setMapType={setMapType}
-          favoritePosts={favoritePosts}
-          posts={posts}
-          togglePostBookmark={togglePostBookmark}
-          bookmarkLoading={bookmarkLoading}
-          showSavedLocationsOnMap={showSavedLocationsOnMap}
-          setShowSavedLocationsOnMap={setShowSavedLocationsOnMap}
-          user={user}
-          updateUserLocation={updateUserLocation}
-          followUser={followUser}
-          isSidebarExpanded={isSidebarExpanded}
-          authToken={isAuthenticated ? localStorage.getItem('token') : null}
-        />
-        
-        {/* Listing Panel - Side Panel on Desktop, Bottom Panel on Mobile */}
-        <AnimatePresence>
-          {showListings && (
-            <motion.div 
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="absolute top-20 right-4 bottom-4 w-96 bg-white rounded-xl shadow-2xl z-[5995] overflow-y-auto border border-gray-200"
-            >
-              <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10 flex justify-between items-center">
-                <h2 className="text-lg font-bold text-gray-800">Results ({filteredPosts.length})</h2>
-                <motion.button 
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setShowListings(false)}
-                  className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <X className="h-5 w-5 text-gray-600" />
-                </motion.button>
-              </div>
-              
-              {/* Filters Section */}
-              {showFilters && (
-                <div className="p-4 bg-gray-50 border-b border-gray-200">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                      >
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                        <option value="rating">Highest Rated</option>
-                        <option value="popular">Most Popular</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Min Rating</label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        value={rating}
-                        onChange={(e) => setRating(Number(e.target.value))}
-                      >
-                        <option value="0">Any Rating</option>
-                        <option value="1">1 Star & Up</option>
-                        <option value="2">2 Stars & Up</option>
-                        <option value="3">3 Stars & Up</option>
-                        <option value="4">4 Stars & Up</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        value={priceRange}
-                        onChange={(e) => setPriceRange(e.target.value)}
-                      >
-                        <option value="all">All Prices</option>
-                        <option value="free">Free</option>
-                        <option value="low">Under $10</option>
-                        <option value="medium">$10 - $50</option>
-                        <option value="high">Over $50</option>
-                      </select>
-                    </div>
-                    
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setShowFilters(false)}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+      </div>
+
+      {/* Sidebar - Desktop and Mobile */}
+      <Sidebar
+        onLogout={handleLogout}
+        user={isAuthenticated ? user : null}
+        toggleWindow={toggleWindow}
+        showSavedLocationsOnMap={showSavedLocationsOnMap}
+        updateUserLocation={updateUserLocation}
+        followUser={followUser}
+        locationLoading={locationLoading}
+        setFollowUser={setFollowUser}
+        isSidebarExpanded={isSidebarExpanded}
+        toggleSidebar={toggleSidebar}
+        isMobile={isMobile}
+        mobileBottomNavActive={mobileBottomNavActive}
+        setMobileBottomNavActive={setMobileBottomNavActive}
+      />
+
+      {/* Enhanced Sidebar Windows */}
+      <EnhancedSidebarWindows
+        showWindows={showWindows}
+        setShowWindows={setShowWindows}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        mapType={mapType}
+        setMapType={setMapType}
+        favoritePosts={favoritePosts}
+        posts={posts}
+        togglePostBookmark={togglePostBookmark}
+        bookmarkLoading={bookmarkLoading}
+        showSavedLocationsOnMap={showSavedLocationsOnMap}
+        setShowSavedLocationsOnMap={setShowSavedLocationsOnMap}
+        user={user}
+        updateUserLocation={updateUserLocation}
+        followUser={followUser}
+        isSidebarExpanded={isSidebarExpanded}
+        authToken={isAuthenticated ? localStorage.getItem('token') : null}
+      />
+
+      {/* Listing Panel - Side Panel on Desktop, Bottom Panel on Mobile */}
+      <AnimatePresence>
+        {showListings && (
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="absolute top-20 right-4 bottom-4 w-96 bg-white rounded-xl shadow-2xl z-[5995] overflow-y-auto border border-gray-200"
+          >
+            <div className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-gray-800">Results ({filteredPosts.length})</h2>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowListings(false)}
+                className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-600" />
+              </motion.button>
+            </div>
+
+            {/* Filters Section */}
+            {showFilters && (
+              <div className="p-4 bg-gray-50 border-b border-gray-200">
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
                     >
-                      Apply
-                    </motion.button>
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="rating">Highest Rated</option>
+                      <option value="popular">Most Popular</option>
+                    </select>
                   </div>
-                </div>
-              )}
-              
-              {/* Listings */}
-              <div className="p-3 space-y-3">
-                {posts.length === 0 ? (
-                  // Skeleton loading for posts when loading
-                  [...Array(5)].map((_, index) => (
-                    <div 
-                      key={index} 
-                      className="bg-white rounded-lg overflow-hidden border border-gray-200 skeleton"
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Min Rating</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      value={rating}
+                      onChange={(e) => setRating(Number(e.target.value))}
                     >
-                      <div className="p-3">
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 bg-gray-200 rounded-lg flex-shrink-0"></div>
-                          <div className="flex-1 min-w-0">
-                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
-                            <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
-                            <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
-                            <div className="flex items-center gap-1 mt-1">
-                              <div className="h-3 bg-gray-200 rounded w-12"></div>
-                              <div className="h-4 bg-gray-200 rounded w-10"></div>
-                            </div>
-                            <div className="flex justify-between items-center mt-1">
-                              <div className="h-3 bg-gray-200 rounded w-16"></div>
-                              <div className="h-4 bg-gray-200 rounded w-4"></div>
-                            </div>
+                      <option value="0">Any Rating</option>
+                      <option value="1">1 Star & Up</option>
+                      <option value="2">2 Stars & Up</option>
+                      <option value="3">3 Stars & Up</option>
+                      <option value="4">4 Stars & Up</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      value={priceRange}
+                      onChange={(e) => setPriceRange(e.target.value)}
+                    >
+                      <option value="all">All Prices</option>
+                      <option value="free">Free</option>
+                      <option value="low">Under $10</option>
+                      <option value="medium">$10 - $50</option>
+                      <option value="high">Over $50</option>
+                    </select>
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowFilters(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Apply
+                  </motion.button>
+                </div>
+              </div>
+            )}
+
+            {/* Listings */}
+            <div className="p-3 space-y-3">
+              {posts.length === 0 ? (
+                // Skeleton loading for posts when loading
+                [...Array(5)].map((_, index) => (
+                  <div
+                    key={index}
+                    className="bg-white rounded-lg overflow-hidden border border-gray-200 skeleton"
+                  >
+                    <div className="p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                        <div className="flex-1 min-w-0">
+                          <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
+                          <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
+                          <div className="h-3 bg-gray-200 rounded w-2/3 mb-2"></div>
+                          <div className="flex items-center gap-1 mt-1">
+                            <div className="h-3 bg-gray-200 rounded w-12"></div>
+                            <div className="h-4 bg-gray-200 rounded w-10"></div>
+                          </div>
+                          <div className="flex justify-between items-center mt-1">
+                            <div className="h-3 bg-gray-200 rounded w-16"></div>
+                            <div className="h-4 bg-gray-200 rounded w-4"></div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))
-                ) : filteredPosts.length > 0 ? (
-                  filteredPosts.filter(post => post.id).map((post, index) => (
-                    <motion.div
-                      key={post.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 15 }}
-                      whileHover={{ y: -2, scale: 1.01 }}
-                      className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer border border-gray-200 smooth-transition discover-card"
-                      onClick={() => {
-                        setSelectedPost(post);
-                        flyToPost(post.position);
-                        setShowListings(false); // Close the panel after selection
-                      }}
-                    >
-                      <div className="p-3">
-                        <div className="flex items-start gap-3">
-                          {post.image && (
-                            <div className="relative">
-                              <img
-                                src={post.image}
-                                alt={post.title}
-                                className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg"></div>
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-gray-900 truncate text-sm">{post.title}</h3>
-                            <p className="text-xs text-gray-600 line-clamp-2 mt-1">{post.description}</p>
-                            <div className="flex items-center gap-1 mt-1">
-                              <div className="flex items-center">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`w-3 h-3 ${
-                                      i < Math.floor(post.averageRating)
-                                        ? 'text-yellow-400 fill-current'
-                                        : 'text-gray-300'
-                                    }`}
-                                  />
-                                ))}
-                                <span className="ml-1 text-xs text-gray-600">
-                                  {post.averageRating.toFixed(1)} ({post.totalRatings})
-                                </span>
-                              </div>
-                              <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
-                                {post.category}
+                  </div>
+                ))
+              ) : filteredPosts.length > 0 ? (
+                filteredPosts.filter(post => post.id).map((post, index) => (
+                  <motion.div
+                    key={post.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 15 }}
+                    whileHover={{ y: -2, scale: 1.01 }}
+                    className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer border border-gray-200 smooth-transition discover-card"
+                    onClick={() => {
+                      setSelectedPost(post);
+                      flyToPost(post.position);
+                      setShowListings(false); // Close the panel after selection
+                    }}
+                  >
+                    <div className="p-3">
+                      <div className="flex items-start gap-3">
+                        {post.image && (
+                          <div className="relative">
+                            <img
+                              src={post.image}
+                              alt={post.title}
+                              className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg"></div>
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-gray-900 truncate text-sm">{post.title}</h3>
+                          <p className="text-xs text-gray-600 line-clamp-2 mt-1">{post.description}</p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <div className="flex items-center">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`w-3 h-3 ${
+                                    i < Math.floor(post.averageRating)
+                                      ? 'text-yellow-400 fill-current'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                              <span className="ml-1 text-xs text-gray-600">
+                                {post.averageRating.toFixed(1)} ({post.totalRatings})
                               </span>
                             </div>
-                            <div className="flex justify-between items-center mt-1">
-                              <span className="text-xs text-gray-500">by {typeof post.postedBy === 'string' ? post.postedBy : (post.postedBy?.name || post.postedBy?.email || 'Unknown')}</span>
-                              {isAuthenticated && (
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    togglePostBookmark(post);
-                                  }}
-                                  className="text-red-500 hover:text-red-700 transition-colors"
-                                  disabled={bookmarkLoading === post.id}
-                                >
-                                  {bookmarkLoading === post.id ? (
-                                    <div className="w-4 h-4 flex items-center justify-center">
-                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                                    </div>
-                                  ) : (
-                                    <Heart className={`w-4 h-4 ${favoritePosts.has(post.id) ? 'fill-current' : ''}`} />
-                                  )}
-                                </motion.button>
-                              )}
-                            </div>
+                            <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                              {post.category}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-xs text-gray-500">by {typeof post.postedBy === 'string' ? post.postedBy : (post.postedBy?.name || post.postedBy?.email || 'Unknown')}</span>
+                            {isAuthenticated && (
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  togglePostBookmark(post);
+                                }}
+                                className="text-red-500 hover:text-red-700 transition-colors"
+                                disabled={bookmarkLoading === post.id}
+                              >
+                                {bookmarkLoading === post.id ? (
+                                  <div className="w-4 h-4 flex items-center justify-center">
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                                  </div>
+                                ) : (
+                                  <Heart className={`w-4 h-4 ${favoritePosts.has(post.id) ? 'fill-current' : ''}`} />
+                                )}
+                              </motion.button>
+                            )}
                           </div>
                         </div>
                       </div>
-                    </motion.div>
-                  ))
-                ) : (
-                  // Show search suggestions when search query exists but no results found
-                  searchQuery ? (
-                    <div className="space-y-4">
-                      <div className="text-center py-4">
-                        <MapPin className="mx-auto h-10 w-10 text-gray-300" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No places match your search</h3>
-                        <p className="mt-1 text-xs text-gray-500">Here are some suggestions based on your search:</p>
-                      </div>
-                      
-                      {/* Search suggestions */}
-                      {searchSuggestions.length > 0 ? (
-                        <div className="space-y-3">
-                          {searchSuggestions.map((suggestion, index) => (
-                            <motion.div
-                              key={suggestion.id}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 15 }}
-                              whileHover={{ y: -2, scale: 1.01 }}
-                              className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer border border-gray-200 smooth-transition discover-card p-3"
-                              onClick={() => {
-                                setSelectedPost(suggestion.post);
-                                flyToPost(suggestion.post.position);
-                                setShowListings(false); // Close the panel after selection
-                                // Clear the search query to show the selected post
-                                setSearchQuery('');
-                              }}
-                            >
-                              <div className="flex items-start gap-3">
-                                {suggestion.post.image && (
-                                  <div className="relative">
-                                    <img
-                                      src={suggestion.post.image}
-                                      alt={suggestion.post.title}
-                                      className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                                      onError={(e) => {
-                                        e.target.style.display = 'none';
-                                      }}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg"></div>
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-medium text-gray-900 truncate text-sm">{suggestion.post.title}</h3>
-                                  <p className="text-xs text-gray-600 line-clamp-2 mt-1">{suggestion.post.description}</p>
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <div className="flex items-center">
-                                      {[...Array(5)].map((_, i) => (
-                                        <Star
-                                          key={i}
-                                          className={`w-3 h-3 ${
-                                            i < Math.floor(suggestion.post.averageRating)
-                                              ? 'text-yellow-400 fill-current'
-                                              : 'text-gray-300'
-                                          }`}
-                                        />
-                                      ))}
-                                      <span className="ml-1 text-xs text-gray-600">
-                                        {suggestion.post.averageRating.toFixed(1)} ({suggestion.post.totalRatings})
-                                      </span>
-                                    </div>
-                                    <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
-                                      {suggestion.post.category}
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                // Show search suggestions when search query exists but no results found
+                searchQuery ? (
+                  <div className="space-y-4">
+                    <div className="text-center py-4">
+                      <MapPin className="mx-auto h-10 w-10 text-gray-300" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No places match your search</h3>
+                      <p className="mt-1 text-xs text-gray-500">Here are some suggestions based on your search:</p>
+                    </div>
+
+                    {/* Search suggestions */}
+                    {searchSuggestions.length > 0 ? (
+                      <div className="space-y-3">
+                        {searchSuggestions.map((suggestion, index) => (
+                          <motion.div
+                            key={suggestion.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05, type: "spring", stiffness: 100, damping: 15 }}
+                            whileHover={{ y: -2, scale: 1.01 }}
+                            className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer border border-gray-200 smooth-transition discover-card p-3"
+                            onClick={() => {
+                              setSelectedPost(suggestion.post);
+                              flyToPost(suggestion.post.position);
+                              setShowListings(false); // Close the panel after selection
+                              // Clear the search query to show the selected post
+                              setSearchQuery('');
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              {suggestion.post.image && (
+                                <div className="relative">
+                                  <img
+                                    src={suggestion.post.image}
+                                    alt={suggestion.post.title}
+                                    className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg"></div>
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-gray-900 truncate text-sm">{suggestion.post.title}</h3>
+                                <p className="text-xs text-gray-600 line-clamp-2 mt-1">{suggestion.post.description}</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <div className="flex items-center">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`w-3 h-3 ${
+                                          i < Math.floor(suggestion.post.averageRating)
+                                            ? 'text-yellow-400 fill-current'
+                                            : 'text-gray-300'
+                                        }`}
+                                      />
+                                    ))}
+                                    <span className="ml-1 text-xs text-gray-600">
+                                      {suggestion.post.averageRating.toFixed(1)} ({suggestion.post.totalRatings})
                                     </span>
                                   </div>
-                                  <div className="flex justify-between items-center mt-1">
-                                    <span className="text-xs text-gray-500">by {typeof suggestion.post.postedBy === 'string' ? suggestion.post.postedBy : (suggestion.post.postedBy?.name || suggestion.post.postedBy?.email || 'Unknown')}</span>
-                                    {isAuthenticated && (
-                                      <motion.button
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          togglePostBookmark(suggestion.post);
-                                        }}
-                                        className="text-red-500 hover:text-red-700 transition-colors"
-                                        disabled={bookmarkLoading === suggestion.post.id}
-                                      >
-                                        {bookmarkLoading === suggestion.post.id ? (
-                                          <div className="w-4 h-4 flex items-center justify-center">
-                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                                          </div>
-                                        ) : (
-                                          <Heart className={`w-4 h-4 ${favoritePosts.has(suggestion.post.id) ? 'fill-current' : ''}`} />
-                                        )}
-                                      </motion.button>
-                                    )}
-                                  </div>
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                                    {suggestion.post.category}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center mt-1">
+                                  <span className="text-xs text-gray-500">by {typeof suggestion.post.postedBy === 'string' ? suggestion.post.postedBy : (suggestion.post.postedBy?.name || suggestion.post.postedBy?.email || 'Unknown')}</span>
+                                  {isAuthenticated && (
+                                    <motion.button
+                                      whileHover={{ scale: 1.1 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        togglePostBookmark(suggestion.post);
+                                      }}
+                                      className="text-red-500 hover:text-red-700 transition-colors"
+                                      disabled={bookmarkLoading === suggestion.post.id}
+                                    >
+                                      {bookmarkLoading === suggestion.post.id ? (
+                                        <div className="w-4 h-4 flex items-center justify-center">
+                                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                                        </div>
+                                      ) : (
+                                        <Heart className={`w-4 h-4 ${favoritePosts.has(suggestion.post.id) ? 'fill-current' : ''}`} />
+                                      )}
+                                    </motion.button>
+                                  )}
                                 </div>
                               </div>
-                            </motion.div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8">
-                          <MapPin className="mx-auto h-10 w-10 text-gray-300" />
-                          <h3 className="mt-2 text-sm font-medium text-gray-900">No places match your search</h3>
-                          <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
-                          
-                          {/* Show popular posts as fallback */}
-                          <div className="mt-6">
-                            <h4 className="text-xs font-medium text-gray-700 mb-3">Popular locations you might like:</h4>
-                            <div className="space-y-2">
-                              {posts
-                                .filter(post => post.id)
-                                .sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0))
-                                .slice(0, 3)
-                                .map((post, index) => (
-                                  <motion.div
-                                    key={`popular-${post.id}`}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                    className="text-left bg-white rounded-lg p-2 cursor-pointer hover:bg-gray-50 transition-colors border border-gray-100"
-                                    onClick={() => {
-                                      setSelectedPost(post);
-                                      flyToPost(post.position);
-                                      setShowListings(false);
-                                    }}
-                                  >
-                                    <div className="text-xs font-medium text-gray-800 truncate">{post.title}</div>
-                                    <div className="text-xs text-gray-600">{post.totalRatings || 0} ratings</div>
-                                  </motion.div>
-                                ))}
                             </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <MapPin className="mx-auto h-10 w-10 text-gray-300" />
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No places match your search</h3>
+                        <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
+
+                        {/* Show popular posts as fallback */}
+                        <div className="mt-6">
+                          <h4 className="text-xs font-medium text-gray-700 mb-3">Popular locations you might like:</h4>
+                          <div className="space-y-2">
+                            {posts
+                              .filter(post => post.id)
+                              .sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0))
+                              .slice(0, 3)
+                              .map((post, index) => (
+                                <motion.div
+                                  key={`popular-${post.id}`}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: index * 0.05 }}
+                                  className="text-left bg-white rounded-lg p-2 cursor-pointer hover:bg-gray-50 transition-colors border border-gray-100"
+                                  onClick={() => {
+                                    setSelectedPost(post);
+                                    flyToPost(post.position);
+                                    setShowListings(false);
+                                  }}
+                                >
+                                  <div className="text-xs font-medium text-gray-800 truncate">{post.title}</div>
+                                  <div className="text-xs text-gray-600">{post.totalRatings || 0} ratings</div>
+                                </motion.div>
+                              ))}
                           </div>
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    // Original "no places found" message when no search query
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="text-center py-8"
-                    >
-                      <MapPin className="mx-auto h-10 w-10 text-gray-300" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">No places found</h3>
-                      <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
-                    </motion.div>
-                  )
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-      
-      
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // Original "no places found" message when no search query
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-8"
+                  >
+                    <MapPin className="mx-auto h-10 w-10 text-gray-300" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No places found</h3>
+                    <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
+                  </motion.div>
+                )
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+
       {/* Post Window Modal */}
       <AnimatePresence>
         {selectedPost ? (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, MapPin, Grid3X3, Bookmark, Navigation, Home, 
@@ -16,6 +16,24 @@ const getResponsiveWidth = () => {
   if (window.innerWidth >= 480) return '280px';
   return '260px';
 };
+
+// Helper function to get responsive left position based on sidebar state and screen size
+const getWindowLeftPosition = (isSidebarExpanded, windowWidth) => {
+  // On mobile (< 768px), sidebar is hidden/overlay, so windows should be full-width
+  if (windowWidth < 768) {
+    return '0'; // Full width on mobile
+  }
+  
+  // On tablet and desktop, position next to sidebar
+  if (isSidebarExpanded) {
+    return '16rem'; // 256px - expanded sidebar width
+  } else {
+    return '5rem'; // 80px - collapsed sidebar width
+  }
+};
+
+// Helper function to check if we're on mobile
+const isMobile = (windowWidth) => windowWidth < 768;
 
 const EnhancedSidebarWindows = ({ 
   showWindows = {},
@@ -66,12 +84,12 @@ const EnhancedSidebarWindows = ({
   ];
 
   // Function to close a specific window
-  const closeWindow = (windowId) => {
+  const closeWindow = useCallback((windowId) => {
     setShowWindows(prev => ({
       ...prev,
       [windowId]: false
     }));
-  };
+  }, []);
 
   // State for notifications
   const [notifications, setNotifications] = useState([]);
@@ -163,21 +181,58 @@ const EnhancedSidebarWindows = ({
     }
   }, [showWindows['notifications-window'], authToken]);
 
+  // Track window size for responsive positioning
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Check if any window is open
+  const hasOpenWindow = Object.values(showWindows).some(open => open);
+
   return (
-    <div className="z-[6000]">
+    <div className="z-[8000]">
+      {/* Backdrop overlay for mobile when windows are open */}
+      {hasOpenWindow && isMobile(windowWidth) && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 z-[7999] backdrop-blur-sm"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAllWindows();
+          }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAllWindows();
+          }}
+          aria-hidden="true"
+        />
+      )}
       {/* Category Window */}
       <AnimatePresence>
         {showWindows['category-window'] && (
           <motion.div 
-            className={`fixed top-0 bottom-0 z-[6000] sidebar-window h-full ${
-              isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem]' 
-                : 'left-[5rem]'
+            className={`fixed top-0 bottom-0 z-[8000] sidebar-window h-full ${
+              isMobile(windowWidth) ? 'left-0 right-0 w-full' : ''
             }`}
-            style={{ width: getResponsiveWidth() }}
-            initial={{ opacity: 0, x: -20 }}
+            style={{ 
+              width: isMobile(windowWidth) ? '100%' : getResponsiveWidth(),
+              left: isMobile(windowWidth) ? '0' : getWindowLeftPosition(isSidebarExpanded, windowWidth),
+              maxWidth: isMobile(windowWidth) ? '100%' : 'none'
+            }}
+            initial={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            exit={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             transition={{ 
               type: "spring", 
               damping: 20, 
@@ -192,9 +247,23 @@ const EnhancedSidebarWindows = ({
             <div className="sidebar-window-header">
               <h2 id="category-window-title">Select Category</h2>
               <button 
-                onClick={() => closeWindow('category-window')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('category-window');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('category-window');
+                }}
                 aria-label="Close category window"
-                ref={el => el && el.focus()}
+                type="button"
+                className="close-button"
               >
                 <X className="h-5 w-5 text-gray-600" />
               </button>
@@ -236,15 +305,17 @@ const EnhancedSidebarWindows = ({
       <AnimatePresence>
         {showWindows['view-mode-window'] && (
           <motion.div 
-            className={`fixed top-0 bottom-0 z-[5998] sidebar-window h-full ${
-              isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem]' 
-                : 'left-[5rem]'
+            className={`fixed top-0 bottom-0 z-[8000] sidebar-window h-full ${
+              isMobile(windowWidth) ? 'left-0 right-0 w-full' : ''
             }`}
-            style={{ width: getResponsiveWidth() }}
-            initial={{ opacity: 0, x: -20 }}
+            style={{ 
+              width: isMobile(windowWidth) ? '100%' : getResponsiveWidth(),
+              left: isMobile(windowWidth) ? '0' : getWindowLeftPosition(isSidebarExpanded, windowWidth),
+              maxWidth: isMobile(windowWidth) ? '100%' : 'none'
+            }}
+            initial={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            exit={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             transition={{ 
               type: "spring", 
               damping: 20, 
@@ -259,8 +330,23 @@ const EnhancedSidebarWindows = ({
             <div className="sidebar-window-header">
               <h2 id="view-mode-window-title">View Mode</h2>
               <button 
-                onClick={() => closeWindow('view-mode-window')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('view-mode-window');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('view-mode-window');
+                }}
                 aria-label="Close view mode window"
+                type="button"
+                className="close-button"
               >
                 <X className="h-5 w-5 text-gray-600" />
               </button>
@@ -302,15 +388,17 @@ const EnhancedSidebarWindows = ({
       <AnimatePresence>
         {showWindows['map-type-window'] && (
           <motion.div 
-            className={`fixed top-0 bottom-0 z-[5997] sidebar-window h-full ${
-              isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem]' 
-                : 'left-[5rem]'
+            className={`fixed top-0 bottom-0 z-[8000] sidebar-window h-full ${
+              isMobile(windowWidth) ? 'left-0 right-0 w-full' : ''
             }`}
-            style={{ width: getResponsiveWidth() }}
-            initial={{ opacity: 0, x: -20 }}
+            style={{ 
+              width: isMobile(windowWidth) ? '100%' : getResponsiveWidth(),
+              left: isMobile(windowWidth) ? '0' : getWindowLeftPosition(isSidebarExpanded, windowWidth),
+              maxWidth: isMobile(windowWidth) ? '100%' : 'none'
+            }}
+            initial={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            exit={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             transition={{ 
               type: "spring", 
               damping: 20, 
@@ -325,8 +413,23 @@ const EnhancedSidebarWindows = ({
             <div className="sidebar-window-header">
               <h2 id="map-type-window-title">Map Type</h2>
               <button 
-                onClick={() => closeWindow('map-type-window')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('map-type-window');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('map-type-window');
+                }}
                 aria-label="Close map type window"
+                type="button"
+                className="close-button"
               >
                 <X className="h-5 w-5 text-gray-600" />
               </button>
@@ -368,15 +471,17 @@ const EnhancedSidebarWindows = ({
       <AnimatePresence>
         {showWindows['saved-locations-window'] && (
           <motion.div 
-            className={`fixed top-0 bottom-0 z-[5996] sidebar-window h-full ${
-              isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem]' 
-                : 'left-[5rem]'
+            className={`fixed top-0 bottom-0 z-[8000] sidebar-window h-full ${
+              isMobile(windowWidth) ? 'left-0 right-0 w-full' : ''
             }`}
-            style={{ width: getResponsiveWidth() }}
-            initial={{ opacity: 0, x: -20 }}
+            style={{ 
+              width: isMobile(windowWidth) ? '100%' : getResponsiveWidth(),
+              left: isMobile(windowWidth) ? '0' : getWindowLeftPosition(isSidebarExpanded, windowWidth),
+              maxWidth: isMobile(windowWidth) ? '100%' : 'none'
+            }}
+            initial={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            exit={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             transition={{ 
               type: "spring", 
               damping: 20, 
@@ -391,8 +496,23 @@ const EnhancedSidebarWindows = ({
             <div className="sidebar-window-header">
               <h2 id="saved-locations-window-title">Saved Locations</h2>
               <button 
-                onClick={() => closeWindow('saved-locations-window')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('saved-locations-window');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('saved-locations-window');
+                }}
                 aria-label="Close saved locations window"
+                type="button"
+                className="close-button"
               >
                 <X className="h-5 w-5 text-gray-600" />
               </button>
@@ -529,15 +649,17 @@ const EnhancedSidebarWindows = ({
       <AnimatePresence>
         {showWindows['notifications-window'] && (
           <motion.div 
-            className={`fixed top-0 bottom-0 z-[5995] sidebar-window h-full ${
-              isSidebarExpanded && window.innerWidth >= 768 
-                ? 'left-[16rem]' 
-                : 'left-[5rem]'
+            className={`fixed top-0 bottom-0 z-[8000] sidebar-window h-full ${
+              isMobile(windowWidth) ? 'left-0 right-0 w-full' : ''
             }`}
-            style={{ width: getResponsiveWidth() }}
-            initial={{ opacity: 0, x: -20 }}
+            style={{ 
+              width: isMobile(windowWidth) ? '100%' : getResponsiveWidth(),
+              left: isMobile(windowWidth) ? '0' : getWindowLeftPosition(isSidebarExpanded, windowWidth),
+              maxWidth: isMobile(windowWidth) ? '100%' : 'none'
+            }}
+            initial={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            exit={{ opacity: 0, x: isMobile(windowWidth) ? 0 : -20 }}
             transition={{ 
               type: "spring", 
               damping: 20, 
@@ -552,8 +674,23 @@ const EnhancedSidebarWindows = ({
             <div className="sidebar-window-header">
               <h2 id="notifications-window-title">Notifications</h2>
               <button 
-                onClick={() => closeWindow('notifications-window')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('notifications-window');
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeWindow('notifications-window');
+                }}
                 aria-label="Close notifications window"
+                type="button"
+                className="close-button"
               >
                 <X className="h-5 w-5 text-gray-600" />
               </button>

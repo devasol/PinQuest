@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, User, Settings, LogOut, Heart, Star, Bell } from 'lucide-react';
+import { Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, User, Settings, LogOut, Heart, Star, Bell, Compass, Layers } from 'lucide-react';
 import './Sidebar.css';
 
-const Sidebar = ({ 
-  onLogout = () => {}, 
+const Sidebar = ({
+  onLogout = () => {},
   user = null,
   toggleWindow = () => {},
   showSavedLocationsOnMap = false,
@@ -12,9 +12,11 @@ const Sidebar = ({
   locationLoading = false,
   setFollowUser = () => {},
   isSidebarExpanded,
-  toggleSidebar
+  toggleSidebar,
+  isMobile = false,
+  mobileBottomNavActive = '',
+  setMobileBottomNavActive = () => {}
 }) => {
-
   // Define sidebar items with icons and labels
   const sidebarItems = [
     {
@@ -24,43 +26,52 @@ const Sidebar = ({
       path: '/',
       requiresAuth: false,
       action: null,
-      type: 'link'
+      type: 'link',
+      mobileOnly: false
     },
     {
-      id: 'notifications',
-      label: 'Notifications',
-      icon: Bell,
+      id: 'search',
+      label: 'Search',
+      icon: Search,
       path: null,
-      requiresAuth: true,
-      action: () => toggleWindow('notifications-window'),
-      type: 'action'
+      requiresAuth: false,
+      action: () => setMobileBottomNavActive('search'),
+      type: 'action',
+      mobileOnly: true
     },
     {
       id: 'categories',
-      label: 'Categories',
+      label: 'Explore',
       icon: MapPin,
       path: '/discover',
       requiresAuth: false,
-      action: () => toggleWindow('category-window'),
-      type: 'action'
-    },
-    {
-      id: 'view-mode',
-      label: 'View Mode',
-      icon: Grid3X3,
-      path: '/discover',
-      requiresAuth: false,
-      action: () => toggleWindow('view-mode-window'),
-      type: 'action'
+      action: () => {
+        if (isMobile) {
+          setMobileBottomNavActive('explore');
+          toggleWindow('category-window');
+        } else {
+          toggleWindow('category-window');
+        }
+      },
+      type: 'action',
+      mobileOnly: false
     },
     {
       id: 'map-type',
-      label: 'Map Type',
-      icon: Settings,
+      label: 'Layers',
+      icon: Layers,
       path: '/discover',
       requiresAuth: false,
-      action: () => toggleWindow('map-type-window'),
-      type: 'action'
+      action: () => {
+        if (isMobile) {
+          setMobileBottomNavActive('layers');
+          toggleWindow('map-type-window');
+        } else {
+          toggleWindow('map-type-window');
+        }
+      },
+      type: 'action',
+      mobileOnly: false
     },
     {
       id: 'saved',
@@ -68,12 +79,20 @@ const Sidebar = ({
       icon: Bookmark,
       path: '/discover',
       requiresAuth: true,
-      action: () => toggleWindow('saved-locations-window'),
-      type: 'action'
+      action: () => {
+        if (isMobile) {
+          setMobileBottomNavActive('saved');
+          toggleWindow('saved-locations-window');
+        } else {
+          toggleWindow('saved-locations-window');
+        }
+      },
+      type: 'action',
+      mobileOnly: false
     },
     {
       id: 'my-location',
-      label: 'My Location',
+      label: 'Location',
       icon: Navigation,
       path: '/discover',
       requiresAuth: false,
@@ -89,17 +108,234 @@ const Sidebar = ({
           });
         }
       },
-      type: 'action'
+      type: 'action',
+      mobileOnly: false
+    },
+    {
+      id: 'notifications',
+      label: 'Alerts',
+      icon: Bell,
+      path: null,
+      requiresAuth: true,
+      action: () => {
+        if (isMobile) {
+          setMobileBottomNavActive('alerts');
+          toggleWindow('notifications-window');
+        } else {
+          toggleWindow('notifications-window');
+        }
+      },
+      type: 'action',
+      mobileOnly: false
     }
   ];
 
-  // Filter items based on authentication status
-  const filteredItems = user 
-    ? sidebarItems 
-    : sidebarItems.filter(item => !item.requiresAuth);
+  // Filter items based on authentication status and mobile/desktop
+  const filteredItems = sidebarItems.filter(item => {
+    // Filter by auth status
+    if (item.requiresAuth && !user) {
+      return false;
+    }
 
+    // Don't show mobile-only items on desktop sidebar
+    if (!isMobile && item.mobileOnly) {
+      return false;
+    }
+
+    // Don't show desktop-only items on mobile bottom nav
+    if (isMobile && !item.mobileOnly) {
+      return true; // Show non-mobile-only items in the mobile sidebar drawer
+    }
+
+    return true;
+  });
+
+  // Mobile bottom navigation items (non-auth items only)
+  const mobileNavItems = sidebarItems.filter(item =>
+    (!item.requiresAuth || user) && !item.mobileOnly
+  ).slice(0, 5); // Limit to 5 items for mobile
+
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile Bottom Navigation */}
+        <div className="bottom-navigation">
+          {mobileNavItems.map((item) => {
+            const IconComponent = item.icon;
+            const isActive = mobileBottomNavActive === item.id;
+
+            return (
+              <button
+                key={item.id}
+                className={`bottom-nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => {
+                  setMobileBottomNavActive(item.id);
+                  if (item.action) item.action();
+                }}
+                title={item.label}
+              >
+                <IconComponent className="bottom-nav-icon" />
+                <span className="bottom-nav-label">{item.label}</span>
+              </button>
+            );
+          })}
+
+          {/* Menu button for additional options */}
+          <button
+            className={`bottom-nav-item ${mobileBottomNavActive === 'menu' ? 'active' : ''}`}
+            onClick={() => {
+              setMobileBottomNavActive('menu');
+              toggleSidebar();
+            }}
+            title="Menu"
+          >
+            <Menu className="bottom-nav-icon" />
+            <span className="bottom-nav-label">Menu</span>
+          </button>
+        </div>
+
+        {/* Mobile Sidebar Drawer */}
+        <div className={`mobile-sidebar-drawer ${isSidebarExpanded ? 'active' : ''}`}>
+          <button className="close-mobile-sidebar" onClick={toggleSidebar}>
+            <X size={20} />
+          </button>
+
+          <div className="h-full flex flex-col justify-start pt-12">
+            <div className="sidebar-container flex-grow overflow-y-auto">
+              <div className="flex flex-col">
+                {/* Sidebar menu items */}
+                {filteredItems.map((item) => {
+                  const IconComponent = item.icon;
+                  return item.type === 'link' ? (
+                    <a
+                      key={item.id}
+                      href={item.path}
+                      className="sidebar-button border-b border-gray-200"
+                      title={item.label}
+                    >
+                      <div className="sidebar-button-icon-wrapper">
+                        <IconComponent className="sidebar-button-icon" />
+                      </div>
+                      <span className="sidebar-button-text">{item.label}</span>
+                    </a>
+                  ) : (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        item.action();
+                        toggleSidebar(); // Close drawer after action
+                      }}
+                      className={`sidebar-button border-b border-gray-200 ${
+                        item.id === 'saved' && showSavedLocationsOnMap
+                          ? 'saved-locations'
+                          : ''
+                      } ${
+                        item.id === 'my-location' && followUser
+                          ? 'following-location'
+                          : ''
+                      }`}
+                      title={
+                        item.id === 'saved'
+                          ? user
+                            ? `${showSavedLocationsOnMap ? 'Hide' : 'Show'} saved locations`
+                            : 'Login to view saved locations'
+                          : item.id === 'my-location'
+                            ? followUser ? "Stop Following Location" : "Show My Location"
+                            : item.label
+                      }
+                      disabled={item.id === 'my-location' && locationLoading}
+                    >
+                      <div className={`sidebar-button-icon-wrapper ${
+                        item.id === 'saved' && showSavedLocationsOnMap
+                          ? 'bg-yellow-100'
+                          : item.id === 'my-location' && followUser
+                            ? 'bg-blue-100'
+                            : 'bg-gray-100'
+                      }`}>
+                        {item.id === 'my-location' && locationLoading ? (
+                          <div className="w-5 h-5 flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                          </div>
+                        ) : (
+                          <IconComponent
+                            className={`sidebar-button-icon ${
+                              item.id === 'saved' && showSavedLocationsOnMap
+                                ? 'text-yellow-600 fill-current'
+                                : item.id === 'my-location' && followUser
+                                  ? 'text-blue-600'
+                                  : ''
+                            }`}
+                          />
+                        )}
+                      </div>
+                      <span className="sidebar-button-text">{item.label}</span>
+                    </button>
+                  );
+                })}
+
+                {/* Profile and Logout buttons for authenticated users */}
+                {user && (
+                  <>
+                    <a
+                      href="/profile"
+                      className="sidebar-button border-b border-gray-200"
+                      title="Profile"
+                    >
+                      <div className="sidebar-button-icon-wrapper">
+                        <User className="sidebar-button-icon" />
+                      </div>
+                      <span className="sidebar-button-text">Profile</span>
+                    </a>
+
+                    <button
+                      onClick={() => {
+                        onLogout();
+                        toggleSidebar(); // Close drawer after logout
+                      }}
+                      className="sidebar-button border-b border-gray-200"
+                      title="Logout"
+                    >
+                      <div className="sidebar-button-icon-wrapper bg-red-100">
+                        <LogOut className="sidebar-button-icon text-red-600" />
+                      </div>
+                      <span className="sidebar-button-text">Logout</span>
+                    </button>
+                  </>
+                )}
+
+                {/* Login button for unauthenticated users */}
+                {!user && (
+                  <a
+                    href="/login"
+                    className="sidebar-button border-b border-gray-200"
+                    title="Login"
+                  >
+                    <div className="sidebar-button-icon-wrapper bg-blue-100">
+                      <User className="sidebar-button-icon text-blue-600" />
+                    </div>
+                    <span className="sidebar-button-text">Login</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile sidebar overlay */}
+        {isSidebarExpanded && (
+          <div
+            className="mobile-sidebar-overlay active"
+            onClick={toggleSidebar}
+          ></div>
+        )}
+      </>
+    );
+  }
+
+  // Desktop sidebar
   return (
-    <div className={`z-[5000] h-screen fixed left-0 top-0 ${isSidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
+    <div className={`z-[5000] h-screen fixed left-0 top-0 ${isSidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'} ${window.innerWidth <= 768 && isSidebarExpanded ? 'sidebar-visible' : ''}`}
+         style={window.innerWidth <= 768 ? { height: 'calc(100vh - 60px)' } : {}}>
       {/* Full-height container with scroll for overflow */}
       <div className="h-full flex flex-col justify-start">
         <div className="sidebar-container flex-grow">
@@ -115,9 +351,11 @@ const Sidebar = ({
               </div>
               {isSidebarExpanded && <span className="sidebar-button-text">Menu</span>}
             </button>
-            
+
             {/* Sidebar menu items */}
             {filteredItems.map((item) => {
+              if (item.mobileOnly) return null; // Skip mobile-only items on desktop
+
               const IconComponent = item.icon;
               return item.type === 'link' ? (
                 <a
@@ -136,18 +374,18 @@ const Sidebar = ({
                   key={item.id}
                   onClick={item.action}
                   className={`sidebar-button border-b border-gray-200 ${
-                    item.id === 'saved' && showSavedLocationsOnMap 
-                      ? 'saved-locations' 
+                    item.id === 'saved' && showSavedLocationsOnMap
+                      ? 'saved-locations'
                       : ''
                   } ${
-                    item.id === 'my-location' && followUser 
-                      ? 'following-location' 
+                    item.id === 'my-location' && followUser
+                      ? 'following-location'
                       : ''
                   }`}
                   title={
-                    item.id === 'saved' 
-                      ? user 
-                        ? `${showSavedLocationsOnMap ? 'Hide' : 'Show'} saved locations` 
+                    item.id === 'saved'
+                      ? user
+                        ? `${showSavedLocationsOnMap ? 'Hide' : 'Show'} saved locations`
                         : 'Login to view saved locations'
                       : item.id === 'my-location'
                         ? followUser ? "Stop Following Location" : "Show My Location"
@@ -156,8 +394,8 @@ const Sidebar = ({
                   disabled={item.id === 'my-location' && locationLoading}
                 >
                   <div className={`sidebar-button-icon-wrapper ${
-                    item.id === 'saved' && showSavedLocationsOnMap 
-                      ? 'bg-yellow-100' 
+                    item.id === 'saved' && showSavedLocationsOnMap
+                      ? 'bg-yellow-100'
                       : item.id === 'my-location' && followUser
                         ? 'bg-blue-100'
                         : 'bg-gray-100'
@@ -167,14 +405,14 @@ const Sidebar = ({
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
                       </div>
                     ) : (
-                      <IconComponent 
+                      <IconComponent
                         className={`sidebar-button-icon ${
-                          item.id === 'saved' && showSavedLocationsOnMap 
-                            ? 'text-yellow-600 fill-current' 
+                          item.id === 'saved' && showSavedLocationsOnMap
+                            ? 'text-yellow-600 fill-current'
                             : item.id === 'my-location' && followUser
                               ? 'text-blue-600'
                               : ''
-                        }`} 
+                        }`}
                       />
                     )}
                   </div>
@@ -182,7 +420,7 @@ const Sidebar = ({
                 </button>
               );
             })}
-            
+
             {/* Profile and Logout buttons for authenticated users */}
             {user && (
               <>
@@ -196,7 +434,7 @@ const Sidebar = ({
                   </div>
                   {isSidebarExpanded && <span className="sidebar-button-text">Profile</span>}
                 </a>
-                
+
                 <button
                   onClick={onLogout}
                   className="sidebar-button border-b border-gray-200"
@@ -209,7 +447,7 @@ const Sidebar = ({
                 </button>
               </>
             )}
-            
+
             {/* Login button for unauthenticated users */}
             {!user && (
               <a
