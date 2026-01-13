@@ -390,11 +390,11 @@ const PostWindow = ({
           initial={{ scale: 0.85, opacity: 0, y: 40 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.85, opacity: 0, y: 40 }}
-          transition={{ 
-            type: "spring", 
-            damping: 25, 
+          transition={{
+            type: "spring",
+            damping: 25,
             stiffness: 300,
-            duration: 0.3 
+            duration: 0.3
           }}
           className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-2xl sm:max-w-3xl md:max-w-4xl lg:max-w-5xl w-full max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col z-[99999] border border-white/20 backdrop-blur-md"
           onClick={(e) => e.stopPropagation()}
@@ -402,17 +402,18 @@ const PostWindow = ({
           {/* Header */}
           <div className="p-4 sm:p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-center shadow-xl">
             <div>
-              <h3 className="font-bold text-base sm:text-lg">
+              <h3 className="font-bold text-base sm:text-lg flex items-center gap-2">
+                <User className="w-4 h-4 sm:w-5 sm:h-5" />
                 {typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : currentPost.postedBy || "Anonymous"}
               </h3>
-              <p className="text-xs sm:text-sm opacity-90 flex items-center">
-                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" />
+              <p className="text-xs sm:text-sm opacity-90 flex items-center gap-1">
+                <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                 {formatDate(currentPost.datePosted)}
               </p>
             </div>
             <button
               onClick={handleClose}
-              className="p-2 rounded-full sm:p-2.5 bg-white/20 hover:bg-white/30 transition-all duration-200 backdrop-blur-sm"
+              className="p-2 rounded-full sm:p-2.5 bg-white/20 hover:bg-white/30 transition-all duration-200 backdrop-blur-sm shadow-lg"
               aria-label="Close"
             >
               <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -420,7 +421,7 @@ const PostWindow = ({
           </div>
 
           {/* Content */}
-          <div className="post-window-container flex flex-col flex-1 overflow-y-auto bg-gray-50">
+          <div className="post-window-container flex flex-col flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100">
             {/* Image Gallery */}
             <div className="w-full">
               <div className="relative">
@@ -498,16 +499,16 @@ const PostWindow = ({
                   <div className="flex space-x-2 sm:space-x-3 pb-2">
                     {images.map((img, index) => {
                       const isSelected = currentImageIndex === index;
-                      
+
                       return (
                         <button
-                          key={`thumb-${index}`} 
+                          key={`thumb-${index}`}
                           onClick={() => {
                             setCurrentImageIndex(index);
                           }}
                           className={`flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                            isSelected 
-                              ? 'border-emerald-500 shadow-lg scale-105' 
+                            isSelected
+                              ? 'border-emerald-500 shadow-lg scale-105'
                               : 'border-gray-200 hover:border-gray-400'
                           }`}
                         >
@@ -569,8 +570,8 @@ const PostWindow = ({
                             <Star
                               key={`star-${star}`}
                               className={`w-5 h-5 sm:w-6 sm:h-6 cursor-pointer ${
-                                star <= (rating > 0 ? rating : (hoverRating || currentPost.averageRating || 0)) 
-                                  ? 'text-yellow-500 fill-current' 
+                                star <= (rating > 0 ? rating : (hoverRating || currentPost.averageRating || 0))
+                                  ? 'text-yellow-500 fill-current'
                                   : 'text-gray-300'
                               }`}
                               onClick={() => {
@@ -596,7 +597,7 @@ const PostWindow = ({
                       </div>
                       <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <p className="text-xs sm:text-sm text-gray-600">
-                          <span className="font-medium text-gray-800">{currentPost.totalRatings || 0}</span> 
+                          <span className="font-medium text-gray-800">{currentPost.totalRatings || 0}</span>
                           <span className="mx-1 sm:mx-2 text-gray-400">•</span>
                           <span>{(currentPost.comments || []).length || 0} {(currentPost.comments || []).length === 1 ? 'comment' : 'comments'}</span>
                         </p>
@@ -616,8 +617,8 @@ const PostWindow = ({
                               }
                             }}
                             className={`px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl transition-all font-medium text-xs sm:text-sm ${
-                              rating > 0 
-                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md hover:shadow-lg' 
+                              rating > 0
+                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-md hover:shadow-lg'
                                 : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                             }`}
                             disabled={rating === 0 || !authToken}
@@ -647,7 +648,7 @@ const PostWindow = ({
                     </div>
                     <h3 className="text-xl font-bold text-gray-800 mb-2">Information Hidden</h3>
                     <p className="text-gray-600 mb-4">Press 'I' key or close the window to show details again</p>
-                    <button 
+                    <button
                       onClick={() => setShowInfo(true)}
                       className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md font-medium"
                     >
@@ -658,22 +659,22 @@ const PostWindow = ({
               </div>
 
               {/* Action Bar */}
-              <div className="post-window-actions p-4 sm:p-6 border-t border-gray-200 bg-white shadow-lg">
+              <div className="post-window-actions p-4 sm:p-6 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 shadow-inner">
                 <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-between gap-3 sm:gap-4">
                   <div className="flex items-center space-x-2 sm:space-x-3">
                     <motion.button
                       onClick={handleComment}
-                      className="flex items-center space-x-1 sm:space-x-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 transition-all shadow-sm text-xs sm:text-sm"
+                      className="flex items-center space-x-1 sm:space-x-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300 transition-all shadow-sm text-xs sm:text-sm min-w-[60px] justify-center"
                       whileTap={{ scale: 0.95 }}
                     >
                       <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="font-semibold">{currentPost.comments?.length || 0}</span>
+                      <span className="font-semibold ml-1 sm:ml-2">{currentPost.comments?.length || 0}</span>
                     </motion.button>
 
                     <motion.button
                       onClick={handleBookmark}
                       disabled={loading} // Disable button when loading
-                      className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl transition-all shadow-sm text-xs sm:text-sm ${
+                      className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl transition-all shadow-sm text-xs sm:text-sm min-w-[60px] justify-center ${
                         bookmarked
                           ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-lg"
                           : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300"
@@ -686,36 +687,39 @@ const PostWindow = ({
                     </motion.button>
                   </div>
 
-                  <div className="flex items-center space-x-1 sm:space-x-2">
+                  <div className="flex items-center space-x-1 sm:space-x-2 mt-2 sm:mt-0">
                     <motion.button
                       onClick={handleShare}
-                      className="flex items-center space-x-1 sm:space-x-2 text-gray-700 hover:text-gray-900 bg-gradient-to-r from-white to-gray-50 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl border border-gray-200 hover:shadow-sm transition-all font-medium text-xs sm:text-sm"
+                      className="flex items-center space-x-1 sm:space-x-2 text-gray-700 hover:text-gray-900 bg-gradient-to-r from-white to-gray-50 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl border border-gray-200 hover:shadow-sm transition-all font-medium text-xs sm:text-sm min-w-[70px] justify-center"
                       whileTap={{ scale: 0.95 }}
                     >
                       <Share className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="hidden sm:inline">Share</span>
+                      <span className="hidden sm:inline ml-1">Share</span>
                       <span className="sm:hidden">Share</span>
                     </motion.button>
                     <motion.button
                       onClick={handleGetDirections}
-                      className="flex items-center space-x-1 sm:space-x-2 text-gray-700 hover:text-gray-900 bg-gradient-to-r from-white to-gray-50 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl border border-gray-200 hover:shadow-sm transition-all font-medium text-xs sm:text-sm"
+                      className="flex items-center space-x-1 sm:space-x-2 text-gray-700 hover:text-gray-900 bg-gradient-to-r from-white to-gray-50 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl border border-gray-200 hover:shadow-sm transition-all font-medium text-xs sm:text-sm min-w-[70px] justify-center"
                       whileTap={{ scale: 0.95 }}
                     >
                       <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="hidden sm:inline">Directions</span>
+                      <span className="hidden sm:inline ml-1">Directions</span>
                       <span className="sm:hidden">Dir</span>
                     </motion.button>
                   </div>
                 </div>
-                
+
                 {/* Comments Modal */}
                 {showCommentsModal && (
                   <div className="fixed inset-0 bg-gradient-to-br from-black/60 to-black/50 backdrop-blur-lg flex items-center justify-center z-[100000] p-2 sm:p-4">
                     <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[80vh] flex flex-col border border-white/20 backdrop-blur-sm">
                       <div className="p-4 sm:p-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 rounded-t-xl sm:rounded-t-2xl">
                         <div className="flex justify-between items-center">
-                          <h3 className="text-base sm:text-lg font-bold text-gray-800">Comments</h3>
-                          <button 
+                          <h3 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <MessageCircle className="w-5 h-5" />
+                            Comments
+                          </h3>
+                          <button
                             onClick={() => setShowCommentsModal(false)}
                             className="p-2 rounded-full hover:bg-gray-100 transition-colors"
                           >
@@ -723,13 +727,13 @@ const PostWindow = ({
                           </button>
                         </div>
                       </div>
-                      
+
                       {/* Comments List */}
                       <div className="flex-1 overflow-y-auto max-h-48 sm:max-h-96 p-4 sm:p-5">
                         {comments && comments.length > 0 ? (
                           <div className="space-y-3 sm:space-y-4">
                             {comments.map((comment) => (
-                              <CommentItem 
+                              <CommentItem
                                 key={comment._id || `comment-${Math.random()}`}
                                 comment={comment}
                                 authToken={authToken}
@@ -743,7 +747,7 @@ const PostWindow = ({
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Comment Input */}
                       <div className="p-4 sm:p-5 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 rounded-b-xl sm:rounded-b-2xl">
                         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -752,7 +756,7 @@ const PostWindow = ({
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}
                             placeholder="Write your comment..."
-                            className="flex-1 px-3 py-2.5 sm:px-4 sm:py-3 bg-white/90 backdrop-blur-sm rounded-lg sm:rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm text-sm"
+                            className="flex-1 px-3 py-2.5 sm:px-4 sm:py-3 bg-white/90 backdrop-blur-sm rounded-lg sm:rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm text-sm min-h-[42px]"
                             onKeyPress={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
@@ -762,7 +766,7 @@ const PostWindow = ({
                           />
                           <motion.button
                             onClick={handleAddComment}
-                            className="px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg sm:rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all font-medium shadow-md text-sm"
+                            className="px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg sm:rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all font-medium shadow-md text-sm min-w-[80px] flex items-center justify-center"
                             whileTap={{ scale: 0.95 }}
                           >
                             Post
