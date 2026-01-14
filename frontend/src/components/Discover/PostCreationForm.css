@@ -1,0 +1,107 @@
+/* Amazing font styles for Post Creation Form */
+
+/* Import amazing fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Amazing font styles for the Post Creation Form */
+.amazing-post-form {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.amazing-post-form input,
+.amazing-post-form textarea,
+.amazing-post-form select {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Better font sizing for form elements */
+.amazing-post-form input[type="text"],
+.amazing-post-form textarea,
+.amazing-post-form select {
+  font-size: 0.8rem;
+}
+
+.amazing-post-form input::placeholder,
+.amazing-post-form textarea::placeholder {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-style: italic;
+  color: #9ca3af;
+  opacity: 0.8;
+}
+
+/* Better label sizing */
+.amazing-post-form label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+/* Better button sizing */
+.amazing-post-form button {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Responsive font sizes */
+@media (max-width: 768px) {
+  .amazing-post-form input[type="text"],
+  .amazing-post-form textarea,
+  .amazing-post-form select {
+    font-size: 0.75rem;
+  }
+  
+  .amazing-post-form label {
+    font-size: 0.7rem;
+  }
+  
+  .amazing-post-form button {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .amazing-post-form input[type="text"],
+  .amazing-post-form textarea,
+  .amazing-post-form select {
+    font-size: 0.7rem;
+  }
+  
+  .amazing-post-form label {
+    font-size: 0.65rem;
+  }
+  
+  .amazing-post-form button {
+    font-size: 0.7rem;
+  }
+}
+
+/* Enhanced input styling */
+.amazing-post-form input,
+.amazing-post-form textarea,
+.amazing-post-form select {
+  transition: all 0.3s ease;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+.amazing-post-form input:focus,
+.amazing-post-form textarea:focus,
+.amazing-post-form select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Enhanced button styling */
+.amazing-post-form button {
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.amazing-post-form button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}

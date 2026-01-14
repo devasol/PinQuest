@@ -118,7 +118,7 @@ const DiscoverMain = () => {
   const handlePostCreationFormChange = useCallback((e) => {
     const { name, value } = e.target;
     setPostCreationForm(prev => ({ ...prev, [name]: value }));
-  }, []); // This is correct as we're using functional update with prev - no dependencies needed since we use prev
+  }, []); // This preserves the function identity across re-renders
 
   // Handle responsive sidebar for mobile
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
@@ -1615,6 +1615,7 @@ const DiscoverMain = () => {
     if (!postCreationForm.title.trim() || !postCreationForm.description.trim()) {
       setPostCreationForm(prev => ({
         ...prev,
+        loading: false, // Reset loading state
         error: "Title and description are required"
       }));
       return;
@@ -1623,6 +1624,7 @@ const DiscoverMain = () => {
     if (!creatingPostAt) {
       setPostCreationForm(prev => ({
         ...prev,
+        loading: false, // Reset loading state
         error: "Location is required"
       }));
       return;
@@ -1658,30 +1660,36 @@ const DiscoverMain = () => {
       // Call the API to create the post
       const result = await apiService.upload('/posts', formData, token);
 
-      if (result.status === 'success' && result.data) {
+      if (result.success && result.data && result.data.status === 'success' && result.data.data) {
         // Add the new post to our local state
         const newPost = {
-          _id: result.data._id,
-          id: result.data._id,
-          title: result.data.title,
-          description: result.data.description,
-          image: result.data.image || null,
-          images: result.data.images || [],
-          averageRating: result.data.averageRating || 0,
-          totalRatings: result.data.totalRatings || 0,
-          postedBy: result.data.postedBy?.name || user?.name || user?.email || "Anonymous",
-          category: result.data.category,
-          datePosted: result.data.datePosted || new Date().toISOString(),
-          position: [result.data.location.latitude, result.data.location.longitude],
-          price: result.data.price || 0,
-          tags: result.data.tags || [],
-          comments: result.data.comments || [],
-          likes: result.data.likes || [],
-          likesCount: result.data.likesCount || 0,
+          _id: result.data.data._id,
+          id: result.data.data._id,
+          title: result.data.data.title,
+          description: result.data.data.description,
+          image: result.data.data.image || null,
+          images: result.data.data.images || [],
+          averageRating: result.data.data.averageRating || 0,
+          totalRatings: result.data.data.totalRatings || 0,
+          postedBy: result.data.data.postedBy?.name || user?.name || user?.email || "Anonymous",
+          category: result.data.data.category,
+          datePosted: result.data.data.datePosted || new Date().toISOString(),
+          position: Array.isArray(result.data.data.location.coordinates) && result.data.data.location.coordinates.length === 2
+            ? [result.data.data.location.coordinates[1], result.data.data.location.coordinates[0]] // [lat, lng] from [lng, lat]
+            : [result.data.data.location.latitude, result.data.data.location.longitude],
+          price: result.data.data.price || 0,
+          tags: result.data.data.tags || [],
+          comments: result.data.data.comments || [],
+          likes: result.data.data.likes || [],
+          likesCount: result.data.data.likesCount || 0,
           location: {
-            latitude: result.data.location.latitude,
-            longitude: result.data.location.longitude,
-            ...(result.data.location || {})
+            latitude: Array.isArray(result.data.data.location.coordinates) && result.data.data.location.coordinates.length === 2
+              ? result.data.data.location.coordinates[1]  // latitude from [lng, lat] array
+              : result.data.data.location.latitude,
+            longitude: Array.isArray(result.data.data.location.coordinates) && result.data.data.location.coordinates.length === 2
+              ? result.data.data.location.coordinates[0]  // longitude from [lng, lat] array
+              : result.data.data.location.longitude,
+            ...(result.data.data.location || {})
           },
         };
 
@@ -1749,6 +1757,13 @@ const DiscoverMain = () => {
         // Close the creation form
         setCreatingPostAt(null);
 
+        // Reset form loading state
+        setPostCreationForm(prev => ({
+          ...prev,
+          loading: false,
+          error: null
+        }));
+
         // Fly to the new post location to show it on the map
         setTimeout(() => {
           if (newPost.position) {
@@ -1756,7 +1771,9 @@ const DiscoverMain = () => {
           }
         }, 300);
       } else {
-        throw new Error(result.message || result.error || 'Failed to create post');
+        // Handle error response from API
+        const errorMessage = result.data?.message || result.data?.error || result.error || 'Failed to create post';
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Error creating post:', error);
@@ -1766,7 +1783,7 @@ const DiscoverMain = () => {
         error: error.message || error.toString() || 'An error occurred while creating the post'
       }));
     }
-  }, [postCreationForm, creatingPostAt, selectedCategory, rating, priceRange, sortBy, user, showModal, flyToPost, apiService]);
+  }, [postCreationForm, creatingPostAt, selectedCategory, rating, priceRange, sortBy, user, showModal, flyToPost]);
 
   // Close all windows using ESC key
   useEffect(() => {
@@ -1871,6 +1888,8 @@ const DiscoverMain = () => {
 
   // State for mobile bottom navigation
   const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
+  // State to control bottom navigation visibility
+  const [showBottomNav, setShowBottomNav] = useState(true);
 
   // Determine if we're on mobile
   const isMobile = screenWidth < 768;
@@ -1903,34 +1922,36 @@ const DiscoverMain = () => {
         </div>
       )}
 
-      {/* Centered search bar on desktop, top-positioned on mobile */}
-      <div className="search-bar-centered" style={{ top: '20px' }}>
-        <div className="search-input-container" ref={searchContainerRef}>
-          <SearchBar
-            placeholder="Search for places, locations, categories..."
-            autoFocus
-            onSearchResults={(results) => {
-              setFilteredPosts(results);
-              // Update the enhanced search results state
-              setEnhancedSearchResults(results);
-            }}
-            onLocationSelect={(post) => {
-              // Only navigate to the location without opening the post window
-              // Ensure the post has a valid position before flying to it
-              if (post.position && Array.isArray(post.position) && post.position.length >= 2) {
-                flyToPost(post.position);
-              } else if (post.location && typeof post.location.latitude !== 'undefined' && typeof post.location.longitude !== 'undefined') {
-                // Fallback to location object if position is not available
-                flyToPost([post.location.latitude, post.location.longitude]);
-              }
-            }}
-          />
+      {/* Centered search bar on desktop, top-positioned on mobile - hidden when post creation form is open */}
+      {!creatingPostAt && (
+        <div className="search-bar-centered" style={{ top: '20px' }}>
+          <div className="search-input-container" ref={searchContainerRef}>
+            <SearchBar
+              placeholder="Search for places, locations, categories..."
+              autoFocus
+              onSearchResults={(results) => {
+                setFilteredPosts(results);
+                // Update the enhanced search results state
+                setEnhancedSearchResults(results);
+              }}
+              onLocationSelect={(post) => {
+                // Only navigate to the location without opening the post window
+                // Ensure the post has a valid position before flying to it
+                if (post.position && Array.isArray(post.position) && post.position.length >= 2) {
+                  flyToPost(post.position);
+                } else if (post.location && typeof post.location.latitude !== 'undefined' && typeof post.location.longitude !== 'undefined') {
+                  // Fallback to location object if position is not available
+                  flyToPost([post.location.latitude, post.location.longitude]);
+                }
+              }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Map container */}
       <div className={`map-container-responsive ${
-        isMobile ? '' :
+        isMobile ? (showBottomNav ? '' : 'bottom-nav-hidden') :
         (isSidebarExpanded ? 'map-container-sidebar-expanded' : 'map-container-sidebar-collapsed')
       }`}>
         <MapContainer
@@ -2002,9 +2023,6 @@ const DiscoverMain = () => {
                 setCreatingPostAt(position);
                 setPostCreationForm({
                   ...postCreationForm,
-                  title: "",
-                  description: "",
-                  category: "general",
                   loading: false,
                   error: null
                 });
@@ -2054,42 +2072,6 @@ const DiscoverMain = () => {
             </motion.div>
           )}
 
-          {/* Create Post Floating Action Button */}
-          {isAuthenticated && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (!userLocation) {
-                  showModal({
-                    title: "Location Required",
-                    message: 'Please enable location services or click on the map to set a location for your post',
-                    type: 'info',
-                    confirmText: 'OK'
-                  });
-                } else {
-                  // If user has location, center map on it and show the modal
-                  if (mapRef.current) {
-                    mapRef.current.flyTo(userLocation, 15);
-                  }
-                  // Show an instruction modal to click on the map
-                  showModal({
-                    title: "How to Create a Post",
-                    message: 'Click anywhere on the map to create a post at that location',
-                    type: 'info',
-                    confirmText: 'I understand'
-                  });
-                }
-              }}
-              className="absolute bottom-24 right-4 sm:bottom-24 sm:right-20 z-[5995] bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
-              aria-label="Create new post"
-              title="Create new post"
-            >
-              <Plus className="w-6 h-6" />
-            </motion.button>
-          )}
 
           {/* Render custom markers for each post */}
           <AnimatePresence>
@@ -2209,20 +2191,19 @@ const DiscoverMain = () => {
           )}
 
 
-          {/* Map-based Post Creation Popup */}
+          {/* Map-based Post Creation Overlay - Replaces Leaflet Popup to prevent flickering */}
           {creatingPostAt && (
-            <Popup
-              position={[creatingPostAt.lat, creatingPostAt.lng]}
-              onClose={() => setCreatingPostAt(null)}
-            >
-              <PostCreationForm
-                creatingPostAt={creatingPostAt}
-                postCreationForm={postCreationForm}
-                handlePostCreationFormChange={handlePostCreationFormChange}
-                handleMapPostCreation={handleMapPostCreation}
-                setCreatingPostAt={setCreatingPostAt}
-              />
-            </Popup>
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm z-[99999] flex items-center justify-center p-1 xs:p-2 sm:p-4">
+              <div className="bg-white rounded-lg xs:rounded-xl shadow-2xl overflow-hidden w-full max-w-full h-auto max-h-[95vh] sm:max-w-lg sm:max-h-[85vh] mt-16 sm:mt-20">
+                <PostCreationForm
+                  creatingPostAt={creatingPostAt}
+                  postCreationForm={postCreationForm}
+                  handlePostCreationFormChange={handlePostCreationFormChange}
+                  handleMapPostCreation={handleMapPostCreation}
+                  setCreatingPostAt={setCreatingPostAt}
+                />
+              </div>
+            </div>
           )}
         </MapContainer>
 
@@ -2295,6 +2276,8 @@ const DiscoverMain = () => {
         isMobile={isMobile}
         mobileBottomNavActive={mobileBottomNavActive}
         setMobileBottomNavActive={setMobileBottomNavActive}
+        showBottomNav={showBottomNav}
+        setShowBottomNav={setShowBottomNav}
       />
 
       {/* Enhanced Sidebar Windows */}

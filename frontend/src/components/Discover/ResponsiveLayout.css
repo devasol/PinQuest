@@ -47,16 +47,106 @@
   display: none; /* Hidden by default, shown on mobile */
 }
 
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera*/
+}
+
+/* Container for scrollable bottom navigation */
+.bottom-navigation-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background-color: white;
+  border-top: 1px solid #e5e7eb;
+  z-index: 5000;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  display: none; /* Hidden by default, shown on mobile */
+}
+
+/* Scroll indicators */
+.scroll-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+  pointer-events: auto;
+}
+
+.scroll-indicator.left-0 {
+  left: 8px;
+}
+
+.scroll-indicator.right-0 {
+  right: 8px;
+}
+
+/* Toggle arrow button styles */
+.toggle-arrow-button {
+  position: absolute;
+  top: -3.5rem; /* Increase bottom margin by moving up a bit */
+  right: 0; /* No right margin */
+  z-index: 5002;
+  background: white;
+  border-radius: 0.5rem; /* Rectangle with border radius */
+  padding: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb; /* Simple border */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-arrow-button:hover {
+  background-color: #f3f4f6;
+  transform: translateY(-1px);
+}
+
+/* Show minimized button when navigation is hidden */
+.bottom-navigation-hidden {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  display: none; /* Hidden by default, shown on mobile */
+}
+
 @media (max-width: 767px) {
   .bottom-navigation {
     display: flex;
   }
-  
+
+  .bottom-navigation-container {
+    display: block;
+  }
+
+  .bottom-navigation-hidden {
+    display: block;
+  }
+
   /* Adjust map container to account for bottom navigation */
   .map-container-responsive {
     bottom: 60px;
   }
-  
+
+  /* Adjust map container when bottom navigation is hidden */
+  .map-container-responsive.bottom-nav-hidden {
+    bottom: 0;
+  }
+
   /* Hide desktop sidebar on mobile */
   .sidebar-container {
     display: none;

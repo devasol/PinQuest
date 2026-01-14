@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, User, Settings, LogOut, Heart, Star, Bell, Compass, Layers } from 'lucide-react';
+import { Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, User, Settings, LogOut, Heart, Star, Bell, Compass, Layers, Minus, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = ({
@@ -16,8 +16,43 @@ const Sidebar = ({
   toggleSidebar,
   isMobile = false,
   mobileBottomNavActive = '',
-  setMobileBottomNavActive = () => {}
+  setMobileBottomNavActive = () => {},
+  showBottomNav = true,
+  setShowBottomNav = () => {}
 }) => {
+  // Ref for the navigation container
+  const navRef = useRef(null);
+
+  // State for scroll indicators
+  const [showLeftIndicator, setShowLeftIndicator] = useState(false);
+  const [showRightIndicator, setShowRightIndicator] = useState(true);
+
+  // Effect to handle scroll indicators
+  useEffect(() => {
+    const handleScroll = () => {
+      if (navRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = navRef.current;
+        setShowLeftIndicator(scrollLeft > 0);
+        setShowRightIndicator(scrollLeft < scrollWidth - clientWidth - 1);
+      }
+    };
+
+    const navElement = navRef.current;
+    if (navElement) {
+      // Initial check
+      handleScroll();
+
+      // Add scroll listener
+      navElement.addEventListener('scroll', handleScroll);
+
+      // Cleanup
+      return () => {
+        navElement.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, []);
+
+
   // Define sidebar items with icons and labels
   const sidebarItems = [
     {
@@ -143,80 +178,123 @@ const Sidebar = ({
       return false;
     }
 
-    // Don't show desktop-only items on mobile bottom nav
-    if (isMobile && !item.mobileOnly) {
-      return true; // Show non-mobile-only items in the mobile sidebar drawer
+    // For mobile, show all items except mobile-only items in the sidebar drawer
+    // (mobile-only items are shown in the bottom nav, not in the sidebar drawer)
+    if (isMobile && item.mobileOnly) {
+      return false;
     }
 
     return true;
   });
 
-  // Mobile bottom navigation items (non-auth items only)
+  // Mobile bottom navigation items (for all users)
   const mobileNavItems = sidebarItems.filter(item =>
     (!item.requiresAuth || user) && !item.mobileOnly
-  ).slice(0, 4); // Limit to 4 items for mobile to make room for login button
+  ); // Show all available items for the user
 
   if (isMobile) {
     return (
       <>
         {/* Mobile Bottom Navigation */}
-        <div className="bottom-navigation">
-          {mobileNavItems.map((item) => {
-            const IconComponent = item.icon;
-            const isActive = mobileBottomNavActive === item.id;
-
-            return (
-              <button
-                key={item.id}
-                className={`bottom-nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => {
-                  setMobileBottomNavActive(item.id);
-                  if (item.action) item.action();
-                }}
-                title={item.label}
-              >
-                <IconComponent className="bottom-nav-icon" />
-                <span className="bottom-nav-label">{item.label}</span>
-              </button>
-            );
-          })}
-
-          {/* Login/Profile button for mobile */}
-          {!user ? (
-            <Link
-              to="/login"
-              className="bottom-nav-item"
-              title="Login"
-            >
-              <User className="bottom-nav-icon" />
-              <span className="bottom-nav-label">Login</span>
-            </Link>
-          ) : (
-            <Link
-              to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
-              className="bottom-nav-item"
-              title="Profile"
-            >
-              <User className="bottom-nav-icon" />
-              <span className="bottom-nav-label">Profile</span>
-            </Link>
-          )}
-
-          {/* Menu button for additional options - only show if user is authenticated */}
-          {user && (
+        {showBottomNav && (
+          <div className="bottom-navigation-container relative">
+            {/* Toggle arrow button in top-right corner */}
             <button
-              className={`bottom-nav-item ${mobileBottomNavActive === 'menu' ? 'active' : ''}`}
-              onClick={() => {
-                setMobileBottomNavActive('menu');
-                toggleSidebar();
-              }}
-              title="Menu"
+              className="toggle-arrow-button absolute -top-14 right-0 z-[5002]"
+              onClick={() => setShowBottomNav(false)}
+              title="Hide navigation"
             >
-              <Menu className="bottom-nav-icon" />
-              <span className="bottom-nav-label">Menu</span>
+              <ChevronDown className="h-5 w-5 text-gray-700" />
             </button>
-          )}
-        </div>
+
+            {/* Left scroll indicator */}
+            <div
+              className={`scroll-indicator left-0 top-1/2 transform -translate-y-1/2 z-[5001] transition-opacity duration-300 pointer-events-auto ${showLeftIndicator ? 'opacity-100' : 'opacity-0'}`}
+              onClick={() => {
+                if (navRef.current) {
+                  navRef.current.scrollBy({ left: -100, behavior: 'smooth' });
+                }
+              }}
+            >
+              <div className="bg-white rounded-full shadow-lg p-1.5 cursor-pointer">
+                <ChevronLeft className="h-5 w-5 text-gray-700" />
+              </div>
+            </div>
+
+            {/* Scrollable bottom navigation */}
+            <div
+              className="bottom-navigation overflow-x-auto hide-scrollbar snap-x snap-mandatory flex"
+              ref={navRef}
+            >
+              {mobileNavItems.map((item) => {
+                const IconComponent = item.icon;
+                const isActive = mobileBottomNavActive === item.id;
+
+                return (
+                  <button
+                    key={item.id}
+                    className={`bottom-nav-item flex-shrink-0 snap-start ${isActive ? 'active' : ''}`}
+                    onClick={() => {
+                      setMobileBottomNavActive(item.id);
+                      if (item.action) item.action();
+                    }}
+                    title={item.label}
+                  >
+                    <IconComponent className="bottom-nav-icon" />
+                    <span className="bottom-nav-label">{item.label}</span>
+                  </button>
+                );
+              })}
+
+              {/* Login/Profile button for mobile */}
+              {!user ? (
+                <Link
+                  to="/login"
+                  className="bottom-nav-item flex-shrink-0 snap-start"
+                  title="Login"
+                >
+                  <User className="bottom-nav-icon" />
+                  <span className="bottom-nav-label">Login</span>
+                </Link>
+              ) : (
+                <Link
+                  to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
+                  className="bottom-nav-item flex-shrink-0 snap-start"
+                  title="Profile"
+                >
+                  <User className="bottom-nav-icon" />
+                  <span className="bottom-nav-label">Profile</span>
+                </Link>
+              )}
+            </div>
+
+            {/* Right scroll indicator */}
+            <div
+              className={`scroll-indicator right-0 top-1/2 transform -translate-y-1/2 z-[5001] transition-opacity duration-300 pointer-events-auto ${showRightIndicator ? 'opacity-100' : 'opacity-0'}`}
+              onClick={() => {
+                if (navRef.current) {
+                  navRef.current.scrollBy({ left: 100, behavior: 'smooth' });
+                }
+              }}
+            >
+              <div className="bg-white rounded-full shadow-lg p-1.5 cursor-pointer">
+                <ChevronRight className="h-5 w-5 text-gray-700" />
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Show button when bottom navigation is minimized */}
+        {!showBottomNav && (
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[5000]">
+            <button
+              className="bg-emerald-500 text-white rounded-lg p-3 shadow-lg hover:bg-emerald-600 transition-colors"
+              onClick={() => setShowBottomNav(true)}
+              title="Show navigation"
+            >
+              <ChevronUp className="h-6 w-6" />
+            </button>
+          </div>
+        )}
 
         {/* Mobile Sidebar Drawer */}
         <div className={`mobile-sidebar-drawer ${isSidebarExpanded ? 'active' : ''}`}>

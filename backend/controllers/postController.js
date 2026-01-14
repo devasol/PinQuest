@@ -36,13 +36,33 @@ const createPost = async (req, res) => {
       return sendErrorResponse(res, 400, "Description must be between 1 and 10000 characters");
     }
 
-    // Parse location if it's a JSON string (FormData sends strings)
-    let parsedLocation = location;
-    if (typeof parsedLocation === "string") {
-      try {
-        parsedLocation = JSON.parse(parsedLocation);
-      } catch (e) {
-        // leave as string; validation will capture missing fields
+    // Handle location data - it can come as a JSON object or as separate fields in FormData
+    let parsedLocation = null;
+
+    // Check if location is provided as a JSON object
+    if (location) {
+      if (typeof location === "string") {
+        try {
+          parsedLocation = JSON.parse(location);
+        } catch (e) {
+          // If it's not JSON, treat as undefined and check for separate fields
+          parsedLocation = null;
+        }
+      } else {
+        parsedLocation = location;
+      }
+    }
+
+    // If location wasn't provided as an object, check for separate fields (FormData format)
+    if (!parsedLocation) {
+      const latField = req.body['location[latitude]'];
+      const lngField = req.body['location[longitude]'];
+
+      if (latField !== undefined && lngField !== undefined) {
+        parsedLocation = {
+          latitude: latField,
+          longitude: lngField
+        };
       }
     }
 
@@ -60,9 +80,9 @@ const createPost = async (req, res) => {
       lat = parseFloat(parsedLocation.latitude);
       lng = parseFloat(parsedLocation.longitude);
       if (
-        isNaN(lat) || 
-        isNaN(lng) || 
-        lat < -90 || lat > 90 || 
+        isNaN(lat) ||
+        isNaN(lng) ||
+        lat < -90 || lat > 90 ||
         lng < -180 || lng > 180
       ) {
         return sendErrorResponse(res, 400, "Invalid latitude or longitude values");
@@ -167,111 +187,128 @@ const createPost = async (req, res) => {
 
     // Send success response IMMEDIATELY with basic post data
     // Populate the postedBy field for response will happen in background
-    sendSuccessResponse(res, 201, {
-      ...savedPost.toObject(),
-      postedBy: {
-        _id: req.user._id,
-        name: req.user.name,
-        email: req.user.email,
-        avatar: req.user.avatar
+    res.status(201).json({
+      status: 'success',
+      message: 'Post created successfully',
+      data: {
+        ...savedPost.toObject(),
+        postedBy: {
+          _id: req.user._id,
+          name: req.user.name,
+          email: req.user.email,
+          avatar: req.user.avatar
+        }
       }
     });
-    
+
     // Set the responseSent flag to true so we don't send another error response
     responseSent = true;
 
     // --- Decouple non-blocking tasks to run AFTER sending response ---
-    // Use setImmediate instead of process.nextTick to ensure response is sent
-    setImmediate(async () => {
-      try {
-        // Log activity
-        const activity = new Activity({
-          userId: req.user._id,
-          action: 'created post',
-          targetType: 'post',
-          targetId: savedPost._id,
-          targetTitle: savedPost.title,
-          metadata: {
-            title: savedPost.title,
-            description: savedPost.description,
-            category: savedPost.category
-          },
-          ip: req.ip,
-          userAgent: req.get('User-Agent')
-        });
-        await activity.save().catch(err => console.error('Background task error: Error saving activity:', err));
-        console.log('Background task: Activity logged for post', savedPost._id);
-      } catch (activityError) {
-        console.error('Background task error: Error saving activity:', activityError);
-      }
+    // Use process.nextTick to ensure response is sent before background tasks
+    process.nextTick(() => {
+      // Run background tasks in a separate async function to avoid any potential issues
+      (async () => {
+        try {
+          // Log activity
+          const activity = new Activity({
+            userId: req.user._id,
+            action: 'created post',
+            targetType: 'post',
+            targetId: savedPost._id,
+            targetTitle: savedPost.title,
+            metadata: {
+              title: savedPost.title,
+              description: savedPost.description,
+              category: savedPost.category
+            },
+            ip: req.ip,
+            userAgent: req.get('User-Agent')
+          });
 
-      try {
-        // Clear related caches - invalidate all posts pages since new post changes the list
-        // Run cache operations in a separate promise with timeout to prevent hanging
-        const cacheTask = async () => {
+          // Run activity save with timeout to prevent hanging
+          await Promise.race([
+            activity.save(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Activity save timeout')), 5000)
+            )
+          ]).catch(err => console.error('Background task error: Error saving activity:', err));
+
+          console.log('Background task: Activity logged for post', savedPost._id);
+        } catch (activityError) {
+          console.error('Background task error: Error saving activity:', activityError);
+        }
+
+        try {
+          // Clear related caches - invalidate all posts pages since new post changes the list
           try {
-            // Use Promise.race with a timeout to prevent hanging
-            const result = await Promise.race([
-              (async () => {
-                const postCacheKeys = await cache.keys('posts_page_*');
-                const deletePromises = postCacheKeys.map(key => cache.del(key));
-                await Promise.all(deletePromises);
-                return 'success';
-              })(),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Cache operation timeout')), 2000) // 2 second timeout
+            const postCacheKeys = await Promise.race([
+              cache.keys('posts_page_*'),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Cache keys operation timeout')), 2000)
               )
             ]);
+
+            const deletePromises = postCacheKeys.map(key =>
+              Promise.race([
+                cache.del(key),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Cache delete timeout')), 2000)
+                )
+              ])
+            );
+
+            await Promise.allSettled(deletePromises); // Use Promise.allSettled to continue even if some fail
             console.log('Background task: Cache invalidated for posts');
-            return result;
           } catch (cacheError) {
             console.error('Background task error: Error invalidating cache:', cacheError.message);
-            return null;
           }
-        };
-        
-        // Run cache task without waiting to block the event loop
-        cacheTask().catch(err => console.error('Non-blocking cache error:', err));
-      } catch (cacheError) {
-        console.error('Background task error during cache setup:', cacheError);
-      }
+        } catch (cacheError) {
+          console.error('Background task error during cache setup:', cacheError);
+        }
 
-      try {
-        // Emit real-time event for new post - only fetch minimal data for socket emission
-        const io = req.app.get("io");
-        if (io) {
-          // Use the savedPost data that we already have instead of fetching again
-          const postForSocket = {
-            ...savedPost.toObject(),
-            postedBy: {
-              _id: req.user._id,
-              name: req.user.name,
-              email: req.user.email,
-              avatar: req.user.avatar
-            }
-          };
-          
-          // Wrap socket emission in a timeout to prevent hanging
-          const socketTask = new Promise((resolve) => {
+        try {
+          // Emit real-time event for new post - only fetch minimal data for socket emission
+          const io = req.app.get("io");
+          if (io) {
+            // Use the savedPost data that we already have instead of fetching again
+            const postForSocket = {
+              ...savedPost.toObject(),
+              postedBy: {
+                _id: req.user._id,
+                name: req.user.name,
+                email: req.user.email,
+                avatar: req.user.avatar
+              }
+            };
+
             try {
-              emitGlobal(io, "newPost", {
-                post: postForSocket,
-                message: "A new post has been created",
-              });
-              console.log('Background task: Emitted newPost event via Socket.IO');
-              resolve();
+              // Emit with a timeout to prevent hanging
+              await Promise.race([
+                new Promise((resolve, reject) => {
+                  try {
+                    emitGlobal(io, "newPost", {
+                      post: postForSocket,
+                      message: "A new post has been created",
+                    });
+                    console.log('Background task: Emitted newPost event via Socket.IO');
+                    resolve();
+                  } catch (emitError) {
+                    reject(emitError);
+                  }
+                }),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Socket emission timeout')), 2000)
+                )
+              ]);
             } catch (emitError) {
               console.error('Error in socket emission:', emitError);
-              resolve(); // Resolve even if there's an error so it doesn't hang
             }
-          });
-          
-          // Run socket task without waiting for it to finish
-          socketTask.catch(err => console.error('Non-blocking socket error:', err));
+          }
+        } catch (socketError) {
+          console.error('Background task error: Error emitting Socket.IO event:', socketError);
         }
-      } catch (socketError) {
-        console.error('Background task error: Error emitting Socket.IO event:', socketError);
-      }
+      })();
     });
 
   } catch (error) {
@@ -523,21 +560,45 @@ const updatePost = async (req, res) => {
       category: category || "general",
     };
 
-    // Update location if provided
+    // Update location if provided - handle both object format and FormData format
     if (location) {
-      if (
-        typeof location.latitude === "undefined" ||
-        typeof location.longitude === "undefined"
-      ) {
+      let parsedLocation = location;
+
+      // If location is a string, try to parse as JSON
+      if (typeof location === 'string') {
+        try {
+          parsedLocation = JSON.parse(location);
+        } catch (e) {
+          parsedLocation = null;
+        }
+      }
+
+      // If location wasn't provided as an object, check for separate fields (FormData format)
+      if (!parsedLocation) {
+        const latField = req.body['location[latitude]'];
+        const lngField = req.body['location[longitude]'];
+
+        if (latField !== undefined && lngField !== undefined) {
+          parsedLocation = {
+            latitude: latField,
+            longitude: lngField
+          };
+        }
+      }
+
+      if (parsedLocation &&
+          (typeof parsedLocation.latitude !== "undefined" &&
+           typeof parsedLocation.longitude !== "undefined")) {
+        updateData.location = {
+          type: "Point",
+          coordinates: [
+            parseFloat(parsedLocation.longitude),
+            parseFloat(parsedLocation.latitude),
+          ],
+        };
+      } else {
         return sendErrorResponse(res, 400, "Location with latitude and longitude is required");
       }
-      updateData.location = {
-        type: "Point",
-        coordinates: [
-          parseFloat(location.longitude),
-          parseFloat(location.latitude),
-        ],
-      };
     }
 
     const updatedPost = await Post.findByIdAndUpdate(
