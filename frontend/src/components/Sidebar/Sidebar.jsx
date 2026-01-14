@@ -18,7 +18,9 @@ const Sidebar = ({
   mobileBottomNavActive = '',
   setMobileBottomNavActive = () => {},
   showBottomNav = true,
-  setShowBottomNav = () => {}
+  setShowBottomNav = () => {},
+  activeSidebarWindow = null,
+  setActiveSidebarWindow = () => {}
 }) => {
   // Ref for the navigation container
   const navRef = useRef(null);

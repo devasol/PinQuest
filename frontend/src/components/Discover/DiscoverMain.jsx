@@ -1890,6 +1890,8 @@ const DiscoverMain = () => {
   const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
   // State to control bottom navigation visibility
   const [showBottomNav, setShowBottomNav] = useState(true);
+  // State to track if any sidebar window is open
+  const [activeSidebarWindow, setActiveSidebarWindow] = useState(null);
 
   // Determine if we're on mobile
   const isMobile = screenWidth < 768;
@@ -2278,6 +2280,8 @@ const DiscoverMain = () => {
         setMobileBottomNavActive={setMobileBottomNavActive}
         showBottomNav={showBottomNav}
         setShowBottomNav={setShowBottomNav}
+        activeSidebarWindow={activeSidebarWindow}
+        setActiveSidebarWindow={setActiveSidebarWindow}
       />
 
       {/* Enhanced Sidebar Windows */}

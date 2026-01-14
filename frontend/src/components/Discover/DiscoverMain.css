@@ -710,22 +710,29 @@
   overscroll-behavior: none;
 }
 
+/* Simple, minimal scrollbar for sidebar windows */
 .sidebar-window-content::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .sidebar-window-content::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
+  background: transparent;
+  border-radius: 2px;
 }
 
 .sidebar-window-content::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 3px;
+  background: #cbd5e1;
+  border-radius: 2px;
 }
 
 .sidebar-window-content::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #94a3b8;
+}
+
+/* Firefox scrollbar styling */
+.sidebar-window-content {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 /* Prevent layout shift during loading */
