@@ -99,7 +99,7 @@
   right: 0; /* No right margin */
   z-index: 5002;
   background: white;
-  border-radius: 0.5rem; /* Rectangle with border radius */
+  border-radius: 0.375rem; /* Smaller border radius */
   padding: 0.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   transition: all 0.2s ease;

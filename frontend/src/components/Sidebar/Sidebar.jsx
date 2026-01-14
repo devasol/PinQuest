@@ -204,7 +204,7 @@ const Sidebar = ({
               onClick={() => setShowBottomNav(false)}
               title="Hide navigation"
             >
-              <ChevronDown className="h-5 w-5 text-gray-700" />
+              <ChevronDown className="h-4 w-4 text-gray-700" />
             </button>
 
             {/* Left scroll indicator */}
@@ -285,14 +285,17 @@ const Sidebar = ({
         )}
         {/* Show button when bottom navigation is minimized */}
         {!showBottomNav && (
-          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[5000]">
-            <button
-              className="bg-emerald-500 text-white rounded-lg p-3 shadow-lg hover:bg-emerald-600 transition-colors"
-              onClick={() => setShowBottomNav(true)}
-              title="Show navigation"
-            >
-              <ChevronUp className="h-6 w-6" />
-            </button>
+          <div className="fixed bottom-0 left-0 right-0 z-[5000]">
+            {/* Show button with reduced height */}
+            <div className="flex justify-end">
+              <button
+                className="toggle-arrow-button absolute bottom-0 right-0 p-2"
+                onClick={() => setShowBottomNav(true)}
+                title="Show navigation"
+              >
+                <ChevronUp className="h-4 w-4 text-gray-700" />
+              </button>
+            </div>
           </div>
         )}
 
