@@ -33,7 +33,7 @@ const Sidebar = ({
       if (navRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = navRef.current;
         setShowLeftIndicator(scrollLeft > 0);
-        setShowRightIndicator(scrollLeft < scrollWidth - clientWidth - 1);
+        setShowRightIndicator(scrollWidth > clientWidth && scrollLeft < scrollWidth - clientWidth - 1);
       }
     };
 
@@ -45,9 +45,13 @@ const Sidebar = ({
       // Add scroll listener
       navElement.addEventListener('scroll', handleScroll);
 
+      // Also listen for resize events to update indicators
+      window.addEventListener('resize', handleScroll);
+
       // Cleanup
       return () => {
         navElement.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('resize', handleScroll);
       };
     }
   }, []);
@@ -189,7 +193,7 @@ const Sidebar = ({
 
   // Mobile bottom navigation items (for all users)
   const mobileNavItems = sidebarItems.filter(item =>
-    (!item.requiresAuth || user) && !item.mobileOnly
+    (!item.requiresAuth || (user && user._id)) && !item.mobileOnly
   ); // Show all available items for the user
 
   if (isMobile) {
@@ -223,7 +227,7 @@ const Sidebar = ({
 
             {/* Scrollable bottom navigation */}
             <div
-              className="bottom-navigation overflow-x-auto hide-scrollbar snap-x snap-mandatory flex"
+              className="bottom-navigation hide-scrollbar flex"
               ref={navRef}
             >
               {mobileNavItems.map((item) => {
@@ -233,7 +237,7 @@ const Sidebar = ({
                 return (
                   <button
                     key={item.id}
-                    className={`bottom-nav-item flex-shrink-0 snap-start ${isActive ? 'active' : ''}`}
+                    className={`bottom-nav-item flex-shrink-0 whitespace-nowrap ${isActive ? 'active' : ''}`}
                     onClick={() => {
                       setMobileBottomNavActive(item.id);
                       if (item.action) item.action();
@@ -250,7 +254,7 @@ const Sidebar = ({
               {!user ? (
                 <Link
                   to="/login"
-                  className="bottom-nav-item flex-shrink-0 snap-start"
+                  className="bottom-nav-item flex-shrink-0 whitespace-nowrap"
                   title="Login"
                 >
                   <User className="bottom-nav-icon" />
@@ -259,7 +263,7 @@ const Sidebar = ({
               ) : (
                 <Link
                   to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
-                  className="bottom-nav-item flex-shrink-0 snap-start"
+                  className="bottom-nav-item flex-shrink-0 whitespace-nowrap"
                   title="Profile"
                 >
                   <User className="bottom-nav-icon" />
