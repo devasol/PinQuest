@@ -73,8 +73,8 @@ const PostCard = ({ post, currentUser, authToken, isAuthenticated, onLike, onCom
             <OptimizedImage
               src={getImageUrl(
                 post.images && Array.isArray(post.images) && post.images.length > 0
-                  ? post.images[0]
-                  : post.image
+                  ? (typeof post.images[0] === 'object' ? post.images[0] : { url: post.images[0] })
+                  : (typeof post.image === 'object' ? post.image : { url: post.image })
               )}
               alt={post.title}
               className="w-full h-full object-cover"

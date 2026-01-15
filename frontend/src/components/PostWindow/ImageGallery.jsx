@@ -9,10 +9,21 @@ const ImageGallery = ({ images, currentIndex: initialIndex = 0, onClose }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
 
-  // Filter valid images
-  const validImages = images?.filter(img => 
-    img && (typeof img === 'string' || (typeof img === 'object' && img.url))
-  ) || [];
+  // Filter valid images and normalize them to object format
+  const validImages = images?.filter(img =>
+    img && (typeof img === 'string' || (typeof img === 'object' && (img.url || img.path || img.filename || img.publicId)))
+  ).map(img => {
+    if (typeof img === 'string') {
+      return { url: img };
+    } else if (typeof img === 'object') {
+      // Prioritize url, then path, then filename, then publicId
+      if (img.url) return { url: img.url, publicId: img.publicId };
+      if (img.path) return { url: img.path, publicId: img.publicId };
+      if (img.filename) return { url: `/uploads/${img.filename}`, publicId: img.filename };
+      if (img.publicId) return { url: `/uploads/${img.publicId}`, publicId: img.publicId };
+    }
+    return img;
+  }) || [];
 
   const currentImage = validImages[currentIndex];
 

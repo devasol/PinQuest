@@ -2464,8 +2464,15 @@ const DiscoverMain = () => {
                         {(post.image || (post.images && post.images.length > 0)) && (
                           <div className="relative">
                             <img
-                              src={getImageUrl(post.image || (post.images && post.images.length > 0 ? post.images[0] : null))}
+                              src={getImageUrl(
+                                post.image
+                                  ? (typeof post.image === 'object' ? post.image : { url: post.image })
+                                  : (post.images && post.images.length > 0
+                                      ? (typeof post.images[0] === 'object' ? post.images[0] : { url: post.images[0] })
+                                      : null)
+                              )}
                               alt={post.title}
+                              crossOrigin="anonymous"
                               className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                               onError={(e) => {
                                 e.target.style.display = 'none';

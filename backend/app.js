@@ -206,10 +206,16 @@ try {
   app.use("/uploads", 
     (req, res, next) => {
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      res.setHeader("Access-Control-Allow-Origin", "*");
       next();
     },
     cors(), 
-    express.static(uploadsDir)
+    express.static(uploadsDir, {
+      setHeaders: (res) => {
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+      }
+    })
   );
 } catch (e) {
   console.error(

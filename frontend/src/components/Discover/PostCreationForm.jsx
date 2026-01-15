@@ -359,6 +359,7 @@ const PostCreationForm = ({
                           <img 
                             src={link} 
                             alt="Link Preview" 
+                            crossOrigin="anonymous"
                             className="w-full h-full object-cover"
                             onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Error'; }}
                           />

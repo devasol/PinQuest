@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useModal } from '../../contexts/ModalContext';
 import { User, MapPin, Star, Bookmark, Activity, Calendar, Image } from 'lucide-react';
 import OptimizedImage from '../../components/OptimizedImage';
+import { getImageUrl } from '../../utils/imageUtils';
 import usePageTitle from '../../services/usePageTitle';
 import './ProfilePage.css';
 
@@ -1013,7 +1014,7 @@ const ProfilePage = () => {
                           {post.images && post.images.length > 0 && (
                             <div className="mb-3">
                               <OptimizedImage
-                                src={typeof post.images[0] === 'string' ? post.images[0] : (post.images[0]?.url || post.images[0]?.image)}
+                                src={typeof post.images[0] === 'string' ? getImageUrl({ url: post.images[0] }) : getImageUrl(post.images[0])}
                                 alt={post.title}
                                 className="w-full h-32 object-cover rounded-lg"
                               />

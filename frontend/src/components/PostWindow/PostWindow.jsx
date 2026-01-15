@@ -92,15 +92,50 @@ const PostWindow = ({
   // Image Logic
   const images = useMemo(() => {
     if (!currentPost) return [];
-    
+
     // Normalize images into a clean array
     let rawImages = [];
-    if (currentPost.images && Array.isArray(currentPost.images)) {
-      rawImages = currentPost.images.filter(img => img);
-    } else if (currentPost.image) {
-      rawImages = [currentPost.image];
+
+    // 1. Check images array - handle both string URLs and object formats
+    if (currentPost.images && Array.isArray(currentPost.images) && currentPost.images.length > 0) {
+      rawImages = currentPost.images
+        .filter(img => img) // Remove null/undefined values
+        .map(img => {
+          // If img is a string, convert to object format
+          if (typeof img === 'string') {
+            return { url: img };
+          }
+          // If img is an object but doesn't have a url property, try to extract it
+          if (typeof img === 'object') {
+            // Prioritize url, then path, then filename, then publicId
+            if (img.url) return { url: img.url, publicId: img.publicId };
+            if (img.path) return { url: img.path, publicId: img.publicId };
+            if (img.filename) return { url: `/uploads/${img.filename}`, publicId: img.filename };
+            if (img.publicId) return { url: `/uploads/${img.publicId}`, publicId: img.publicId };
+          }
+          return img;
+        });
     }
-    
+
+    // 2. If no images array (or empty), check for single image object
+    if (rawImages.length === 0 && currentPost.image) {
+      let singleImage = null;
+      // If image is a string, wrap it; if it's an object with url, wrap it
+      if (typeof currentPost.image === 'string') {
+        singleImage = { url: currentPost.image };
+      } else if (typeof currentPost.image === 'object') {
+        // Prioritize url, then path, then filename, then publicId
+        if (currentPost.image.url) singleImage = { url: currentPost.image.url, publicId: currentPost.image.publicId };
+        else if (currentPost.image.path) singleImage = { url: currentPost.image.path, publicId: currentPost.image.publicId };
+        else if (currentPost.image.filename) singleImage = { url: `/uploads/${currentPost.image.filename}`, publicId: currentPost.image.filename };
+        else if (currentPost.image.publicId) singleImage = { url: `/uploads/${currentPost.image.publicId}`, publicId: currentPost.image.publicId };
+      }
+
+      if (singleImage) {
+        rawImages = [singleImage];
+      }
+    }
+
     return rawImages;
   }, [currentPost]);
 
@@ -111,6 +146,11 @@ const PostWindow = ({
   const prevImage = useCallback(() => {
     if (images.length > 0) setCurrentImageIndex(prev => (prev === 0 ? images.length - 1 : prev - 1));
   }, [images]);
+
+  // Reset image index when images change or post changes
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [images.length, currentPost?._id]);
 
   // Actions
   const handleBookmarkAction = async () => {
@@ -232,16 +272,17 @@ const PostWindow = ({
           <div className="w-full md:w-[60%] bg-gradient-to-br from-slate-900 via-slate-800 to-gray-900 flex items-center justify-center relative group min-h-[300px] md:min-h-full">
             {hasImages ? (
               <>
-                <div className="relative w-full h-full flex items-center justify-center">
-                   <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/30 pointer-events-none z-10" />
-                   <OptimizedImage
-                      key={getImageUrl(images[currentImageIndex])}
-                      src={getImageUrl(images[currentImageIndex])}
-                      alt="Post"
-                      className="max-w-full max-h-[90vh] md:max-h-full object-contain"
-                      priority={true}
-                   />
-                </div>
+                 <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/40 pointer-events-none z-10" />
+                    <OptimizedImage
+                       key={`post-img-${currentPost._id}-${currentImageIndex}`}
+                       src={getImageUrl(images[currentImageIndex])}
+                       alt={currentPost.title || "Post image"}
+                       className="max-w-full max-h-full object-contain"
+                       wrapperClassName="w-full h-full"
+                       priority={true}
+                    />
+                 </div>
 
                 {/* Navigation Controls */}
                 {images.length > 1 && (

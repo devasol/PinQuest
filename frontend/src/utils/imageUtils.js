@@ -40,19 +40,19 @@ export const getImageUrl = (imageObj) => {
   // Helper to ensure path starts with / and combine with base
   const combineWithBase = (path) => {
     if (!path) return '';
-    
+
     // If it's already a full URL, return it
     if (path.startsWith('http://') || path.startsWith('https://')) {
         return path;
     }
 
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    
-    // Check if it already has /uploads prefix
-    const finalPath = cleanPath.startsWith('/uploads/') 
-      ? cleanPath 
+
+    // Check if it already has /uploads prefix - if it does, don't add it again
+    const finalPath = cleanPath.startsWith('/uploads/')
+      ? cleanPath
       : `/uploads${cleanPath}`;
-    
+
     return `${serverBaseUrl}${finalPath}`.replace(/([^:]\/)\/+/g, '$1');
   };
 
@@ -76,9 +76,17 @@ export const getImageUrl = (imageObj) => {
 
   // Handle object
   if (typeof imageObj === 'object') {
-    const url = imageObj.url || imageObj.publicId || imageObj.path || '';
+    // Try different possible properties that could contain the image URL
+    // Prioritize url first, then path, then filename, then publicId
+    let url = imageObj.url || imageObj.path || imageObj.filename || imageObj.publicId || '';
     if (!url) return '';
-    
+
+    // If we got the URL from filename or publicId and it's not already a path, construct it
+    if ((imageObj.filename && url === imageObj.filename && !url.startsWith('/')) ||
+        (imageObj.publicId && url === imageObj.publicId && !url.startsWith('/'))) {
+      url = `/uploads/${url}`;
+    }
+
     if (typeof url === 'string') {
       if (url.startsWith('http') || url.startsWith('https')) {
         try {

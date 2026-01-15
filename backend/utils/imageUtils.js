@@ -69,7 +69,7 @@ const processImageFile = (file, protocol, req) => {
         // Return relative path, let frontend handle the base URL
         // identifying it as a local upload via the /uploads/ prefix
         const url = `/uploads/${filename}`;
-        return { url, filename, localPath: file.path };
+        return { url, publicId: filename }; // Use filename as publicId for local files
       }
     }
 
