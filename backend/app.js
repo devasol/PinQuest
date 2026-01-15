@@ -80,7 +80,7 @@ app.use('/uploads', (req, res, next) => {
 if (process.env.NODE_ENV === 'production') {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500, // Limit each IP to 500 requests per windowMs (increased for map discovery)
+    max: 1000, // Limit each IP to 1000 requests per windowMs (increased for map discovery and multiple API calls)
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
@@ -89,7 +89,7 @@ if (process.env.NODE_ENV === 'production') {
 
   const speedLimiter = slowDown({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    delayAfter: 50, // Begin slowing down after 50 requests
+    delayAfter: 100, // Begin slowing down after 100 requests (increased from 50)
     delayMs: () => 500, // Slow down by 500ms (using new format)
   });
   app.use(speedLimiter);
@@ -157,6 +157,7 @@ const allowedOrigins = [
   "http://localhost:4173", // Alternative Vite port
   "https://pinquest-app.onrender.com", // Production frontend URL
   "https://www.pinquest-app.onrender.com", // Alternative production URL
+  "https://pinquest.onrender.com" // Backend domain (for same-origin requests)
 ];
 
 // Add environment-specific CORS configuration
@@ -192,9 +193,9 @@ const corsOptions = {
   optionsSuccessStatus: 200,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
-    "Content-Type", 
-    "Authorization", 
-    "Accept", 
+    "Content-Type",
+    "Authorization",
+    "Accept",
     "X-Requested-With",
     "X-HTTP-Method-Override"
   ],

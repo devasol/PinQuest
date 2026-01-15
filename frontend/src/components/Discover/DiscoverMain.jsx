@@ -683,7 +683,7 @@ const DiscoverMain = () => {
       }
     } catch (err) {
       console.error("Error fetching posts:", err);
-      
+
       // Auto-retry logic for "Load failed" or general network errors
       // This is helpful for Render's cold start where the first request might fail due to timeout/DNS
       // Only retry if it's a network error and not an explicit abort or already retrying
@@ -707,13 +707,13 @@ const DiscoverMain = () => {
       }
       setPosts([]);
       setFilteredPosts([]);
+
+      // Set error dismissed state to false since an error occurred
+      setErrorDismissed(false);
     } finally {
       // Reset the flag and loading state
       fetchPostsRef.current = false;
       setLoading(false);
-      
-      // If error happened, reset dismissed state so it shows again on next manual refresh
-      if (err) setErrorDismissed(false);
     }
   }, []); // Empty dependency array since we're using ref to track state
 
