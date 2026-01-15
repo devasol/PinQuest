@@ -2,26 +2,94 @@
 // Extract the base server URL from the API base URL for image paths
 const getServerBaseUrl = () => {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
-  // Remove the /api/v1 part to get the base server URL
-  return apiBaseUrl.replace('/api/v1', '');
+
+  try {
+    // If it's a full URL, parse it properly
+    if (apiBaseUrl.startsWith('http')) {
+      const url = new URL(apiBaseUrl);
+      
+      // If the pathname ends with /api/v1, remove it
+      if (url.pathname.includes('/api/v1')) {
+        const baseUrl = `${url.protocol}//${url.host}`;
+        const pathBeforeApi = url.pathname.split('/api/v1')[0];
+        return `${baseUrl}${pathBeforeApi}`.replace(/\/$/, ""); // Remove trailing slash
+      }
+      
+      // If no /api/v1 in pathname, return the base URL up to the host
+      return `${url.protocol}//${url.host}${url.pathname}`.replace(/\/$/, "");
+    }
+    // If it's a relative path
+    else {
+      if (apiBaseUrl.includes('/api/v1')) {
+        return apiBaseUrl.split('/api/v1')[0].replace(/\/$/, "");
+      }
+      return apiBaseUrl.replace(/\/$/, "");
+    }
+  } catch (e) {
+    console.error('Error parsing API base URL:', e);
+    return apiBaseUrl.split('/api/v1')[0].replace(/\/$/, "");
+  }
 };
 
 // Helper function to get the correct image URL
 export const getImageUrl = (imageObj) => {
   if (!imageObj) return '';
-  
+
   const serverBaseUrl = getServerBaseUrl();
-  
+
+  // Helper to ensure path starts with / and combine with base
+  const combineWithBase = (path) => {
+    if (!path) return '';
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    // Special case for uploads directory - ensure it's prefixed if it looks like a filename
+    const finalPath = (cleanPath.startsWith('/uploads/') || cleanPath.startsWith('http')) 
+      ? cleanPath 
+      : `/uploads${cleanPath}`;
+    
+    if (finalPath.startsWith('http')) return finalPath;
+    
+    return `${serverBaseUrl}${finalPath}`.replace(/([^:]\/)\/+/g, '$1');
+  };
+
   if (typeof imageObj === 'string') {
-    return imageObj.startsWith('http') ? imageObj : `${serverBaseUrl}${imageObj}`;
+    // If it's already a complete URL
+    if (imageObj.startsWith('http') || imageObj.startsWith('https')) {
+      try {
+        const urlObj = new URL(imageObj);
+        // If it's from our server (contains /uploads/), normalize it to current server base
+        if (urlObj.pathname.includes('/uploads/')) {
+          const uploadsPath = urlObj.pathname.substring(urlObj.pathname.indexOf('/uploads/'));
+          return combineWithBase(uploadsPath);
+        }
+        return imageObj; // Other external URLs
+      } catch (e) {
+        return imageObj;
+      }
+    }
+    return combineWithBase(imageObj);
   }
-  
-  if (imageObj.url) {
-    return imageObj.url.startsWith('http') 
-      ? imageObj.url 
-      : `${serverBaseUrl}${imageObj.url}`;
+
+  // Handle object
+  if (typeof imageObj === 'object') {
+    const url = imageObj.url || imageObj.publicId || imageObj.path || '';
+    if (!url) return '';
+    
+    if (typeof url === 'string') {
+      if (url.startsWith('http') || url.startsWith('https')) {
+        try {
+          const urlObj = new URL(url);
+          if (urlObj.pathname.includes('/uploads/')) {
+            const uploadsPath = urlObj.pathname.substring(urlObj.pathname.indexOf('/uploads/'));
+            return combineWithBase(uploadsPath);
+          }
+          return url;
+        } catch (e) {
+          return url;
+        }
+      }
+      return combineWithBase(url);
+    }
   }
-  
   return '';
 };
 

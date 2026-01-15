@@ -24,7 +24,7 @@ const feedRoute = require("./routes/feedRoute");
 const reportsRoute = require("./routes/reportsRoute");
 const messagesRoute = require("./routes/messagesRoute");
 const analyticsRoute = require("./routes/analyticsRoute");
-const globalErrorHandler = require("./utils/errorHandler");
+const { globalErrorHandler } = require("./utils/errorHandler");
 const logger = require("./utils/logger");
 require("./config/passport");
 

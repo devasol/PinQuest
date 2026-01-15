@@ -506,7 +506,7 @@ const updatePost = async (req, res) => {
     }
 
     // Process uploaded images using utility
-    let { image, imagesArr } = processUploadedImages(req, req.protocol, req.get("host"));
+    let { image, imagesArr } = processUploadedImages(req, req.protocol, req);
     
     // Add image links if provided in the request body
     if (req.body.imageLinks) {
@@ -979,6 +979,8 @@ const addComment = async (req, res) => {
 
     post.comments.unshift(newComment);
     await post.save();
+    
+    const addedComment = post.comments[0];
 
     // Log activity
     try {
@@ -986,7 +988,7 @@ const addComment = async (req, res) => {
         userId: req.user._id,
         action: 'commented on post',
         targetType: 'comment',
-        targetId: newComment._id, // Using newComment._id which will be set by MongoDB
+        targetId: addedComment._id, // Using newComment._id which will be set by MongoDB
         targetTitle: text.substring(0, 50) + (text.length > 50 ? '...' : ''), // First 50 chars of comment
         metadata: {
           commentText: text,
@@ -1002,24 +1004,29 @@ const addComment = async (req, res) => {
       // Don't fail the main request if activity logging fails
     }
 
-    // Populate the user info for the returned comment
-    const populatedPost = await Post.findById(postId).populate({
-      path: "comments.user",
-      select: "name _id", // Standardize to name and _id
-    });
-
-    const addedComment = populatedPost.comments[0]; // First comment is the newly added one
+    // Create a response object for the comment that includes user details
+    const commentForResponse = {
+      ...addedComment.toObject(),
+      user: {
+        _id: req.user._id,
+        name: req.user.name,
+      },
+    };
 
     // Create notification for the post owner
+    // Handle case where postedBy is just an ID or a populated object
+    const postOwnerId = post.postedBy?._id || post.postedBy;
+
     if (
-      post.postedBy &&
-      post.postedBy._id &&
-      post.postedBy._id.toString() !== req.user._id.toString()
+      postOwnerId &&
+      req.user &&
+      req.user._id &&
+      postOwnerId.toString() !== req.user._id.toString()
     ) {
       await createCommentNotification(
         post._id,
         req.user._id,
-        post.postedBy._id,
+        postOwnerId,
         text
       );
     }
@@ -1029,13 +1036,13 @@ const addComment = async (req, res) => {
     if (io) {
       emitToPost(io, post._id, "newComment", {
         postId: post._id,
-        comment: addedComment,
+        comment: commentForResponse,
         message: "A new comment was added",
       });
     }
 
     sendSuccessResponse(res, 201, {
-      comment: addedComment,
+      comment: commentForResponse,
     });
   } catch (error) {
     console.error("Error adding comment:", error);

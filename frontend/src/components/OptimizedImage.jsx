@@ -29,10 +29,10 @@ const optimizeImageUrl = (src, width = null, height = null) => {
   }
 };
 
-const OptimizedImage = ({ 
-  src, 
-  alt, 
-  className = '', 
+const OptimizedImage = ({
+  src,
+  alt,
+  className = '',
   wrapperClassName = '',
   fallbackSrc = 'https://via.placeholder.com/400x300/cccccc/666666?text=Image+Not+Loaded',
   loading = 'lazy',
@@ -42,7 +42,7 @@ const OptimizedImage = ({
   priority = false,
   onLoad,
   onError,
-  ...props 
+  ...props
 }) => {
   const [imgSrc, setImgSrc] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,16 +57,26 @@ const OptimizedImage = ({
     // Reset states when src changes
     setIsLoading(true);
     setHasError(false);
-    
-    if (priority || loading === 'eager') {
-      setImgSrc(optimizedSrc);
-      setIsInView(true);
+
+    if (priority || loading === 'eager' || !src) {
+      // For eager loading or when no src is provided, set the image immediately
+      if (src) {
+        setImgSrc(optimizedSrc);
+        setIsInView(true);
+      }
     } else if (src) {
       // For lazy loading, we set the src when the image comes into view
       setIsInView(false);
       setImgSrc(null);
     }
   }, [src, optimizedSrc, priority, loading]);
+
+  // Debug logging to help troubleshoot image loading issues
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('OptimizedImage debug:', { src, optimizedSrc, imgSrc });
+    }
+  }, [src, optimizedSrc, imgSrc]);
 
   const handleLoad = useCallback((e) => {
     setIsLoading(false);
@@ -87,12 +97,15 @@ const OptimizedImage = ({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting || entry.intersectionRatio > 0) {
           setIsInView(true);
           setImgSrc(optimizedSrc); // Load the image when it comes into view
         }
       },
-      { threshold: 0.1, rootMargin: '50px' }
+      {
+        threshold: 0.1,
+        rootMargin: '50px'
+      }
     );
 
     if (imgRef.current) {
@@ -108,13 +121,13 @@ const OptimizedImage = ({
 
   // Determine what to show
   const shouldShowImage = imgSrc && !hasError;
-  const showPlaceholder = !imgSrc && !hasError && src; // When image hasn't loaded yet but src exists
+  const showPlaceholder = (!imgSrc && !hasError && src) || (priority && isLoading && !hasError); // When image hasn't loaded yet but src exists
   const showFallback = hasError;
 
   return (
-    <div 
+    <div
       ref={imgRef}
-      className={`relative ${wrapperClassName || className}`} 
+      className={`relative ${wrapperClassName || className}`}
       style={{ position: 'relative' }}
     >
       {/* Always show a container with appropriate background */}
@@ -129,12 +142,12 @@ const OptimizedImage = ({
             </div>
           </div>
         )}
-        
+
         {/* Show the actual image when loaded */}
         {shouldShowImage && (
           <img
             src={imgSrc}
-            alt={alt}
+            alt={alt || 'Post image'}
             className={`w-full h-full object-cover transition-opacity duration-500 ${
               isLoading ? 'opacity-0' : 'opacity-100'
             }`}
@@ -144,7 +157,7 @@ const OptimizedImage = ({
             {...props}
           />
         )}
-        
+
         {/* Show fallback message and icon when there's an error */}
         {showFallback && (
           <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex flex-col items-center justify-center p-4">

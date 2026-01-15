@@ -24,7 +24,7 @@ const feedRoute = require("./routes/feedRoute");
 const reportsRoute = require("./routes/reportsRoute");
 const messagesRoute = require("./routes/messagesRoute");
 const analyticsRoute = require("./routes/analyticsRoute");
-const globalErrorHandler = require("./utils/errorHandler");
+const { globalErrorHandler } = require("./utils/errorHandler");
 const logger = require("./utils/logger");
 const { healthCheck, livenessCheck, readinessCheck, getMetrics } = require('./controllers/healthController');
 require("./config/passport");
@@ -34,6 +34,7 @@ const server = http.createServer(app);
 
 // Security Headers
 app.use(helmet({
+  crossOriginOpenerPolicy: false,
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -190,7 +191,7 @@ try {
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
-  app.use("/uploads", express.static(uploadsDir));
+  app.use("/uploads", cors(), express.static(uploadsDir));
 } catch (e) {
   console.error(
     "Failed to ensure uploads directory exists or mount static:",

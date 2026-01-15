@@ -3,8 +3,9 @@ import PostWindow from './components/PostWindow/PostWindow';
 import { useAuth } from './contexts/AuthContext';
 
 const TestPostWindow = () => {
-  const { currentUser, authToken } = useAuth();
-  
+  const { user, isAuthenticated } = useAuth();
+  const authToken = isAuthenticated ? localStorage.getItem('token') : null;
+
   // Sample post data for testing
   const samplePost = {
     _id: 'test-post-1',
@@ -13,20 +14,20 @@ const TestPostWindow = () => {
     category: 'Nature',
     image: {
       url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
-      public_id: 'sample-image'
+      publicId: 'sample-image'
     },
     images: [
       {
         url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
-        public_id: 'sample-image1'
+        publicId: 'sample-image1'
       },
       {
         url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
-        public_id: 'sample-image2'
+        publicId: 'sample-image2'
       },
       {
         url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
-        public_id: 'sample-image3'
+        publicId: 'sample-image3'
       }
     ],
     postedBy: {
@@ -83,8 +84,9 @@ const TestPostWindow = () => {
         {/* Test PostWindow */}
         <PostWindow
           post={samplePost}
-          currentUser={currentUser}
+          currentUser={user}
           authToken={authToken}
+          isAuthenticated={isAuthenticated}
           isOpen={isPostWindowOpen}
           onClose={handleClosePostWindow}
           onLike={handleLike}

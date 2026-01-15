@@ -14,6 +14,7 @@ import AdminNotificationsRoute from "../pages/AdminDashboard/AdminNotificationsR
 import AdminProtectedRoute from "../components/Admin/AdminProtectedRoute";
 import EmailVerification from "../components/EmailVerification";
 import ResetPasswordPage from "../pages/ResetPasswordPage/ResetPasswordPage";
+import TestPostWindow from "../TestPostWindow";
 
 const router = createBrowserRouter([
   {
@@ -39,6 +40,11 @@ const router = createBrowserRouter([
   {
     element: <ProfilePage />,
     path: "/dashboard",
+    // error:</>
+  },
+  {
+    element: <TestPostWindow />,
+    path: "/test-post-window",
     // error:</>
   },
   {

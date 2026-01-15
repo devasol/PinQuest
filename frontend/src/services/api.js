@@ -2,7 +2,7 @@
 import { toast } from 'react-toastify';
 
 // API base URL - should be consistent across the application
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 // Create a base API service with common functionality
 class ApiService {
@@ -32,7 +32,8 @@ class ApiService {
       const errorMessage = errorData.message || `HTTP error ${response.status}`;
       
       // Show toast notification for errors except 404 for user not found (which is common in comments)
-      if (response.status !== 404 || !response.url.includes('/users/')) {
+      // Also avoid showing toast for comment-related errors to prevent UI clutter
+      if ((response.status !== 404 || !response.url.includes('/users/')) && !response.url.includes('/comments')) {
         toast.error(errorMessage);
       }
       
@@ -50,14 +51,14 @@ class ApiService {
     try {
       // Create a timeout promise to prevent requests from hanging indefinitely
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 60000); // 60 second timeout
+        setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout for GET requests
       });
-      
+
       const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'GET',
         headers: this.getAuthHeaders(authToken),
       });
-      
+
       // Race the request with a timeout
       const response = await Promise.race([requestPromise, timeoutPromise]);
       return await this.handleResponse(response);
@@ -65,11 +66,15 @@ class ApiService {
       // Only show toast error if it's not a timeout error
       if (error.message !== 'Request timeout') {
         // Show toast notification for network errors except when fetching user data for comments
-        if (!endpoint.includes('/users/')) {
+        if (!endpoint.includes('/users/') && !endpoint.includes('/comments')) {
           toast.error('Network error occurred');
         }
+        console.error('Network error occurred:', error);
       } else {
-        toast.error('Request timed out. Please try again.');
+        // Don't show toast for timeout errors in comments to avoid UI clutter
+        if (!endpoint.includes('/comments')) {
+          toast.error('Request timed out. Please try again.');
+        }
         console.error('Request timeout error:', error);
       }
       return { success: false, error: error.message };
@@ -81,24 +86,31 @@ class ApiService {
     try {
       // Create a timeout promise to prevent requests from hanging indefinitely
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 60000); // 60 second timeout
+        setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout for POST requests
       });
-      
+
       const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'POST',
         headers: this.getAuthHeaders(authToken),
         body: JSON.stringify(data),
       });
-      
+
       // Race the request with a timeout
       const response = await Promise.race([requestPromise, timeoutPromise]);
       return await this.handleResponse(response);
     } catch (error) {
       // Only show toast error if it's not a timeout error
       if (error.message !== 'Request timeout') {
-        toast.error('Network error occurred');
+        // Don't show toast for comment-related network errors to avoid UI clutter
+        if (!endpoint.includes('/comments')) {
+          toast.error('Network error occurred');
+        }
+        console.error('Network error occurred:', error);
       } else {
-        toast.error('Request timed out. Please try again.');
+        // Don't show toast for timeout errors in comments to avoid UI clutter
+        if (!endpoint.includes('/comments')) {
+          toast.error('Request timed out. Please try again.');
+        }
         console.error('Request timeout error:', error);
       }
       return { success: false, error: error.message };
@@ -110,15 +122,15 @@ class ApiService {
     try {
       // Create a timeout promise to prevent requests from hanging indefinitely
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 60000); // 60 second timeout
+        setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout for PUT requests
       });
-      
+
       const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'PUT',
         headers: this.getAuthHeaders(authToken),
         body: JSON.stringify(data),
       });
-      
+
       // Race the request with a timeout
       const response = await Promise.race([requestPromise, timeoutPromise]);
       return await this.handleResponse(response);
@@ -139,15 +151,15 @@ class ApiService {
     try {
       // Create a timeout promise to prevent requests from hanging indefinitely
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 60000); // 60 second timeout
+        setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout for PATCH requests
       });
-      
+
       const requestPromise = fetch(`${this.baseURL}${endpoint}`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(authToken),
         body: JSON.stringify(data),
       });
-      
+
       // Race the request with a timeout
       const response = await Promise.race([requestPromise, timeoutPromise]);
       return await this.handleResponse(response);
@@ -316,9 +328,13 @@ export const postApi = {
   getRatings: (postId, authToken) => apiService.get(`/posts/${postId}/ratings`, authToken),
   
   // Add comment
-  addComment: (postId, commentData, authToken) => 
+  addComment: (postId, commentData, authToken) =>
     apiService.post(`/posts/${postId}/comments`, commentData, authToken),
-  
+
+  // Get comments for a post
+  getComments: (postId, authToken) =>
+    apiService.get(`/posts/${postId}/comments`, authToken),
+
   // Search posts
   searchPosts: (query, category, limit = 10, page = 1) => 
     apiService.get(`/posts/search?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&limit=${limit}&page=${page}`),

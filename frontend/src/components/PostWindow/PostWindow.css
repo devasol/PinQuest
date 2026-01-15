@@ -1,241 +1,142 @@
-/* Modern PostWindow Component Styles */
+/* Amazing Font Styles for PostWindow Component */
 
-/* Rating styles */
-.post-window-rating {
-  display: flex;
-  gap: 0.25rem;
+/* Import amazing fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Apply amazing fonts to the entire PostWindow */
+.amazing-post-window {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
-.post-window-rating-star {
-  color: #d1d5db;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.post-window-rating-star.active {
-  color: #fbbf24;
-}
-
-.post-window-rating-star:hover {
-  transform: scale(1.2);
-}
-
-/* Modern button styling */
-.post-window-action {
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.post-window-action::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.5s ease;
-}
-
-.post-window-action:hover::before {
-  transform: translateX(100%);
-}
-
-/* Enhanced responsive adjustments for Post Window */
-@media (max-width: 1200px) {
-  .post-window-container {
-    max-width: 90%;
-    margin: 1rem auto;
-  }
-}
-
-@media (max-width: 1024px) {
-  .post-window-container {
-    max-width: 95%;
-    margin: 0.75rem;
-  }
-  
-  .post-window-image-container {
-    max-height: 35vh !important;
-  }
-  
-  .post-window-title {
-    font-size: 1.75rem !important;
-  }
+/* Title styling */
+.amazing-post-window-title {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 @media (max-width: 768px) {
-  .post-window-container {
-    max-width: 98%;
-    margin: 0.5rem;
-    max-height: 95vh;
-  }
-  
-  .post-window-image-container {
-    height: 250px !important;
-    max-height: 40vh !important;
-  }
-  
-  .post-window-content {
-    padding: 1rem;
-  }
-  
-  .post-window-title {
-    font-size: 1.5rem !important;
-  }
-  
-  .post-window-actions {
-    padding: 1rem;
-  }
-  
-  .post-window-actions > div {
-    flex-direction: column;
-    gap: 0.75rem;
+  .amazing-post-window-title {
+    font-size: 1.5rem;
   }
 }
 
 @media (max-width: 480px) {
-  .post-window-container {
-    max-width: 100%;
-    margin: 0;
-    height: 100vh;
-    max-height: 100vh;
-    border-radius: 0;
-  }
-  
-  .post-window-image-container {
-    height: 200px !important;
-    max-height: 35vh !important;
-  }
-  
-  .post-window-content {
-    padding: 0.75rem;
-  }
-  
-  .post-window-title {
-    font-size: 1.25rem !important;
-    margin-bottom: 0.75rem !important;
-  }
-  
-  .post-window-actions {
-    padding: 0.75rem;
-  }
-}
-
-@media (max-height: 800px) {
-  .post-window-image-container {
-    max-height: 30vh !important;
-  }
-  
-  .post-window-content {
-    padding: 0.75rem;
-  }
-}
-
-@media (max-height: 600px) {
-  .post-window-image-container {
-    max-height: 25vh !important;
-    height: 180px;
-  }
-  
-  .post-window-content {
-    padding: 0.5rem;
-  }
-  
-  .post-window-actions {
-    padding: 0.5rem;
-  }
-}
-
-/* Responsive adjustments for Post Window on large screens */
-@media (min-width: 1280px) {
-  .post-window-image-container {
-    height: 320px;
-  }
-  
-  .post-window-content {
-    padding: 1.5rem;
-  }
-}
-
-@media (min-width: 1536px) {
-  .post-window-image-container {
-    height: 380px;
-  }
-  
-  .post-window-content {
-    padding: 1.75rem;
-  }
-}
-
-/* Extra small height devices */
-@media (max-height: 450px) {
-  .post-window-image-container {
-    max-height: 20vh !important;
-    height: 120px;
-  }
-  
-  .post-window-container {
-    max-height: 95vh;
-  }
-  
-  .post-window-content {
-    padding: 0.5rem;
-  }
-  
-  .post-window-title {
+  .amazing-post-window-title {
     font-size: 1.25rem;
   }
-  
-  .post-window-actions {
-    padding: 0.5rem;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-  }
-  
-  .post-window-rating-star {
-    width: 16px !important;
-    height: 16px !important;
+}
+
+/* Description styling */
+.amazing-post-window-description {
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .amazing-post-window-description {
+    font-size: 1rem;
   }
 }
 
-/* Landscape mobile adjustments */
-@media (max-height: 500px) and (orientation: landscape) and (max-width: 768px) {
-  .post-window-container {
-    max-height: 90vh;
-  }
-  
-  .post-window-image-container {
-    height: 180px;
-  }
-  
-  .post-window-content {
-    padding: 0.5rem;
-    overflow-y: auto;
-  }
+/* Category badge styling */
+.amazing-post-window-category {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-/* High DPI screen optimizations */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .post-window-container {
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: crisp-edges;
-  }
+/* Location text styling */
+.amazing-post-window-location-text {
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
-/* Touch device optimizations */
-@media (hover: none) and (pointer: coarse) {
-  .post-window-rating-star {
-    min-width: 24px;
-    min-height: 24px;
-    padding: 0.25rem;
-  }
-  
-  .post-window-actions button {
-    min-height: 44px;
-  }
+/* Location address styling */
+.amazing-post-window-location-address {
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 0.9rem;
+}
+
+/* Rating text styling */
+.amazing-post-window-rating-text {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Comment input styling */
+.amazing-post-window-comment-input {
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1rem;
+}
+
+/* Button text styling */
+.amazing-post-window-button-text {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* Label text styling */
+.amazing-post-window-label {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* User name styling */
+.amazing-post-window-user-name {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Date styling */
+.amazing-post-window-date {
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 0.85rem;
+}
+
+/* Comment text styling */
+.amazing-post-window-comment-text {
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1rem;
+}
+
+/* Comment date styling */
+.amazing-post-window-comment-date {
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 0.8rem;
+}
+
+/* Additional info labels */
+.amazing-post-window-info-label {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Additional info values */
+.amazing-post-window-info-value {
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Modal header text */
+.amazing-post-window-modal-header {
+  font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Comment item text */
+.amazing-post-window-comment-item {
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 1rem;
 }

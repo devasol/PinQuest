@@ -19,7 +19,7 @@ const processUploadedImages = (req, protocol, host) => {
   // Handle multiple file uploads
   if (req.files && Array.isArray(req.files) && req.files.length > 0) {
     for (const file of req.files) {
-      const processedImage = processImageFile(file, protocol, host);
+      const processedImage = processImageFile(file, protocol, req);
       if (processedImage) {
         imagesArr.push(processedImage);
       }
@@ -27,15 +27,15 @@ const processUploadedImages = (req, protocol, host) => {
 
     // Keep first image in `image` for backward compatibility
     if (imagesArr.length > 0) image = imagesArr[0];
-  } 
+  }
   // Handle single file upload
   else if (req.file) {
-    const processedImage = processImageFile(req.file, protocol, host);
+    const processedImage = processImageFile(req.file, protocol, req);
     if (processedImage) {
       image = processedImage;
       imagesArr = [image];
     }
-  } 
+  }
   // Handle image provided in request body as URL (for backward compatibility)
   else if (req.body.image) {
     image = { url: req.body.image, publicId: null };
@@ -48,28 +48,32 @@ const processUploadedImages = (req, protocol, host) => {
  * Process a single uploaded file
  * @param {Object} file - Multer file object
  * @param {string} protocol - Request protocol (http/https)
- * @param {string} host - Request host
+ * @param {Object} req - Express request object (to get proper host with port)
  * @returns {Object|null} Processed image object or null if invalid
  */
-const processImageFile = (file, protocol, host) => {
+const processImageFile = (file, protocol, req) => {
   try {
-    // If file object contains a remote URL (kept for backward compatibility)
-    if (file && typeof file === 'object') {
-      if (file.secure_url || file.url || file.location || (file.path && String(file.path).startsWith('http'))) {
-        const url = file.secure_url || file.url || file.path || file.location;
+    if (!file) return null;
+
+    // If file object contains a remote URL (Cloudinary, etc.)
+    if (typeof file === 'object') {
+      const url = file.secure_url || file.url || file.location || (typeof file.path === 'string' && file.path.startsWith('http') ? file.path : null);
+      if (url) {
         const publicId = file.public_id || file.publicId || file.filename || null;
         return { url, publicId };
       }
 
-      // If multer wrote a local file to disk, use that local path and construct an accessible URL
-      if (file.path && !String(file.path).startsWith('http')) {
+      // If multer wrote a local file to disk
+      if (file.path && typeof file.path === 'string' && !file.path.startsWith('http')) {
         const filename = path.basename(file.path);
-        const url = `${protocol}://${host}/uploads/${filename}`;
+        // Use a relative URL for flexibility, or construct absolute if needed
+        // The frontend will normalize this anyway with getImageUrl
+        const fullHost = req && typeof req.get === 'function' ? (req.get('host') || req.headers.host) : 'localhost:5000';
+        const url = `${protocol || 'http'}://${fullHost}/uploads/${filename}`.replace(/([^:]\/)\/+/g, '$1');
         return { url, filename, localPath: file.path };
       }
     }
 
-    // Unsupported file object
     return null;
   } catch (uploadError) {
     console.error('Error processing uploaded file:', uploadError);

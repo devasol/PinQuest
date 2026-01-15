@@ -181,14 +181,21 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             return updatedComment;
           });
           
-          setComments(loadedComments);
+          // Filter out any optimistic comments that have been replaced by server data
+          setComments(prevComments => {
+            const serverCommentIds = new Set(loadedComments.map(c => c._id));
+            const optimisticNotReplaced = prevComments.filter(
+              c => c.isOptimistic && !serverCommentIds.has(c._id)
+            );
+            return [...loadedComments, ...optimisticNotReplaced];
+          });
           
           // Store in local storage for persistence
           const localStorageKey = `post_${postId}_ratings`;
           
           // Store fresh server data in localStorage (without optimistic updates to avoid duplication)
           const dataToStore = {
-            comments: loadedComments,
+            comments: loadedComments.filter(c => !c.isOptimistic),
             averageRating: average,
             totalRatings: total,
             userRating: currentUserRating
@@ -337,6 +344,7 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
     }
   };
 
+
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!authState || !user || !comment.trim()) {
@@ -345,113 +353,51 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
     }
 
     setCommentSubmitting(true);
+
+    // Optimistic update
+    const optimisticComment = {
+      _id: `optimistic_${Date.now()}`,
+      text: comment.trim(),
+      user: { name: user.name || user.displayName || 'You' },
+      date: new Date().toISOString(),
+      likesCount: 0,
+      likes: [],
+      userHasLiked: false,
+      isOptimistic: true // Flag to identify the optimistic comment
+    };
+
+    setComments(prevComments => [...prevComments, optimisticComment]);
+    setComment('');
+    
     try {
       const token = localStorage.getItem('token');
-      
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      // Submit the comment using the API service
-      const result = await postApi.addComment(postId, { 
-        content: comment.trim(),
-      }, token);
+      const result = await postApi.addComment(postId, { content: optimisticComment.text }, token);
 
-      let newComment;
-      let updatedComments;
-
-      if (result.success && result.data && result.data.comment) {
-        // Add the new comment to the list from response - handle different data structures
-        // Ensure the user object has proper name structure for display
-        const commentUser = result.data.comment.user;
-        let displayName = 'Anonymous';
-        
-        // Extract name from the returned user object
-        if (commentUser && typeof commentUser === 'object') {
-          if (commentUser.name) {
-            displayName = commentUser.name;
-          } else if (commentUser.displayName) {
-            displayName = commentUser.displayName;
-          } else if (commentUser.firstName && commentUser.lastName) {
-            displayName = `${commentUser.firstName} ${commentUser.lastName}`;
-          } else if (commentUser.firstName) {
-            displayName = commentUser.firstName;
-          } else if (commentUser.lastName) {
-            displayName = commentUser.lastName;
-          } else if (commentUser.email) {
-            displayName = commentUser.email.split('@')[0];
-          } else if (commentUser.username) {
-            displayName = commentUser.username;
-          }
-        }
-        
-        newComment = {
-          ...result.data.comment,
-          _id: result.data.comment._id || result.data.comment.id,
-          text: result.data.comment.text || result.data.comment.content,
-          user: { 
-            name: displayName 
-          },
-          date: result.data.comment.date || result.data.comment.createdAt || result.data.comment.datePosted || new Date().toISOString(),
-          likesCount: result.data.comment.likesCount || (result.data.comment.likes && Array.isArray(result.data.comment.likes) ? result.data.comment.likes.length : 0) || 0,
-          likes: result.data.comment.likes || [],
-          userHasLiked: false // New comment by user hasn't been liked by the same user yet
-        };
+      if (result.success && result.data?.comment) {
+        // Replace optimistic comment with the real one from the server
+        setComments(prevComments =>
+          prevComments.map(c =>
+            c._id === optimisticComment._id ? { ...result.data.comment, user: { name: result.data.comment.user.name || result.data.comment.user.username } } : c
+          )
+        );
+        setError(null);
       } else {
-        // If submission fails, create locally
-        let displayName = 'Anonymous';
-        if (user && typeof user === 'object') {
-          if (user.name) {
-            displayName = user.name;
-          } else if (user.displayName) {
-            displayName = user.displayName;
-          } else if (user.firstName && user.lastName) {
-            displayName = `${user.firstName} ${user.lastName}`;
-          } else if (user.firstName) {
-            displayName = user.firstName;
-          } else if (user.lastName) {
-            displayName = user.lastName;
-          } else if (user.email) {
-            displayName = user.email.split('@')[0];
-          }
-        }
-        
-        newComment = {
-          _id: `new_comment_${Date.now()}`,
-          text: comment.trim(),
-          user: { name: displayName },
-          date: new Date().toISOString(),
-          likesCount: 0,
-          likes: [],
-          userHasLiked: false // New comment by user hasn't been liked by the same user yet
-        };
+        throw new Error(result.error || 'Failed to submit comment. Please try again.');
       }
-
-      updatedComments = [...comments, newComment];
-      setComments(updatedComments);
-      setComment('');
-      setError(null);
-
-      // Save to local storage to persist after refresh
-      const localStorageKey = `post_${postId}_ratings`;
-      const currentStored = JSON.parse(localStorage.getItem(localStorageKey) || '{}');
-      const dataToStore = {
-        comments: updatedComments,
-        averageRating: currentStored.averageRating || averageRating,
-        totalRatings: currentStored.totalRatings || totalRatings
-      };
-      localStorage.setItem(localStorageKey, JSON.stringify(dataToStore));
-      
-      // The useEffect will handle refreshing the data periodically
-      // Don't call refreshComments() immediately to avoid UI flickering
-
     } catch (err) {
-      setError(err.message || 'Failed to submit comment');
+      // Revert optimistic update on failure
+      setError(err.message || 'Failed to submit comment. Please try again.');
+      setComments(prevComments => prevComments.filter(c => c._id !== optimisticComment._id));
       console.error('Error submitting comment:', err);
     } finally {
       setCommentSubmitting(false);
     }
   };
+
 
   // Function to refresh comments from server
   const refreshComments = async () => {
@@ -575,14 +521,21 @@ const RatingsAndComments = ({ postId, isAuthenticated: authState, user }) => {
             return updatedComment;
           });
           
-          setComments(loadedComments);
+          // Filter out any optimistic comments that have been replaced by server data
+          setComments(prevComments => {
+            const serverCommentIds = new Set(loadedComments.map(c => c._id));
+            const optimisticNotReplaced = prevComments.filter(
+              c => c.isOptimistic && !serverCommentIds.has(c._id)
+            );
+            return [...loadedComments, ...optimisticNotReplaced];
+          });
           
           // Store in local storage for persistence
           const localStorageKey = `post_${postId}_ratings`;
           
           // Store fresh server data in localStorage (without optimistic updates to avoid duplication)
           const dataToStore = {
-            comments: loadedComments,
+            comments: loadedComments.filter(c => !c.isOptimistic),
             averageRating: average,
             totalRatings: total,
             userRating: currentUserRating

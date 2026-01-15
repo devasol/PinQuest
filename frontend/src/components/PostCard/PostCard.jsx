@@ -37,7 +37,7 @@ const PostCard = ({ post, currentUser, authToken, isAuthenticated, onLike, onCom
           {post.postedBy?.avatar ? (
             <div className="w-10 h-10 rounded-full overflow-hidden">
               <OptimizedImage
-                src={post.postedBy.avatar.url}
+                src={getImageUrl(post.postedBy.avatar)}
                 alt={post.postedBy.name}
                 className="w-full h-full object-cover"
               />
@@ -66,13 +66,13 @@ const PostCard = ({ post, currentUser, authToken, isAuthenticated, onLike, onCom
       </div>
 
       {/* Post Images - Handle both single image and multiple images */}
-      {post.image?.url || (post.images && post.images.length > 0) ? (
+      {(post.image || (post.images && post.images.length > 0)) ? (
         <div className="relative">
           {/* Display first image from multiple images or single image */}
           <div className="w-full h-64">
             <OptimizedImage
               src={getImageUrl(
-                post.images && post.images.length > 0
+                post.images && Array.isArray(post.images) && post.images.length > 0
                   ? post.images[0]
                   : post.image
               )}
@@ -81,7 +81,7 @@ const PostCard = ({ post, currentUser, authToken, isAuthenticated, onLike, onCom
             />
           </div>
           {/* Show image count indicator if there are multiple images */}
-          {post.images && post.images.length > 1 && (
+          {post.images && Array.isArray(post.images) && post.images.length > 1 && (
             <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
               {post.images.length} images
             </div>

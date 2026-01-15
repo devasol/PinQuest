@@ -19,6 +19,7 @@ import { useModal } from '../../contexts/ModalContext';
 import { connectSocket } from '../../services/socketService';
 import { postApi } from '../../services/api'; // Import the postApi to handle post creation
 import apiService from '../../services/api'; // Import the default apiService for direct upload functionality
+import { getImageUrl } from '../../utils/imageUtils'; // Import getImageUrl utility
 import Sidebar from '../Sidebar/Sidebar';
 import SearchBar from '../Search/SearchBar';
 
@@ -114,6 +115,7 @@ const DiscoverMain = () => {
     error: null,
     images: [] // Store selected image files
   });
+  const [searchQuery, setSearchQuery] = useState(''); // Track search query for filtering
 
   const handlePostCreationFormChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -1931,10 +1933,12 @@ const DiscoverMain = () => {
             <SearchBar
               placeholder="Search for places, locations, categories..."
               autoFocus
-              onSearchResults={(results) => {
+              onSearchResults={(results, query) => {
                 setFilteredPosts(results);
                 // Update the enhanced search results state
                 setEnhancedSearchResults(results);
+                // Update search query state
+                setSearchQuery(query || '');
               }}
               onLocationSelect={(post) => {
                 // Only navigate to the location without opening the post window
@@ -2438,7 +2442,7 @@ const DiscoverMain = () => {
                         {post.image && (
                           <div className="relative">
                             <img
-                              src={post.image}
+                              src={getImageUrl(post.image)}
                               alt={post.title}
                               className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                               onError={(e) => {
