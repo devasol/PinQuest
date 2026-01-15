@@ -1,6 +1,15 @@
 const nodemailer = require('nodemailer');
 const logger = require('./logger'); // Import logger for better error tracking
 
+// Helper function to format email 'from' field properly
+const formatFromAddress = (email) => {
+  if (!email) {
+    // Fallback to a default email if none is provided
+    return '"PinQuest" <noreply@pinquest.com>';
+  }
+  return `"PinQuest" <${email}>`;
+};
+
 /**
  * Create a reusable transporter object using the default SMTP transport
  */
@@ -82,8 +91,9 @@ const sendVerificationEmail = async (email, verificationCode) => {
     }
 
     // Define email options
+    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_EMAIL;
     const mailOptions = {
-      from: process.env.SMTP_FROM_EMAIL || process.env.SMTP_EMAIL,
+      from: formatFromAddress(fromEmail),
       to: email,
       subject: 'Email Verification Code - PinQuest',
       html: `
@@ -145,8 +155,9 @@ const sendVerificationReminderEmail = async (email, verificationCode) => {
     }
 
     // Define email options
+    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_EMAIL;
     const mailOptions = {
-      from: process.env.SMTP_FROM_EMAIL || process.env.SMTP_EMAIL,
+      from: formatFromAddress(fromEmail),
       to: email,
       subject: 'Verification Code Reminder - PinQuest',
       html: `
@@ -247,8 +258,9 @@ const sendPasswordResetEmail = async (email, otpOrUrl, isOtp = false) => {
     `;
 
     // Define email options
+    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_EMAIL;
     const mailOptions = {
-      from: process.env.SMTP_FROM_EMAIL || process.env.SMTP_EMAIL,
+      from: formatFromAddress(fromEmail),
       to: email,
       subject: isOtp ? 'Your Password Reset OTP - PinQuest' : 'Password Reset Request - PinQuest',
       html: htmlContent,

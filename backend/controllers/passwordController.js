@@ -29,9 +29,28 @@ const forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email: sanitizedEmail });
     console.log(`Forgot password request for: ${sanitizedEmail}. User found: ${!!user}`);
-    
+
     if (!user) {
       // Return success response even if user doesn't exist to prevent email enumeration
+      return res.status(200).json({
+        status: 'success',
+        message: 'Password reset email sent if user exists'
+      });
+    }
+
+    // Additional security checks: only allow verified, non-banned users
+    if (!user.isVerified) {
+      console.log(`Unverified user attempted password reset: ${user.email}`);
+      // Still return generic success to prevent enumeration
+      return res.status(200).json({
+        status: 'success',
+        message: 'Password reset email sent if user exists'
+      });
+    }
+
+    if (user.isBanned) {
+      console.log(`Banned user attempted password reset: ${user.email}`);
+      // Still return generic success to prevent enumeration
       return res.status(200).json({
         status: 'success',
         message: 'Password reset email sent if user exists'
@@ -47,9 +66,9 @@ const forgotPassword = async (req, res) => {
       .createHash('sha256')
       .update(otp)
       .digest('hex');
-    
+
     // Set OTP expiration (10 minutes for better security)
-    user.resetPasswordOTPExpires = Date.now() + 10 * 60 * 1000; 
+    user.resetPasswordOTPExpires = Date.now() + 10 * 60 * 1000;
 
     await user.save({ validateBeforeSave: false });
 
