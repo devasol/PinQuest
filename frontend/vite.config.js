@@ -6,7 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
-    outDir: './dist',
+    outDir: './build',
     sourcemap: false, // Disable sourcemaps in production
     minify: 'esbuild', // Use esbuild for faster minification, fallback to terser if needed
     rollupOptions: {
