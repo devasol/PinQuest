@@ -175,6 +175,15 @@ const createPost = async (req, res) => {
     }
 
     const newPost = new Post(postFields);
+    
+    // Log the images being saved to verify correctness
+    console.log("Saving post to DB. Image data:", {
+      imageId: req.user._id,
+      hasSingleImage: !!image,
+      singleImageUrl: image ? image.url : 'none',
+      imagesCount: imagesArr ? imagesArr.length : 0,
+      firstImageUrl: imagesArr && imagesArr.length > 0 ? imagesArr[0].url : 'none'
+    });
 
     const savedPost = await newPost.save();
 

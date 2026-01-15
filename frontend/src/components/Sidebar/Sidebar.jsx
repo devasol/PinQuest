@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, User, Settings, LogOut, Heart, Star, Bell, Compass, Layers, Minus, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { 
+  Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, 
+  User, Settings, LogOut, Heart, Star, Bell, Compass, Layers, 
+  Minus, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, 
+  LocateFixed, LayoutGrid, ScanSearch 
+} from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = ({
@@ -64,7 +69,7 @@ const Sidebar = ({
     {
       id: 'home',
       label: 'Home',
-      icon: Home,
+      icon: LayoutGrid,
       path: '/',
       requiresAuth: false,
       action: null,
@@ -74,7 +79,7 @@ const Sidebar = ({
     {
       id: 'search',
       label: 'Search',
-      icon: Search,
+      icon: ScanSearch,
       path: null,
       requiresAuth: false,
       action: () => setMobileBottomNavActive('search'),
@@ -84,7 +89,7 @@ const Sidebar = ({
     {
       id: 'categories',
       label: 'Explore',
-      icon: MapPin,
+      icon: Compass,
       path: '/discover',
       requiresAuth: false,
       action: () => {
@@ -135,7 +140,7 @@ const Sidebar = ({
     {
       id: 'my-location',
       label: 'Location',
-      icon: Navigation,
+      icon: LocateFixed,
       path: '/discover',
       requiresAuth: false,
       action: () => {
@@ -247,7 +252,6 @@ const Sidebar = ({
                     title={item.label}
                   >
                     <IconComponent className="bottom-nav-icon" />
-                    <span className="bottom-nav-label">{item.label}</span>
                   </button>
                 );
               })}
@@ -260,7 +264,6 @@ const Sidebar = ({
                   title="Login"
                 >
                   <User className="bottom-nav-icon" />
-                  <span className="bottom-nav-label">Login</span>
                 </Link>
               ) : (
                 <Link
@@ -269,7 +272,6 @@ const Sidebar = ({
                   title="Profile"
                 >
                   <User className="bottom-nav-icon" />
-                  <span className="bottom-nav-label">Profile</span>
                 </Link>
               )}
             </div>

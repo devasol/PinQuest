@@ -113,7 +113,8 @@ const DiscoverMain = () => {
     category: "general",
     loading: false,
     error: null,
-    images: [] // Store selected image files
+    images: [], // Store selected image files
+    imageLinks: [] // Store image URLs added via input
   });
   const [searchQuery, setSearchQuery] = useState(''); // Track search query for filtering
 
@@ -1659,6 +1660,13 @@ const DiscoverMain = () => {
         });
       }
 
+      // Add image links if any
+      if (postCreationForm.imageLinks && postCreationForm.imageLinks.length > 0) {
+        postCreationForm.imageLinks.forEach(link => {
+          formData.append('imageLinks', link);
+        });
+      }
+
       // Call the API to create the post
       const result = await apiService.upload('/posts', formData, token);
 
@@ -2199,8 +2207,8 @@ const DiscoverMain = () => {
 
           {/* Map-based Post Creation Overlay - Replaces Leaflet Popup to prevent flickering */}
           {creatingPostAt && (
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm z-[99999] flex items-center justify-center p-1 xs:p-2 sm:p-4">
-              <div className="bg-white rounded-lg xs:rounded-xl shadow-2xl overflow-hidden w-full max-w-full h-auto max-h-[95vh] sm:max-w-lg sm:max-h-[85vh] mt-16 sm:mt-20">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 sm:p-0">
+              <div className="w-full h-full max-w-lg max-h-[85vh] sm:max-h-[90vh] bg-transparent flex items-center justify-center pointer-events-auto">
                 <PostCreationForm
                   creatingPostAt={creatingPostAt}
                   postCreationForm={postCreationForm}
@@ -2439,10 +2447,10 @@ const DiscoverMain = () => {
                   >
                     <div className="p-3">
                       <div className="flex items-start gap-3">
-                        {post.image && (
+                        {(post.image || (post.images && post.images.length > 0)) && (
                           <div className="relative">
                             <img
-                              src={getImageUrl(post.image)}
+                              src={getImageUrl(post.image || (post.images && post.images.length > 0 ? post.images[0] : null))}
                               alt={post.title}
                               className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                               onError={(e) => {

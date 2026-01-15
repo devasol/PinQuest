@@ -40,13 +40,18 @@ export const getImageUrl = (imageObj) => {
   // Helper to ensure path starts with / and combine with base
   const combineWithBase = (path) => {
     if (!path) return '';
+    
+    // If it's already a full URL, return it
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+    }
+
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    // Special case for uploads directory - ensure it's prefixed if it looks like a filename
-    const finalPath = (cleanPath.startsWith('/uploads/') || cleanPath.startsWith('http')) 
+    
+    // Check if it already has /uploads prefix
+    const finalPath = cleanPath.startsWith('/uploads/') 
       ? cleanPath 
       : `/uploads${cleanPath}`;
-    
-    if (finalPath.startsWith('http')) return finalPath;
     
     return `${serverBaseUrl}${finalPath}`.replace(/([^:]\/)\/+/g, '$1');
   };

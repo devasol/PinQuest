@@ -66,10 +66,9 @@ const processImageFile = (file, protocol, req) => {
       // If multer wrote a local file to disk
       if (file.path && typeof file.path === 'string' && !file.path.startsWith('http')) {
         const filename = path.basename(file.path);
-        // Use a relative URL for flexibility, or construct absolute if needed
-        // The frontend will normalize this anyway with getImageUrl
-        const fullHost = req && typeof req.get === 'function' ? (req.get('host') || req.headers.host) : 'localhost:5000';
-        const url = `${protocol || 'http'}://${fullHost}/uploads/${filename}`.replace(/([^:]\/)\/+/g, '$1');
+        // Return relative path, let frontend handle the base URL
+        // identifying it as a local upload via the /uploads/ prefix
+        const url = `/uploads/${filename}`;
         return { url, filename, localPath: file.path };
       }
     }
