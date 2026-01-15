@@ -1400,7 +1400,7 @@ const DiscoverMain = () => {
 
 
   // Get directions to a location - now shows directions in the map itself
-  const getDirections = useCallback((position) => {
+  const getDirections = useCallback((target) => {
     if (!navigator.geolocation) {
       showModal({
         title: "Geolocation Not Supported",
@@ -1409,6 +1409,16 @@ const DiscoverMain = () => {
         confirmText: 'OK'
       });
       return;
+    }
+
+    // Extract position from target (could be position array or post object)
+    let position = target;
+    if (target && !Array.isArray(target)) {
+      if (target.position) {
+        position = target.position;
+      } else if (target.location && typeof target.location.latitude === 'number') {
+        position = [target.location.latitude, target.location.longitude];
+      }
     }
 
     // Validate the destination position before attempting to get user location
@@ -1767,12 +1777,16 @@ const DiscoverMain = () => {
         // Close the creation form
         setCreatingPostAt(null);
 
-        // Reset form loading state
-        setPostCreationForm(prev => ({
-          ...prev,
+        // Reset form to initial state
+        setPostCreationForm({
+          title: "",
+          description: "",
+          category: "general",
           loading: false,
-          error: null
-        }));
+          error: null,
+          images: [],
+          imageLinks: []
+        });
 
         // Fly to the new post location to show it on the map
         setTimeout(() => {

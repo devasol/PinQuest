@@ -33,14 +33,18 @@ const app = express();
 const server = http.createServer(app);
 
 // Security Headers
+// Security Headers
 app.use(helmet({
   crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resource loading (images)
+  crossOriginEmbedderPolicy: false, // Disable COEP to allow loading resources from other origins without explicit headers
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:", "http:"],
       scriptSrc: ["'self'", "https://*.cloudinary.com", "https://*.googleapis.com", "https://*.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https:", "http:", "https://*.wikimedia.org", "https://*.cloudinary.com"],
+      // Allow images from anywhere to ensure they load
+      imgSrc: ["'self'", "data:", "blob:", "https:", "http:", "*"],
       connectSrc: ["'self'", "https://*.cloudinary.com", "wss:", "ws:", process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL : "'self'"],
       fontSrc: ["'self'", "https:", "data:", "https://*.gstatic.com"],
       objectSrc: ["'none'"], // Disallow embedding plugins
@@ -65,6 +69,12 @@ app.use(helmet({
     action: 'deny' // Prevent embedding in frames
   }
 }));
+
+// Debug logging for uploads
+app.use('/uploads', (req, res, next) => {
+  console.log(`[Uploads Request] ${req.method} ${req.url}`);
+  next();
+});
 
 // Rate Limiting - Only enable in production
 if (process.env.NODE_ENV === 'production') {
@@ -191,7 +201,16 @@ try {
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
-  app.use("/uploads", cors(), express.static(uploadsDir));
+  
+  // Explicitly set headers for static files to avoid CORB/CORP blocking
+  app.use("/uploads", 
+    (req, res, next) => {
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      next();
+    },
+    cors(), 
+    express.static(uploadsDir)
+  );
 } catch (e) {
   console.error(
     "Failed to ensure uploads directory exists or mount static:",

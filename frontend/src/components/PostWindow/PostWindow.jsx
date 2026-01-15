@@ -14,6 +14,8 @@ import {
   Calendar,
   ExternalLink,
   ZoomIn,
+  Search,
+  Navigation,
   Send,
   MoreHorizontal
 } from "lucide-react";
@@ -128,8 +130,14 @@ const PostWindow = ({
     }
   };
 
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
+
   const handleRateAction = async (val) => {
     if (!authToken) return showAuthModal();
+    if (isRatingSubmitting) return;
+
+    setIsRatingSubmitting(true);
     try {
       const result = await postApi.addRating(currentPost._id, { rating: val }, authToken);
       if (result.success) {
@@ -141,9 +149,16 @@ const PostWindow = ({
           userRating: val
         }));
         onRate && onRate(currentPost._id, result.data?.averageRating, result.data?.totalRatings);
+        setSelectedRating(0);
       }
-    } catch(e) { console.error(e); }
+    } catch(e) { 
+      console.error(e); 
+    } finally {
+      setIsRatingSubmitting(false);
+    }
   };
+
+
 
   const handleAddComment = async (e) => {
     e?.preventDefault();
@@ -164,17 +179,17 @@ const PostWindow = ({
     setNewComment('');
 
     try {
-      const res = await postApi.addComment(currentPost._id, { text: tempComment.text }, authToken);
-      if (res.success && res.data?.data?.comment) {
-        // Replace temp with real
-        const realComment = res.data.data.comment;
-        setComments(prev => prev.map(c => c._id === tempId ? realComment : c));
+      const result = await postApi.addComment(currentPost._id, { text: newComment }, authToken);
+      if (result.success) {
+        // Replace temp comment with real one
+        setComments(prev => prev.map(c => c._id === tempId ? result.data : c));
       } else {
-        throw new Error("Failed");
+        // Rollback
+        setComments(prev => prev.filter(c => c._id !== tempId));
       }
-    } catch (err) {
-      setComments(prev => prev.filter(c => c._id !== tempId)); // Rollback
-      console.error(err);
+    } catch(e) {
+      console.error(e);
+      setComments(prev => prev.filter(c => c._id !== tempId));
     } finally {
       setAddingComment(false);
     }
@@ -336,21 +351,48 @@ const PostWindow = ({
 
                     {/* Interaction Dashboard */}
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="border border-gray-100 bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center gap-1 text-center hover:bg-gray-100 transition-colors">
-                         <div className="flex items-center gap-1">
+                      <div className="border border-gray-100 bg-gray-50 rounded-xl p-3 flex flex-col items-center justify-center gap-2 text-center hover:bg-gray-100 transition-colors relative group/rate">
+                         {/* Average Rating Display */}
+                         <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mb-0.5">
+                           Avg: <span className="text-gray-900 font-bold text-sm">{currentPost.averageRating?.toFixed(1) || '0.0'}</span> <span className="text-gray-300">({currentPost.totalRatings || 0})</span>
+                         </div>
+
+                         <div className="flex items-center gap-1 my-1">
                            {[1,2,3,4,5].map(star => (
                              <Star 
                                key={star} 
-                               className={`w-4 h-4 cursor-pointer transition-colors ${ star <= (hoverRating || rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-300' }`}
+                               className={`w-5 h-5 cursor-pointer transition-all active:scale-90 ${ 
+                                 star <= (hoverRating || selectedRating || rating) 
+                                   ? 'text-amber-400 fill-amber-400 scale-110' 
+                                   : 'text-gray-300' 
+                               }`}
                                onMouseEnter={() => setHoverRating(star)}
                                onMouseLeave={() => setHoverRating(0)}
-                               onClick={() => handleRateAction(star)}
+                               onClick={() => setSelectedRating(star)}
                              />
                            ))}
                          </div>
-                         <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                           {rating > 0 ? "You Verified This" : "Rate This Spot"}
-                         </span>
+                         
+                         {selectedRating > 0 ? (
+                           <button 
+                             onClick={() => handleRateAction(selectedRating)}
+                             disabled={isRatingSubmitting}
+                             className="w-full py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-bold uppercase tracking-wide hover:bg-emerald-600 transition-colors shadow-sm animate-in fade-in slide-in-from-bottom-2 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                           >
+                             {isRatingSubmitting ? (
+                               <>
+                                 <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                 {rating > 0 ? 'Updating...' : 'Rating...'}
+                               </>
+                             ) : (
+                               rating > 0 ? 'Update Rating' : 'Submit Rating'
+                             )}
+                           </button>
+                         ) : (
+                           <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                             {rating > 0 ? `Your Rating: ${rating}/5` : "Tap Stars to Rate"}
+                           </span>
+                         )}
                       </div>
 
                       <button 
@@ -369,6 +411,20 @@ const PostWindow = ({
                         </span>
                       </button>
                     </div>
+
+                    {/* Get Directions Button */}
+                    {currentPost.location && (
+                      <button 
+                        onClick={() => {
+                          onGetDirections && onGetDirections(currentPost.position || [currentPost.location.latitude, currentPost.location.longitude]);
+                          onClose();
+                        }}
+                        className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 text-white font-bold tracking-wide shadow-md shadow-blue-500/30 hover:shadow-lg hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                      >
+                        <Navigation className="w-5 h-5 fill-current" />
+                        <span>Get Directions</span>
+                      </button>
+                    )}
 
                     {/* Comments Section Header */}
                     <div className="border-t border-gray-100 pt-6">
