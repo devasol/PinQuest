@@ -138,7 +138,11 @@ app.use((req, res, next) => {
 
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: [
+      process.env.CLIENT_URL || "http://localhost:5173",
+      "https://pinquest-app.onrender.com", // Production frontend URL
+      "https://www.pinquest-app.onrender.com" // Alternative production URL
+    ],
     methods: ["GET", "POST"],
   },
 });
@@ -150,8 +154,9 @@ const allowedOrigins = [
   "http://localhost:3000", // Common React dev port
   "http://localhost:3001", // Alternative React dev port
   "http://localhost:8080", // Alternative dev port
-  "http://localhost:8000", // Alternative dev port
   "http://localhost:4173", // Alternative Vite port
+  "https://pinquest-app.onrender.com", // Production frontend URL
+  "https://www.pinquest-app.onrender.com", // Alternative production URL
 ];
 
 // Add environment-specific CORS configuration
@@ -164,13 +169,22 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      // In production, return an error
-      if (process.env.NODE_ENV === 'production') {
-        console.log('CORS blocked:', origin);
-        callback(new Error('Not allowed by CORS'));
-      } else {
-        // For development, allow all origins temporarily
+      // Check if it's a subdomain of known hosting platforms
+      const isRenderDomain = origin && origin.endsWith('.onrender.com');
+      const isVercelDomain = origin && origin.endsWith('.vercel.app');
+      const isNetlifyDomain = origin && origin.endsWith('.netlify.app');
+
+      if (isRenderDomain || isVercelDomain || isNetlifyDomain) {
         callback(null, true);
+      } else {
+        // In production, return an error
+        if (process.env.NODE_ENV === 'production') {
+          console.log('CORS blocked:', origin);
+          callback(new Error('Not allowed by CORS'));
+        } else {
+          // For development, allow all origins temporarily
+          callback(null, true);
+        }
       }
     }
   },
