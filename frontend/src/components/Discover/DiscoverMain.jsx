@@ -145,6 +145,9 @@ const DiscoverMain = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef();
 
+  // State to track if the user has dismissed the error overlay
+  const [errorDismissed, setErrorDismissed] = useState(false);
+
   // Mobile Bottom Navigation States - moved to top to satisfy Rules of Hooks
   const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
   const [showBottomNav, setShowBottomNav] = useState(true);
@@ -680,15 +683,25 @@ const DiscoverMain = () => {
       }
     } catch (err) {
       console.error("Error fetching posts:", err);
+      
+      // Auto-retry logic for "Load failed" or general network errors
+      // This is helpful for Render's cold start where the first request might fail due to timeout/DNS
+      // Only retry if it's a network error and not an explicit abort or already retrying
+      if (!preserveSelectedPost && (err.message.includes('load failed') || err.message.includes('Failed to fetch'))) {
+        console.log("Network error detected. Retrying in 2 seconds...");
+        setTimeout(() => {
+          fetchPosts(null, limit);
+        }, 2000);
+        return; // Exit current execution and wait for retry
+      }
+
       // Provide more user-friendly error message based on error type
       if (err.name === 'AbortError') {
         setError("Request timed out. Please check your network connection and try again.");
-      } else if (err.message.includes('Failed to fetch')) {
-        setError("Unable to connect to the server. The server may be down or unreachable. Please make sure the backend server is running.");
+      } else if (err.message.includes('Failed to fetch') || err.message.includes('load failed')) {
+        setError("Unable to connect to the server. The server may be waking up (Render cold-start) or unreachable. Please wait a moment and try again.");
       } else if (err.message.includes('Too many requests')) {
-        // Don't show rate limit error as it will be repetitive (handled in try block)
         console.log("Rate limit exceeded. Slowing down requests...");
-        // Don't set error for rate limit to avoid spamming the UI
       } else {
         setError("Failed to load posts: " + err.message);
       }
@@ -698,6 +711,9 @@ const DiscoverMain = () => {
       // Reset the flag and loading state
       fetchPostsRef.current = false;
       setLoading(false);
+      
+      // If error happened, reset dismissed state so it shows again on next manual refresh
+      if (err) setErrorDismissed(false);
     }
   }, []); // Empty dependency array since we're using ref to track state
 
@@ -1893,24 +1909,47 @@ const DiscoverMain = () => {
 
 
 
-  if (error) {
+  if (error && !errorDismissed) {
+    const isNetworkError = error.includes('load failed') || error.includes('Failed to fetch') || error.includes('Unable to connect');
+    
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 fixed inset-0 z-[50000]">
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <div className="text-center p-6 bg-white rounded-xl shadow-xl max-w-md z-[50001] relative">
-            <h2 className="text-xl font-bold text-red-500 mb-2">Error Loading Discover Page</h2>
-            <p className="text-gray-600 mb-4">{error}</p>
+      <div className="min-h-screen bg-gray-900/40 backdrop-blur-md fixed inset-0 z-[60000] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center p-8 bg-white rounded-2xl shadow-2xl max-w-md w-full relative border border-gray-100"
+        >
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Connection Issue</h2>
+          <p className="text-gray-600 mb-6">
+            {isNetworkError 
+              ? "The server is currently waking up or unreachable. This is common on free hosting during initial load. Please wait 30 seconds and try again."
+              : error}
+          </p>
+          <div className="flex flex-col gap-3">
             <button
               onClick={() => {
-                setError(null); // Clear the error state first
+                setError(null);
                 fetchPosts();
               }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors cursor-pointer z-[50002]"
+              className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
             >
-              Try Again
+              Try to Reconnect
+            </button>
+            <button
+              onClick={() => setErrorDismissed(true)}
+              className="w-full px-6 py-3 bg-gray-100 text-gray-600 font-medium rounded-xl hover:bg-gray-200 transition-all"
+            >
+              Explore Offline mode
             </button>
           </div>
-        </div>
+          
+          <p className="mt-6 text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+            Technical Details: {error}
+          </p>
+        </motion.div>
       </div>
     );
   }
@@ -1920,6 +1959,33 @@ const DiscoverMain = () => {
 
   return (
     <div className="responsive-map-layout">
+      {/* Small Error Banner when dismissed */}
+      {error && errorDismissed && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[5999] w-auto max-w-[90%] pointer-events-auto">
+          <motion.div 
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="bg-white/90 backdrop-blur-sm border border-red-200 shadow-lg rounded-full px-4 py-2 flex items-center gap-3"
+          >
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-xs font-medium text-gray-700">Offline mode: Server unavailable</span>
+            <button 
+              onClick={() => {
+                setErrorDismissed(false);
+                setError(null);
+                fetchPosts();
+              }}
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline"
+            >
+              Retry
+            </button>
+            <button onClick={() => setError(null)} className="text-gray-400 hover:text-gray-600">
+              <X className="w-3 h-3" />
+            </button>
+          </motion.div>
+        </div>
+      )}
+
       {/* User profile button in top-left corner - only show when authenticated */}
       {isAuthenticated && !isMobile && (
         <div className="top-user-controls absolute top-4 left-4 z-[7010]" style={{ left: isSidebarExpanded ? '4rem' : '1rem' }}>

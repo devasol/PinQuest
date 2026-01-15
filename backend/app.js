@@ -80,7 +80,7 @@ app.use('/uploads', (req, res, next) => {
 if (process.env.NODE_ENV === 'production') {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per windowMs
+    max: 500, // Limit each IP to 500 requests per windowMs (increased for map discovery)
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
