@@ -227,20 +227,44 @@ export const directAuthApi = {
     }
   },
   
-  // Reset password with token
-  resetPassword: async (resetToken, newPassword) => {
+  // Verify reset OTP
+  verifyResetOTP: async (email, otp) => {
     try {
-      const response = await apiRequest(`/auth/reset-password/${resetToken}`, {
-        method: 'PUT',
-        body: JSON.stringify({ password: newPassword }),
+      const response = await apiRequest('/auth/verify-reset-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email, otp }),
         skipAuth: true,
       });
 
-      if (response.status === 'success' && response.data) {
+      if (response.status === 'success') {
         return {
           success: true,
-          user: response.data,
-          token: response.data.token
+          message: response.message
+        };
+      } else {
+        throw new Error(response.message || 'OTP verification failed');
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  // Reset password with OTP
+  resetPassword: async (email, otp, newPassword) => {
+    try {
+      const response = await apiRequest('/auth/reset-password', {
+        method: 'PUT',
+        body: JSON.stringify({ email, otp, password: newPassword }),
+        skipAuth: true,
+      });
+
+      if (response.status === 'success') {
+        return {
+          success: true,
+          message: response.message
         };
       } else {
         throw new Error(response.message || 'Password reset failed');

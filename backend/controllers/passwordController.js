@@ -28,6 +28,8 @@ const forgotPassword = async (req, res) => {
     }
 
     const user = await User.findOne({ email: sanitizedEmail });
+    console.log(`Forgot password request for: ${sanitizedEmail}. User found: ${!!user}`);
+    
     if (!user) {
       // Return success response even if user doesn't exist to prevent email enumeration
       return res.status(200).json({
@@ -36,82 +38,72 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
+    // Generate reset OTP (6 digits)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log(`Generated OTP for ${user.email}: ${otp}`);
 
-    // Hash token and save to database
-    user.resetPasswordToken = crypto
+    // Hash OTP and save to database
+    user.resetPasswordOTP = crypto
       .createHash('sha256')
-      .update(resetToken)
+      .update(otp)
       .digest('hex');
     
-    // Set token expiration (1 hour - more reasonable than 10 minutes)
-    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    // Set OTP expiration (10 minutes for better security)
+    user.resetPasswordOTPExpires = Date.now() + 10 * 60 * 1000; 
 
     await user.save({ validateBeforeSave: false });
 
-    // Construct the reset URL - this should point to the frontend page
-    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
-
-    // Send email with reset token, but we'll send the response immediately to avoid hanging
-    // Start email sending as a background process
-    const emailPromise = sendPasswordResetEmail(user.email, resetUrl)
+    // Send email with reset OTP
+    const emailSent = await sendPasswordResetEmail(user.email, otp, true)
       .catch(emailError => {
-        console.error("Error sending password reset email:", emailError.message || emailError);
-        // Don't throw here, just log the error
+        console.error("Error sending password reset OTP:", emailError.message || emailError);
         return false;
       });
 
-    // We return the response immediately, regardless of email success/failure
-    // This prevents the request from hanging if email service is slow or fails
-    res.status(200).json({
-      status: 'success',
-      message: 'Password reset email sent'
-    });
+    if (!emailSent) {
+      // If email failed, clear the reset OTP to prevent code from being left hanging
+      user.resetPasswordOTP = undefined;
+      user.resetPasswordOTPExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      console.log("Password reset OTP cleared because email failed to send");
 
-    // Process the email in the background after sending the response
-    // This ensures the API call doesn't hang even if email fails
-    try {
-      const emailSent = await emailPromise;
-      if (!emailSent) {
-        // If email failed, clear the reset token to prevent token from being left hanging
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpires = undefined;
-        await user.save({ validateBeforeSave: false });
-        console.log("Password reset token cleared because email failed to send");
+      // In development, we still return success to allow testing
+      if (process.env.NODE_ENV === 'development') {
+        console.log("In development mode, continuing despite email failure");
+        res.status(200).json({
+          status: 'success',
+          message: 'Password reset email sent (simulated for development)'
+        });
       } else {
-        console.log("Password reset email sent successfully");
+        res.status(500).json({
+          status: 'error',
+          message: 'Error sending password reset email'
+        });
       }
-    } catch (bgError) {
-      console.error("Background email processing error:", bgError);
-      // Even if background processing fails, we already sent the response
-      try {
-        // Clear the token in case of error to prevent tokens from lingering
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpires = undefined;
-        await user.save({ validateBeforeSave: false });
-      } catch (cleanupError) {
-        console.error("Error cleaning up reset token:", cleanupError);
-      }
+    } else {
+      console.log("Password reset OTP email sent successfully");
+      res.status(200).json({
+        status: 'success',
+        message: 'Password reset email sent'
+      });
     }
   } catch (error) {
     console.error('Error in forgot password:', error);
-    
+
     // Clear any existing reset tokens for the user if there's an error and user exists
     try {
       const { email } = req.body;
       if (email) {
         const sanitizedEmail = validator.normalizeEmail(email.toLowerCase());
         const user = await User.findOne({ email: sanitizedEmail });
-        if (user && user.resetPasswordToken) {
-          user.resetPasswordToken = undefined;
-          user.resetPasswordExpires = undefined;
+        if (user && user.resetPasswordOTP) {
+          user.resetPasswordOTP = undefined;
+          user.resetPasswordOTPExpires = undefined;
           await user.save({ validateBeforeSave: false });
         }
       }
     } catch (saveError) {
-      console.error('Error clearing reset token:', saveError);
+      console.error('Error clearing reset OTP:', saveError);
     }
 
     res.status(500).json({
@@ -121,18 +113,63 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// @desc    Reset password
-// @route   PUT /api/v1/auth/reset-password/:resetToken
+// @desc    Verify password reset OTP
+// @route   POST /api/v1/auth/verify-reset-otp
+// @access  Public
+const verifyResetOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Please provide email and OTP'
+      });
+    }
+
+    const sanitizedEmail = validator.normalizeEmail(email.toLowerCase());
+    const hashedOTP = crypto
+      .createHash('sha256')
+      .update(otp)
+      .digest('hex');
+
+    const user = await User.findOne({
+      email: sanitizedEmail,
+      resetPasswordOTP: hashedOTP,
+      resetPasswordOTPExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid or expired OTP'
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'OTP verified successfully'
+    });
+  } catch (error) {
+    console.error('Error verifying reset OTP:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error verifying OTP'
+    });
+  }
+};
+
+// @desc    Reset password (OTP version)
+// @route   PUT /api/v1/auth/reset-password
 // @access  Public
 const resetPassword = async (req, res) => {
   try {
-    const { password } = req.body;
-    const { resetToken } = req.params;
+    const { email, otp, password } = req.body;
 
-    if (!password) {
+    if (!email || !otp || !password) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Please provide a new password'
+        message: 'Please provide email, OTP, and new password'
       });
     }
 
@@ -144,45 +181,36 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    // Hash the incoming token to compare with stored token
-    const hashedToken = crypto
+    const sanitizedEmail = validator.normalizeEmail(email.toLowerCase());
+    const hashedOTP = crypto
       .createHash('sha256')
-      .update(resetToken)
+      .update(otp)
       .digest('hex');
 
-    // Find user with matching token that hasn't expired
+    // Find user with matching OTP that hasn't expired
     const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpires: { $gt: Date.now() }
+      email: sanitizedEmail,
+      resetPasswordOTP: hashedOTP,
+      resetPasswordOTPExpires: { $gt: Date.now() }
     });
 
     if (!user) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Password reset token is invalid or has expired'
+        message: 'OTP is invalid or has expired'
       });
     }
 
     // Set new password
     user.password = password;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
+    user.resetPasswordOTP = undefined;
+    user.resetPasswordOTPExpires = undefined;
 
     await user.save();
 
-    // Generate new JWT token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRE || '30d'
-    });
-
     res.status(200).json({
       status: 'success',
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token
-      }
+      message: 'Password reset successful'
     });
   } catch (error) {
     console.error('Error in reset password:', error);
@@ -377,6 +405,7 @@ const validateResetToken = async (req, res) => {
 
 module.exports = {
   forgotPassword,
+  verifyResetOTP,
   resetPassword,
   updatePassword,
   adminUpdateUserPassword,

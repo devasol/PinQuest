@@ -1,7 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const { registerUser, loginUser, logoutUser, getProfile, updateProfile, firebaseAuthLogin } = require('../controllers/authController');
-const { forgotPassword, resetPassword, updatePassword, validateResetToken } = require('../controllers/passwordController');
+const { forgotPassword, verifyResetOTP, resetPassword, updatePassword, validateResetToken } = require('../controllers/passwordController');
 const { registerUserWithVerification, verifyEmail, resendVerificationCode } = require('../controllers/verificationController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -16,7 +16,8 @@ router.route('/resend-verification').post(authLimiter, resendVerificationCode);
 router.route('/logout').post(protect, logoutUser);
 router.route('/profile').get(protect, getProfile).put(protect, upload.single('avatar'), updateProfile);
 router.route('/forgot-password').post(authLimiter, forgotPassword);
-router.route('/reset-password/:resetToken').put(resetPassword);
+router.route('/verify-reset-otp').post(authLimiter, verifyResetOTP);
+router.route('/reset-password').put(resetPassword);
 router.route('/reset-password/:resetToken').get(validateResetToken);
 router.route('/update-password').put(protect, updatePassword);
 

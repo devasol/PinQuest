@@ -156,7 +156,9 @@ const userSchema = new mongoose.Schema({
     default: 'user'
   },
   resetPasswordToken: String,
-  resetPasswordExpires: Date
+  resetPasswordExpires: Date,
+  resetPasswordOTP: String,
+  resetPasswordOTPExpires: Date
 }, {
   timestamps: true
 });
@@ -204,6 +206,7 @@ userSchema.index({ isBanned: 1, role: 1 }); // For banned user and role queries
 userSchema.index({ "followers.user": 1 }); // For finding users by their followers
 userSchema.index({ "following.user": 1 }); // For finding users by who they follow
 userSchema.index({ resetPasswordToken: 1, resetPasswordExpires: 1 }); // For password reset
+userSchema.index({ resetPasswordOTP: 1, resetPasswordOTPExpires: 1 }); // For OTP password reset
 userSchema.index({ createdAt: -1 }); // For newest users
 userSchema.index({ name: "text" }); // For user searches
 userSchema.index({ email: "text", name: "text" }); // For comprehensive user searches

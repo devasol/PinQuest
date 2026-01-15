@@ -52,11 +52,6 @@ const router = createBrowserRouter([
     path: "/verify-email",
     // error:</>
   },
-  {
-    element: <ResetPasswordPage />,
-    path: "/reset-password/:resetToken",
-    // error:</>
-  },
   // Admin routes
   {
     path: "/admin",

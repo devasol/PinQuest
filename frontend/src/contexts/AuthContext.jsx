@@ -278,27 +278,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Reset password function
-  const resetPassword = async (resetToken, newPassword) => {
+  // Verify OTP function
+  const verifyResetOTP = async (email, otp) => {
     try {
-      const data = await directAuthApi.resetPassword(resetToken, newPassword);
-      if (data.success) {
-        // Store token and user data after successful password reset
-        localStorage.setItem('token', data.token);
-        const userInfo = {
-          _id: data.user._id,
-          email: data.user.email,
-          name: data.user.name,
-          isVerified: data.user.isVerified,
-          role: data.user.role // Include role for admin detection
-        };
-        localStorage.setItem('firebaseUser', JSON.stringify(userInfo));
-        setUser(userInfo);
-        setIsAuthenticated(true);
-        return { success: true, data };
-      } else {
-        return { success: false, error: data.error };
-      }
+      const data = await directAuthApi.verifyResetOTP(email, otp);
+      return data;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Reset password function
+  const resetPassword = async (email, otp, newPassword) => {
+    try {
+      const data = await directAuthApi.resetPassword(email, otp, newPassword);
+      return data;
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -324,6 +318,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     googleLogin: handleGoogleLogin,
     forgotPassword,
+    verifyResetOTP,
     resetPassword,
     updatePassword,
   };
