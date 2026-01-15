@@ -11,6 +11,10 @@
 
 **PinQuest** is a premium social mapping platform designed for modern explorers. Discover hidden gems, share your favorite landmarks, and connect with a global community through an interactive, real-time map interface.
 
+<p align="center">
+  <img src="docs/preview.png" alt="PinQuest App Preview" width="80%">
+</p>
+
 ---
 
 ## ✨ Key Features
