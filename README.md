@@ -131,4 +131,4 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-<p align="center">Made with ❤️ for Explorers everywhere.</p>
+<p align="center">Made by Dawit S. for Explorers everywhere.</p>
