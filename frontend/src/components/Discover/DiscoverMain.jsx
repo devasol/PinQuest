@@ -145,6 +145,11 @@ const DiscoverMain = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef();
 
+  // Mobile Bottom Navigation States - moved to top to satisfy Rules of Hooks
+  const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
+  const [showBottomNav, setShowBottomNav] = useState(true);
+  const [activeSidebarWindow, setActiveSidebarWindow] = useState(null);
+
   const { showModal } = useModal();
   const { logout: authLogout } = useAuth(); // Get logout from auth context
 
@@ -1909,13 +1914,6 @@ const DiscoverMain = () => {
       </div>
     );
   }
-
-  // State for mobile bottom navigation
-  const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
-  // State to control bottom navigation visibility
-  const [showBottomNav, setShowBottomNav] = useState(true);
-  // State to track if any sidebar window is open
-  const [activeSidebarWindow, setActiveSidebarWindow] = useState(null);
 
   // Determine if we're on mobile
   const isMobile = screenWidth < 768;

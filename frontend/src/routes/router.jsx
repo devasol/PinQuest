@@ -16,45 +16,48 @@ import EmailVerification from "../components/EmailVerification";
 import ResetPasswordPage from "../pages/ResetPasswordPage/ResetPasswordPage";
 import TestPostWindow from "../TestPostWindow";
 
+import ErrorPage from "../pages/ErrorPage/ErrorPage";
+
 const router = createBrowserRouter([
   {
     element: <DiscoverPage />,
     path: "/",
-    // error:</>
+    errorElement: <ErrorPage />
   },
   {
     element: <DiscoverPage />,
     path: "/discover",
-    // error:</>
+    errorElement: <ErrorPage />
   },
   {
     element: <LoginPage />,
     path: "/login",
-    // error:</>
+    errorElement: <ErrorPage />
   },
   {
     element: <ProfilePage />,
     path: "/profile",
-    // error:</>
+    errorElement: <ErrorPage />
   },
   {
     element: <ProfilePage />,
     path: "/dashboard",
-    // error:</>
+    errorElement: <ErrorPage />
   },
   {
     element: <TestPostWindow />,
     path: "/test-post-window",
-    // error:</>
+    errorElement: <ErrorPage />
   },
   {
     element: <EmailVerification />,
     path: "/verify-email",
-    // error:</>
+    errorElement: <ErrorPage />
   },
   // Admin routes
   {
     path: "/admin",
+    errorElement: <ErrorPage />,
     children: [
       {
         path: "login",
@@ -66,6 +69,7 @@ const router = createBrowserRouter([
             <AdminDashboard />
           </AdminProtectedRoute>
         ),
+        errorElement: <ErrorPage />,
         children: [
           {
             path: "dashboard",
@@ -74,10 +78,6 @@ const router = createBrowserRouter([
           {
             path: "analytics",
             element: <Analytics />
-          },
-          {
-            path: "users",
-            element: <UserManagement />
           },
           {
             path: "users",
@@ -107,16 +107,6 @@ const router = createBrowserRouter([
       }
     ]
   },
-  //  {
-  //     element:</>,
-  //     path:"",
-  //     error:</>
-  // },
-  //  {
-  //     element:</>,
-  //     path:"",
-  //     error:</>
-  // },
 ]);
 
 export default router;
