@@ -28,14 +28,13 @@ const Sidebar = ({
 }) => {
   const location = useLocation();
 
-  // Navigation Items with "UIBlocks" Pro Mapping
   const navGroups = [
     {
       title: 'Navigation',
       items: [
-        { id: 'feed', label: 'Dashboard', icon: LayoutGrid, path: '/' },
-        { id: 'category', label: 'Explore Map', icon: Compass, action: () => toggleWindow('category-window') },
-        { id: 'track', label: 'Precision Tracking', icon: LocateFixed, action: () => {
+        { id: 'dashboard', label: 'Feed', icon: LayoutGrid, path: '/' },
+        { id: 'category', label: 'Library', icon: Compass, action: () => toggleWindow('category-window') },
+        { id: 'track', label: 'Precision', icon: LocateFixed, action: () => {
           if (followUser) { updateUserLocation(); setFollowUser(false); }
           else { updateUserLocation().then(() => setFollowUser(true)); }
         }}
@@ -44,8 +43,8 @@ const Sidebar = ({
     {
       title: 'Collection',
       items: [
-        { id: 'map-type', label: 'Map Layers', icon: Layers, action: () => toggleWindow('map-type-window') },
-        { id: 'saved-locations', label: 'Saved Pins', icon: Bookmark, action: () => toggleWindow('saved-locations-window') }
+        { id: 'map-type', label: 'Layers', icon: Layers, action: () => toggleWindow('map-type-window') },
+        { id: 'saved-locations', label: 'Saved', icon: Bookmark, action: () => toggleWindow('saved-locations-window') }
       ]
     }
   ];
@@ -62,15 +61,65 @@ const Sidebar = ({
 
   const hasWindowOpen = activeSidebarWindow !== null;
 
+  // MOBILE BOTTOM NAV: Clean & Pro Style
+  if (isMobile) {
+    const mobileItems = [
+      { id: 'dashboard', label: 'Feed', icon: LayoutGrid, path: '/' },
+      { id: 'category', label: 'Library', icon: Compass, action: () => toggleWindow('category-window') },
+      { id: 'track', label: 'Sync', icon: LocateFixed, action: () => {
+        updateUserLocation();
+        setFollowUser(!followUser);
+      }},
+      { id: 'map-type', label: 'Layers', icon: Layers, action: () => toggleWindow('map-type-window') },
+      { id: 'profile', label: 'User', icon: User, action: user ? null : openAuthModal, path: user ? '/profile' : null }
+    ];
+
+    return (
+      <div className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-100 z-[9000] flex items-center justify-between px-4 pb-safe">
+        {mobileItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = (item.path && location.pathname === item.path && !activeSidebarWindow) || 
+                           (activeSidebarWindow === item.id);
+          
+          const Content = (
+            <div className="flex flex-col items-center gap-1">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+                ${isActive ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}>
+                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
+                {item.label}
+              </span>
+            </div>
+          );
+
+          if (item.path) {
+            return (
+              <Link key={item.id} to={item.path} className="flex-1 flex justify-center py-2">
+                {Content}
+              </Link>
+            );
+          }
+
+          return (
+            <button key={item.id} onClick={item.action} className="flex-1 flex justify-center py-2">
+              {Content}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // DESKTOP SIDEBAR: Existing Pro Logic
   return (
-    <div className={`fixed left-0 top-0 bottom-0 h-screen z-[8080] flex select-none ${isMobile ? 'hidden' : ''}`}>
+    <div className={`fixed left-0 top-0 bottom-0 h-screen z-[8080] flex select-none`}>
         <motion.aside
           initial={false}
           animate={isSidebarExpanded ? 'expanded' : 'collapsed'}
           variants={sidebarVariants}
           className="h-full bg-white border-r border-slate-100 shadow-sm flex flex-col py-8 overflow-hidden"
         >
-         {/* Pro Logo Block */}
          <motion.div 
             layout
             className={`mb-12 flex items-center w-full overflow-hidden ${isSidebarExpanded ? 'justify-start px-8' : 'justify-center'}`}
@@ -96,7 +145,6 @@ const Sidebar = ({
             </AnimatePresence>
          </motion.div>
 
-         {/* Global Level Pro Navigation */}
          <div className="flex-1 overflow-y-auto space-y-8 custom-scrollbar overflow-x-hidden">
             {navGroups.map((group, gIdx) => (
                <div key={gIdx} className="space-y-4">
@@ -122,7 +170,6 @@ const Sidebar = ({
                                ${isActive ? 'bg-slate-50' : 'hover:bg-slate-50'}
                                ${isSidebarExpanded ? 'rounded-l-xl pl-6' : 'rounded-xl'}`}
                           >
-                             {/* Active Pillar Indicator - PRO UIBlocks Style - Flush to the absolute window edge */}
                              {isActive && (
                                <motion.div 
                                  layoutId="activePillar"
@@ -153,7 +200,6 @@ const Sidebar = ({
             ))}
          </div>
 
-         {/* UIBlocks Styled Profile Footer */}
          <motion.div 
            layout
            className={`mt-auto pt-8 border-t border-slate-100 w-full flex flex-col items-center space-y-4 ${isSidebarExpanded ? 'px-6' : 'px-0'}`}
@@ -204,9 +250,7 @@ const Sidebar = ({
          </motion.div>
         </motion.aside>
 
-        {/* Transition Arrows Center Anchor */}
         <div className="relative h-full flex items-center">
-            {/* Simplified Toggle - Only show if NO windows are open to keep the layout centered */}
             {!hasWindowOpen && (
               <motion.button 
                 initial={{ opacity: 0, scale: 0.8 }}
