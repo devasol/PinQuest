@@ -1,213 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import 'leaflet/dist/leaflet.css';
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  --font-outfit: "Outfit", sans-serif;
+  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+  
+  --color-brand-primary: #111827; /* Darker Slate for Pro look */
+  --color-brand-secondary: #4b5563;
+  --color-brand-accent: #6366f1;
+  
+  --shadow-premium: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-glass: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
 
 /* Responsive base styles */
-html {
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+html, body, #root {
+  font-family: var(--font-jakarta);
   font-size: 16px;
   scroll-behavior: smooth;
-  height: -webkit-fill-available; /* For iOS Safari */
-}
-
-/* Ensure 100% height for the app */
-body {
+  height: 100vh;
+  width: 100%;
+  overflow-x: hidden !important;
   margin: 0;
   padding: 0;
-  min-height: 100vh;
-  min-height: -webkit-fill-available; /* For iOS Safari */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  overscroll-behavior: none; /* Prevent overscroll behavior */
 }
 
-/* Custom Scrollbar Styles - Light Gray & Very Thin */
+body {
+  background-color: #ffffff;
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* UIBlocks Inspired Scrollbars */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #e2e8f0;
-  border-radius: 2px;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 2px;
-  border: none;
+  background: #cbd5e1;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
-
-/* Firefox scrollbar styling */
-html {
-  scrollbar-width: thin;
-  scrollbar-color: #94a3b8 #e2e8f0;
-}
-
-/* Hide scrollbar buttons/arrows */
-::-webkit-scrollbar-button {
-  display: none;
-}
-
-/* Additional scrollbar simplification */
-::-webkit-scrollbar-corner {
-  background: #e2e8f0;
-}
-
-/* Custom styling for specific scrollable elements */
-.sidebar-window::-webkit-scrollbar,
-.admin-activity-list::-webkit-scrollbar,
-.admin-alerts-list::-webkit-scrollbar,
-.profile-tabs::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-.sidebar-window::-webkit-scrollbar-track,
-.admin-activity-list::-webkit-scrollbar-track,
-.admin-alerts-list::-webkit-scrollbar-track,
-.profile-tabs::-webkit-scrollbar-track {
-  background: #e2e8f0;
-  border-radius: 2px;
-}
-
-.sidebar-window::-webkit-scrollbar-thumb,
-.admin-activity-list::-webkit-scrollbar-thumb,
-.admin-alerts-list::-webkit-scrollbar-thumb,
-.profile-tabs::-webkit-scrollbar-thumb {
   background: #94a3b8;
-  border-radius: 2px;
-  border: none;
 }
 
-/* Hide scrollbar buttons/arrows for specific elements */
-.sidebar-window::-webkit-scrollbar-button,
-.admin-activity-list::-webkit-scrollbar-button,
-.admin-alerts-list::-webkit-scrollbar-button,
-.profile-tabs::-webkit-scrollbar-button {
-  display: none;
-}
-
-/* Scroll for modal content */
-.modal-content::-webkit-scrollbar {
-  width: 3px;
-}
-
-.modal-content::-webkit-scrollbar-track {
-  background: #f8fafc;
-  border-radius: 1.5px;
-}
-
-.modal-content::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 1.5px;
-  border: none;
-}
-
-.modal-content::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
-
-/* Hide scrollbar buttons/arrows for modal content */
-.modal-content::-webkit-scrollbar-button {
-  display: none;
-}
-
-/* For overflow-y-auto and overflow-x-auto Tailwind classes */
-.overflow-y-auto::-webkit-scrollbar,
-.overflow-x-auto::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-.overflow-y-auto::-webkit-scrollbar-track,
-.overflow-x-auto::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 2px;
-}
-
-.overflow-y-auto::-webkit-scrollbar-thumb,
-.overflow-x-auto::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 2px;
-  border: none;
-}
-
-.overflow-y-auto::-webkit-scrollbar-thumb:hover,
-.overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
-
-/* Firefox variants */
-.overflow-y-auto,
-.overflow-x-auto {
-  scrollbar-width: thin;
-  scrollbar-color: #94a3b8 #f1f5f9;
-}
-
-/* Hide scrollbar buttons/arrows for all scrollable elements */
-.overflow-y-auto::-webkit-scrollbar-button,
-.overflow-x-auto::-webkit-scrollbar-button {
-  display: none;
-}
-
-/* Responsive container fixes */
-.container {
-  width: 100%;
-  padding-right: 0.5rem;
-  padding-left: 0.5rem;
-  margin-right: auto;
-  margin-left: auto;
-}
-
-/* Responsive image handling */
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-
-/* Media queries for responsive adjustments */
-@media (max-width: 640px) {
-  html {
-    font-size: 14px;
-  }
-}
-
-@media (max-width: 480px) {
-  html {
-    font-size: 13px;
-  }
-}
-
-/* Responsive fixes for mobile devices */
-@media (max-width: 768px) {
-  .min-h-screen {
-    min-height: 100vh;
-  }
-  
-  /* Ensure mobile-friendly inputs */
-  input, select, textarea {
-    font-size: 16px; /* Prevents zoom on iOS when focusing inputs */
-  }
-}
-
-/* Fix for mobile touch targets */
-button, a {
-  touch-action: manipulation;
-}
-
-/* Responsive font sizes */
+/* ... existing responsive utilities ... */
 .text-xs { font-size: 0.75rem; line-height: 1rem; }
 .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
 .text-base { font-size: 1rem; line-height: 1.5rem; }
@@ -226,198 +71,16 @@ button, a {
   .text-3xl { font-size: 1.5rem; line-height: 1.8rem; }
 }
 
-/* Additional responsive utility classes */
-.responsive-padding {
-  padding: 0.5rem;
+/* Map specific overrides for UIBlocks theme */
+.leaflet-container {
+  background-color: #f8fafc !important;
 }
 
-@media (min-width: 640px) {
-  .responsive-padding {
-    padding: 1rem;
-  }
-}
-
-@media (min-width: 768px) {
-  .responsive-padding {
-    padding: 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .responsive-padding {
-    padding: 2rem;
-  }
-}
-
-.responsive-margin {
-  margin: 0.5rem;
-}
-
-@media (min-width: 640px) {
-  .responsive-margin {
-    margin: 1rem;
-  }
-}
-
-@media (min-width: 768px) {
-  .responsive-margin {
-    margin: 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .responsive-margin {
-    margin: 2rem;
-  }
-}
-
-/* Responsive width classes */
-.full-width-mobile {
-  width: 100%;
-}
-
-@media (min-width: 640px) {
-  .full-width-mobile {
-    width: 300px;
-  }
-}
-
-@media (min-width: 768px) {
-  .full-width-mobile {
-    width: 400px;
-  }
-}
-
-/* Responsive max-width adjustments */
-.max-w-responsive {
-  max-width: 100%;
-}
-
-@media (min-width: 768px) {
-  .max-w-responsive {
-    max-width: calc(100% - 2rem);
-  }
-}
-
-@media (min-width: 1024px) {
-  .max-w-responsive {
-    max-width: 1200px;
-  }
-}
-
-/* Mobile-first responsive adjustments */
-.mobile-center {
-  text-align: center;
-}
-
-@media (min-width: 768px) {
-  .mobile-center {
-    text-align: left;
-  }
-}
-
-/* Responsive spacing for flex elements */
-.flex-responsive {
-  flex-direction: column;
-}
-
-@media (min-width: 768px) {
-  .flex-responsive {
-    flex-direction: row;
-  }
-}
-
-.gap-responsive {
-  gap: 0.5rem;
-}
-
-@media (min-width: 768px) {
-  .gap-responsive {
-    gap: 1rem;
-  }
-}
-
-/* Landscape mode fixes */
-@media (orientation: landscape) and (max-height: 500px) {
-  .min-h-screen {
-    min-height: calc(100vh - 10px);
-  }
-
-  /* Adjust for bottom navigation in landscape */
-  .map-container {
-    padding-bottom: 40px;
-  }
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .bg-white {
-    background-color: #ffffff !important;
-  }
-
-  .text-gray-900 {
-    color: #000000 !important;
-  }
-
-  .border-gray-200 {
-    border-color: #000000 !important;
-  }
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Ensure proper spacing for mobile bottom navigation */
-@media (max-width: 768px) {
-  .map-container {
-    padding-bottom: 60px;
-  }
-
-  .bottom-nav {
-    display: flex;
-  }
-
-  .sidebar-container {
-    display: none;
-  }
-
-  /* Ensure proper spacing when bottom nav is visible */
-  .map-layout-container {
-    padding-bottom: 60px;
-  }
-}
-
-/* Prevent layout shift during loading */
-.loading-container {
-  min-height: 60vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Responsive container for content */
-.content-container {
-  width: 100%;
-  max-width: 100%;
-  padding: 0.5rem;
-  margin: 0 auto;
-}
-
-@media (min-width: 640px) {
-  .content-container {
-    padding: 1rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .content-container {
-    padding: 2rem;
-    max-width: 1200px;
-  }
+.map-container-responsive {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
 }

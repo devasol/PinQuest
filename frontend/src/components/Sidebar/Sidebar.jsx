@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
-  Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, Home, 
-  User, Settings, LogOut, Heart, Star, Bell, Compass, Layers, 
-  Minus, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, 
-  LocateFixed, LayoutGrid, ScanSearch 
+  Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, 
+  Home, User, Settings, LogOut, Heart, Star, Bell, Compass, 
+  Layers, Minus, ChevronLeft, ChevronRight, ChevronUp, 
+  ChevronDown, LocateFixed, LayoutGrid, ScanSearch, Map as MapIcon, 
+  Sparkles, Coffee, Utensils, Zap, Shield, Telescope,
+  SquareTerminal, Globe, Activity, LifeBuoy
 } from 'lucide-react';
-import './Sidebar.css';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Sidebar = ({
   onLogout = () => {},
@@ -20,563 +22,202 @@ const Sidebar = ({
   isSidebarExpanded,
   toggleSidebar,
   isMobile = false,
-  mobileBottomNavActive = '',
-  setMobileBottomNavActive = () => {},
-  showBottomNav = true,
-  setShowBottomNav = () => {},
   activeSidebarWindow = null,
   setActiveSidebarWindow = () => {}
 }) => {
-  // Ref for the navigation container
-  const navRef = useRef(null);
+  const location = useLocation();
 
-  // State for scroll indicators
-  const [showLeftIndicator, setShowLeftIndicator] = useState(false);
-  const [showRightIndicator, setShowRightIndicator] = useState(true);
-
-  // Effect to handle scroll indicators
-  useEffect(() => {
-    const handleScroll = () => {
-      if (navRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = navRef.current;
-        setShowLeftIndicator(scrollLeft > 0);
-        setShowRightIndicator(scrollWidth > clientWidth && scrollLeft < scrollWidth - clientWidth - 1);
-      }
-    };
-
-    const navElement = navRef.current;
-    if (navElement) {
-      // Initial check
-      handleScroll();
-
-      // Add scroll listener
-      navElement.addEventListener('scroll', handleScroll);
-
-      // Also listen for resize events to update indicators
-      window.addEventListener('resize', handleScroll);
-
-      // Cleanup
-      return () => {
-        navElement.removeEventListener('scroll', handleScroll);
-        window.removeEventListener('resize', handleScroll);
-      };
-    }
-  }, []);
-
-
-  // Define sidebar items with icons and labels
-  const sidebarItems = [
+  // Navigation Items with "UIBlocks" Pro Mapping
+  const navGroups = [
     {
-      id: 'home',
-      label: 'Home',
-      icon: LayoutGrid,
-      path: '/',
-      requiresAuth: false,
-      action: null,
-      type: 'link',
-      mobileOnly: false
+      title: 'Navigation',
+      items: [
+        { id: 'feed', label: 'Dashboard', icon: LayoutGrid, path: '/' },
+        { id: 'category', label: 'Explore Map', icon: Compass, action: () => toggleWindow('category-window') },
+        { id: 'track', label: 'Precision Tracking', icon: LocateFixed, action: () => {
+          if (followUser) { updateUserLocation(); setFollowUser(false); }
+          else { updateUserLocation().then(() => setFollowUser(true)); }
+        }}
+      ]
     },
     {
-      id: 'search',
-      label: 'Search',
-      icon: ScanSearch,
-      path: null,
-      requiresAuth: false,
-      action: () => setMobileBottomNavActive('search'),
-      type: 'action',
-      mobileOnly: true
-    },
-    {
-      id: 'categories',
-      label: 'Explore',
-      icon: Compass,
-      path: '/discover',
-      requiresAuth: false,
-      action: () => {
-        if (isMobile) {
-          setMobileBottomNavActive('explore');
-          toggleWindow('category-window');
-        } else {
-          toggleWindow('category-window');
-        }
-      },
-      type: 'action',
-      mobileOnly: false
-    },
-    {
-      id: 'map-type',
-      label: 'Layers',
-      icon: Layers,
-      path: '/discover',
-      requiresAuth: false,
-      action: () => {
-        if (isMobile) {
-          setMobileBottomNavActive('layers');
-          toggleWindow('map-type-window');
-        } else {
-          toggleWindow('map-type-window');
-        }
-      },
-      type: 'action',
-      mobileOnly: false
-    },
-    {
-      id: 'saved',
-      label: 'Saved',
-      icon: Bookmark,
-      path: '/discover',
-      requiresAuth: true,
-      action: () => {
-        if (isMobile) {
-          setMobileBottomNavActive('saved');
-          toggleWindow('saved-locations-window');
-        } else {
-          toggleWindow('saved-locations-window');
-        }
-      },
-      type: 'action',
-      mobileOnly: false
-    },
-    {
-      id: 'my-location',
-      label: 'Location',
-      icon: LocateFixed,
-      path: '/discover',
-      requiresAuth: false,
-      action: () => {
-        if (followUser) {
-          // If currently following, just update location without zooming
-          updateUserLocation();
-          setFollowUser(false); // Turn off follow mode
-        } else {
-          // If not following, update and enable follow mode
-          updateUserLocation().then(() => {
-            setFollowUser(true); // Turn on follow mode after getting location
-          });
-        }
-      },
-      type: 'action',
-      mobileOnly: false
-    },
-    {
-      id: 'notifications',
-      label: 'Alerts',
-      icon: Bell,
-      path: null,
-      requiresAuth: true,
-      action: () => {
-        if (isMobile) {
-          setMobileBottomNavActive('alerts');
-          toggleWindow('notifications-window');
-        } else {
-          toggleWindow('notifications-window');
-        }
-      },
-      type: 'action',
-      mobileOnly: false
+      title: 'Collection',
+      items: [
+        { id: 'map-type', label: 'Map Layers', icon: Layers, action: () => toggleWindow('map-type-window') },
+        { id: 'saved-locations', label: 'Saved Pins', icon: Bookmark, action: () => toggleWindow('saved-locations-window') }
+      ]
     }
   ];
 
-  // Filter items based on authentication status and mobile/desktop
-  const filteredItems = sidebarItems.filter(item => {
-    // Filter by auth status
-    if (item.requiresAuth && !user) {
-      return false;
-    }
+  const sidebarVariants = {
+    expanded: { width: 240 },
+    collapsed: { width: 90 }
+  };
 
-    // Don't show mobile-only items on desktop sidebar
-    if (!isMobile && item.mobileOnly) {
-      return false;
-    }
+  const navItemVariants = {
+    expanded: { width: '100%' },
+    collapsed: { width: '48px' }
+  };
 
-    // For mobile, show all items except mobile-only items in the sidebar drawer
-    // (mobile-only items are shown in the bottom nav, not in the sidebar drawer)
-    if (isMobile && item.mobileOnly) {
-      return false;
-    }
+  const hasWindowOpen = activeSidebarWindow !== null;
 
-    return true;
-  });
-
-  // Mobile bottom navigation items (for all users)
-  const mobileNavItems = sidebarItems.filter(item =>
-    (!item.requiresAuth || (user && user._id)) && !item.mobileOnly
-  ); // Show all available items for the user
-
-  if (isMobile) {
-    return (
-      <>
-        {/* Mobile Bottom Navigation */}
-        {showBottomNav && (
-          <div className="bottom-navigation-container relative">
-            {/* Toggle arrow button in top-right corner */}
-            <button
-              className="toggle-arrow-button absolute -top-14 right-0 z-[5002]"
-              onClick={() => setShowBottomNav(false)}
-              title="Hide navigation"
-            >
-              <ChevronDown className="h-4 w-4 text-gray-700" />
-            </button>
-
-            {/* Left scroll indicator */}
-            <div
-              className={`scroll-indicator left-0 top-1/2 transform -translate-y-1/2 z-[5001] transition-opacity duration-300 pointer-events-auto ${showLeftIndicator ? 'opacity-100' : 'opacity-0'}`}
-              onClick={() => {
-                if (navRef.current) {
-                  navRef.current.scrollBy({ left: -100, behavior: 'smooth' });
-                }
-              }}
-            >
-              <div className="bg-white rounded-full shadow-lg p-1.5 cursor-pointer">
-                <ChevronLeft className="h-5 w-5 text-gray-700" />
-              </div>
-            </div>
-
-            {/* Scrollable bottom navigation */}
-            <div
-              className="bottom-navigation hide-scrollbar flex"
-              ref={navRef}
-            >
-              {mobileNavItems.map((item) => {
-                const IconComponent = item.icon;
-                const isActive = mobileBottomNavActive === item.id;
-
-                return (
-                  <button
-                    key={item.id}
-                    className={`bottom-nav-item flex-shrink-0 whitespace-nowrap ${isActive ? 'active' : ''}`}
-                    onClick={() => {
-                      setMobileBottomNavActive(item.id);
-                      if (item.action) item.action();
-                    }}
-                    title={item.label}
-                  >
-                    <IconComponent className="bottom-nav-icon" />
-                  </button>
-                );
-              })}
-
-              {/* Login/Profile button for mobile */}
-              {!user ? (
-                <Link
-                  to="/login"
-                  className="bottom-nav-item flex-shrink-0 whitespace-nowrap"
-                  title="Login"
-                >
-                  <User className="bottom-nav-icon" />
-                </Link>
-              ) : (
-                <Link
-                  to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
-                  className="bottom-nav-item flex-shrink-0 whitespace-nowrap"
-                  title="Profile"
-                >
-                  <User className="bottom-nav-icon" />
-                </Link>
-              )}
-            </div>
-
-            {/* Right scroll indicator */}
-            <div
-              className={`scroll-indicator right-0 top-1/2 transform -translate-y-1/2 z-[5001] transition-opacity duration-300 pointer-events-auto ${showRightIndicator ? 'opacity-100' : 'opacity-0'}`}
-              onClick={() => {
-                if (navRef.current) {
-                  navRef.current.scrollBy({ left: 100, behavior: 'smooth' });
-                }
-              }}
-            >
-              <div className="bg-white rounded-full shadow-lg p-1.5 cursor-pointer">
-                <ChevronRight className="h-5 w-5 text-gray-700" />
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Show button when bottom navigation is minimized */}
-        {!showBottomNav && (
-          <div className="fixed bottom-0 left-0 right-0 z-[5000]">
-            {/* Show button with reduced height */}
-            <div className="flex justify-end">
-              <button
-                className="toggle-arrow-button absolute bottom-0 right-0 p-2"
-                onClick={() => setShowBottomNav(true)}
-                title="Show navigation"
-              >
-                <ChevronUp className="h-4 w-4 text-gray-700" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile Sidebar Drawer */}
-        <div className={`mobile-sidebar-drawer ${isSidebarExpanded ? 'active' : ''}`}>
-          <button className="close-mobile-sidebar" onClick={toggleSidebar}>
-            <X size={20} />
-          </button>
-
-          <div className="h-full flex flex-col justify-start pt-12">
-            <div className="sidebar-container flex-grow overflow-y-auto">
-              <div className="flex flex-col">
-                {/* Sidebar menu items */}
-                {filteredItems.map((item) => {
-                  const IconComponent = item.icon;
-                  return item.type === 'link' ? (
-                    <a
-                      key={item.id}
-                      href={item.path}
-                      className="sidebar-button border-b border-gray-200"
-                      title={item.label}
-                    >
-                      <div className="sidebar-button-icon-wrapper">
-                        <IconComponent className="sidebar-button-icon" />
-                      </div>
-                      <span className="sidebar-button-text">{item.label}</span>
-                    </a>
-                  ) : (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        item.action();
-                        toggleSidebar(); // Close drawer after action
-                      }}
-                      className={`sidebar-button border-b border-gray-200 ${
-                        item.id === 'saved' && showSavedLocationsOnMap
-                          ? 'saved-locations'
-                          : ''
-                      } ${
-                        item.id === 'my-location' && followUser
-                          ? 'following-location'
-                          : ''
-                      }`}
-                      title={
-                        item.id === 'saved'
-                          ? user
-                            ? `${showSavedLocationsOnMap ? 'Hide' : 'Show'} saved locations`
-                            : 'Login to view saved locations'
-                          : item.id === 'my-location'
-                            ? followUser ? "Stop Following Location" : "Show My Location"
-                            : item.label
-                      }
-                      disabled={item.id === 'my-location' && locationLoading}
-                    >
-                      <div className={`sidebar-button-icon-wrapper ${
-                        item.id === 'saved' && showSavedLocationsOnMap
-                          ? 'bg-yellow-100'
-                          : item.id === 'my-location' && followUser
-                            ? 'bg-blue-100'
-                            : 'bg-gray-100'
-                      }`}>
-                        {item.id === 'my-location' && locationLoading ? (
-                          <div className="w-5 h-5 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
-                          </div>
-                        ) : (
-                          <IconComponent
-                            className={`sidebar-button-icon ${
-                              item.id === 'saved' && showSavedLocationsOnMap
-                                ? 'text-yellow-600 fill-current'
-                                : item.id === 'my-location' && followUser
-                                  ? 'text-blue-600'
-                                  : ''
-                            }`}
-                          />
-                        )}
-                      </div>
-                      <span className="sidebar-button-text">{item.label}</span>
-                    </button>
-                  );
-                })}
-
-                {/* Profile and Logout buttons for authenticated users */}
-                {user && (
-                  <>
-                    <a
-                      href="/profile"
-                      className="sidebar-button border-b border-gray-200"
-                      title="Profile"
-                    >
-                      <div className="sidebar-button-icon-wrapper">
-                        <User className="sidebar-button-icon" />
-                      </div>
-                      <span className="sidebar-button-text">Profile</span>
-                    </a>
-
-                    <button
-                      onClick={() => {
-                        onLogout();
-                        toggleSidebar(); // Close drawer after logout
-                      }}
-                      className="sidebar-button border-b border-gray-200"
-                      title="Logout"
-                    >
-                      <div className="sidebar-button-icon-wrapper bg-red-100">
-                        <LogOut className="sidebar-button-icon text-red-600" />
-                      </div>
-                      <span className="sidebar-button-text">Logout</span>
-                    </button>
-                  </>
-                )}
-
-                {/* Login button for unauthenticated users */}
-                {!user && (
-                  <a
-                    href="/login"
-                    className="sidebar-button border-b border-gray-200"
-                    title="Login"
-                  >
-                    <div className="sidebar-button-icon-wrapper bg-blue-100">
-                      <User className="sidebar-button-icon text-blue-600" />
-                    </div>
-                    <span className="sidebar-button-text">Login</span>
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile sidebar overlay */}
-        {isSidebarExpanded && (
-          <div
-            className="mobile-sidebar-overlay active"
-            onClick={toggleSidebar}
-          ></div>
-        )}
-      </>
-    );
-  }
-
-  // Desktop sidebar
   return (
-    <div className={`z-[5000] h-screen fixed left-0 top-0 ${isSidebarExpanded ? 'sidebar-expanded' : 'sidebar-collapsed'} ${window.innerWidth <= 768 && isSidebarExpanded ? 'sidebar-visible' : ''}`}
-         style={window.innerWidth <= 768 ? { height: 'calc(100vh - 60px)' } : {}}>
-      {/* Full-height container with scroll for overflow */}
-      <div className="h-full flex flex-col justify-start">
-        <div className="sidebar-container flex-grow">
-          <div className="flex flex-col">
-            {/* Menu toggle button - always visible at the top */}
-            <button
+    <div className={`fixed left-0 top-0 bottom-0 h-screen z-[8080] flex select-none ${isMobile ? 'hidden' : ''}`}>
+        <motion.aside
+          initial={false}
+          animate={isSidebarExpanded ? 'expanded' : 'collapsed'}
+          variants={sidebarVariants}
+          className="h-full bg-white border-r border-slate-100 shadow-sm flex flex-col py-8 overflow-hidden"
+        >
+         {/* Pro Logo Block */}
+         <motion.div 
+            layout
+            className={`mb-12 flex items-center w-full overflow-hidden ${isSidebarExpanded ? 'justify-start px-8' : 'justify-center'}`}
+         >
+            <motion.div 
+              layout
+              className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-slate-100 cursor-pointer active:scale-95 transition-transform"
               onClick={toggleSidebar}
-              className="sidebar-button border-b border-gray-200"
-              title={isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
             >
-              <div className="sidebar-button-icon-wrapper">
-                {isSidebarExpanded ? <X className="sidebar-button-icon" /> : <Menu className="sidebar-button-icon" />}
-              </div>
-              {isSidebarExpanded && <span className="sidebar-button-text">Menu</span>}
-            </button>
-
-            {/* Sidebar menu items */}
-            {filteredItems.map((item) => {
-              if (item.mobileOnly) return null; // Skip mobile-only items on desktop
-
-              const IconComponent = item.icon;
-              return item.type === 'link' ? (
-                <a
-                  key={item.id}
-                  href={item.path}
-                  className="sidebar-button border-b border-gray-200"
-                  title={item.label}
+               <Zap size={18} className="text-white fill-white" />
+            </motion.div>
+            <AnimatePresence mode="wait">
+              {isSidebarExpanded && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
+                  transition={{ delay: 0.1 }}
+                  className="ml-4 flex flex-col flex-1 whitespace-nowrap overflow-hidden"
                 >
-                  <div className="sidebar-button-icon-wrapper">
-                    <IconComponent className="sidebar-button-icon" />
-                  </div>
-                  {isSidebarExpanded && <span className="sidebar-button-text">{item.label}</span>}
-                </a>
-              ) : (
-                <button
-                  key={item.id}
-                  onClick={item.action}
-                  className={`sidebar-button border-b border-gray-200 ${
-                    item.id === 'saved' && showSavedLocationsOnMap
-                      ? 'saved-locations'
-                      : ''
-                  } ${
-                    item.id === 'my-location' && followUser
-                      ? 'following-location'
-                      : ''
-                  }`}
-                  title={
-                    item.id === 'saved'
-                      ? user
-                        ? `${showSavedLocationsOnMap ? 'Hide' : 'Show'} saved locations`
-                        : 'Login to view saved locations'
-                      : item.id === 'my-location'
-                        ? followUser ? "Stop Following Location" : "Show My Location"
-                        : item.label
-                  }
-                  disabled={item.id === 'my-location' && locationLoading}
-                >
-                  <div className={`sidebar-button-icon-wrapper ${
-                    item.id === 'saved' && showSavedLocationsOnMap
-                      ? 'bg-yellow-100'
-                      : item.id === 'my-location' && followUser
-                        ? 'bg-blue-100'
-                        : 'bg-gray-100'
-                  }`}>
-                    {item.id === 'my-location' && locationLoading ? (
-                      <div className="w-5 h-5 flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
-                      </div>
-                    ) : (
-                      <IconComponent
-                        className={`sidebar-button-icon ${
-                          item.id === 'saved' && showSavedLocationsOnMap
-                            ? 'text-yellow-600 fill-current'
-                            : item.id === 'my-location' && followUser
-                              ? 'text-blue-600'
-                              : ''
-                        }`}
-                      />
-                    )}
-                  </div>
-                  {isSidebarExpanded && <span className="sidebar-button-text">{item.label}</span>}
-                </button>
-              );
-            })}
+                  <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none mb-1">PinQuest</h1>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/90">Social Map</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+         </motion.div>
 
-            {/* Profile and Logout buttons for authenticated users */}
-            {user && (
-              <>
-                <a
-                  href="/profile"
-                  className="sidebar-button border-b border-gray-200"
-                  title="Profile"
-                >
-                  <div className="sidebar-button-icon-wrapper">
-                    <User className="sidebar-button-icon" />
-                  </div>
-                  {isSidebarExpanded && <span className="sidebar-button-text">Profile</span>}
-                </a>
+         {/* Global Level Pro Navigation */}
+         <div className="flex-1 overflow-y-auto space-y-8 custom-scrollbar overflow-x-hidden">
+            {navGroups.map((group, gIdx) => (
+               <div key={gIdx} className="space-y-4">
+                  {isSidebarExpanded && (
+                    <h4 className="px-8 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-2">
+                      {group.title}
+                    </h4>
+                  )}
+                  <div className="flex flex-col items-center space-y-1">
+                     {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = (item.path && location.pathname === item.path && !activeSidebarWindow) || 
+                                         (activeSidebarWindow === item.id);
+                        
+                        return (
+                          <motion.button
+                            layout
+                            key={item.id}
+                            animate={isSidebarExpanded ? 'expanded' : 'collapsed'}
+                            variants={navItemVariants}
+                            onClick={item.action || (() => {})}
+                            className={`h-11 flex items-center transition-all duration-300 relative group
+                               ${isActive ? 'bg-slate-50' : 'hover:bg-slate-50'}
+                               ${isSidebarExpanded ? 'rounded-l-xl pl-6' : 'rounded-xl'}`}
+                          >
+                             {/* Active Pillar Indicator - PRO UIBlocks Style - Flush to the absolute window edge */}
+                             {isActive && (
+                               <motion.div 
+                                 layoutId="activePillar"
+                                 className="absolute right-0 top-0 bottom-0 w-[5px] bg-slate-900 rounded-l-md z-[10]" 
+                               />
+                             )}
 
-                <button
-                  onClick={onLogout}
-                  className="sidebar-button border-b border-gray-200"
-                  title="Logout"
-                >
-                  <div className="sidebar-button-icon-wrapper bg-red-100">
-                    <LogOut className="sidebar-button-icon text-red-600" />
+                             <div className={`w-11 h-11 flex-shrink-0 flex items-center justify-center transition-colors
+                                ${isActive ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-900'}`}>
+                                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                             </div>
+                             <AnimatePresence>
+                                {isSidebarExpanded && (
+                                  <motion.span 
+                                    initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }}
+                                    className={`ml-4 text-[13px] font-bold tracking-tight whitespace-nowrap overflow-hidden
+                                       ${isActive ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-900'}`}
+                                  >
+                                    {item.label}
+                                  </motion.span>
+                                )}
+                             </AnimatePresence>
+                          </motion.button>
+                        );
+                     })}
                   </div>
-                  {isSidebarExpanded && <span className="sidebar-button-text">Logout</span>}
-                </button>
-              </>
-            )}
+               </div>
+            ))}
+         </div>
 
-            {/* Login button for unauthenticated users */}
-            {!user && (
-              <a
-                href="/login"
-                className="sidebar-button border-b border-gray-200"
-                title="Login"
+         {/* UIBlocks Styled Profile Footer */}
+         <motion.div 
+           layout
+           className={`mt-auto pt-8 border-t border-slate-100 w-full flex flex-col items-center space-y-4 ${isSidebarExpanded ? 'px-6' : 'px-0'}`}
+         >
+           {user ? (
+             <motion.button 
+               layout 
+               animate={isSidebarExpanded ? 'expanded' : 'collapsed'}
+               variants={navItemVariants}
+               className="h-14 flex items-center bg-slate-900 rounded-xl px-4 text-white hover:bg-black transition-colors shadow-lg shadow-slate-200"
+             >
+               <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <User size={16} className="text-white" />
+               </div>
+               {isSidebarExpanded && (
+                 <div className="ml-3 flex flex-col text-left overflow-hidden">
+                    <span className="text-[11px] font-black uppercase tracking-widest leading-none truncate">Profile</span>
+                    <span className="text-[10px] font-black text-indigo-400/90 tracking-widest mt-1 truncate">{user.name}</span>
+                 </div>
+               )}
+             </motion.button>
+           ) : (
+             <Link to="/login" className="w-full px-6">
+                <motion.button 
+                  layout
+                  className={`h-14 w-full bg-slate-900 text-white rounded-xl flex items-center justify-center gap-3 active:scale-95 transition-all
+                    ${!isSidebarExpanded && 'p-0 w-12 h-12 rounded-lg ml-auto mr-auto'}`}
+                >
+                  <User size={18} strokeWidth={2.5} />
+                  {isSidebarExpanded && <span className="font-black text-[11px] uppercase tracking-[0.2em]">Sign In</span>}
+                </motion.button>
+             </Link>
+           )}
+
+           <div className={`flex items-center w-full ${isSidebarExpanded ? 'justify-between px-8' : 'flex-col space-y-4'}`}>
+              <button className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
+                 <Settings size={18} />
+              </button>
+              <button 
+                onClick={onLogout}
+                className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                title="Logout"
               >
-                <div className="sidebar-button-icon-wrapper bg-blue-100">
-                  <User className="sidebar-button-icon text-blue-600" />
-                </div>
-                {isSidebarExpanded && <span className="sidebar-button-text">Login</span>}
-              </a>
+                 <LogOut size={18} />
+              </button>
+           </div>
+         </motion.div>
+        </motion.aside>
+
+        {/* Transition Arrows Center Anchor */}
+        <div className="relative h-full flex items-center">
+            {/* Simplified Toggle - Only show if NO windows are open to keep the layout centered */}
+            {!hasWindowOpen && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={toggleSidebar}
+                className="absolute left-[-20px] z-[8081] w-10 h-14 bg-white border border-slate-100 shadow-xl rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
+              >
+                {isSidebarExpanded ? <ChevronLeft size={18} strokeWidth={3} /> : <ChevronRight size={18} strokeWidth={3} />}
+              </motion.button>
             )}
-          </div>
         </div>
-      </div>
     </div>
   );
 };

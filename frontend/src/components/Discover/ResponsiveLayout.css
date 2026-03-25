@@ -22,11 +22,11 @@
 /* Adjust map container when sidebar is expanded on desktop */
 @media (min-width: 768px) {
   .map-container-sidebar-expanded {
-    left: 16rem; /* Width of expanded sidebar */
+    left: 0; /* Map is full-screen, sidebar floats on top */
   }
   
   .map-container-sidebar-collapsed {
-    left: 5rem; /* Width of collapsed sidebar */
+    left: 0; /* Map is full-screen, sidebar floats on top */
   }
 }
 
@@ -168,19 +168,18 @@
   display: inline-block;
 }
 
-/* Centered search bar container */
+/* Structural UIBlocks Search Bar */
 .search-bar-centered {
   position: absolute;
-  top: 20px;
+  top: 25px;
   left: 50%;
   transform: translateX(-50%);
   width: 90%;
-  max-width: 600px;
-  z-index: 1000;
-  transition: all 0.3s ease;
+  max-width: 650px;
+  z-index: 9000;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Search input container */
 .search-input-container {
   width: 100%;
   position: relative;
@@ -188,15 +187,24 @@
 
 .search-input {
   width: 100%;
-  padding: 14px 20px;
-  padding-left: 50px;
-  padding-right: 50px;
-  border-radius: 24px;
-  border: 1px solid #d1d5db;
-  background-color: white;
-  font-size: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  transition: all 0.2s ease;
+  padding: 16px 24px;
+  padding-left: 54px;
+  padding-right: 54px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  letter-spacing: -0.02em;
+}
+
+.search-input:focus {
+  border-color: #1a1a1a;
+  outline: none;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
 }
 
 .search-input:focus {

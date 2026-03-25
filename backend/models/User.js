@@ -198,8 +198,6 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 };
 
 // Create compound indexes for better query performance
-userSchema.index({ email: 1 }); // For email lookups (this is already unique)
-userSchema.index({ googleId: 1 }); // For Google OAuth lookups (sparse index)
 userSchema.index({ role: 1, isBanned: 1 }); // For admin queries
 userSchema.index({ isVerified: 1, createdAt: -1 }); // For verified user queries
 userSchema.index({ isBanned: 1, role: 1 }); // For banned user and role queries

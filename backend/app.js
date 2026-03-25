@@ -139,17 +139,19 @@ app.use((req, res, next) => {
 const io = socketIo(server, {
   cors: {
     origin: [
-      process.env.CLIENT_URL || "http://localhost:5173",
+      process.env.CLIENT_URL,
+      "http://localhost:5173",
       "https://pinquest-app.onrender.com", // Production frontend URL
       "https://www.pinquest-app.onrender.com" // Alternative production URL
-    ],
+    ].filter(Boolean),
     methods: ["GET", "POST"],
   },
 });
 
 // Enable CORS for all routes with flexible origin handling
 const allowedOrigins = [
-  process.env.CLIENT_URL || "http://localhost:5173",
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
   "http://localhost:5174", // Common Vite default port
   "http://localhost:3000", // Common React dev port
   "http://localhost:3001", // Alternative React dev port
@@ -158,7 +160,7 @@ const allowedOrigins = [
   "https://pinquest-app.onrender.com", // Production frontend URL
   "https://www.pinquest-app.onrender.com", // Alternative production URL
   "https://pinquest.onrender.com" // Backend domain (for same-origin requests)
-];
+].filter(Boolean);
 
 // Add environment-specific CORS configuration
 const corsOptions = {

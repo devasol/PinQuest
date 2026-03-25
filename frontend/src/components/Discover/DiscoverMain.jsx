@@ -1857,14 +1857,30 @@ const DiscoverMain = () => {
 
   // Function to toggle windows - closes previous window and opens new one
   const toggleWindow = (windowId) => {
-    // Close all windows and open the requested window atomically
-    setShowWindows({
-      'category-window': windowId === 'category-window',
-      'view-mode-window': windowId === 'view-mode-window',
-      'map-type-window': windowId === 'map-type-window',
-      'saved-locations-window': windowId === 'saved-locations-window',
-      'notifications-window': windowId === 'notifications-window'
-    });
+    // Check if the window is already open
+    const isAlreadyOpen = showWindows[windowId];
+
+    if (isAlreadyOpen) {
+      // Close all windows
+      setShowWindows({
+        'category-window': false,
+        'view-mode-window': false,
+        'map-type-window': false,
+        'saved-locations-window': false,
+        'notifications-window': false
+      });
+      setActiveSidebarWindow(null);
+    } else {
+      // Close others and open requested
+      setShowWindows({
+        'category-window': windowId === 'category-window',
+        'view-mode-window': windowId === 'view-mode-window',
+        'map-type-window': windowId === 'map-type-window',
+        'saved-locations-window': windowId === 'saved-locations-window',
+        'notifications-window': windowId === 'notifications-window'
+      });
+      setActiveSidebarWindow(windowId.replace('-window', ''));
+    }
   };
 
 
@@ -2012,33 +2028,37 @@ const DiscoverMain = () => {
         </div>
       )}
 
-      {/* Centered search bar on desktop, top-positioned on mobile - hidden when post creation form is open */}
+      {/* Centered search bar - Dynamically shifts to avoid windows */}
       {!creatingPostAt && (
-        <div className="search-bar-centered" style={{ top: '20px' }}>
+        <motion.div 
+          layout
+          className="search-bar-centered" 
+          style={{ 
+            top: isMobile ? '12px' : '25px',
+            zIndex: 8060,
+            left: (!isMobile && activeSidebarWindow) ? 'calc(50% + 140px)' : '50%',
+            maxWidth: isMobile ? 'calc(100% - 24px)' : '600px'
+          }}
+        >
           <div className="search-input-container" ref={searchContainerRef}>
             <SearchBar
-              placeholder="Search for places, locations, categories..."
+              placeholder="Search destinations, categories..."
               autoFocus
               onSearchResults={(results, query) => {
                 setFilteredPosts(results);
-                // Update the enhanced search results state
                 setEnhancedSearchResults(results);
-                // Update search query state
                 setSearchQuery(query || '');
               }}
               onLocationSelect={(post) => {
-                // Only navigate to the location without opening the post window
-                // Ensure the post has a valid position before flying to it
                 if (post.position && Array.isArray(post.position) && post.position.length >= 2) {
                   flyToPost(post.position);
                 } else if (post.location && typeof post.location.latitude !== 'undefined' && typeof post.location.longitude !== 'undefined') {
-                  // Fallback to location object if position is not available
                   flyToPost([post.location.latitude, post.location.longitude]);
                 }
               }}
             />
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Map container */}
@@ -2378,6 +2398,8 @@ const DiscoverMain = () => {
       <EnhancedSidebarWindows
         showWindows={showWindows}
         setShowWindows={setShowWindows}
+        activeSidebarWindow={activeSidebarWindow}
+        setActiveSidebarWindow={setActiveSidebarWindow}
         selectedCategory={selectedCategory}
         setSelectedCategory={setSelectedCategory}
         viewMode={viewMode}

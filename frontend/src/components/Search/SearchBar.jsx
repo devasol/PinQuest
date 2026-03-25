@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, MapPin, Star } from 'lucide-react';
+import { Search, X, MapPin, Star, Compass } from 'lucide-react';
 import { postApi } from '../../services/api';
 import { useModal } from '../../contexts/ModalContext';
 
@@ -173,69 +173,72 @@ const SearchBar = ({
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+      <div className="relative group">
+        <div className="absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors">
+          <Search size={18} strokeWidth={2.5} />
+        </div>
         <input
           type="text"
           placeholder={placeholder}
           value={searchQuery}
           onChange={handleInputChange}
           onFocus={() => setIsFocused(true)}
-          className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
+          className="w-full pl-14 pr-12 py-4 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-slate-900 font-bold text-sm tracking-tight placeholder:text-slate-400 placeholder:font-medium shadow-sm transition-all duration-300"
           autoFocus={autoFocus}
         />
         {searchQuery && (
           <button
             onClick={handleClearSearch}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
           >
-            <X className="h-4 w-4 text-gray-500" />
+            <X size={16} className="text-slate-400 hover:text-slate-900" />
           </button>
         )}
       </div>
 
-      {/* Search Results Dropdown */}
+      {/* Search Results Dropdown - Structural Style */}
       {isFocused && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.12)] border border-slate-100 z-[9999] max-h-[70vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
           {searchQuery ? (
-            <>
+            <div className="flex flex-col">
               {isLoading ? (
-                <div className="py-4 flex items-center justify-center">
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                    <span className="text-sm text-gray-600">Searching...</span>
-                  </div>
+                <div className="py-12 flex flex-col items-center justify-center gap-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-900"></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Intelligence</span>
                 </div>
               ) : searchResults.length > 0 ? (
                 <div className="py-2">
+                  <div className="px-6 py-3 border-b border-slate-50">
+                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Results ({searchResults.length})</span>
+                  </div>
                   {searchResults.map((post, index) => (
                     <div
                       key={post._id || post.id || index}
-                      className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 ${post.isGlobalLocation ? 'bg-blue-50' : ''}`}
+                      className={`px-6 py-4 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50 last:border-b-0 group ${post.isGlobalLocation ? 'bg-slate-50/50' : ''}`}
                       onClick={() => handleResultClick(post)}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 pt-1">
-                          <MapPin className={`h-4 w-4 ${post.isGlobalLocation ? 'text-green-500' : 'text-blue-500'}`} />
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center flex-shrink-0 group-hover:border-slate-300 transition-colors">
+                          <MapPin size={18} className={`${post.isGlobalLocation ? 'text-indigo-500' : 'text-slate-900'}`} strokeWidth={2.5} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-gray-900 text-sm truncate">{post.title}</h3>
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="font-black text-slate-900 text-[13px] truncate tracking-tight">{post.title}</h3>
                             {post.isGlobalLocation && (
-                              <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
-                                External
+                              <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                Global
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-600 line-clamp-2 mt-1">{post.description}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className="flex items-center">
-                              <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                              <span className="text-xs text-gray-600 ml-1">
-                                {post.averageRating?.toFixed(1) || '0.0'} ({post.totalRatings || 0})
+                          <p className="text-[11px] font-medium text-slate-500 line-clamp-1 mt-0.5">{post.description}</p>
+                          <div className="flex items-center gap-3 mt-2">
+                            <div className="flex items-center gap-1">
+                              <Star size={12} className="text-yellow-400 fill-current" />
+                              <span className="text-[11px] font-black text-slate-900">
+                                {post.averageRating?.toFixed(1) || '0.0'}
                               </span>
                             </div>
-                            <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
                               {post.category}
                             </span>
                           </div>
@@ -245,14 +248,18 @@ const SearchBar = ({
                   ))}
                 </div>
               ) : (
-                <div className="py-4 text-center">
-                  <p className="text-sm text-gray-600">No results found for "{searchQuery}"</p>
+                <div className="py-12 text-center flex flex-col items-center">
+                  <Search size={32} className="text-slate-100 mb-4" />
+                  <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">No matching results</p>
+                  <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-widest">Check your filters or location</p>
                 </div>
               )}
-            </>
+            </div>
           ) : (
-            <div className="py-4 text-center">
-              <p className="text-sm text-gray-600">Start typing to search for locations</p>
+            <div className="py-10 text-center">
+              <Compass size={24} className="mx-auto text-slate-200 mb-3 animate-pulse" />
+              <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Intelligence Search</p>
+              <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-widest">Ready for input...</p>
             </div>
           )}
         </div>
