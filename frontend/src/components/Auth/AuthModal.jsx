@@ -45,8 +45,6 @@ const AuthModal = ({ isOpen, onClose }) => {
       if (mode === 'login') {
         result = await login(formData.email, formData.password);
       } else if (mode === 'signup') {
-        // Simple signup: only check passwords if confirmPassword field is present
-        // If it's single password field, proceed
         result = await signupWithVerification({
           name: formData.username,
           email: formData.email,
@@ -57,7 +55,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         result = await forgotPassword(formData.email);
         if (result.success) {
           setMode('verify');
-          setSuccess("Verification signal sent.");
+          setSuccess("Verification code sent to your email.");
           setIsLoading(false);
           return;
         }
@@ -65,7 +63,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         result = await verifyResetOTP(formData.email, formData.otp);
         if (result.success) {
           setMode('reset');
-          setSuccess("Node authenticated.");
+          setSuccess("Account verified successfully.");
           setIsLoading(false);
           return;
         }
@@ -75,20 +73,20 @@ const AuthModal = ({ isOpen, onClose }) => {
 
       if (result.success) {
         if (mode === 'login' || mode === 'reset') {
-          setSuccess("Access granted.");
+          setSuccess(mode === 'login' ? "Access granted." : "Password reset successfully.");
           setTimeout(() => {
             onClose();
             handleReset();
             setMode('login');
           }, 1500);
         } else if (mode === 'signup') {
-          setSuccess("Account initiated. Check your inbox.");
+          setSuccess("Account created! Please check your email for the verification code.");
         }
       } else {
-        setError(result.error || (mode === 'login' ? "Access denied" : "Deployment failed"));
+        setError(result.error || (mode === 'login' ? "Authentication failed" : "Registration failed"));
       }
     } catch (err) {
-      setError(err.message || "Protocol error detected");
+      setError(err.message || "An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -104,44 +102,44 @@ const AuthModal = ({ isOpen, onClose }) => {
           <>
             <div className="mb-6">
                <h3 className="text-2xl font-black text-slate-900 tracking-tighter font-jakarta uppercase">
-                  {mode === 'login' ? "Welcome Back" : "Deploy Node"}
+                  {mode === 'login' ? "Welcome Back" : "Create Account"}
                </h3>
                <p className="text-slate-500 font-bold text-[10px] mt-1 font-jakarta uppercase tracking-wider">
-                  {mode === 'login' ? "Sign in to access your dashboard" : "Access the global map intelligence"}
+                  {mode === 'login' ? "Sign in to access your dashboard" : "Join the PinQuest explorer community"}
                </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                {mode === 'signup' && (
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Username</label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Full Name</label>
                     <div className="relative group">
                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
                        <input 
                          type="text" name="username" value={formData.username} onChange={handleInputChange} required
                          className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
-                         placeholder="explorer_01"
+                         placeholder="Ex: John Doe"
                        />
                     </div>
                  </div>
                )}
 
                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Terminal Email</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Email Address</label>
                   <div className="relative group">
                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
                      <input 
                        type="email" name="email" value={formData.email} onChange={handleInputChange} required
                        className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
-                       placeholder="name@nexus.com"
+                       placeholder="name@example.com"
                      />
                   </div>
                </div>
 
                <div className="space-y-1">
                   <div className="flex justify-between items-center px-0.5">
-                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta">Security Code</label>
-                     {mode === 'login' && <button onClick={() => setMode('forgot')} type="button" className="text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 font-jakarta outline-none">Forgot?</button>}
+                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta">Password</label>
+                     {mode === 'login' && <button onClick={() => setMode('forgot')} type="button" className="text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 font-jakarta outline-none">Forgot Password?</button>}
                   </div>
                   <div className="relative group">
                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
@@ -166,36 +164,36 @@ const AuthModal = ({ isOpen, onClose }) => {
                  type="submit" disabled={isLoading}
                  className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.25em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
                >
-                  {isLoading ? "Synchronizing..." : (mode === 'login' ? "Access Node" : "Deploy Account")}
+                  {isLoading ? "Wait a moment..." : (mode === 'login' ? "Sign In" : "Sign Up")}
                   {!isLoading && <ArrowRight size={14} strokeWidth={3} />}
                </button>
 
                <div className="mt-6">
                   <div className="relative flex items-center py-2">
                       <div className="flex-grow border-t border-slate-100"></div>
-                      <span className="flex-shrink mx-4 text-[8px] font-black uppercase tracking-[0.2em] text-slate-300 font-jakarta">Auth Node Relay</span>
+                      <span className="flex-shrink mx-4 text-[8px] font-black uppercase tracking-[0.2em] text-slate-300 font-jakarta">Or Continue With</span>
                       <div className="flex-grow border-t border-slate-100"></div>
                   </div>
                   
                   <button 
                     type="button"
                     onClick={() => googleLogin()}
-                    className="w-full h-10 bg-white border border-slate-200 flex items-center justify-center gap-2 font-black text-[9px] uppercase tracking-widest text-slate-900 hover:bg-slate-50 transition-all font-jakarta mt-3"
+                    className="w-full h-10 bg-white border border-slate-200 flex items-center justify-center gap-2 font-black text-[9px] uppercase tracking-widest text-slate-900 hover:bg-slate-50 transition-all font-jakarta mt-3 shadow-sm"
                   >
                       <Chrome size={14} />
-                      Google Connect
+                      Google Account
                   </button>
                </div>
             </form>
 
             <div className="mt-8 text-center border-t border-slate-50 pt-6">
                <p className="text-slate-400 font-bold text-[9px] font-jakarta uppercase tracking-widest">
-                  {mode === 'login' ? "New Explorer? " : "Active Hub? "}
+                  {mode === 'login' ? "New Explorer? " : "Already have an account? "}
                   <button 
                     onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); handleReset(); }}
                     className="text-indigo-500 hover:text-indigo-600 transition-colors font-black outline-none"
                   >
-                     {mode === 'login' ? "Create account" : "Sign in here"}
+                     {mode === 'login' ? "Create an account" : "Sign in here"}
                   </button>
                </p>
             </div>
@@ -208,23 +206,23 @@ const AuthModal = ({ isOpen, onClose }) => {
           <>
             <div className="mb-6">
                <h3 className="text-2xl font-black text-slate-900 tracking-tighter font-jakarta uppercase">
-                  {mode === 'forgot' ? "Key Recovery" : mode === 'verify' ? "Verify Signal" : "Secure Node"}
+                  {mode === 'forgot' ? "Forgot Password" : mode === 'verify' ? "Verify Email" : "Reset Password"}
                </h3>
                <p className="text-slate-500 font-bold text-[10px] mt-1 font-jakarta uppercase tracking-wider">
-                  {mode === 'forgot' ? "Enter terminal email" : mode === 'verify' ? "Enter 6-digit signal" : "Establish new credential"}
+                  {mode === 'forgot' ? "Input your account email" : mode === 'verify' ? "Enter the 6-digit code" : "Establish a new password"}
                </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                {mode === 'forgot' && (
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Terminal Email</label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Email Address</label>
                     <div className="relative group">
                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
                        <input 
                          type="email" name="email" value={formData.email} onChange={handleInputChange} required
                          className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
-                         placeholder="name@nexus.com"
+                         placeholder="name@example.com"
                        />
                     </div>
                  </div>
@@ -242,7 +240,7 @@ const AuthModal = ({ isOpen, onClose }) => {
 
                {mode === 'reset' && (
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">New Security Key</label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">New Password</label>
                     <div className="relative group">
                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
                        <input 
@@ -261,7 +259,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                  type="submit" disabled={isLoading}
                  className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.25em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
                >
-                  {isLoading ? "Loading..." : mode === 'forgot' ? "Send OTP" : mode === 'verify' ? "Verify Hub" : "Establish Key"}
+                  {isLoading ? "Please wait..." : mode === 'forgot' ? "Send Reset Link" : mode === 'verify' ? "Verify Email" : "Reset Password"}
                   {!isLoading && <ArrowRight size={14} strokeWidth={3} />}
                </button>
 
@@ -270,7 +268,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                  onClick={() => { setMode('login'); handleReset(); }} 
                  className="w-full text-center text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors font-jakarta outline-none mt-2"
                >
-                  Back to Sign In
+                  Back to Login
                </button>
             </form>
           </>
