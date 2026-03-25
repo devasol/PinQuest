@@ -75,9 +75,9 @@ const Sidebar = ({
     ];
 
     return (
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-[400px] z-[9000] font-jakarta">
+      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[94%] max-w-[440px] z-[9000] font-jakarta">
         {/* Superior Floating Container */}
-        <div className="relative bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[12px] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] px-3 py-3 flex items-center justify-between overflow-hidden">
+        <div className="relative bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] px-4 py-4 flex items-center justify-between overflow-hidden">
           
           {/* Reactive Background Pill */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
