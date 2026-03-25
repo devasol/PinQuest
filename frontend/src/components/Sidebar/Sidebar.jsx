@@ -61,57 +61,92 @@ const Sidebar = ({
 
   const hasWindowOpen = activeSidebarWindow !== null;
 
-  // MOBILE BOTTOM NAV: Clean & Pro Style
+  // PREMIUM MOBILE HUB: Interactive & High-End
   if (isMobile) {
     const mobileItems = [
-      { id: 'dashboard', label: 'Feed', icon: LayoutGrid, path: '/' },
-      { id: 'category', label: 'Library', icon: Compass, action: () => toggleWindow('category-window') },
-      { id: 'track', label: 'Sync', icon: LocateFixed, action: () => {
+      { id: 'dashboard', label: 'HUB', icon: LayoutGrid, path: '/' },
+      { id: 'category', label: 'LIBRARY', icon: Compass, action: () => toggleWindow('category-window') },
+      { id: 'track', label: 'SYNC', icon: LocateFixed, action: () => {
         updateUserLocation();
         setFollowUser(!followUser);
       }},
-      { id: 'map-type', label: 'Layers', icon: Layers, action: () => toggleWindow('map-type-window') },
-      { id: 'profile', label: 'User', icon: User, action: user ? null : openAuthModal, path: user ? '/profile' : null }
+      { id: 'map-type', label: 'CORE', icon: Layers, action: () => toggleWindow('map-type-window') },
+      { id: 'profile', label: 'ENTITY', icon: User, action: user ? null : openAuthModal, path: user ? '/profile' : null }
     ];
 
     return (
-      <div className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-100 z-[9000] flex items-center justify-between px-4 pb-safe">
-        {mobileItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = (item.path && location.pathname === item.path && !activeSidebarWindow) || 
-                           (activeSidebarWindow === item.id);
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-[400px] z-[9000] font-jakarta">
+        {/* Superior Floating Container */}
+        <div className="relative bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[12px] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] px-3 py-3 flex items-center justify-between overflow-hidden">
           
-          const Content = (
-            <div className="flex flex-col items-center gap-1">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors
-                ${isActive ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}>
-                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-              </div>
-              <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
-                {item.label}
-              </span>
-            </div>
-          );
+          {/* Reactive Background Pill */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+             <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-br from-teal-500/5 via-transparent to-rose-500/5 rotate-12" />
+          </div>
 
-          if (item.path) {
-            return (
-              <Link key={item.id} to={item.path} className="flex-1 flex justify-center py-2">
-                {Content}
-              </Link>
+          {mobileItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = (item.path && location.pathname === item.path && !activeSidebarWindow) || 
+                             (activeSidebarWindow === item.id);
+            
+            const Content = (
+              <motion.div 
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.92 }}
+                className="relative flex flex-col items-center gap-1.5"
+              >
+                {/* Active Indicator Bar (Top) */}
+                <AnimatePresence>
+                  {isActive && (
+                    <motion.div 
+                      layoutId="mobileActiveBar"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      className="absolute -top-[12px] w-5 h-[3px] bg-teal-400 rounded-b-full shadow-[0_0_10px_rgba(45,212,191,0.5)]"
+                    />
+                  )}
+                </AnimatePresence>
+
+                <div className={`w-10 h-10 rounded-[4px] flex items-center justify-center transition-all duration-300
+                  ${isActive ? 'bg-white/10 text-teal-400 border border-white/10' : 'text-slate-500'}`}>
+                  <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
+                </div>
+                
+                <span className={`text-[8px] font-black tracking-[0.2em] transition-colors
+                  ${isActive ? 'text-white' : 'text-slate-500'}`}>
+                  {item.label}
+                </span>
+              </motion.div>
             );
-          }
 
-          return (
-            <button key={item.id} onClick={item.action} className="flex-1 flex justify-center py-2">
-              {Content}
-            </button>
-          );
-        })}
+            if (item.path) {
+              return (
+                <Link key={item.id} to={item.path} className="flex-1 flex justify-center no-underline cursor-pointer">
+                  {Content}
+                </Link>
+              );
+            }
+
+            return (
+              <button key={item.id} onClick={item.action} className="flex-1 flex justify-center cursor-pointer outline-none">
+                {Content}
+              </button>
+            );
+          })}
+        </div>
+        
+        {/* Precision Tracking Pulse (Mobile specific state indicator) */}
+        {followUser && (
+           <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-teal-500 text-white text-[8px] font-black px-3 py-0.5 rounded-full shadow-lg shadow-teal-500/30 animate-pulse tracking-widest border border-teal-400 uppercase">
+              Tracking Active
+           </div>
+        )}
       </div>
     );
   }
 
-  // DESKTOP SIDEBAR: Existing Pro Logic
+  // DESKTOP SIDEBAR: Standardized with New Pro Branding
   return (
     <div className={`fixed left-0 top-0 bottom-0 h-screen z-[8080] flex select-none`}>
         <motion.aside
@@ -226,8 +261,8 @@ const Sidebar = ({
                 <motion.button 
                   onClick={openAuthModal}
                   layout
-                  className={`h-14 w-full bg-slate-900 text-white rounded-xl flex items-center justify-center gap-3 active:scale-95 transition-all
-                    ${!isSidebarExpanded && 'p-0 w-12 h-12 rounded-lg ml-auto mr-auto'}`}
+                  className={`h-14 w-full bg-slate-900 text-white rounded-[4px] flex items-center justify-center gap-3 active:scale-95 transition-all
+                    ${!isSidebarExpanded && 'p-0 w-12 h-12 rounded-[4px] ml-auto mr-auto'}`}
                 >
                   <User size={18} strokeWidth={2.5} />
                   {isSidebarExpanded && <span className="font-black text-[11px] uppercase tracking-[0.2em]">Sign In</span>}
