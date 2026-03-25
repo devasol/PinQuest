@@ -2037,7 +2037,7 @@ const DiscoverMain = () => {
       )}
 
       {/* Centered search bar - Dynamically shifts to avoid windows */}
-      {!creatingPostAt && (
+      {!creatingPostAt && !activeSidebarWindow && (
         <motion.div 
           layout
           className="search-bar-centered" 

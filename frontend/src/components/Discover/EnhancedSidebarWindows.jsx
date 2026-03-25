@@ -120,7 +120,7 @@ const EnhancedSidebarWindows = ({
           </div>
           <button 
             onClick={() => closeWindow(id)}
-            className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
+            className="w-10 h-10 rounded-[4px] bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
           >
             <X size={20} strokeWidth={2.5} />
           </button>
@@ -152,10 +152,10 @@ const EnhancedSidebarWindows = ({
                 key={cat.id}
                 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
                 onClick={() => { setSelectedCategory(cat.id); closeWindow('category-window'); }}
-                className={`w-full flex items-center gap-5 p-4 rounded-xl transition-all border
+                className={`w-full flex items-center gap-5 p-4 rounded-[4px] transition-all border
                   ${selectedCategory === cat.id ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200' : 'hover:bg-slate-50 border-transparent text-slate-800'}`}
               >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
+                <div className={`w-10 h-10 rounded-[4px] flex items-center justify-center flex-shrink-0 transition-colors
                   ${selectedCategory === cat.id ? 'bg-white/10' : 'bg-slate-50 text-teal-500'}`}>
                   {cat.icon && <cat.icon size={20} strokeWidth={2.5} />}
                 </div>
@@ -177,10 +177,10 @@ const EnhancedSidebarWindows = ({
                   key={type.id}
                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
                   onClick={() => { setMapType(type.id); closeWindow('map-type-window'); }}
-                  className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all border
+                  className={`w-full flex items-center gap-4 p-4 rounded-[4px] transition-all border
                     ${mapType === type.id ? 'border-teal-600 bg-teal-50/50 text-teal-900' : 'border-slate-100 bg-white hover:bg-slate-50'}`}
                 >
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mapType === type.id ? 'bg-teal-600 text-white' : 'bg-slate-900 text-white'}`}>
+                  <div className={`w-10 h-10 rounded-[4px] flex items-center justify-center ${mapType === type.id ? 'bg-teal-600 text-white' : 'bg-slate-900 text-white'}`}>
                      {type.icon && <type.icon size={18} strokeWidth={2} />}
                   </div>
                   <div className="text-left">
@@ -203,9 +203,9 @@ const EnhancedSidebarWindows = ({
                 <div className="space-y-3">
                   {posts.filter(p => favoritePosts.has(p.id)).map((p, idx) => (
                     <motion.div key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-                      className="p-4 bg-white border border-slate-100 rounded-xl flex gap-4 shadow-sm hover:border-slate-300 transition-all cursor-pointer group"
+                      className="p-4 bg-white border border-slate-100 rounded-[4px] flex gap-4 shadow-sm hover:border-slate-300 transition-all cursor-pointer group"
                     >
-                      <div className="w-12 h-12 rounded-lg bg-slate-50 flex-shrink-0 flex items-center justify-center text-slate-900 overflow-hidden border border-slate-100 group-hover:border-slate-300">
+                      <div className="w-12 h-12 rounded-[4px] bg-slate-50 flex-shrink-0 flex items-center justify-center text-slate-900 overflow-hidden border border-slate-100 group-hover:border-slate-300">
                         {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : <MapPin size={22} />}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -231,12 +231,12 @@ const EnhancedSidebarWindows = ({
 
             <div className="mt-12 pt-10 border-t border-slate-100 space-y-4">
                <button onClick={() => updateUserLocation()} 
-                  className="w-full h-14 bg-slate-900 text-white rounded-xl flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-black active:scale-[0.98] transition-all">
+                  className="w-full h-14 bg-slate-900 text-white rounded-[4px] flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-black active:scale-[0.98] transition-all">
                   <Navigation2 size={16} strokeWidth={3}/>
                   Precision Sync
                </button>
                <button onClick={() => setShowSavedLocationsOnMap(!showSavedLocationsOnMap)}
-                  className={`w-full h-14 rounded-xl flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-[0.2em] transition-all border-2
+                  className={`w-full h-14 rounded-[4px] flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-[0.2em] transition-all border-2
                     ${showSavedLocationsOnMap ? 'bg-teal-50 border-teal-200 text-teal-900' : 'bg-white border-slate-100 text-slate-400'}`}>
                   <Bookmark size={16} />
                   {showSavedLocationsOnMap ? 'Hide Collection' : 'Show Collection'}

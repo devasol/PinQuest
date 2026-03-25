@@ -183,7 +183,7 @@ const SearchBar = ({
           value={searchQuery}
           onChange={handleInputChange}
           onFocus={() => setIsFocused(true)}
-          className="w-full pl-14 pr-12 py-4 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-slate-900 font-bold text-sm tracking-tight placeholder:text-slate-400 placeholder:font-medium shadow-sm transition-all duration-300"
+          className="w-full pl-14 pr-12 py-4 bg-white border border-slate-200 rounded-[4px] focus:outline-none focus:border-slate-900 font-bold text-sm tracking-tight placeholder:text-slate-400 placeholder:font-medium shadow-sm transition-all duration-300"
           autoFocus={autoFocus}
         />
         {searchQuery && (
@@ -198,7 +198,7 @@ const SearchBar = ({
 
       {/* Search Results Dropdown - Structural Style */}
       {isFocused && (
-        <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.12)] border border-slate-100 z-[9999] max-h-[70vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
+        <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[4px] shadow-[0_20px_50px_rgba(0,0,0,0.12)] border border-slate-100 z-[9999] max-h-[70vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
           {searchQuery ? (
             <div className="flex flex-col">
               {isLoading ? (
@@ -218,7 +218,7 @@ const SearchBar = ({
                       onClick={() => handleResultClick(post)}
                     >
                       <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center flex-shrink-0 group-hover:border-slate-300 transition-colors">
+                        <div className="w-10 h-10 rounded-[4px] bg-white shadow-sm border border-slate-100 flex items-center justify-center flex-shrink-0 group-hover:border-slate-300 transition-colors">
                           <MapPin size={18} className={`${post.isGlobalLocation ? 'text-teal-500' : 'text-slate-900'}`} strokeWidth={2.5} />
                         </div>
                         <div className="flex-1 min-w-0">
