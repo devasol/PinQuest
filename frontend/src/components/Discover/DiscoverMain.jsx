@@ -2586,7 +2586,7 @@ const DiscoverMain = () => {
                                 {post.averageRating.toFixed(1)} ({post.totalRatings})
                               </span>
                             </div>
-                            <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full">
+                            <span className="text-xs bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded-full">
                               {post.category}
                             </span>
                           </div>

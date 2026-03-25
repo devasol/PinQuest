@@ -112,7 +112,7 @@ const EnhancedSidebarWindows = ({
         {/* Superior Header - Bold UIBlocks Style */}
         <div className="px-8 pt-10 pb-6 flex items-center justify-between">
           <div className="flex flex-col">
-             <div className="flex items-center gap-2 text-indigo-500 mb-2">
+             <div className="flex items-center gap-2 text-teal-600 mb-2">
                {HeaderIcon ? <HeaderIcon size={16} strokeWidth={2.5} /> : <SlidersHorizontal size={16} />}
                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Active Filter</span>
              </div>
@@ -156,7 +156,7 @@ const EnhancedSidebarWindows = ({
                   ${selectedCategory === cat.id ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200' : 'hover:bg-slate-50 border-transparent text-slate-800'}`}
               >
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors
-                  ${selectedCategory === cat.id ? 'bg-white/10' : 'bg-slate-50 text-indigo-500'}`}>
+                  ${selectedCategory === cat.id ? 'bg-white/10' : 'bg-slate-50 text-teal-500'}`}>
                   {cat.icon && <cat.icon size={20} strokeWidth={2.5} />}
                 </div>
                 <div className="text-left flex-1 min-w-0">
@@ -178,9 +178,9 @@ const EnhancedSidebarWindows = ({
                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
                   onClick={() => { setMapType(type.id); closeWindow('map-type-window'); }}
                   className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all border
-                    ${mapType === type.id ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900' : 'border-slate-100 bg-white hover:bg-slate-50'}`}
+                    ${mapType === type.id ? 'border-teal-600 bg-teal-50/50 text-teal-900' : 'border-slate-100 bg-white hover:bg-slate-50'}`}
                 >
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mapType === type.id ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-white'}`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mapType === type.id ? 'bg-teal-600 text-white' : 'bg-slate-900 text-white'}`}>
                      {type.icon && <type.icon size={18} strokeWidth={2} />}
                   </div>
                   <div className="text-left">
@@ -210,7 +210,7 @@ const EnhancedSidebarWindows = ({
                       </div>
                       <div className="flex-1 min-w-0">
                          <h5 className="font-black text-slate-900 text-sm tracking-tighter truncate">{p.title}</h5>
-                         <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mt-1">{p.category || 'POINT'}</p>
+                         <p className="text-[10px] font-black uppercase tracking-widest text-teal-600 mt-1">{p.category || 'POINT'}</p>
                       </div>
                       <button onClick={() => togglePostBookmark(p)} className="text-slate-300 hover:text-slate-900 p-2 transition-colors">
                          <LogOut size={16} /> {/* Logout icon used as 'remove' in pro style often */}
@@ -237,7 +237,7 @@ const EnhancedSidebarWindows = ({
                </button>
                <button onClick={() => setShowSavedLocationsOnMap(!showSavedLocationsOnMap)}
                   className={`w-full h-14 rounded-xl flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-[0.2em] transition-all border-2
-                    ${showSavedLocationsOnMap ? 'bg-indigo-50 border-indigo-200 text-indigo-900' : 'bg-white border-slate-100 text-slate-400'}`}>
+                    ${showSavedLocationsOnMap ? 'bg-teal-50 border-teal-200 text-teal-900' : 'bg-white border-slate-100 text-slate-400'}`}>
                   <Bookmark size={16} />
                   {showSavedLocationsOnMap ? 'Hide Collection' : 'Show Collection'}
                </button>

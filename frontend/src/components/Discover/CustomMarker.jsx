@@ -6,7 +6,7 @@ import { Heart, Star } from 'lucide-react';
 // Function to create custom markers based on category
 const createCustomMarker = (category = 'general', averageRating = 0, isSaved = false, isLiked = false) => {
   // Determine color based on like status first, then fallback to rating or category
-  let fillColor = '#3b82f6'; // Default blue for general category
+  let fillColor = '#14b8a6'; // Default teal for amazing vibe
 
   if (isLiked) {
     fillColor = '#ef4444'; // Red for liked posts
@@ -28,7 +28,7 @@ const createCustomMarker = (category = 'general', averageRating = 0, isSaved = f
       culture: '#8b5cf6',    // violet
       shopping: '#ec4899',   // pink
       food: '#f59e0b',       // amber
-      event: '#3b82f6',      // blue
+      event: '#14b8a6',      // teal
       general: '#6b7280',    // gray
     };
 

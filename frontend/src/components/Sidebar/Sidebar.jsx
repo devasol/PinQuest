@@ -89,7 +89,7 @@ const Sidebar = ({
                   className="ml-4 flex flex-col flex-1 whitespace-nowrap overflow-hidden"
                 >
                   <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none mb-1">PinQuest</h1>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/90">Social Map</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-500/90">Social Map</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -170,7 +170,7 @@ const Sidebar = ({
                {isSidebarExpanded && (
                  <div className="ml-3 flex flex-col text-left overflow-hidden">
                     <span className="text-[11px] font-black uppercase tracking-widest leading-none truncate">Profile</span>
-                    <span className="text-[10px] font-black text-indigo-400/90 tracking-widest mt-1 truncate">{user.name}</span>
+                    <span className="text-[10px] font-black text-teal-400/90 tracking-widest mt-1 truncate">{user.name}</span>
                  </div>
                )}
              </motion.button>

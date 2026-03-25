@@ -204,7 +204,7 @@ const SearchBar = ({
               {isLoading ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-3">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-900"></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Intelligence</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Syncing Intelligence</span>
                 </div>
               ) : searchResults.length > 0 ? (
                 <div className="py-2">
@@ -219,13 +219,13 @@ const SearchBar = ({
                     >
                       <div className="flex items-start gap-4">
                         <div className="w-10 h-10 rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center flex-shrink-0 group-hover:border-slate-300 transition-colors">
-                          <MapPin size={18} className={`${post.isGlobalLocation ? 'text-indigo-500' : 'text-slate-900'}`} strokeWidth={2.5} />
+                          <MapPin size={18} className={`${post.isGlobalLocation ? 'text-teal-500' : 'text-slate-900'}`} strokeWidth={2.5} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
                             <h3 className="font-black text-slate-900 text-[13px] truncate tracking-tight">{post.title}</h3>
                             {post.isGlobalLocation && (
-                              <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                              <span className="text-[9px] font-black bg-teal-50 text-teal-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
                                 Global
                               </span>
                             )}
