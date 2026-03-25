@@ -191,14 +191,23 @@ const DiscoverMain = () => {
     };
   }, []);
 
+  // Auto-dismiss auth modal when authenticated (important for Google Login/Redirects)
+  useEffect(() => {
+    if (isAuthenticated && showAuthModal) {
+      setShowAuthModal(false);
+    }
+  }, [isAuthenticated, showAuthModal]);
+
   // Handle initial auth modal show if landing on /login or /signup
   useEffect(() => {
     if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
-      setShowAuthModal(true);
+      if (!isAuthenticated) {
+        setShowAuthModal(true);
+      }
       // Clean up URL without reload
       window.history.replaceState({}, '', '/');
     }
-  }, []);
+  }, [isAuthenticated]);
 
 
 
@@ -546,6 +555,7 @@ const DiscoverMain = () => {
     // Prevent multiple concurrent requests for the same data
     if (fetchPostsRef.current) {
       console.log("Request already in progress, skipping duplicate fetch");
+      setLoading(false); // Ensure loading is not stuck if request is blocked
       return;
     }
 
