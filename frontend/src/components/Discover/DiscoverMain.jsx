@@ -2020,31 +2020,7 @@ const DiscoverMain = () => {
         </div>
       )}
 
-      {/* User profile button in top-left corner - only show when authenticated */}
-      {isAuthenticated && !isMobile && (
-        <div className="top-user-controls absolute top-4 left-4 z-[7010]" style={{ left: isSidebarExpanded ? '4rem' : '1rem' }}>
-          <div className="login-control">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 bg-white/90 backdrop-blur-sm rounded-full px-3 sm:px-4 py-2 shadow-md border border-gray-200">
-              {/* User profile - logout and notifications moved to sidebar */}
-              <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                <Link
-                  to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
-                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <User className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                  </div>
-                  <span className="text-xs hidden sm:block font-medium max-w-[60px) sm:max-w-[100px] truncate">
-                    {user?.name ||
-                      (user?.role === "admin" ? "Admin" : "Profile")}
-                  </span>
-                </Link>
-                {/* Logout and notifications moved to sidebar */}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* User profile button removed in favor of modern Nexus Sidebar profile */}
 
       {/* Centered search bar - Dynamically shifts to avoid windows */}
       {!creatingPostAt && !activeSidebarWindow && (
