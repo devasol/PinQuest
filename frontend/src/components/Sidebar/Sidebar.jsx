@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, 
   Home, User, Settings, LogOut, Heart, Star, Bell, Compass, 
@@ -27,6 +27,7 @@ const Sidebar = ({
   openAuthModal = () => {}
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navGroups = [
     {
@@ -239,49 +240,51 @@ const Sidebar = ({
            layout
            className={`mt-auto pt-8 border-t border-slate-100 w-full flex flex-col items-center space-y-4 ${isSidebarExpanded ? 'px-6' : 'px-0'}`}
          >
-           {user ? (
-             <motion.button 
-               layout 
-               animate={isSidebarExpanded ? 'expanded' : 'collapsed'}
-               variants={navItemVariants}
-               className="h-14 flex items-center bg-slate-900 rounded-xl px-4 text-white hover:bg-black transition-colors shadow-lg shadow-slate-200"
-             >
-               <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <User size={16} className="text-white" />
-               </div>
-               {isSidebarExpanded && (
-                 <div className="ml-3 flex flex-col text-left overflow-hidden">
-                    <span className="text-[11px] font-black uppercase tracking-widest leading-none truncate">Profile</span>
-                    <span className="text-[10px] font-black text-teal-400/90 tracking-widest mt-1 truncate">{user.name}</span>
-                 </div>
-               )}
-             </motion.button>
-           ) : (
-             <div className="w-full px-6">
+            {user ? (
+              <div className="w-full flex justify-center">
                 <motion.button 
-                  onClick={openAuthModal}
-                  layout
-                  className={`h-14 w-full bg-slate-900 text-white rounded-[4px] flex items-center justify-center gap-3 active:scale-95 transition-all
-                    ${!isSidebarExpanded && 'p-0 w-12 h-12 rounded-[4px] ml-auto mr-auto'}`}
+                  onClick={() => navigate(user.role === 'admin' ? '/admin/dashboard' : '/profile')}
+                  layout 
+                  className={`h-12 bg-slate-900 text-white flex items-center shadow-xl shadow-slate-200/40 transition-all hover:bg-black
+                    ${isSidebarExpanded ? 'w-[calc(100%-2rem)] px-4 rounded-[4px]' : 'w-12 h-12 justify-center rounded-[4px]'}`}
                 >
-                  <User size={18} strokeWidth={2.5} />
-                  {isSidebarExpanded && <span className="font-black text-[11px] uppercase tracking-[0.2em]">Sign In</span>}
+                  <div className="flex items-center justify-center flex-shrink-0">
+                     <User size={18} strokeWidth={2.5} className="text-white" />
+                  </div>
+                  {isSidebarExpanded && (
+                    <div className="ml-3 flex flex-col text-left overflow-hidden">
+                       <span className="text-[10px] font-black uppercase tracking-widest leading-none truncate">Nexus Profile</span>
+                       <span className="text-[9px] font-black text-teal-400 tracking-[0.2em] mt-1 truncate">{user.name}</span>
+                    </div>
+                  )}
                 </motion.button>
-             </div>
-           )}
+              </div>
+            ) : (
+              <div className="w-full flex justify-center">
+                 <motion.button 
+                   onClick={openAuthModal}
+                   layout
+                   className={`h-12 bg-slate-900 text-white flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl shadow-slate-200/40 hover:bg-black
+                     ${isSidebarExpanded ? 'w-[calc(100%-2rem)] rounded-[4px]' : 'w-12 h-12 rounded-[4px]'}`}
+                 >
+                   <User size={18} strokeWidth={2.5} />
+                   {isSidebarExpanded && <span className="font-black text-[10px] uppercase tracking-[0.2em]">Initiate Sync</span>}
+                 </motion.button>
+              </div>
+            )}
 
-           <div className={`flex items-center w-full ${isSidebarExpanded ? 'justify-between px-8' : 'flex-col space-y-4'}`}>
-              <button className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
-                 <Settings size={18} />
-              </button>
-              <button 
-                onClick={onLogout}
-                className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                title="Logout"
-              >
-                 <LogOut size={18} />
-              </button>
-           </div>
+            <div className={`flex items-center w-full transition-all duration-300 ${isSidebarExpanded ? 'justify-between px-10 pt-4' : 'flex-col space-y-6 pt-2'}`}>
+               <button className="text-slate-400 hover:text-slate-900 hover:scale-110 transition-all">
+                  <Settings size={18} strokeWidth={2.5} />
+               </button>
+               <button 
+                 onClick={onLogout}
+                 className="text-slate-400 hover:text-rose-500 hover:scale-110 transition-all"
+                 title="Logout"
+               >
+                  <LogOut size={18} strokeWidth={2.5} />
+               </button>
+            </div>
          </motion.div>
         </motion.aside>
 
