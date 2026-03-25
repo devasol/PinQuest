@@ -31,7 +31,7 @@ const EnhancedSidebarWindows = ({
   setSelectedCategory = () => {},
   viewMode = 'grid',
   setViewMode = () => {},
-  mapType = 'google',
+  mapType = 'street',
   setMapType = () => {},
   favoritePosts = new Set(),
   posts = [],
@@ -58,7 +58,7 @@ const EnhancedSidebarWindows = ({
   ];
 
   const mapTypes = [
-    { id: 'google', name: 'Standard View', description: 'Clean vector navigation', icon: MapIcon },
+    { id: 'street', name: 'Standard View', description: 'Clean vector navigation', icon: MapIcon },
     { id: 'satellite', name: 'Satellite Map', description: 'Real-world vertical view', icon: Globe },
     { id: 'terrain', name: 'Physical Terrain', description: 'Elevation & landscape', icon: Mountain },
     { id: 'dark', name: 'Midnight Map', description: 'Low-light high contrast', icon: Moon },

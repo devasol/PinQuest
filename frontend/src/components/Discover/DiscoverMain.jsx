@@ -62,7 +62,7 @@ const DiscoverMain = () => {
   const [loading, setLoading] = useState(false); // Don't block initial render
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [mapType, setMapType] = useState('google'); // street, satellite, terrain, dark, light, topographic, navigation, cycle, google
+  const [mapType, setMapType] = useState('street'); // street, satellite, terrain, dark, light, topographic, navigation, cycle, google
   const [savedLocations, setSavedLocations] = useState([]); // For saved locations (separate from bookmarks)
   const [favoritePosts, setFavoritePosts] = useState(new Set()); // Track which posts are bookmarked/favorited
 
@@ -1900,9 +1900,6 @@ const DiscoverMain = () => {
   // Get the appropriate tile layer URL based on map type
   const getTileLayerUrl = () => {
     switch (mapType) {
-      case 'google':
-        // Google Maps-like style using Stadia Maps (Alidade)
-        return "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png";
       case 'street':
         return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
       case 'satellite':
@@ -1919,8 +1916,8 @@ const DiscoverMain = () => {
         return "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png";
       case 'cycle':
         return "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png";
-      default: // google as fallback
-        return "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png";
+      default: 
+        return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
     }
   };
 
