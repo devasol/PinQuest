@@ -156,10 +156,8 @@ const DiscoverMain = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const { showModal } = useModal();
-  const { logout: authLogout } = useAuth(); // Get logout from auth context
-
   const handleLogout = () => {
-    authLogout(); // Clear authentication state
+    logout(); // Clear authentication state
     navigate("/"); // Redirect to home page after logout
   };
 
@@ -191,23 +189,7 @@ const DiscoverMain = () => {
     };
   }, []);
 
-  // Auto-dismiss auth modal when authenticated (important for Google Login/Redirects)
-  useEffect(() => {
-    if (isAuthenticated && showAuthModal) {
-      setShowAuthModal(false);
-    }
-  }, [isAuthenticated, showAuthModal]);
 
-  // Handle initial auth modal show if landing on /login or /signup
-  useEffect(() => {
-    if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
-      if (!isAuthenticated) {
-        setShowAuthModal(true);
-      }
-      // Clean up URL without reload
-      window.history.replaceState({}, '', '/');
-    }
-  }, [isAuthenticated]);
 
 
 
@@ -317,7 +299,25 @@ const DiscoverMain = () => {
   const mapRef = useRef();
   const fetchIntervalRef = useRef(null);
   const selectedPostRef = useRef(selectedPost); // Create a ref to track selectedPost
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
+
+  // Auto-dismiss auth modal when authenticated (important for Google Login/Redirects)
+  useEffect(() => {
+    if (isAuthenticated && showAuthModal) {
+      setShowAuthModal(false);
+    }
+  }, [isAuthenticated, showAuthModal]);
+
+  // Handle initial auth modal show if landing on /login or /signup
+  useEffect(() => {
+    if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
+      if (!isAuthenticated) {
+        setShowAuthModal(true);
+      }
+      // Clean up URL without reload
+      window.history.replaceState({}, '', '/');
+    }
+  }, [isAuthenticated]);
 
   // Update the ref when selectedPost changes
   useEffect(() => {
