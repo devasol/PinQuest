@@ -23,7 +23,8 @@ const Sidebar = ({
   toggleSidebar,
   isMobile = false,
   activeSidebarWindow = null,
-  setActiveSidebarWindow = () => {}
+  setActiveSidebarWindow = () => {},
+  openAuthModal = () => {}
 }) => {
   const location = useLocation();
 
@@ -175,8 +176,9 @@ const Sidebar = ({
                )}
              </motion.button>
            ) : (
-             <Link to="/login" className="w-full px-6">
+             <div className="w-full px-6">
                 <motion.button 
+                  onClick={openAuthModal}
                   layout
                   className={`h-14 w-full bg-slate-900 text-white rounded-xl flex items-center justify-center gap-3 active:scale-95 transition-all
                     ${!isSidebarExpanded && 'p-0 w-12 h-12 rounded-lg ml-auto mr-auto'}`}
@@ -184,7 +186,7 @@ const Sidebar = ({
                   <User size={18} strokeWidth={2.5} />
                   {isSidebarExpanded && <span className="font-black text-[11px] uppercase tracking-[0.2em]">Sign In</span>}
                 </motion.button>
-             </Link>
+             </div>
            )}
 
            <div className={`flex items-center w-full ${isSidebarExpanded ? 'justify-between px-8' : 'flex-col space-y-4'}`}>

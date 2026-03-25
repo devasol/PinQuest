@@ -1,5 +1,10 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  X, CheckCircle2, AlertTriangle, AlertCircle, Info, 
+  HelpCircle, ShieldCheck, Zap, Mail, Trash2, 
+  Lock, KeyRound, UserMinus, LogOut
+} from 'lucide-react';
 import './Modal.css';
 
 const Modal = ({ 
@@ -15,235 +20,120 @@ const Modal = ({
   showConfirmButton = true,
   showCancelButton = false,
   showIcon = true,
-  autoClose = 0, // in milliseconds, 0 means no auto close
-  duration = 5000, // for auto-close modals
-  size = 'md', // 'sm', 'md', 'lg', 'xl'
-  variant = 'solid', // 'solid', 'outline', 'elevated'
+  autoClose = 0, 
+  duration = 5000, 
+  size = 'md', 
+  variant = 'solid', 
   closable = true,
   backdrop = true,
-  animationType = 'scale' // 'scale', 'slide', 'fade'
+  animationType = 'scale'
 }) => {
   useEffect(() => {
     let timer;
-    
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && closable && onClose) {
-        onClose();
-      }
+      if (e.key === 'Escape' && closable && onClose) onClose();
     };
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden'; // Prevent background scrolling
-      
-      // Auto-close functionality
+      document.body.style.overflow = 'hidden';
       if (autoClose > 0) {
-        timer = setTimeout(() => {
-          onClose();
-        }, autoClose);
+        timer = setTimeout(() => onClose(), autoClose);
       }
     }
-
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset'; // Reset background scrolling
+      document.body.style.overflow = 'unset';
       if (timer) clearTimeout(timer);
     };
   }, [isOpen, onClose, closable, autoClose]);
 
   if (!isOpen) return null;
 
-  const getTypeColor = () => {
+  const getTypeStyle = () => {
     switch (type) {
       case 'success':
         return {
-          bg: 'bg-emerald-50',
-          border: 'border-emerald-200',
-          text: 'text-emerald-800',
-          icon: 'text-emerald-500',
-          accent: 'border-emerald-500'
+          icon: ShieldCheck,
+          accent: 'teal-500',
+          bg: 'teal-50/50',
+          text: 'teal-900',
+          button: 'bg-teal-500 hover:bg-teal-600 shadow-teal-100',
+          border: 'border-teal-100'
         };
       case 'error':
         return {
-          bg: 'bg-red-50',
-          border: 'border-red-200',
-          text: 'text-red-800',
-          icon: 'text-red-500',
-          accent: 'border-red-500'
+          icon: AlertCircle,
+          accent: 'red-500',
+          bg: 'red-50/50',
+          text: 'red-900',
+          button: 'bg-red-500 hover:bg-red-600 shadow-red-100',
+          border: 'border-red-100'
         };
       case 'warning':
         return {
-          bg: 'bg-amber-50',
-          border: 'border-amber-200',
-          text: 'text-amber-800',
-          icon: 'text-amber-500',
-          accent: 'border-amber-500'
+          icon: AlertTriangle,
+          accent: 'amber-500',
+          bg: 'amber-50/50',
+          text: 'amber-900',
+          button: 'bg-amber-500 hover:bg-amber-600 shadow-amber-100',
+          border: 'border-amber-100'
         };
       case 'info':
         return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          text: 'text-blue-800',
-          icon: 'text-blue-500',
-          accent: 'border-blue-500'
+          icon: Lock, // Pro style uses Lock for auth
+          accent: 'teal-500', 
+          bg: 'slate-50',
+          text: 'slate-900',
+          button: 'bg-slate-900 hover:bg-black shadow-slate-200',
+          border: 'border-slate-100'
         };
       case 'confirmation':
         return {
-          bg: 'bg-purple-50',
-          border: 'border-purple-200',
-          text: 'text-purple-800',
-          icon: 'text-purple-500',
-          accent: 'border-purple-500'
+          icon: HelpCircle,
+          accent: 'slate-900',
+          bg: 'slate-50',
+          text: 'slate-900',
+          button: 'bg-slate-900 hover:bg-black shadow-slate-200',
+          border: 'border-slate-100'
         };
       default:
         return {
-          bg: 'bg-gray-50',
-          border: 'border-gray-200',
-          text: 'text-gray-800',
-          icon: 'text-gray-500',
-          accent: 'border-gray-500'
+          icon: Zap,
+          accent: 'slate-900',
+          bg: 'white',
+          text: 'slate-900',
+          button: 'bg-slate-900 hover:bg-black shadow-slate-200',
+          border: 'border-slate-100'
         };
     }
   };
 
-  const getColor = getTypeColor();
+  const style = getTypeStyle();
+  const IconComponent = style.icon;
 
-  const getIcon = () => {
-    switch (type) {
-      case 'success':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-          </svg>
-        );
-      case 'error':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        );
-      case 'warning':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.364 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-        );
-      case 'info':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      case 'confirmation':
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      default:
-        return (
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        );
-    }
-  };
-
-  // Animation variants
-  const modalVariants = {
+  const animationVariants = {
     scale: {
-      hidden: { 
-        opacity: 0, 
-        scale: 0.75,
-        transition: { duration: 0.2, ease: "easeOut" }
-      },
-      visible: { 
-        opacity: 1, 
-        scale: 1,
-        transition: { 
-          duration: 0.3, 
-          ease: "easeOut",
-          when: "beforeChildren",
-          staggerChildren: 0.1
-        }
-      },
-      exit: { 
-        opacity: 0, 
-        scale: 0.95,
-        transition: { duration: 0.2, ease: "easeIn" }
-      }
+      hidden: { opacity: 0, scale: 0.95 },
+      visible: { opacity: 1, scale: 1, transition: { type: 'spring', damping: 25, stiffness: 300 } },
+      exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } }
     },
     slide: {
-      hidden: { 
-        opacity: 0, 
-        y: 50,
-        transition: { duration: 0.2, ease: "easeOut" }
-      },
-      visible: { 
-        opacity: 1, 
-        y: 0,
-        transition: { 
-          duration: 0.3, 
-          ease: "easeOut",
-          when: "beforeChildren",
-          staggerChildren: 0.1
-        }
-      },
-      exit: { 
-        opacity: 0, 
-        y: 50,
-        transition: { duration: 0.2, ease: "easeIn" }
-      }
-    },
-    fade: {
-      hidden: { 
-        opacity: 0,
-        transition: { duration: 0.2, ease: "easeOut" }
-      },
-      visible: { 
-        opacity: 1,
-        transition: { 
-          duration: 0.3, 
-          ease: "easeOut",
-          when: "beforeChildren",
-          staggerChildren: 0.1
-        }
-      },
-      exit: { 
-        opacity: 0,
-        transition: { duration: 0.2, ease: "easeIn" }
-      }
+      hidden: { opacity: 0, y: 20 },
+      visible: { opacity: 1, y: 0, transition: { type: 'spring', damping: 25, stiffness: 300 } },
+      exit: { opacity: 0, y: 20, transition: { duration: 0.2 } }
     }
   };
 
-  const contentVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.2 } }
-  };
-
-  // Size classes
   const sizeClasses = {
-    sm: 'max-w-sm w-full mx-4',
-    md: 'max-w-md w-full mx-4',
-    lg: 'max-w-lg w-full mx-4',
-    xl: 'max-w-xl w-full mx-4'
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-xl',
+    xl: 'max-w-3xl'
   };
 
-  // Variant classes
-  const variantClasses = {
-    solid: `shadow-xl ${variant === 'solid' ? 'ring-1 ring-black/5' : ''}`,
-    outline: `border ${variant === 'outline' ? 'bg-white' : ''}`,
-    elevated: `shadow-2xl ${variant === 'elevated' ? 'ring-1 ring-black/10' : ''}`
-  };
-
-  const handleConfirmClick = () => {
-    if (onConfirm) {
-      onConfirm();
-    }
-    onClose();
-  };
-
-  const handleCancelClick = () => {
+  const handleConfirm = () => {
+    if (onConfirm) onConfirm();
     onClose();
   };
 
@@ -251,108 +141,82 @@ const Modal = ({
     <AnimatePresence>
       {isOpen && (
         <>
+          {/* Pro Backdrop - Deeper Blur/Darkness */}
           {backdrop && (
             <motion.div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[99998]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[99998]"
               onClick={closable ? onClose : undefined}
             />
           )}
-          
-          <motion.div
-            className={`fixed inset-0 z-[99999] flex items-center justify-center p-4`}
-            onClick={closable ? onClose : undefined}
-          >
+
+          <div className="fixed inset-0 flex items-center justify-center p-6 z-[99999] pointer-events-none">
             <motion.div
-              className={`${sizeClasses[size]} ${variantClasses[variant]} rounded-2xl overflow-hidden ${getColor.bg} ${getColor.border} ${variant === 'outline' ? '' : 'border'}`}
-              variants={modalVariants[animationType]}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              onClick={(e) => e.stopPropagation()}
+               variants={animationVariants[animationType === 'fade' ? 'slide' : animationType]}
+               initial="hidden" animate="visible" exit="exit"
+               className={`${sizeClasses[size]} w-full bg-white rounded-[2.5rem] shadow-[0_45px_100px_-20px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden pointer-events-auto flex flex-col font-jakarta`}
+               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal Header */}
-              <div className={`flex items-center justify-between p-6 border-b ${getColor.border} relative`}>
-                <div className="flex items-center space-x-3">
-                  {showIcon && (
-                    <div className={`p-2 rounded-full ${getColor.icon} bg-opacity-10 ${getColor.bg}`}>
-                      {getIcon()}
-                    </div>
+               {/* Pro Header Navigation - Simplified but Impactful */}
+               <div className="px-10 pt-10 pb-6 flex items-center justify-between">
+                  <div className="flex flex-col">
+                     <div className={`flex items-center gap-2 mb-2 text-${style.accent}`}>
+                        {showIcon && <IconComponent size={18} strokeWidth={3} />}
+                        <span className="text-[10px] font-black uppercase tracking-[0.25em]">Security Protocol</span>
+                     </div>
+                     <h2 className="text-2xl font-black text-slate-900 tracking-tighter leading-none">{title || 'Attention'}</h2>
+                  </div>
+                  {showCloseButton && (
+                    <button 
+                       onClick={onClose}
+                       className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
+                    >
+                       <X size={20} strokeWidth={2.5} />
+                    </button>
                   )}
-                  {title && (
-                    <h2 className={`text-xl font-semibold ${getColor.text}`}>
-                      {title}
-                    </h2>
+               </div>
+
+               {/* Modal Body - Simple & Direct */}
+               <div className="px-10 py-6 min-h-[80px]">
+                  <div className="text-[15px] font-bold text-slate-500 leading-relaxed">
+                     {children}
+                  </div>
+               </div>
+
+               {/* Pro Footer - Structural Contrast */}
+               <div className="px-10 py-10 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-4 mt-auto">
+                  {showCancelButton && (
+                    <button 
+                      onClick={onClose}
+                      className="h-14 px-8 rounded-2xl bg-white border-2 border-slate-100 text-slate-400 font-black text-[11px] uppercase tracking-widest hover:border-slate-300 hover:text-slate-900 transition-all active:scale-[0.98]"
+                    >
+                       {cancelText}
+                    </button>
                   )}
-                </div>
-                {showCloseButton && (
-                  <button
-                    className={`p-1 rounded-full hover:bg-gray-200 transition-colors ${getColor.text}`}
-                    onClick={onClose}
-                    aria-label="Close modal"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
+                  {showConfirmButton && (
+                    <button 
+                       onClick={handleConfirm}
+                       className={`h-14 px-10 rounded-2xl ${style.button} text-white font-black text-[11px] uppercase tracking-[0.2em] shadow-xl transition-all active:scale-[0.98] flex items-center gap-3`}
+                    >
+                       {confirmText}
+                       <Zap size={14} fill="white" />
+                    </button>
+                  )}
+               </div>
 
-              {/* Progress bar for auto-close modals */}
-              {autoClose > 0 && (
-                <div className="h-1 w-full bg-gray-200">
-                  <motion.div 
-                    className={`h-full ${getColor.accent}`}
-                    initial={{ width: '100%' }}
-                    animate={{ width: '0%' }}
-                    transition={{ duration: autoClose / 1000, ease: "linear" }}
-                  />
-                </div>
-              )}
-
-              {/* Modal Body */}
-              <motion.div 
-                className="p-6"
-                variants={contentVariants}
-              >
-                {children}
-              </motion.div>
-
-              {/* Modal Footer */}
-              <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50/30">
-                {showCancelButton && (
-                  <button
-                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
-                    onClick={handleCancelClick}
-                  >
-                    {cancelText}
-                  </button>
-                )}
-                {showConfirmButton && (
-                  <button
-                    className={`px-4 py-2 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                      type === 'error' 
-                        ? 'bg-red-500 hover:bg-red-600 focus:ring-red-500/50' 
-                        : type === 'success'
-                        ? 'bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-500/50'
-                        : type === 'warning'
-                        ? 'bg-amber-500 hover:bg-amber-600 focus:ring-amber-500/50'
-                        : type === 'info'
-                        ? 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500/50'
-                        : type === 'confirmation'
-                        ? 'bg-purple-500 hover:bg-purple-600 focus:ring-purple-500/50'
-                        : 'bg-gray-500 hover:bg-gray-600 focus:ring-gray-500/50'
-                    }`}
-                    onClick={handleConfirmClick}
-                  >
-                    {confirmText}
-                  </button>
-                )}
-              </div>
+               {/* Progress bar tracking for auto-close */}
+               {autoClose > 0 && (
+                 <div className="h-1.5 w-full bg-slate-100">
+                   <motion.div 
+                     className={`h-full bg-${style.accent}`}
+                     initial={{ width: '100%' }}
+                     animate={{ width: '0%' }}
+                     transition={{ duration: autoClose / 1000, ease: "linear" }}
+                   />
+                 </div>
+               )}
             </motion.div>
-          </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

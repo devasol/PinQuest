@@ -22,6 +22,7 @@ import apiService from '../../services/api'; // Import the default apiService fo
 import { getImageUrl } from '../../utils/imageUtils'; // Import getImageUrl utility
 import Sidebar from '../Sidebar/Sidebar';
 import SearchBar from '../Search/SearchBar';
+import AuthModal from '../Auth/AuthModal';
 
 // API base URL - adjust based on your backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
@@ -152,6 +153,7 @@ const DiscoverMain = () => {
   const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
   const [showBottomNav, setShowBottomNav] = useState(true);
   const [activeSidebarWindow, setActiveSidebarWindow] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const { showModal } = useModal();
   const { logout: authLogout } = useAuth(); // Get logout from auth context
@@ -187,6 +189,15 @@ const DiscoverMain = () => {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
+  }, []);
+
+  // Handle initial auth modal show if landing on /login or /signup
+  useEffect(() => {
+    if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
+      setShowAuthModal(true);
+      // Clean up URL without reload
+      window.history.replaceState({}, '', '/');
+    }
   }, []);
 
 
@@ -2375,23 +2386,23 @@ const DiscoverMain = () => {
 
       {/* Sidebar - Desktop and Mobile */}
       <Sidebar
+        user={user}
         onLogout={handleLogout}
-        user={isAuthenticated ? user : null}
         toggleWindow={toggleWindow}
-        showSavedLocationsOnMap={showSavedLocationsOnMap}
         updateUserLocation={updateUserLocation}
         followUser={followUser}
-        locationLoading={locationLoading}
         setFollowUser={setFollowUser}
         isSidebarExpanded={isSidebarExpanded}
         toggleSidebar={toggleSidebar}
-        isMobile={isMobile}
-        mobileBottomNavActive={mobileBottomNavActive}
-        setMobileBottomNavActive={setMobileBottomNavActive}
-        showBottomNav={showBottomNav}
-        setShowBottomNav={setShowBottomNav}
+        isMobile={screenWidth < 768}
         activeSidebarWindow={activeSidebarWindow}
         setActiveSidebarWindow={setActiveSidebarWindow}
+        openAuthModal={() => setShowAuthModal(true)}
+      />
+
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
       />
 
       {/* Enhanced Sidebar Windows */}
