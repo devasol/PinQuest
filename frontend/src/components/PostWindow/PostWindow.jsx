@@ -164,7 +164,7 @@ const PostWindow = ({
           initial={{ scale: 0.95, opacity: 0, y: 30 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 30 }}
-          className="relative w-full max-w-5xl max-h-[90vh] bg-white rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col md:flex-row"
+          className="relative w-full max-w-5xl max-h-[90vh] bg-white rounded-[4px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col md:flex-row"
           onClick={e => e.stopPropagation()}
         >
           {/* Top Gradient Accent */}
@@ -173,7 +173,7 @@ const PostWindow = ({
           {/* Close Button Container (Desktop Only) */}
           <button 
             onClick={onClose}
-            className="absolute top-6 right-6 z-50 w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white md:text-slate-400 md:bg-slate-50 md:border-slate-100 hover:bg-slate-900 hover:text-white transition-all shadow-sm hidden md:flex"
+            className="absolute top-6 right-6 z-50 w-10 h-10 rounded-[4px] bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white md:text-slate-400 md:bg-slate-50 md:border-slate-100 hover:bg-slate-900 hover:text-white transition-all shadow-sm hidden md:flex"
           >
             <X size={20} strokeWidth={2.5} />
           </button>
@@ -192,10 +192,10 @@ const PostWindow = ({
                   
                   {images.length > 1 && (
                     <>
-                      <button onClick={prevImage} className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all z-20 hover:bg-white/20">
+                      <button onClick={prevImage} className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-[4px] bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all z-20 hover:bg-white/20">
                         <ChevronLeft size={24} />
                       </button>
-                      <button onClick={nextImage} className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all z-20 hover:bg-white/20">
+                      <button onClick={nextImage} className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-[4px] bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all z-20 hover:bg-white/20">
                         <ChevronRight size={24} />
                       </button>
                     </>
@@ -210,7 +210,7 @@ const PostWindow = ({
                 </>
              ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-4">
-                   <div className="w-16 h-16 rounded-3xl bg-slate-800 flex items-center justify-center">
+                   <div className="w-16 h-16 rounded-[12px] bg-slate-800 flex items-center justify-center">
                       <Compass size={32} />
                    </div>
                    <span className="text-[10px] font-black uppercase tracking-[0.2em] font-jakarta">No Visual Data</span>
@@ -224,7 +224,7 @@ const PostWindow = ({
              {/* Header: Author Info */}
              <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between bg-white shrink-0">
                 <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-teal-400 font-black text-lg border-2 border-slate-900 shadow-xl">
+                   <div className="w-12 h-12 rounded-[4px] bg-slate-900 flex items-center justify-center text-teal-400 font-black text-lg border-2 border-slate-900 shadow-xl">
                       {(typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : "A").charAt(0).toUpperCase()}
                    </div>
                    <div className="flex flex-col">
@@ -236,7 +236,7 @@ const PostWindow = ({
                       </span>
                    </div>
                 </div>
-                <button onClick={onClose} className="md:hidden w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400">
+                <button onClick={onClose} className="md:hidden w-10 h-10 rounded-[4px] bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400">
                    <X size={18} />
                 </button>
              </div>
@@ -253,16 +253,16 @@ const PostWindow = ({
                          </h2>
                          <button 
                            onClick={handleBookmarkAction}
-                           className={`shrink-0 w-12 h-12 rounded-2xl border flex items-center justify-center transition-all ${bookmarked ? 'bg-teal-400 border-teal-400 text-slate-900 shadow-lg shadow-teal-200' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'}`}
+                           className={`shrink-0 w-12 h-12 rounded-[4px] border flex items-center justify-center transition-all ${bookmarked ? 'bg-teal-400 border-teal-400 text-slate-900 shadow-lg shadow-teal-200' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'}`}
                          >
                             <Bookmark size={20} fill={bookmarked ? "currentColor" : "none"} strokeWidth={2.5} />
                          </button>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                         <span className="px-4 py-1.5 rounded-xl bg-teal-50 text-teal-600 text-[10px] font-black uppercase tracking-widest border border-teal-100 font-jakarta">
+                         <span className="px-4 py-1.5 rounded-[4px] bg-teal-50 text-teal-600 text-[10px] font-black uppercase tracking-widest border border-teal-100 font-jakarta">
                             {currentPost.category || 'General'}
                          </span>
-                         <span className="px-4 py-1.5 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest font-jakarta">
+                         <span className="px-4 py-1.5 rounded-[4px] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest font-jakarta">
                             {currentPost.price > 0 ? `$${currentPost.price}` : 'FREE ACCESS'}
                          </span>
                       </div>
@@ -273,7 +273,7 @@ const PostWindow = ({
 
                    {/* Stats Grid */}
                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center gap-3">
+                      <div className="p-4 rounded-[8px] bg-slate-50 border border-slate-100 flex flex-col items-center justify-center gap-3">
                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-jakarta">Global Rating</span>
                          <div className="flex items-center gap-1.5">
                             {[1,2,3,4,5].map(star => (
@@ -293,7 +293,7 @@ const PostWindow = ({
 
                       <div 
                         onClick={() => currentPost.location && onGetDirections && onGetDirections(currentPost)}
-                        className="p-4 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center gap-3 hover:bg-slate-900 hover:text-white transition-all cursor-pointer group/loc"
+                        className="p-4 rounded-[8px] bg-slate-50 border border-slate-100 flex flex-col items-center justify-center gap-3 hover:bg-slate-900 hover:text-white transition-all cursor-pointer group/loc"
                       >
                          <span className="text-[9px] font-black text-slate-400 group-hover/loc:text-slate-500 uppercase tracking-widest font-jakarta">Coordinate</span>
                          <MapPin size={22} className="text-teal-400" strokeWidth={2.5} />
@@ -306,7 +306,7 @@ const PostWindow = ({
                    {/* Action Button */}
                    <button 
                      onClick={() => currentPost.location && onGetDirections && onGetDirections(currentPost)}
-                     className="w-full h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center gap-4 group/dir active:scale-95 transition-all shadow-2xl shadow-slate-200"
+                     className="w-full h-16 bg-slate-900 text-white rounded-[4px] flex items-center justify-center gap-4 group/dir active:scale-95 transition-all shadow-2xl shadow-slate-200"
                    >
                       <Navigation size={20} className="text-teal-400 group-hover/dir:translate-x-1 group-hover/dir:-translate-y-1 transition-transform" strokeWidth={3} />
                       <span className="text-[11px] font-black uppercase tracking-[0.3em] font-jakarta">Initiate Directions</span>
@@ -325,7 +325,7 @@ const PostWindow = ({
                          {comments.length > 0 ? (
                             comments.map(comment => <ReviewItem key={comment._id} comment={comment} />)
                          ) : (
-                            <div className="p-10 rounded-3xl bg-slate-50 border border-dashed border-slate-200 flex flex-col items-center justify-center text-center gap-3">
+                            <div className="p-10 rounded-[8px] bg-slate-50 border border-dashed border-slate-200 flex flex-col items-center justify-center text-center gap-3">
                                <MessageCircle size={28} className="text-slate-200" strokeWidth={3} />
                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest font-jakarta">No logs recorded yet.</span>
                             </div>
@@ -339,7 +339,7 @@ const PostWindow = ({
 
              {/* Fixed Footer: Comment Input */}
              <div className="px-8 py-6 border-t border-slate-50 bg-white shrink-0">
-                <form onSubmit={handleAddComment} className="flex items-center gap-3 bg-slate-50 border border-slate-100 p-2 rounded-2xl group focus-within:border-slate-900 focus-within:bg-white transition-all">
+                <form onSubmit={handleAddComment} className="flex items-center gap-3 bg-slate-50 border border-slate-100 p-2 rounded-[4px] group focus-within:border-slate-900 focus-within:bg-white transition-all">
                    <input 
                      type="text" value={newComment} onChange={e => setNewComment(e.target.value)}
                      placeholder="Share your log data..."
@@ -347,7 +347,7 @@ const PostWindow = ({
                    />
                    <button 
                      type="submit" disabled={!newComment.trim() || addingComment}
-                     className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center text-teal-400 hover:bg-black transition-all disabled:opacity-30 disabled:grayscale"
+                     className="w-12 h-12 rounded-[4px] bg-slate-900 flex items-center justify-center text-teal-400 hover:bg-black transition-all disabled:opacity-30 disabled:grayscale"
                    >
                       {addingComment ? <div className="w-4 h-4 border-2 border-teal-400/30 border-t-teal-400 rounded-full animate-spin" /> : <Send size={18} strokeWidth={3} />}
                    </button>
@@ -365,7 +365,7 @@ const PostWindow = ({
 const ReviewItem = ({ comment }) => (
   <div className="group animate-in fade-in slide-in-from-bottom-2 duration-300">
      <div className="flex items-start gap-4">
-        <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 font-black text-sm font-jakarta shrink-0">
+        <div className="w-9 h-9 rounded-[4px] bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 font-black text-sm font-jakarta shrink-0">
            {(comment.user?.name || "A").charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 space-y-1">
