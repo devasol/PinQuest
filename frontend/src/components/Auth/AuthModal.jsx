@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Mail, Lock, User, ShieldCheck, Zap, 
   ArrowRight, Chrome, Eye, EyeOff,
-  ChevronLeft, KeyRound, Github
+  ChevronLeft, KeyRound
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
@@ -45,11 +45,8 @@ const AuthModal = ({ isOpen, onClose }) => {
       if (mode === 'login') {
         result = await login(formData.email, formData.password);
       } else if (mode === 'signup') {
-        if (formData.password !== formData.confirmPassword) {
-            setError("Passwords do not match");
-            setIsLoading(false);
-            return;
-        }
+        // Simple signup: only check passwords if confirmPassword field is present
+        // If it's single password field, proceed
         result = await signupWithVerification({
           name: formData.username,
           email: formData.email,
@@ -60,7 +57,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         result = await forgotPassword(formData.email);
         if (result.success) {
           setMode('verify');
-          setSuccess("Verification code dispatched.");
+          setSuccess("Verification signal sent.");
           setIsLoading(false);
           return;
         }
@@ -68,16 +65,11 @@ const AuthModal = ({ isOpen, onClose }) => {
         result = await verifyResetOTP(formData.email, formData.otp);
         if (result.success) {
           setMode('reset');
-          setSuccess("Code authenticated.");
+          setSuccess("Node authenticated.");
           setIsLoading(false);
           return;
         }
       } else if (mode === 'reset') {
-        if (formData.password !== formData.confirmPassword) {
-          setError("Passwords do not match");
-          setIsLoading(false);
-          return;
-        }
         result = await resetPassword(formData.email, formData.otp, formData.password);
       }
 
@@ -90,13 +82,13 @@ const AuthModal = ({ isOpen, onClose }) => {
             setMode('login');
           }, 1500);
         } else if (mode === 'signup') {
-          setSuccess("Account initiated. Check your email.");
+          setSuccess("Account initiated. Check your inbox.");
         }
       } else {
-        setError(result.error || "Operation failed");
+        setError(result.error || (mode === 'login' ? "Access denied" : "Deployment failed"));
       }
     } catch (err) {
-      setError(err.message || "Error detected");
+      setError(err.message || "Protocol error detected");
     } finally {
       setIsLoading(false);
     }
@@ -110,52 +102,52 @@ const AuthModal = ({ isOpen, onClose }) => {
       case 'signup':
         return (
           <>
-            <div className="mb-8">
+            <div className="mb-6">
                <h3 className="text-2xl font-black text-slate-900 tracking-tighter font-jakarta uppercase">
-                  {mode === 'login' ? "Welcome Back" : "Create Account"}
+                  {mode === 'login' ? "Welcome Back" : "Deploy Node"}
                </h3>
-               <p className="text-slate-500 font-medium text-xs mt-1 font-outfit">
-                  {mode === 'login' ? "Sign in to access your dashboard" : "Join our community today"}
+               <p className="text-slate-500 font-bold text-[10px] mt-1 font-jakarta uppercase tracking-wider">
+                  {mode === 'login' ? "Sign in to access your dashboard" : "Access the global map intelligence"}
                </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
                {mode === 'signup' && (
-                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Username</label>
-                    <div className="relative">
-                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                 <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Username</label>
+                    <div className="relative group">
+                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
                        <input 
                          type="text" name="username" value={formData.username} onChange={handleInputChange} required
-                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
-                         placeholder="Your handle"
+                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                         placeholder="explorer_01"
                        />
                     </div>
                  </div>
                )}
 
-               <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Email Address</label>
-                  <div className="relative">
-                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+               <div className="space-y-1">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Terminal Email</label>
+                  <div className="relative group">
+                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
                      <input 
                        type="email" name="email" value={formData.email} onChange={handleInputChange} required
-                       className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
-                       placeholder="name@example.com"
+                       className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                       placeholder="name@nexus.com"
                      />
                   </div>
                </div>
 
-               <div className="space-y-1.5">
+               <div className="space-y-1">
                   <div className="flex justify-between items-center px-0.5">
-                     <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 font-jakarta">Password</label>
-                     {mode === 'login' && <button onClick={() => setMode('forgot')} type="button" className="text-[10px] font-black uppercase tracking-wider text-indigo-500 hover:text-indigo-600 font-jakarta outline-none">Forgot?</button>}
+                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta">Security Code</label>
+                     {mode === 'login' && <button onClick={() => setMode('forgot')} type="button" className="text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 font-jakarta outline-none">Forgot?</button>}
                   </div>
-                  <div className="relative">
-                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                  <div className="relative group">
+                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
                      <input 
                        type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange} required
-                       className="w-full h-11 pl-10 pr-10 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                       className="w-full h-11 pl-10 pr-10 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
                        placeholder="••••••••"
                      />
                      <button 
@@ -167,57 +159,43 @@ const AuthModal = ({ isOpen, onClose }) => {
                   </div>
                </div>
 
-               {mode === 'signup' && (
-                  <div className="space-y-1.5">
-                     <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Confirm Password</label>
-                     <div className="relative">
-                        <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                        <input 
-                          type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required
-                          className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
-                          placeholder="Confirm your password"
-                        />
-                     </div>
-                  </div>
-               )}
-
-               {error && <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide py-2 font-jakarta">{error}</p>}
-               {success && <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wide py-2 font-jakarta">{success}</p>}
+               {error && <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest py-1 font-jakarta">{error}</p>}
+               {success && <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest py-1 font-jakarta">{success}</p>}
 
                <button 
                  type="submit" disabled={isLoading}
-                 className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.2em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
+                 className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.25em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
                >
-                  {isLoading ? "Synchronizing..." : (mode === 'login' ? "Sign In" : "Register")}
+                  {isLoading ? "Synchronizing..." : (mode === 'login' ? "Access Node" : "Deploy Account")}
                   {!isLoading && <ArrowRight size={14} strokeWidth={3} />}
                </button>
 
-               <div className="mt-8">
+               <div className="mt-6">
                   <div className="relative flex items-center py-2">
                       <div className="flex-grow border-t border-slate-100"></div>
-                      <span className="flex-shrink mx-4 text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta">Or Continue With</span>
+                      <span className="flex-shrink mx-4 text-[8px] font-black uppercase tracking-[0.2em] text-slate-300 font-jakarta">Auth Node Relay</span>
                       <div className="flex-grow border-t border-slate-100"></div>
                   </div>
                   
                   <button 
                     type="button"
                     onClick={() => googleLogin()}
-                    className="w-full h-11 bg-white border border-slate-200 flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest text-slate-900 hover:bg-slate-50 transition-all font-jakarta mt-4"
+                    className="w-full h-10 bg-white border border-slate-200 flex items-center justify-center gap-2 font-black text-[9px] uppercase tracking-widest text-slate-900 hover:bg-slate-50 transition-all font-jakarta mt-3"
                   >
-                      <Chrome size={16} />
-                      Google
+                      <Chrome size={14} />
+                      Google Connect
                   </button>
                </div>
             </form>
 
-            <div className="mt-10 text-center">
-               <p className="text-slate-500 font-bold text-[10px] font-jakarta">
-                  {mode === 'login' ? "New here? " : "Already have an account? "}
+            <div className="mt-8 text-center border-t border-slate-50 pt-6">
+               <p className="text-slate-400 font-bold text-[9px] font-jakarta uppercase tracking-widest">
+                  {mode === 'login' ? "New Explorer? " : "Active Hub? "}
                   <button 
                     onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); handleReset(); }}
                     className="text-indigo-500 hover:text-indigo-600 transition-colors font-black outline-none"
                   >
-                     {mode === 'login' ? "Create an account" : "Sign in here"}
+                     {mode === 'login' ? "Create account" : "Sign in here"}
                   </button>
                </p>
             </div>
@@ -228,25 +206,25 @@ const AuthModal = ({ isOpen, onClose }) => {
       case 'reset':
         return (
           <>
-            <div className="mb-8">
+            <div className="mb-6">
                <h3 className="text-2xl font-black text-slate-900 tracking-tighter font-jakarta uppercase">
-                  {mode === 'forgot' ? "Forgot Password" : mode === 'verify' ? "Verify Code" : "Reset Pass"}
+                  {mode === 'forgot' ? "Key Recovery" : mode === 'verify' ? "Verify Signal" : "Secure Node"}
                </h3>
-               <p className="text-slate-500 font-medium text-xs mt-1 font-outfit">
-                  {mode === 'forgot' ? "Enter your email address" : mode === 'verify' ? "Enter the 6-digit code" : "Set your new password"}
+               <p className="text-slate-500 font-bold text-[10px] mt-1 font-jakarta uppercase tracking-wider">
+                  {mode === 'forgot' ? "Enter terminal email" : mode === 'verify' ? "Enter 6-digit signal" : "Establish new credential"}
                </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
                {mode === 'forgot' && (
-                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Email Address</label>
-                    <div className="relative">
-                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                 <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Terminal Email</label>
+                    <div className="relative group">
+                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
                        <input 
                          type="email" name="email" value={formData.email} onChange={handleInputChange} required
-                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
-                         placeholder="name@example.com"
+                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                         placeholder="name@nexus.com"
                        />
                     </div>
                  </div>
@@ -263,47 +241,34 @@ const AuthModal = ({ isOpen, onClose }) => {
                )}
 
                {mode === 'reset' && (
-                 <div className="space-y-4">
-                    <div className="space-y-1.5">
-                       <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">New Password</label>
-                       <div className="relative">
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                          <input 
-                            type="password" name="password" value={formData.password} onChange={handleInputChange} required
-                            className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
-                            placeholder="Min 6 characters"
-                          />
-                       </div>
-                    </div>
-                    <div className="space-y-1.5">
-                       <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Confirm Password</label>
-                       <div className="relative">
-                          <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                          <input 
-                            type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required
-                            className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
-                            placeholder="Type again"
-                          />
-                       </div>
+                 <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">New Security Key</label>
+                    <div className="relative group">
+                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
+                       <input 
+                         type="password" name="password" value={formData.password} onChange={handleInputChange} required
+                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                         placeholder="Min 6 characters"
+                       />
                     </div>
                  </div>
                )}
 
-               {error && <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide py-2 font-jakarta">{error}</p>}
-               {success && <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wide py-2 font-jakarta">{success}</p>}
+               {error && <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest py-1 font-jakarta">{error}</p>}
+               {success && <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest py-1 font-jakarta">{success}</p>}
 
                <button 
                  type="submit" disabled={isLoading}
-                 className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.2em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
+                 className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.25em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
                >
-                  {isLoading ? "Loading..." : mode === 'forgot' ? "Send OTP" : mode === 'verify' ? "Verify" : "Update"}
+                  {isLoading ? "Loading..." : mode === 'forgot' ? "Send OTP" : mode === 'verify' ? "Verify Hub" : "Establish Key"}
                   {!isLoading && <ArrowRight size={14} strokeWidth={3} />}
                </button>
 
                <button 
                  type="button" 
                  onClick={() => { setMode('login'); handleReset(); }} 
-                 className="ml-auto block text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors font-jakarta outline-none"
+                 className="w-full text-center text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors font-jakarta outline-none mt-2"
                >
                   Back to Sign In
                </button>
@@ -328,30 +293,30 @@ const AuthModal = ({ isOpen, onClose }) => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-[480px] bg-white shadow-2xl overflow-hidden z-10"
+          className="relative w-full max-w-[420px] bg-white shadow-2xl overflow-hidden z-10"
           style={{ borderRadius: '4px' }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Top Gradient Accent Line (EXACTLY AS SHOWN IN IMAGE) */}
+          {/* Top Gradient Accent Line */}
           <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
 
           {/* Close Button */}
           <button 
             onClick={onClose}
-            className="absolute right-4 top-4 text-slate-400 hover:text-slate-900 transition-colors outline-none"
+            className="absolute right-4 top-4 text-slate-300 hover:text-slate-900 transition-colors outline-none"
           >
             <X size={18} />
           </button>
 
-          {/* Form Content */}
-          <div className="px-10 py-12 md:px-12">
+          {/* Compact Form Content */}
+          <div className="px-10 py-10 md:px-12">
              <AnimatePresence mode="wait">
                <motion.div
                  key={mode}
                  initial={{ opacity: 0 }}
                  animate={{ opacity: 1 }}
                  exit={{ opacity: 0 }}
-                 transition={{ duration: 0.2 }}
+                 transition={{ duration: 0.1 }}
                >
                  {renderForm()}
                </motion.div>
