@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Mail, Lock, User, ShieldCheck, Zap, 
   ArrowRight, Chrome, Eye, EyeOff,
-  ChevronLeft, KeyRound
+  ChevronLeft, KeyRound, Github
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
@@ -68,7 +68,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         result = await verifyResetOTP(formData.email, formData.otp);
         if (result.success) {
           setMode('reset');
-          setSuccess("Code authenticated. Secure your node.");
+          setSuccess("Code authenticated.");
           setIsLoading(false);
           return;
         }
@@ -83,20 +83,20 @@ const AuthModal = ({ isOpen, onClose }) => {
 
       if (result.success) {
         if (mode === 'login' || mode === 'reset') {
-          setSuccess("Synchronization complete. Access granted.");
+          setSuccess("Access granted.");
           setTimeout(() => {
             onClose();
             handleReset();
             setMode('login');
           }, 1500);
         } else if (mode === 'signup') {
-          setSuccess("Deployment protocol active. Check your email.");
+          setSuccess("Account initiated. Check your email.");
         }
       } else {
         setError(result.error || "Operation failed");
       }
     } catch (err) {
-      setError(err.message || "Nexus error detected");
+      setError(err.message || "Error detected");
     } finally {
       setIsLoading(false);
     }
@@ -110,113 +110,114 @@ const AuthModal = ({ isOpen, onClose }) => {
       case 'signup':
         return (
           <>
-            <div className="mb-8 text-center">
-               <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center shadow-2xl mx-auto mb-6">
-                  <Zap size={28} className="text-teal-400 fill-teal-400" />
-               </div>
-               <div className="flex items-center gap-2 mb-1 text-teal-600 justify-center">
-                  <ShieldCheck size={14} strokeWidth={3} />
-                  <span className="text-[9px] font-black uppercase tracking-[0.3em] font-jakarta">Security Access</span>
-               </div>
-               <h3 className="text-3xl font-black text-slate-900 tracking-tighter font-jakarta">
-                  {mode === 'login' ? "Welcome Back" : "Initiate Account"}
+            <div className="mb-8">
+               <h3 className="text-2xl font-black text-slate-900 tracking-tighter font-jakarta uppercase">
+                  {mode === 'login' ? "Welcome Back" : "Create Account"}
                </h3>
-               <p className="text-slate-400 font-bold text-[11px] mt-2 uppercase tracking-widest font-jakarta">
-                  Map your next adventure.
+               <p className="text-slate-500 font-medium text-xs mt-1 font-outfit">
+                  {mode === 'login' ? "Sign in to access your dashboard" : "Join our community today"}
                </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
                {mode === 'signup' && (
-                 <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-teal-500" size={18} />
-                    <input 
-                      type="text" name="username" value={formData.username} onChange={handleInputChange} required
-                      className="w-full h-14 pl-12 pr-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 focus:bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300 font-outfit"
-                      placeholder="Username"
-                    />
+                 <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Username</label>
+                    <div className="relative">
+                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                       <input 
+                         type="text" name="username" value={formData.username} onChange={handleInputChange} required
+                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                         placeholder="Your handle"
+                       />
+                    </div>
                  </div>
                )}
 
-               <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-teal-500" size={18} />
-                  <input 
-                    type="email" name="email" value={formData.email} onChange={handleInputChange} required
-                    className="w-full h-14 pl-12 pr-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 focus:bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300 font-outfit"
-                    placeholder="Email Address"
-                  />
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Email Address</label>
+                  <div className="relative">
+                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                     <input 
+                       type="email" name="email" value={formData.email} onChange={handleInputChange} required
+                       className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                       placeholder="name@example.com"
+                     />
+                  </div>
                </div>
 
-               <div className="space-y-1 group">
+               <div className="space-y-1.5">
+                  <div className="flex justify-between items-center px-0.5">
+                     <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 font-jakarta">Password</label>
+                     {mode === 'login' && <button onClick={() => setMode('forgot')} type="button" className="text-[10px] font-black uppercase tracking-wider text-indigo-500 hover:text-indigo-600 font-jakarta outline-none">Forgot?</button>}
+                  </div>
                   <div className="relative">
-                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-teal-500" size={18} />
+                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                      <input 
                        type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange} required
-                       className="w-full h-14 pl-12 pr-12 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 focus:bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300 font-outfit"
-                       placeholder="Credential"
+                       className="w-full h-11 pl-10 pr-10 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                       placeholder="••••••••"
                      />
                      <button 
                         type="button" onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-900 transition-colors outline-none"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-900 transition-colors outline-none"
                      >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                      </button>
                   </div>
-                  {mode === 'login' && (
-                    <div className="flex justify-end px-1">
-                      <button onClick={() => setMode('forgot')} type="button" className="text-[10px] font-black uppercase tracking-widest text-teal-600 hover:text-teal-700 font-jakarta outline-none">Lost Key?</button>
-                    </div>
-                  )}
                </div>
 
                {mode === 'signup' && (
-                  <div className="relative group">
-                     <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-teal-500" size={18} />
-                     <input 
-                       type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required
-                       className="w-full h-14 pl-12 pr-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 focus:bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300 font-outfit"
-                       placeholder="Confirm Credential"
-                     />
+                  <div className="space-y-1.5">
+                     <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Confirm Password</label>
+                     <div className="relative">
+                        <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                        <input 
+                          type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required
+                          className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                          placeholder="Confirm your password"
+                        />
+                     </div>
                   </div>
                )}
 
-               {error && <p className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-50 p-4 rounded-2xl border border-red-100 font-jakarta leading-relaxed">{error}</p>}
-               {success && <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest bg-teal-50 p-4 rounded-2xl border border-teal-100 font-jakarta leading-relaxed">{success}</p>}
+               {error && <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide py-2 font-jakarta">{error}</p>}
+               {success && <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wide py-2 font-jakarta">{success}</p>}
 
                <button 
                  type="submit" disabled={isLoading}
-                 className="w-full h-16 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.25em] shadow-2xl shadow-slate-200 hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 font-jakarta mt-4"
+                 className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.2em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
                >
-                  {isLoading ? "Synchronizing..." : (mode === 'login' ? "Authenticate" : "Create Node")}
-                  {!isLoading && <ArrowRight size={16} strokeWidth={3} />}
+                  {isLoading ? "Synchronizing..." : (mode === 'login' ? "Sign In" : "Register")}
+                  {!isLoading && <ArrowRight size={14} strokeWidth={3} />}
                </button>
 
                <div className="mt-8">
                   <div className="relative flex items-center py-2">
                       <div className="flex-grow border-t border-slate-100"></div>
-                      <span className="flex-shrink mx-4 text-[9px] font-black uppercase tracking-widest text-slate-300 font-jakarta">Or Continue With</span>
+                      <span className="flex-shrink mx-4 text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta">Or Continue With</span>
                       <div className="flex-grow border-t border-slate-100"></div>
                   </div>
                   
                   <button 
                     type="button"
                     onClick={() => googleLogin()}
-                    className="w-full h-14 bg-white border border-slate-100 rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest text-slate-900 hover:bg-slate-50 transition-all shadow-sm font-jakarta mt-4"
+                    className="w-full h-11 bg-white border border-slate-200 flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest text-slate-900 hover:bg-slate-50 transition-all font-jakarta mt-4"
                   >
-                      <Chrome size={18} />
-                      Google Integration
+                      <Chrome size={16} />
+                      Google
                   </button>
                </div>
             </form>
 
             <div className="mt-10 text-center">
-               <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest font-jakarta">
-                  {mode === 'login' ? "New Explorer?" : "Established Node?"}
+               <p className="text-slate-500 font-bold text-[10px] font-jakarta">
+                  {mode === 'login' ? "New here? " : "Already have an account? "}
                   <button 
                     onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); handleReset(); }}
-                    className="ml-3 text-teal-600 hover:text-teal-700 transition-colors font-black outline-none"
+                    className="text-indigo-500 hover:text-indigo-600 transition-colors font-black outline-none"
                   >
-                     {mode === 'login' ? "Initiate" : "Access"}
+                     {mode === 'login' ? "Create an account" : "Sign in here"}
                   </button>
                </p>
             </div>
@@ -227,28 +228,27 @@ const AuthModal = ({ isOpen, onClose }) => {
       case 'reset':
         return (
           <>
-            <div className="mb-8 text-center pt-2">
-               <div className="flex items-center gap-2 mb-2 text-teal-600 justify-center">
-                  <KeyRound size={20} strokeWidth={3} />
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] font-jakarta">Node Recovery</span>
-               </div>
-               <h3 className="text-3xl font-black text-slate-900 tracking-tighter font-jakarta">
-                  {mode === 'forgot' ? "Lost Key" : mode === 'verify' ? "Verify Signal" : "Secure Node"}
+            <div className="mb-8">
+               <h3 className="text-2xl font-black text-slate-900 tracking-tighter font-jakarta uppercase">
+                  {mode === 'forgot' ? "Forgot Password" : mode === 'verify' ? "Verify Code" : "Reset Pass"}
                </h3>
-               <p className="text-slate-400 font-bold text-[11px] mt-2 uppercase tracking-widest font-jakarta leading-relaxed max-w-[240px] mx-auto">
-                  {mode === 'forgot' ? "Input your terminal email." : mode === 'verify' ? `Enter the verification code.` : "Establish new credential."}
+               <p className="text-slate-500 font-medium text-xs mt-1 font-outfit">
+                  {mode === 'forgot' ? "Enter your email address" : mode === 'verify' ? "Enter the 6-digit code" : "Set your new password"}
                </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
                {mode === 'forgot' && (
-                 <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-teal-500 transition-colors" size={18} />
-                    <input 
-                      type="email" name="email" value={formData.email} onChange={handleInputChange} required
-                      className="w-full h-14 pl-12 pr-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 focus:bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300 font-outfit"
-                      placeholder="Email Address"
-                    />
+                 <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Email Address</label>
+                    <div className="relative">
+                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                       <input 
+                         type="email" name="email" value={formData.email} onChange={handleInputChange} required
+                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                         placeholder="name@example.com"
+                       />
+                    </div>
                  </div>
                )}
 
@@ -256,7 +256,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                  <div className="space-y-4">
                     <input 
                       type="text" maxLength="6" name="otp" value={formData.otp} onChange={handleInputChange} required
-                      className="w-full h-20 text-center text-4xl font-black bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 focus:bg-white transition-all text-slate-900 tracking-[0.2em] font-jakarta"
+                      className="w-full h-16 text-center text-3xl font-black bg-slate-50 border border-slate-200 focus:outline-none focus:border-slate-900 transition-all text-slate-900 tracking-[0.2em] font-jakarta"
                       placeholder="000000"
                     />
                  </div>
@@ -264,42 +264,48 @@ const AuthModal = ({ isOpen, onClose }) => {
 
                {mode === 'reset' && (
                  <div className="space-y-4">
-                    <div className="relative group">
-                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-teal-500 transition-colors" size={18} />
-                       <input 
-                         type="password" name="password" value={formData.password} onChange={handleInputChange} required
-                         className="w-full h-14 pl-12 pr-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 focus:bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300 font-outfit"
-                         placeholder="New Credential"
-                       />
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">New Password</label>
+                       <div className="relative">
+                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                          <input 
+                            type="password" name="password" value={formData.password} onChange={handleInputChange} required
+                            className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                            placeholder="Min 6 characters"
+                          />
+                       </div>
                     </div>
-                    <div className="relative group">
-                       <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-teal-500 transition-colors" size={18} />
-                       <input 
-                         type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required
-                         className="w-full h-14 pl-12 pr-6 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-slate-900 focus:bg-white transition-all font-bold text-slate-900 placeholder:text-slate-300 font-outfit"
-                         placeholder="Confirm credential"
-                       />
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-0.5 font-jakarta">Confirm Password</label>
+                       <div className="relative">
+                          <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                          <input 
+                            type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required
+                            className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 transition-all font-medium text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                            placeholder="Type again"
+                          />
+                       </div>
                     </div>
                  </div>
                )}
 
-               {error && <p className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-50 p-4 rounded-2xl border border-red-100 font-jakarta leading-relaxed">{error}</p>}
-               {success && <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest bg-teal-50 p-4 rounded-2xl border border-teal-100 font-jakarta leading-relaxed">{success}</p>}
+               {error && <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide py-2 font-jakarta">{error}</p>}
+               {success && <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wide py-2 font-jakarta">{success}</p>}
 
                <button 
                  type="submit" disabled={isLoading}
-                 className="w-full h-16 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.25em] shadow-2xl shadow-slate-200 hover:bg-black active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 font-jakarta mt-4"
+                 className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.2em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
                >
-                  {isLoading ? "Synchronizing..." : mode === 'forgot' ? "Emit Signal" : mode === 'verify' ? "Link Node" : "Update Secure Key"}
-                  {!isLoading && <ArrowRight size={16} strokeWidth={3} />}
+                  {isLoading ? "Loading..." : mode === 'forgot' ? "Send OTP" : mode === 'verify' ? "Verify" : "Update"}
+                  {!isLoading && <ArrowRight size={14} strokeWidth={3} />}
                </button>
 
                <button 
                  type="button" 
                  onClick={() => { setMode('login'); handleReset(); }} 
-                 className="w-full text-center text-slate-400 hover:text-slate-900 transition-colors mt-6 text-[10px] font-black uppercase tracking-widest font-jakarta outline-none"
+                 className="ml-auto block text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors font-jakarta outline-none"
                >
-                  Cancel Recovery
+                  Back to Sign In
                </button>
             </form>
           </>
@@ -310,37 +316,41 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6">
-        {/* Pro Backdrop - Deep Blur */}
+      <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
+        {/* Simple Dismissible Backdrop */}
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl"
+          className="fixed inset-0 bg-black/60 z-0"
           onClick={onClose}
         />
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-[440px] bg-white rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden pointer-events-auto"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="relative w-full max-w-[480px] bg-white shadow-2xl overflow-hidden z-10"
+          style={{ borderRadius: '4px' }}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Top Gradient Accent Line (EXACTLY AS SHOWN IN IMAGE) */}
+          <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+
           {/* Close Button */}
           <button 
             onClick={onClose}
-            className="absolute right-6 top-6 z-20 w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm outline-none"
+            className="absolute right-4 top-4 text-slate-400 hover:text-slate-900 transition-colors outline-none"
           >
-            <X size={20} strokeWidth={2.5} />
+            <X size={18} />
           </button>
 
-          {/* Simple Form Container */}
-          <div className="p-8 sm:p-12 flex flex-col justify-center bg-white overflow-y-auto max-h-[90vh] scrollbar-hide">
+          {/* Form Content */}
+          <div className="px-10 py-12 md:px-12">
              <AnimatePresence mode="wait">
                <motion.div
                  key={mode}
-                 initial={{ opacity: 0, y: 10 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 exit={{ opacity: 0, y: -10 }}
+                 initial={{ opacity: 0 }}
+                 animate={{ opacity: 1 }}
+                 exit={{ opacity: 0 }}
                  transition={{ duration: 0.2 }}
                >
                  {renderForm()}
