@@ -274,16 +274,18 @@ const Sidebar = ({
             )}
 
             <div className={`flex items-center w-full transition-all duration-300 ${isSidebarExpanded ? 'justify-between px-10 pt-4' : 'flex-col space-y-6 pt-2'}`}>
-               <button className="text-slate-400 hover:text-slate-900 hover:scale-110 transition-all">
+               <button className="text-slate-400 hover:text-slate-900 hover:scale-110 transition-all text-center mx-auto" style={{ marginLeft: !user && isSidebarExpanded ? "auto" : undefined, marginRight: !user && isSidebarExpanded ? "auto" : undefined }}>
                   <Settings size={18} strokeWidth={2.5} />
                </button>
-               <button 
-                 onClick={onLogout}
-                 className="text-slate-400 hover:text-rose-500 hover:scale-110 transition-all"
-                 title="Logout"
-               >
-                  <LogOut size={18} strokeWidth={2.5} />
-               </button>
+               {user && (
+                 <button 
+                   onClick={onLogout}
+                   className="text-slate-400 hover:text-rose-500 hover:scale-110 transition-all"
+                   title="Logout"
+                 >
+                    <LogOut size={18} strokeWidth={2.5} />
+                 </button>
+               )}
             </div>
          </motion.div>
         </motion.aside>
