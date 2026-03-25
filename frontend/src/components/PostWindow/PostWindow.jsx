@@ -192,10 +192,10 @@ const PostWindow = ({
                   
                   {images.length > 1 && (
                     <>
-                      <button onClick={prevImage} className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-[4px] bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all z-20 hover:bg-white/20">
+                      <button onClick={prevImage} className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-[4px] bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition-all z-20 hover:bg-white/40">
                         <ChevronLeft size={24} />
                       </button>
-                      <button onClick={nextImage} className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-[4px] bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all z-20 hover:bg-white/20">
+                      <button onClick={nextImage} className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-[4px] bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition-all z-20 hover:bg-white/40">
                         <ChevronRight size={24} />
                       </button>
                     </>
@@ -242,7 +242,7 @@ const PostWindow = ({
              </div>
 
              {/* Scrollable Content */}
-             <div className="flex-1 overflow-y-auto px-8 py-8 scrollbar-hide">
+             <div className="flex-1 overflow-y-auto px-8 py-8 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="space-y-8">
                    
                    {/* Title & Category */}
