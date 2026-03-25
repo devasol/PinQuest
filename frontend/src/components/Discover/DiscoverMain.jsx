@@ -151,7 +151,7 @@ const DiscoverMain = () => {
 
   // Mobile Bottom Navigation States - moved to top to satisfy Rules of Hooks
   const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
-  const [showBottomNav, setShowBottomNav] = useState(true);
+  // Removed showBottomNav to ensure immersive map background
   const [activeSidebarWindow, setActiveSidebarWindow] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -2070,9 +2070,7 @@ const DiscoverMain = () => {
       )}
 
       {/* Map container */}
-      <div className={`map-container-responsive ${
-        !isMobile ? (isSidebarExpanded ? 'map-container-sidebar-expanded' : 'map-container-sidebar-collapsed') : ''
-      }`}>
+      <div className="map-container-responsive inset-0 absolute">
         <MapContainer
           center={mapCenter}
           zoom={mapZoom}
