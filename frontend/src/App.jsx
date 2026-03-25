@@ -26,7 +26,7 @@ const App = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 w-full overflow-x-hidden transition-colors duration-300">
       <RouterProvider router={router} />
       <ToastContainer
         position="top-right"

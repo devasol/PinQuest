@@ -6,9 +6,10 @@ import {
   Layers, Minus, ChevronLeft, ChevronRight, ChevronUp, 
   ChevronDown, LocateFixed, LayoutGrid, ScanSearch, Map as MapIcon, 
   Sparkles, Coffee, Utensils, Zap, Shield, Telescope,
-  SquareTerminal, Globe, Activity, LifeBuoy
+  SquareTerminal, Globe, Activity, LifeBuoy, Sun, Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const Sidebar = ({
   onLogout = () => {},
@@ -28,6 +29,7 @@ const Sidebar = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const navGroups = [
     {
@@ -154,7 +156,7 @@ const Sidebar = ({
           initial={false}
           animate={isSidebarExpanded ? 'expanded' : 'collapsed'}
           variants={sidebarVariants}
-          className="h-full bg-white border-r border-slate-100 shadow-sm flex flex-col py-8 overflow-hidden"
+          className="h-full bg-white dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800 shadow-sm flex flex-col py-8 overflow-hidden transition-colors duration-300"
         >
          <motion.div 
             layout
@@ -162,7 +164,7 @@ const Sidebar = ({
          >
             <motion.div 
               layout
-              className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-slate-100 cursor-pointer active:scale-95 transition-transform"
+              className="w-10 h-10 bg-slate-900 dark:bg-teal-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-slate-100 dark:shadow-none cursor-pointer active:scale-95 transition-all duration-300"
               onClick={toggleSidebar}
             >
                <Zap size={18} className="text-white fill-white" />
@@ -174,8 +176,8 @@ const Sidebar = ({
                   transition={{ delay: 0.1 }}
                   className="ml-4 flex flex-col flex-1 whitespace-nowrap overflow-hidden"
                 >
-                  <h1 className="text-xl font-black text-slate-900 tracking-tighter leading-none mb-1">PinQuest</h1>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-500/90">Social Map</span>
+                  <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none mb-1 transition-colors duration-300">PinQuest</h1>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-500/90 dark:text-teal-400/90 transition-colors duration-300">Social Map</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -203,26 +205,26 @@ const Sidebar = ({
                             variants={navItemVariants}
                             onClick={item.action || (() => {})}
                             className={`h-11 flex items-center transition-all duration-300 relative group
-                               ${isActive ? 'bg-slate-50' : 'hover:bg-slate-50'}
+                               ${isActive ? 'bg-slate-50 dark:bg-slate-900/50' : 'hover:bg-slate-50 dark:hover:bg-slate-900/50'}
                                ${isSidebarExpanded ? 'rounded-l-xl pl-6' : 'rounded-xl'}`}
                           >
                              {isActive && (
                                <motion.div 
                                  layoutId="activePillar"
-                                 className="absolute right-0 top-0 bottom-0 w-[5px] bg-slate-900 rounded-l-md z-[10]" 
+                                 className="absolute right-0 top-0 bottom-0 w-[5px] bg-slate-900 dark:bg-teal-500 rounded-l-md z-[10] transition-colors duration-300" 
                                />
                              )}
 
-                             <div className={`w-11 h-11 flex-shrink-0 flex items-center justify-center transition-colors
-                                ${isActive ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-900'}`}>
+                             <div className={`w-11 h-11 flex-shrink-0 flex items-center justify-center transition-colors duration-300
+                                ${isActive ? 'text-slate-900 dark:text-teal-400' : 'text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white'}`}>
                                 <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                              </div>
                              <AnimatePresence>
                                 {isSidebarExpanded && (
                                   <motion.span 
                                     initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }}
-                                    className={`ml-4 text-[13px] font-bold tracking-tight whitespace-nowrap overflow-hidden
-                                       ${isActive ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-900'}`}
+                                    className={`ml-4 text-[13px] font-bold tracking-tight whitespace-nowrap overflow-hidden transition-colors duration-300
+                                       ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white'}`}
                                   >
                                     {item.label}
                                   </motion.span>
@@ -238,7 +240,7 @@ const Sidebar = ({
 
          <motion.div 
            layout
-           className={`mt-auto pt-8 border-t border-slate-100 w-full flex flex-col items-center space-y-4 ${isSidebarExpanded ? 'px-6' : 'px-0'}`}
+           className={`mt-auto pt-8 border-t border-slate-100 dark:border-slate-800 w-full flex flex-col items-center space-y-4 transition-colors duration-300 ${isSidebarExpanded ? 'px-6' : 'px-0'}`}
          >
             {user ? (
               <div className="w-full flex justify-center">
@@ -274,8 +276,13 @@ const Sidebar = ({
             )}
 
             <div className={`flex items-center w-full transition-all duration-300 ${isSidebarExpanded ? 'justify-between px-10 pt-4' : 'flex-col space-y-6 pt-2'}`}>
-               <button className="text-slate-400 hover:text-slate-900 hover:scale-110 transition-all text-center mx-auto" style={{ marginLeft: !user && isSidebarExpanded ? "auto" : undefined, marginRight: !user && isSidebarExpanded ? "auto" : undefined }}>
-                  <Settings size={18} strokeWidth={2.5} />
+               <button 
+                 onClick={toggleTheme}
+                 className={`text-slate-400 hover:text-teal-500 hover:scale-110 transition-all text-center mx-auto ${theme === 'dark' ? 'text-teal-400' : ''}`}
+                 style={{ marginLeft: !user && isSidebarExpanded ? "auto" : undefined, marginRight: !user && isSidebarExpanded ? "auto" : undefined }}
+                 title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+               >
+                  {theme === 'dark' ? <Moon size={18} strokeWidth={2.5} /> : <Sun size={18} strokeWidth={2.5} />}
                </button>
                {user && (
                  <button 
@@ -298,7 +305,7 @@ const Sidebar = ({
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={toggleSidebar}
-                className="absolute left-[-20px] z-[8081] w-10 h-14 bg-white border border-slate-100 shadow-xl rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
+                className="absolute left-[-20px] z-[8081] w-10 h-14 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xl rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors duration-300"
               >
                 {isSidebarExpanded ? <ChevronLeft size={18} strokeWidth={3} /> : <ChevronRight size={18} strokeWidth={3} />}
               </motion.button>
