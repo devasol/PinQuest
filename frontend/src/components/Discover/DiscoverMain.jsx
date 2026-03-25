@@ -2071,8 +2071,7 @@ const DiscoverMain = () => {
 
       {/* Map container */}
       <div className={`map-container-responsive ${
-        isMobile ? (showBottomNav ? '' : 'bottom-nav-hidden') :
-        (isSidebarExpanded ? 'map-container-sidebar-expanded' : 'map-container-sidebar-collapsed')
+        !isMobile ? (isSidebarExpanded ? 'map-container-sidebar-expanded' : 'map-container-sidebar-collapsed') : ''
       }`}>
         <MapContainer
           center={mapCenter}

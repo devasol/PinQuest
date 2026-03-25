@@ -345,14 +345,13 @@
     display: none;
   }
 
-  /* Adjust map container for bottom navigation */
+  /* Immersive map container - no padding needed for floating hub */
   .map-container {
-    padding-bottom: 60px;
+    padding-bottom: 0px !important;
   }
 
-  /* Ensure proper spacing when bottom nav is visible */
   .map-layout-container {
-    padding-bottom: 60px;
+    padding-bottom: 0px !important;
   }
 
   /* Adjust search bar positioning */
@@ -369,7 +368,7 @@
 
   /* Ensure proper spacing when bottom nav is visible */
   .map-layout-container {
-    padding-bottom: 60px;
+    padding-bottom: 0px !important;
   }
 }
 
