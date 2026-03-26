@@ -1,15 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
 @import 'leaflet/dist/leaflet.css';
 
 @theme {
-  --font-outfit: "Outfit", sans-serif;
-  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+  --font-inter: "Inter", sans-serif;
+  --font-space: "Space Grotesk", sans-serif;
   
-  --color-brand-primary: #111827; /* Darker Slate for Pro look */
-  --color-brand-secondary: #4b5563;
-  --color-brand-accent: #6366f1;
+  --color-brand-primary: #0f172a; 
+  --color-brand-secondary: #334155;
+  --color-brand-accent: #3b82f6;
   
   --shadow-premium: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   --shadow-glass: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
@@ -17,7 +18,7 @@
 
 /* Responsive base styles */
 html, body, #root {
-  font-family: var(--font-jakarta);
+  font-family: var(--font-inter);
   font-size: 16px;
   scroll-behavior: smooth;
   height: 100vh;
@@ -29,9 +30,15 @@ html, body, #root {
 }
 
 body {
-  background-color: #020617; /* Dark Slate fallback */
-  color: #f8fafc;
+  background-color: #f1f5f9; /* Soft Slate */
+  color: #0f172a;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Dark mode body override */
+.dark body {
+  background-color: #020617;
+  color: #f8fafc;
 }
 
 /* UIBlocks Inspired Scrollbars */
@@ -51,6 +58,20 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Dark mode scrollbars */
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
 /* ... existing responsive utilities ... */

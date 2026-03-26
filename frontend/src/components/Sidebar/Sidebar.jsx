@@ -80,7 +80,7 @@ const Sidebar = ({
     return (
       <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[94%] max-w-[440px] z-[9000] font-jakarta">
         {/* Superior Floating Container */}
-        <div className="relative bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] px-4 py-4 flex items-center justify-between overflow-hidden">
+        <div className="relative bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 rounded-[16px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] px-4 py-4 flex items-center justify-between overflow-hidden transition-colors duration-300">
           
           {/* Reactive Background Pill */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -112,12 +112,12 @@ const Sidebar = ({
                 </AnimatePresence>
 
                 <div className={`w-10 h-10 rounded-[4px] flex items-center justify-center transition-all duration-300
-                  ${isActive ? 'bg-white/10 text-teal-400 border border-white/10' : 'text-slate-500'}`}>
+                  ${isActive ? 'bg-slate-900/10 dark:bg-white/10 text-teal-600 dark:text-teal-400 border border-teal-200/50 dark:border-white/10' : 'text-slate-400 dark:text-slate-500'}`}>
                   <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
                 
-                <span className={`text-[8px] font-black tracking-[0.2em] transition-colors
-                  ${isActive ? 'text-white' : 'text-slate-500'}`}>
+                <span className={`text-[8px] font-black tracking-[0.2em] transition-colors duration-300
+                  ${isActive ? 'text-teal-600 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
                   {item.label}
                 </span>
               </motion.div>
@@ -139,6 +139,22 @@ const Sidebar = ({
           })}
         </div>
         
+        {/* Mobile Theme Toggle Pill */}
+        <motion.button
+          onClick={toggleTheme}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileTap={{ scale: 0.9 }}
+          className="absolute -top-12 right-0 flex items-center gap-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-full px-3 py-1.5 shadow-lg transition-all duration-300"
+          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+        >
+          {theme === 'dark' ? (
+            <><Sun size={12} strokeWidth={2.5} className="text-teal-400" /><span className="text-[8px] font-black tracking-widest uppercase text-slate-400">Light</span></>
+          ) : (
+            <><Moon size={12} strokeWidth={2.5} className="text-slate-600" /><span className="text-[8px] font-black tracking-widest uppercase text-slate-500">Dark</span></>
+          )}
+        </motion.button>
+
         {/* Precision Tracking Pulse (Mobile specific state indicator) */}
         {followUser && (
            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-teal-500 text-white text-[8px] font-black px-3 py-0.5 rounded-full shadow-lg shadow-teal-500/30 animate-pulse tracking-widest border border-teal-400 uppercase">
