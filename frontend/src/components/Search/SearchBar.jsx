@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, MapPin, Star, Compass } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { postApi } from '../../services/api';
 import { useModal } from '../../contexts/ModalContext';
 
