@@ -287,8 +287,8 @@ const Header = ({ isDiscoverPage = false }) => {
             })}
           </nav>
 
-          {/* Search Bar - Visible from md screens up */}
-          <div className="hidden md:flex flex-1 max-w-sm lg:max-w-md mx-4 lg:mx-8">
+          {/* Search Bar - Visible from lg screens up */}
+          <div className="hidden lg:flex flex-1 max-w-md mx-4 lg:mx-8">
             <SearchBar
               placeholder="Search locations..."
               className="w-full"
@@ -309,9 +309,9 @@ const Header = ({ isDiscoverPage = false }) => {
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
 
-            {/* Mobile Search Button */}
+            {/* Mobile/Tablet Search Button */}
             <button
-              className="md:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
+              className="lg:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
               onClick={() => {
                 setIsMobileSearchOpen(!isMobileSearchOpen);
                 setIsMenuOpen(false); // Close menu when opening search
@@ -466,9 +466,9 @@ const Header = ({ isDiscoverPage = false }) => {
           </div>
         </div>
 
-        {/* Mobile Search Bar - Only shown when mobile search is open */}
+        {/* Mobile/Tablet Search Bar - Only shown when search is toggled */}
         {isMobileSearchOpen && (
-          <div className="md:hidden px-4 pb-3">
+          <div className="lg:hidden px-4 pb-3">
             <SearchBar
               placeholder="Search locations..."
               autoFocus={true}
