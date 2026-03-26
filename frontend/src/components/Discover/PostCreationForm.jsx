@@ -160,7 +160,7 @@ const PostCreationForm = ({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.98 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full bg-white shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden flex flex-col h-full max-h-[90vh] min-h-[500px] font-jakarta"
+      className="w-full bg-white dark:bg-slate-950 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25)] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col h-full max-h-[90vh] min-h-[500px] font-jakarta"
       style={{ borderRadius: '4px' }}
     >
       {/* Premium Header */}
@@ -199,7 +199,7 @@ const PostCreationForm = ({
       {/* Structured Content */}
       <div
         ref={scrollableContainerRef}
-        className="flex-grow overflow-y-auto custom-scrollbar bg-slate-50/50"
+        className="flex-grow overflow-y-auto custom-scrollbar bg-slate-50/50 dark:bg-slate-900/20"
         onTouchMove={(e) => e.stopPropagation()}
         onMouseOver={(e) => e.currentTarget.focus()}
       >
@@ -218,7 +218,7 @@ const PostCreationForm = ({
               onChange={handleChange}
               onFocus={() => setActiveField('title')}
               onBlur={() => setActiveField(null)}
-              className="w-full h-12 px-5 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5 transition-all duration-300 font-bold text-slate-900 placeholder:text-slate-200 text-sm font-outfit"
+              className="w-full h-12 px-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-slate-900 dark:focus:border-indigo-500 focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/10 transition-all duration-300 font-bold text-slate-900 dark:text-white placeholder:text-slate-200 dark:placeholder:text-slate-700 text-sm font-outfit"
               style={{ borderRadius: '4px' }}
               placeholder="Give your discovery a catchy name..."
               required
@@ -237,7 +237,7 @@ const PostCreationForm = ({
               onChange={handleChange}
               onFocus={() => setActiveField('desc')}
               onBlur={() => setActiveField(null)}
-              className="w-full px-5 py-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 focus:ring-4 focus:ring-slate-900/5 transition-all duration-300 min-h-[120px] resize-none font-medium text-slate-700 placeholder:text-slate-200 leading-relaxed text-sm font-outfit"
+              className="w-full px-5 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-slate-900 dark:focus:border-indigo-500 focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/10 transition-all duration-300 min-h-[120px] resize-none font-medium text-slate-700 dark:text-slate-300 placeholder:text-slate-200 dark:placeholder:text-slate-700 leading-relaxed text-sm font-outfit"
               style={{ borderRadius: '4px' }}
               placeholder="What makes this place special? Share the vibe, tips, or what to look for..."
               required
@@ -262,8 +262,8 @@ const PostCreationForm = ({
                     onClick={() => handlePostCreationFormChange({ target: { name: 'category', value: cat.value } })}
                     className={`relative p-3 rounded-[4px] border-2 transition-all duration-300 flex flex-col items-center justify-center gap-2 h-20 overflow-hidden ${
                       postCreationForm.category === cat.value
-                        ? 'border-teal-500 bg-teal-50/50 text-teal-900 shadow-sm'
-                        : 'border-slate-100 bg-white text-slate-500 hover:border-slate-300'
+                        ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-500/10 text-teal-900 dark:text-teal-400 shadow-sm'
+                        : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
                     <Icon 
@@ -299,8 +299,8 @@ const PostCreationForm = ({
             <div 
               className={`relative border-2 border-dashed transition-all duration-300 ease-out group p-1 ${
                 dragActive 
-                  ? 'border-teal-500 bg-teal-50/20' 
-                  : 'border-slate-200 bg-slate-100/30 hover:bg-white hover:border-teal-300'
+                  ? 'border-teal-500 bg-teal-50/20 dark:bg-teal-500/5' 
+                  : 'border-slate-200 dark:border-slate-800 bg-slate-100/30 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-900 hover:border-teal-300 dark:hover:border-indigo-500'
               }`}
               style={{ borderRadius: '4px' }}
               onDragEnter={handleDrag}
@@ -311,12 +311,12 @@ const PostCreationForm = ({
               <div className="p-8">
                 {!totalMedia && !dragActive && (
                   <div className="text-center space-y-4 pointer-events-none">
-                    <div className="w-14 h-14 bg-white shadow-sm border border-slate-100 flex items-center justify-center mx-auto transition-transform duration-300 group-hover:scale-110" style={{ borderRadius: '4px' }}>
+                    <div className="w-14 h-14 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center mx-auto transition-transform duration-300 group-hover:scale-110" style={{ borderRadius: '4px' }}>
                       <Upload className="w-6 h-6 text-teal-500" strokeWidth={2.5} />
                     </div>
                     <div>
-                      <p className="text-slate-900 font-black text-xs uppercase tracking-widest">Transmit Assets</p>
-                      <p className="text-slate-400 text-[9px] font-bold uppercase tracking-wider mt-1 opacity-60">Drag files or click to initiate</p>
+                      <p className="text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest">Transmit Assets</p>
+                      <p className="text-slate-400 dark:text-slate-600 text-[9px] font-bold uppercase tracking-wider mt-1 opacity-60">Drag files or click to initiate</p>
                     </div>
                   </div>
                 )}
@@ -333,7 +333,7 @@ const PostCreationForm = ({
                         <motion.div
                           initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
                           key={`file-${i}`} 
-                          className="relative aspect-square rounded-[4px] border border-slate-200 overflow-hidden group/img shadow-sm"
+                          className="relative aspect-square rounded-[4px] border border-slate-200 dark:border-slate-800 overflow-hidden group/img shadow-sm"
                         >
                           <img src={imagePreviewUrls[i]} alt="Preview" className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
@@ -354,7 +354,7 @@ const PostCreationForm = ({
                           <motion.div
                             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
                             key={`link-${i}`}
-                            className="relative aspect-square rounded-[4px] border border-slate-200 overflow-hidden group/img shadow-sm"
+                            className="relative aspect-square rounded-[4px] border border-slate-200 dark:border-slate-800 overflow-hidden group/img shadow-sm"
                           >
                             <img 
                               src={link} alt="Link Preview" crossOrigin="anonymous" className="w-full h-full object-cover"
@@ -378,8 +378,8 @@ const PostCreationForm = ({
                     </AnimatePresence>
                     
                     {totalMedia < 10 && (
-                      <div className="relative aspect-square rounded-[4px] border border-dashed border-slate-200 flex items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors pointer-events-none">
-                        <Plus className="w-6 h-6 text-slate-300" strokeWidth={2} />
+                      <div className="relative aspect-square rounded-[4px] border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors pointer-events-none">
+                        <Plus className="w-6 h-6 text-slate-300 dark:text-slate-700" strokeWidth={2} />
                       </div>
                     )}
                   </div>
@@ -388,15 +388,15 @@ const PostCreationForm = ({
             </div>
 
             {/* Premium URL Bridge */}
-            <div className="flex items-center gap-2 bg-white p-2 rounded-[4px] border border-slate-200 focus-within:border-slate-900 transition-all">
-              <LinkIcon className="w-4 h-4 text-slate-300 ml-2" strokeWidth={2.5} />
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-[4px] border border-slate-200 dark:border-slate-800 focus-within:border-slate-900 dark:focus-within:border-indigo-500 transition-all">
+              <LinkIcon className="w-4 h-4 text-slate-300 dark:text-slate-700 ml-2" strokeWidth={2.5} />
               <input
                 type="url"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleUrlAdd())}
                 placeholder="External asset link..."
-                className="flex-grow bg-transparent border-none text-xs font-bold text-slate-900 focus:ring-0 placeholder:text-slate-200 uppercase tracking-wider"
+                className="flex-grow bg-transparent border-none text-xs font-bold text-slate-900 dark:text-white focus:ring-0 placeholder:text-slate-200 dark:placeholder:text-slate-700 uppercase tracking-wider"
               />
               <button
                 type="button"
@@ -412,7 +412,7 @@ const PostCreationForm = ({
           {postCreationForm.error && (
             <motion.div 
               initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-              className="p-4 bg-rose-50 border-l-4 border-rose-500 text-rose-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-3"
+              className="p-4 bg-rose-50 dark:bg-rose-500/10 border-l-4 border-rose-500 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-3"
             >
               <ShieldCheck className="w-4 h-4" strokeWidth={3} />
               {postCreationForm.error}
@@ -423,12 +423,12 @@ const PostCreationForm = ({
       </div>
 
       {/* High-Impact Footer */}
-      <div className="p-6 bg-white border-t border-slate-100 shrink-0 flex gap-4">
+      <div className="p-6 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-900 shrink-0 flex gap-4">
         <motion.button
-          whileHover={{ backgroundColor: '#f1f5f9' }}
+          whileHover={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
           whileTap={{ scale: 0.98 }}
           onClick={handleCancel}
-          className="flex-1 h-12 rounded-[4px] border border-slate-200 text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] transition-all"
+          className="flex-1 h-12 rounded-[4px] border border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-600 text-[11px] font-black uppercase tracking-[0.2em] transition-all"
         >
           Cancel
         </motion.button>
