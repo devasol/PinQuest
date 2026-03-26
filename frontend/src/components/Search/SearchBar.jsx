@@ -15,6 +15,7 @@ const SearchBar = ({
   const [isFocused, setIsFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   const searchTimeoutRef = useRef(null);
   const containerRef = useRef(null);
@@ -172,98 +173,158 @@ const SearchBar = ({
   }, []);
 
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div 
+      className={`relative ${className} font-jakarta`} 
+      ref={containerRef}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="relative group">
-        <div className="absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors">
-          <Search size={18} strokeWidth={2.5} />
-        </div>
-        <input
-          type="text"
-          placeholder={placeholder}
-          value={searchQuery}
-          onChange={handleInputChange}
-          onFocus={() => setIsFocused(true)}
-          className="w-full pl-14 pr-12 py-4 bg-white border border-slate-200 rounded-[4px] focus:outline-none focus:border-slate-900 font-bold text-sm tracking-tight placeholder:text-slate-400 placeholder:font-medium shadow-sm transition-all duration-300"
-          autoFocus={autoFocus}
-        />
-        {searchQuery && (
-          <button
-            onClick={handleClearSearch}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            <X size={16} className="text-slate-400 hover:text-slate-900" />
-          </button>
-        )}
+        <motion.div 
+          animate={{ 
+            scale: isFocused ? 1.01 : 1,
+            boxShadow: isFocused 
+              ? '0 20px 40px -15px rgba(0,0,0,0.1)' 
+              : '0 4px 12px -2px rgba(0,0,0,0.02)'
+          }}
+          className={`relative flex items-center transition-all duration-500 rounded-[4px] overflow-hidden border-2 
+            ${isFocused 
+              ? 'border-slate-900 dark:border-indigo-500 bg-white dark:bg-slate-900 shadow-xl' 
+              : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50'}`}
+        >
+          <div className={`pl-5 text-slate-400 transition-colors duration-300 ${isFocused ? 'text-slate-900 dark:text-indigo-400' : ''}`}>
+            <Search size={18} strokeWidth={isFocused ? 3 : 2.5} className="transition-all duration-500" />
+          </div>
+          <input
+            type="text"
+            placeholder={placeholder}
+            value={searchQuery}
+            onChange={handleInputChange}
+            onFocus={() => setIsFocused(true)}
+            className="w-full pl-4 pr-12 py-4 bg-transparent outline-none font-black text-sm tracking-tighter text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 placeholder:font-bold transition-all"
+            autoFocus={autoFocus}
+          />
+          <AnimatePresence>
+            {searchQuery && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={handleClearSearch}
+                className="absolute right-4 p-1.5 rounded-[2px] bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm"
+              >
+                <X size={14} strokeWidth={3} />
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </motion.div>
+        
+        {/* Modern Focus Glow */}
+        <AnimatePresence>
+          {isFocused && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.1 }}
+              exit={{ opacity: 0 }}
+              className="absolute -inset-1 bg-gradient-to-r from-teal-500 to-indigo-500 rounded-[8px] blur-xl -z-10 pointer-events-none"
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Search Results Dropdown - Structural Style */}
-      {isFocused && (
-        <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[4px] shadow-[0_20px_50px_rgba(0,0,0,0.12)] border border-slate-100 z-[9999] max-h-[70vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
-          {searchQuery ? (
-            <div className="flex flex-col">
-              {isLoading ? (
-                <div className="py-12 flex flex-col items-center justify-center gap-3">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-900"></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Syncing Intelligence</span>
-                </div>
-              ) : searchResults.length > 0 ? (
-                <div className="py-2">
-                  <div className="px-6 py-3 border-b border-slate-50">
-                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Results ({searchResults.length})</span>
+      <AnimatePresence>
+        {isFocused && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute top-full left-0 right-0 mt-3 bg-white dark:bg-slate-900 rounded-[4px] shadow-[0_30px_70px_rgba(0,0,0,0.15)] dark:shadow-none border border-slate-100 dark:border-slate-800 z-[9999] max-h-[70vh] overflow-y-auto overflow-x-hidden custom-scrollbar"
+          >
+            {searchQuery ? (
+              <div className="flex flex-col">
+                {isLoading ? (
+                  <div className="py-16 flex flex-col items-center justify-center gap-4">
+                    <div className="w-8 h-8 border-2 border-slate-900 dark:border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 dark:text-slate-700">Syncing Intelligence</span>
                   </div>
-                  {searchResults.map((post, index) => (
-                    <div
-                      key={post._id || post.id || index}
-                      className={`px-6 py-4 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50 last:border-b-0 group ${post.isGlobalLocation ? 'bg-slate-50/50' : ''}`}
-                      onClick={() => handleResultClick(post)}
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-[4px] bg-white shadow-sm border border-slate-100 flex items-center justify-center flex-shrink-0 group-hover:border-slate-300 transition-colors">
-                          <MapPin size={18} className={`${post.isGlobalLocation ? 'text-teal-500' : 'text-slate-900'}`} strokeWidth={2.5} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 className="font-black text-slate-900 text-[13px] truncate tracking-tight">{post.title}</h3>
-                            {post.isGlobalLocation && (
-                              <span className="text-[9px] font-black bg-teal-50 text-teal-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                                Global
-                              </span>
+                ) : searchResults.length > 0 ? (
+                  <div className="py-2">
+                    <div className="px-6 py-4 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between">
+                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600">Results Distribution</span>
+                       <span className="text-[10px] font-black text-teal-600 dark:text-indigo-400">{searchResults.length} Match Found</span>
+                    </div>
+                    {searchResults.map((post, index) => (
+                      <motion.div
+                        initial={{ opacity: 0, x: -5 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        key={post._id || post.id || index}
+                        className={`px-6 py-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-all border-b border-slate-50 dark:border-slate-800 last:border-b-0 group ${post.isGlobalLocation ? 'bg-slate-50/30 dark:bg-slate-800/20' : ''}`}
+                        onClick={() => handleResultClick(post)}
+                      >
+                        <div className="flex items-start gap-5">
+                          <div className="w-11 h-11 rounded-[4px] bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center flex-shrink-0 group-hover:border-slate-300 dark:group-hover:border-slate-600 transition-colors">
+                            {post.isGlobalLocation ? (
+                              <Compass size={20} className="text-teal-500 dark:text-teal-400" strokeWidth={2.5} />
+                            ) : (
+                              <MapPin size={20} className="text-slate-900 dark:text-white" strokeWidth={2.5} />
                             )}
                           </div>
-                          <p className="text-[11px] font-medium text-slate-500 line-clamp-1 mt-0.5">{post.description}</p>
-                          <div className="flex items-center gap-3 mt-2">
-                            <div className="flex items-center gap-1">
-                              <Star size={12} className="text-yellow-400 fill-current" />
-                              <span className="text-[11px] font-black text-slate-900">
-                                {post.averageRating?.toFixed(1) || '0.0'}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="font-black text-slate-900 dark:text-white text-[14px] truncate tracking-tighter group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors uppercase italic">{post.title}</h3>
+                              {post.isGlobalLocation && (
+                                <span className="text-[9px] font-black bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded-[2px] uppercase tracking-wider border border-teal-100 dark:border-teal-800">
+                                  Global
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 line-clamp-1 mt-1 font-outfit uppercase tracking-tight">{post.description}</p>
+                            <div className="flex items-center gap-4 mt-3">
+                              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded-[2px] border border-slate-100 dark:border-slate-800">
+                                <Star size={10} className="text-yellow-400 fill-current" />
+                                <span className="text-[10px] font-black text-slate-900 dark:text-white">
+                                  {post.averageRating?.toFixed(1) || '0.0'}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">
+                                • {post.category || 'POI'}
                               </span>
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
-                              {post.category}
-                            </span>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-20 text-center flex flex-col items-center px-10">
+                    <div className="w-16 h-16 bg-slate-50 dark:bg-slate-950 rounded-full flex items-center justify-center mb-6">
+                      <Search size={32} className="text-slate-200 dark:text-slate-800" />
                     </div>
-                  ))}
+                    <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1 italic">Intelligence Null</p>
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest leading-relaxed">No matching nodes found in this sector. Try refining your parameters.</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-20 text-center flex flex-col items-center">
+                <div className="relative mb-8">
+                  <Compass size={40} className="text-slate-200 dark:text-slate-800 animate-spin-slow" />
+                  <motion.div 
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.5, 0.2] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="absolute inset-0 bg-indigo-500 rounded-full blur-2xl -z-10"
+                  />
                 </div>
-              ) : (
-                <div className="py-12 text-center flex flex-col items-center">
-                  <Search size={32} className="text-slate-100 mb-4" />
-                  <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">No matching results</p>
-                  <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-widest">Check your filters or location</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="py-10 text-center">
-              <Compass size={24} className="mx-auto text-slate-200 mb-3 animate-pulse" />
-              <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Intelligence Search</p>
-              <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-widest">Ready for input...</p>
-            </div>
-          )}
-        </div>
-      )}
+                <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1 italic">Navigation Ready</p>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-[0.3em]">Sector Search / Global Map / Users</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

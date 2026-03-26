@@ -20,22 +20,21 @@
     transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Hard Minimalist / Unique Softness */
+/* Architectural Minimalism */
 .custom-rounded {
-    border-radius: 40px;
+    border-radius: 4px;
 }
 
 .glass-canvas-card {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 1);
+    border: 1px solid #e2e8f0;
     box-shadow: var(--card-shadow);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark .glass-canvas-card {
-    background: rgba(17, 24, 39, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: #0f172a; /* slate-900 */
+    border: 1px solid #1e293b; /* slate-800 */
 }
 
 .floating-dock {
@@ -48,10 +47,10 @@
     padding: 8px;
     border-radius: 30px;
     display: flex;
-    gap: 8px;
+    gap: 12px;
     z-index: 1000;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .dark .floating-dock {
@@ -60,12 +59,12 @@
 }
 
 .dock-item {
-    width: 50px;
-    height: 50px;
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 20px;
+    border-radius: 4px;
     color: #94a3b8;
     transition: all 0.3s ease;
     position: relative;
@@ -143,18 +142,16 @@
     border-radius: inherit;
 }
 
-/* Profile Picture with Offset Ring */
+/* Profile Picture with Minimalist Sharp Frame */
 .offset-ring {
-    padding: 4px;
+    padding: 2px;
     background: #4f46e5;
-    border-radius: 35px;
-    transform: rotate(-3deg);
+    border-radius: 2px;
 }
 
 .offset-inner {
     background: white;
-    border-radius: 32px;
-    transform: rotate(3deg);
+    border-radius: 1px;
 }
 
 .dark .offset-inner {

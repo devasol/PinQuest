@@ -6,7 +6,7 @@ const DiscoverPage = () => {
   usePageTitle("Discover");
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
+    <div className="min-h-screen bg-white dark:bg-slate-950 relative overflow-hidden">
       <DiscoverMain />
     </div>
   );

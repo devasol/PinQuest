@@ -55,13 +55,13 @@ const MapSidebar = ({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={toggleTextDisplay}
-              className="sidebar-button border-b border-gray-200"
+              className="sidebar-button border-b border-gray-200 dark:border-slate-800"
               title={showText ? "Close sidebar" : "Open sidebar"}
             >
-              <div className="sidebar-button-icon-wrapper bg-gray-100">
+              <div className="sidebar-button-icon-wrapper bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300">
                 {showText ? <X className="sidebar-button-icon" /> : <Menu className="sidebar-button-icon" />}
               </div>
-              {showText && <span className="sidebar-button-text">Menu</span>}
+              {showText && <span className="sidebar-button-text dark:text-gray-200">Menu</span>}
             </motion.button>
             
             {/* Categories button */}
@@ -69,13 +69,13 @@ const MapSidebar = ({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => toggleWindow('category-window')}
-              className="sidebar-button border-b border-gray-200"
+              className="sidebar-button border-b border-gray-200 dark:border-slate-800"
               title="Categories"
             >
-              <div className="sidebar-button-icon-wrapper bg-gray-100">
+              <div className="sidebar-button-icon-wrapper bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300">
                 <MapPin className="sidebar-button-icon" />
               </div>
-              {showText && <span className="sidebar-button-text">Categories</span>}
+              {showText && <span className="sidebar-button-text dark:text-gray-200">Categories</span>}
             </motion.button>
             
             {/* View mode button */}
@@ -83,13 +83,13 @@ const MapSidebar = ({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => toggleWindow('view-mode-window')}
-              className="sidebar-button border-b border-gray-200"
+              className="sidebar-button border-b border-gray-200 dark:border-slate-800"
               title="View Mode"
             >
-              <div className="sidebar-button-icon-wrapper bg-gray-100">
+              <div className="sidebar-button-icon-wrapper bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300">
                 <Grid3X3 className="sidebar-button-icon" />
               </div>
-              {showText && <span className="sidebar-button-text">View Mode</span>}
+              {showText && <span className="sidebar-button-text dark:text-gray-200">View Mode</span>}
             </motion.button>
             
             {/* Map type button */}
@@ -97,13 +97,13 @@ const MapSidebar = ({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => toggleWindow('map-type-window')}
-              className="sidebar-button border-b border-gray-200"
+              className="sidebar-button border-b border-gray-200 dark:border-slate-800"
               title="Map Type"
             >
-              <div className="sidebar-button-icon-wrapper bg-gray-100">
+              <div className="sidebar-button-icon-wrapper bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300">
                 <MapPin className="sidebar-button-icon" />
               </div>
-              {showText && <span className="sidebar-button-text">Map Type</span>}
+              {showText && <span className="sidebar-button-text dark:text-gray-200">Map Type</span>}
             </motion.button>
             
             {/* Saved locations button */}
@@ -114,10 +114,10 @@ const MapSidebar = ({
               className={`sidebar-button ${showSavedLocationsOnMap ? 'saved-locations' : ''}`}
               title={showSavedLocationsOnMap ? 'Hide saved locations' : 'Show saved locations'}
             >
-              <div className={`sidebar-button-icon-wrapper ${showSavedLocationsOnMap ? 'bg-yellow-100' : 'bg-gray-100'}`}>
+              <div className={`sidebar-button-icon-wrapper ${showSavedLocationsOnMap ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300'}`}>
                 <Bookmark className={`sidebar-button-icon ${showSavedLocationsOnMap ? 'text-yellow-600 fill-current' : ''}`} />
               </div>
-              {showText && <span className="sidebar-button-text">Saved</span>}
+              {showText && <span className="sidebar-button-text dark:text-gray-200">Saved</span>}
             </motion.button>
             
             {/* Current location button */}
@@ -140,7 +140,7 @@ const MapSidebar = ({
               title={followUser ? "Stop Following Location" : "Show My Location"}
               disabled={locationLoading}
             >
-              <div className={`sidebar-button-icon-wrapper ${followUser ? 'bg-blue-100' : 'bg-gray-100'}`}>
+              <div className={`sidebar-button-icon-wrapper ${followUser ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300'}`}>
                 {locationLoading ? (
                   <div className="w-5 h-5 flex items-center justify-center">
                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
@@ -149,7 +149,7 @@ const MapSidebar = ({
                   <Navigation className={`sidebar-button-icon ${followUser ? 'text-blue-600' : ''}`} />
                 )}
               </div>
-              {showText && <span className="sidebar-button-text">My Location</span>}
+              {showText && <span className="sidebar-button-text dark:text-gray-200">My Location</span>}
             </motion.button>
           </div>
         </div>

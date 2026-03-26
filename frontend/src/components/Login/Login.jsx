@@ -120,12 +120,12 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center p-4 sm:p-6 pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4 sm:p-6 pt-20">
       {/* Floating Elements */}
       <div className="absolute inset-0 overflow-hidden -z-10">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full mix-blend-multiply opacity-30 blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-gradient-to-br from-cyan-100 to-blue-100 rounded-full mix-blend-multiply opacity-30 blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 right-1/3 w-48 h-48 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full mix-blend-multiply opacity-30 blur-3xl animate-pulse delay-2000"></div>
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-full mix-blend-multiply opacity-30 blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-gradient-to-br from-cyan-100 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-full mix-blend-multiply opacity-30 blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 right-1/3 w-48 h-48 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-full mix-blend-multiply opacity-30 blur-3xl animate-pulse delay-2000"></div>
       </div>
 
       <motion.div
@@ -138,17 +138,17 @@ const Login = () => {
         className="w-full max-w-lg mx-4 sm:mx-auto"
       >
         {/* Main Container */}
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-hidden max-h-[85vh] md:max-h-[none] overflow-y-auto md:overflow-y-visible max-w-full">
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 dark:border-slate-800/50 overflow-hidden max-h-[85vh] md:max-h-[none] overflow-y-auto md:overflow-y-visible max-w-full">
           {/* Header */}
           <div className="relative p-2 sm:p-4">
             <div className="flex justify-center">
-              <div className="relative bg-gray-100 rounded-full p-1 inline-block">
+              <div className="relative bg-gray-100 dark:bg-slate-800 rounded-full p-1 inline-block">
                 <button
                   onClick={() => setIsLogin(true)}
                   className={`relative px-4 py-1.5 sm:px-5 sm:py-2 rounded-full text-xs sm:text-sm font-medium z-10 transition-all duration-300 ${
                     isLogin 
                       ? "text-white bg-gradient-to-r from-indigo-500 to-purple-500 shadow-md" 
-                      : "text-gray-600 hover:text-gray-900"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                   }`}
                 >
                   Sign In
@@ -158,7 +158,7 @@ const Login = () => {
                   className={`relative px-4 py-1.5 sm:px-5 sm:py-2 rounded-full text-xs sm:text-sm font-medium z-10 transition-all duration-300 ${
                     !isLogin 
                       ? "text-white bg-gradient-to-r from-indigo-500 to-purple-500 shadow-md" 
-                      : "text-gray-600 hover:text-gray-900"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                   }`}
                 >
                   Sign Up
@@ -185,7 +185,7 @@ const Login = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.1 }}
-                className="text-lg sm:text-xl font-bold text-gray-800 mb-1"
+                className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-1"
               >
                 {isLogin ? "Welcome Back" : "Create Account"}
               </motion.h1>
@@ -193,7 +193,7 @@ const Login = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3, delay: 0.2 }}
-                className="text-gray-500 text-xs sm:text-sm"
+                className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm"
               >
                 {isLogin ? "Sign in to continue" : "Join us to get started"}
               </motion.p>
@@ -217,7 +217,7 @@ const Login = () => {
                         transition={{ duration: 0.3 }}
                       >
                         <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Username
                           </label>
                           <div className="relative">
@@ -226,7 +226,7 @@ const Login = () => {
                               name="username"
                               value={formData.username}
                               onChange={handleInputChange}
-                              className="w-full px-4 sm:px-5 py-3 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 text-gray-900 placeholder-gray-400"
+                              className="w-full px-4 sm:px-5 py-3 bg-white/70 dark:bg-slate-800/70 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                               placeholder="Enter username"
                               required={!isLogin}
                             />
@@ -243,7 +243,7 @@ const Login = () => {
 
                   {/* Email Field */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Email Address
                     </label>
                     <div className="relative">
@@ -252,7 +252,7 @@ const Login = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="w-full px-4 sm:px-5 py-3 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 text-gray-900 placeholder-gray-400"
+                        className="w-full px-4 sm:px-5 py-3 bg-white/70 dark:bg-slate-800/70 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                         placeholder="Enter your email"
                         required
                       />
@@ -266,7 +266,7 @@ const Login = () => {
 
                   {/* Password Field */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Password
                     </label>
                     <div className="relative">
@@ -275,7 +275,7 @@ const Login = () => {
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className="w-full px-4 sm:px-5 py-3 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 text-gray-900 placeholder-gray-400"
+                        className="w-full px-4 sm:px-5 py-3 bg-white/70 dark:bg-slate-800/70 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                         placeholder="Enter your password"
                         required
                       />
@@ -296,7 +296,7 @@ const Login = () => {
                         transition={{ duration: 0.3 }}
                       >
                         <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Confirm Password
                           </label>
                           <div className="relative">
@@ -305,7 +305,7 @@ const Login = () => {
                               name="confirmPassword"
                               value={formData.confirmPassword}
                               onChange={handleInputChange}
-                              className="w-full px-4 sm:px-5 py-3 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 text-gray-900 placeholder-gray-400"
+                              className="w-full px-4 sm:px-5 py-3 bg-white/70 dark:bg-slate-800/70 border border-gray-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-300 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                               placeholder="Confirm password"
                               required={!isLogin}
                             />
@@ -329,9 +329,9 @@ const Login = () => {
                           name="rememberMe"
                           checked={formData.rememberMe}
                           onChange={handleInputChange}
-                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                          className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-slate-800 dark:border-slate-700"
                         />
-                        <label className="ml-2 text-sm text-gray-600">
+                        <label className="ml-2 text-sm text-gray-600 dark:text-gray-400">
                           Remember me
                         </label>
                       </div>
@@ -340,7 +340,7 @@ const Login = () => {
                       <button
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
-                        className="text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors duration-200"
+                        className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200"
                       >
                         Forgot password?
                       </button>
@@ -354,7 +354,7 @@ const Login = () => {
                 <motion.div 
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm"
+                  className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 text-green-700 dark:text-green-400 p-3 rounded-lg text-sm"
                 >
                   {success}
                 </motion.div>
@@ -365,7 +365,7 @@ const Login = () => {
                 <motion.div 
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm"
+                  className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 text-red-700 dark:text-red-400 p-3 rounded-lg text-sm"
                 >
                   {error}
                 </motion.div>
@@ -398,10 +398,10 @@ const Login = () => {
               {/* Divider */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
+                  <div className="w-full border-t border-gray-200 dark:border-slate-800"></div>
                 </div>
                 <div className="relative flex justify-center">
-                  <span className="px-3 bg-white text-gray-500 text-sm">
+                  <span className="px-3 bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400 text-sm">
                     Or continue with
                   </span>
                 </div>
@@ -412,7 +412,7 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="w-full flex items-center justify-center gap-3 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all duration-200 group"
+                  className="w-full flex items-center justify-center gap-3 p-3 border border-gray-200 dark:border-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-all duration-200 group"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
@@ -432,20 +432,20 @@ const Login = () => {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  <span className="text-gray-700 group-hover:text-gray-900 transition-colors">Continue with Google</span>
+                  <span className="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">Continue with Google</span>
                 </button>
               </div>
 
               {/* Switch Mode Text */}
               <div className="text-center pt-4">
-                <p className="text-gray-600 text-sm">
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
                   {isLogin
                     ? "Don't have an account?"
                     : "Already have an account?"}
                   <button
                     type="button"
                     onClick={switchMode}
-                    className="ml-1 text-indigo-600 hover:text-indigo-700 font-medium transition-colors duration-200"
+                    className="ml-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition-colors duration-200"
                   >
                     {isLogin ? "Sign up" : "Sign in"}
                   </button>
@@ -459,7 +459,7 @@ const Login = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="mt-4 sm:mt-6 text-center text-gray-500 text-xs px-4"
+          className="mt-4 sm:mt-6 text-center text-gray-500 dark:text-gray-400 text-xs px-4"
         >
           By continuing, you agree to our Terms of Service and Privacy Policy
         </motion.p>

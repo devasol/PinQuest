@@ -139,8 +139,8 @@ const ProfilePage = () => {
       <div className="max-w-7xl mx-auto px-6 mb-12 flex items-center justify-between">
           <div className="flex items-center space-x-8">
               <div className="offset-ring">
-                  <div className="w-20 h-20 offset-inner overflow-hidden flex items-center justify-center">
-                      <div className="w-full h-full bg-slate-900 flex items-center justify-center text-white text-2xl font-black font-space">
+                  <div className="w-16 h-16 offset-inner overflow-hidden flex items-center justify-center">
+                      <div className="w-full h-full bg-slate-900 dark:bg-indigo-600 flex items-center justify-center text-white text-2xl font-black font-space">
                           {userData.name?.charAt(0) || 'U'}
                       </div>
                   </div>
@@ -152,17 +152,17 @@ const ProfilePage = () => {
                   <p className="text-indigo-600 font-bold text-[11px] uppercase tracking-widest">Active Member Since {new Date(userData.createdAt).getFullYear()}</p>
               </div>
           </div>
-          <div className="flex items-center space-x-2">
-              <button onClick={toggleTheme} className="w-12 h-12 glass-canvas-card custom-rounded flex items-center justify-center hover:scale-105 active:scale-95 text-slate-900 dark:text-white">
+          <div className="flex items-center space-x-3">
+              <button onClick={toggleTheme} className="w-10 h-10 glass-canvas-card custom-rounded flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
                   {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
               <button 
                   onClick={() => setIsEditing(!isEditing)}
-                  className="px-6 h-12 glass-canvas-card custom-rounded font-black text-[10px] tracking-widest uppercase hover:scale-105 active:scale-95 text-slate-900 dark:text-white"
+                  className="px-6 h-10 glass-canvas-card custom-rounded font-black text-[10px] tracking-widest uppercase hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-900 dark:text-white border-slate-200 dark:border-slate-800"
               >
-                  {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+                  {isEditing ? 'Cancel' : 'Edit Profile'}
               </button>
-              <button onClick={logout} className="w-12 h-12 bg-red-50 dark:bg-red-500/10 text-red-500 flex items-center justify-center custom-rounded hover:scale-105">
+              <button onClick={logout} className="w-10 h-10 bg-rose-500 text-white flex items-center justify-center custom-rounded hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20">
                   <LogOut className="w-4 h-4" />
               </button>
           </div>
@@ -183,28 +183,28 @@ const ProfilePage = () => {
                             <div className="space-y-4 pt-4">
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">Name</label>
-                                    <input type="text" value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="w-full bg-slate-100/50 dark:bg-slate-900/50 p-4 rounded-xl outline-none border border-transparent focus:border-indigo-500 dark:text-white text-sm font-bold" />
+                                    <input type="text" value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="w-full bg-slate-100/50 dark:bg-slate-800/50 p-4 custom-rounded outline-none border border-transparent focus:border-indigo-500 dark:text-white text-sm font-bold" />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">Location</label>
-                                    <input type="text" value={editData.location} onChange={e => setEditData({...editData, location: e.target.value})} className="w-full bg-slate-100/50 dark:bg-slate-900/50 p-4 rounded-xl outline-none border border-transparent focus:border-indigo-500 dark:text-white text-sm font-bold" />
+                                    <input type="text" value={editData.location} onChange={e => setEditData({...editData, location: e.target.value})} className="w-full bg-slate-100/50 dark:bg-slate-800/50 p-4 custom-rounded outline-none border border-transparent focus:border-indigo-500 dark:text-white text-sm font-bold" />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">Bio</label>
-                                    <textarea rows={2} value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} className="w-full bg-slate-100/50 dark:bg-slate-900/50 p-4 rounded-xl outline-none border border-transparent focus:border-indigo-500 dark:text-white text-sm font-bold" />
+                                    <textarea rows={2} value={editData.bio} onChange={e => setEditData({...editData, bio: e.target.value})} className="w-full bg-slate-100/50 dark:bg-slate-800/50 p-4 custom-rounded outline-none border border-transparent focus:border-indigo-500 dark:text-white text-sm font-bold" />
                                 </div>
-                                <button onClick={handleUpdateProfile} className="w-full p-4 bg-indigo-600 text-white rounded-xl font-black text-[10px] tracking-widest uppercase mt-2">Update Account</button>
+                                <button onClick={handleUpdateProfile} className="w-full p-4 bg-indigo-600 text-white custom-rounded font-black text-[10px] tracking-widest uppercase mt-2 shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all">Update Account</button>
                             </div>
                         ) : (
                             <div className="space-y-6 pt-4">
                                 <p className="text-lg font-medium text-slate-500 dark:text-slate-400 leading-relaxed italic pr-4">{userData.bio || "No biography provided yet. Add some flavor to your profile."}</p>
                                 <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-slate-50 dark:bg-slate-900/30 p-4 rounded-2xl">
+                                    <div className="bg-slate-50 dark:bg-slate-800/40 p-4 custom-rounded border border-transparent dark:border-slate-800">
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Base</p>
                                         <p className="text-base font-bold dark:text-white">{userData.location || 'Not Specified'}</p>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-slate-900/30 p-4 rounded-2xl">
+                                    <div className="bg-slate-50 dark:bg-slate-800/40 p-4 custom-rounded border border-transparent dark:border-slate-800">
                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Verified Email</p>
                                         <p className="text-base font-bold dark:text-white truncate">{userData.email}</p>
                                     </div>
@@ -257,7 +257,7 @@ const ProfilePage = () => {
                 <div className="space-y-6">
                     {userPosts.length > 0 ? userPosts.map((post, i) => (
                         <div key={post._id} className="glass-canvas-card custom-rounded p-6 flex items-center space-x-8">
-                            <div className="w-40 h-28 bg-slate-50 rounded-2xl overflow-hidden shadow-lg border border-white/50">
+                            <div className="w-40 h-28 bg-slate-50 dark:bg-slate-800 custom-rounded overflow-hidden shadow-lg border border-white/50 dark:border-slate-800">
                                 <OptimizedImage src={post.image} className="w-full h-full object-cover" />
                             </div>
                             <div className="flex-1">

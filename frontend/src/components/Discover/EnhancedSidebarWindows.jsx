@@ -102,7 +102,7 @@ const EnhancedSidebarWindows = ({
     <motion.div 
       variants={windowVariants}
       initial="hidden" animate="visible" exit="exit"
-      className="fixed top-0 bottom-0 z-[8040] flex flex-col font-jakarta bg-white border-r border-slate-100 shadow-[20px_0_50px_-15px_rgba(0,0,0,0.05)]"
+      className="fixed top-0 bottom-0 z-[8040] flex flex-col font-jakarta bg-white dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800 shadow-[20px_0_50px_-15px_rgba(0,0,0,0.05)] dark:shadow-none"
       style={{ 
         width: isMobile ? '100%' : getResponsiveWidth(),
         left: isMobile ? '0' : getWindowLeftPosition(isSidebarExpanded, windowWidth),
@@ -112,15 +112,15 @@ const EnhancedSidebarWindows = ({
         {/* Superior Header - Bold UIBlocks Style */}
         <div className="px-8 pt-10 pb-6 flex items-center justify-between">
           <div className="flex flex-col">
-             <div className="flex items-center gap-2 text-teal-600 mb-2">
+             <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 mb-2">
                {HeaderIcon ? <HeaderIcon size={16} strokeWidth={2.5} /> : <SlidersHorizontal size={16} />}
                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Active Filter</span>
              </div>
-             <h2 className="text-2xl font-black text-slate-900 tracking-tighter leading-none">{title}</h2>
+             <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">{title}</h2>
           </div>
           <button 
             onClick={() => closeWindow(id)}
-            className="w-10 h-10 rounded-[4px] bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
+            className="w-10 h-10 rounded-[4px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
           >
             <X size={20} strokeWidth={2.5} />
           </button>
@@ -153,10 +153,12 @@ const EnhancedSidebarWindows = ({
                 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
                 onClick={() => { setSelectedCategory(cat.id); closeWindow('category-window'); }}
                 className={`w-full flex items-center gap-5 p-4 rounded-[4px] transition-all border
-                  ${selectedCategory === cat.id ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-200' : 'hover:bg-slate-50 border-transparent text-slate-800'}`}
+                  ${selectedCategory === cat.id 
+                    ? 'bg-slate-900 dark:bg-indigo-600 border-slate-900 dark:border-indigo-600 text-white shadow-xl shadow-slate-200 dark:shadow-none' 
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-900 border-transparent text-slate-800 dark:text-slate-200'}`}
               >
                 <div className={`w-10 h-10 rounded-[4px] flex items-center justify-center flex-shrink-0 transition-colors
-                  ${selectedCategory === cat.id ? 'bg-white/10' : 'bg-slate-50 text-teal-500'}`}>
+                  ${selectedCategory === cat.id ? 'bg-white/10' : 'bg-slate-50 dark:bg-slate-800 text-teal-500 dark:text-indigo-400'}`}>
                   {cat.icon && <cat.icon size={20} strokeWidth={2.5} />}
                 </div>
                 <div className="text-left flex-1 min-w-0">
@@ -178,7 +180,9 @@ const EnhancedSidebarWindows = ({
                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
                   onClick={() => { setMapType(type.id); closeWindow('map-type-window'); }}
                   className={`w-full flex items-center gap-4 p-4 rounded-[4px] transition-all border
-                    ${mapType === type.id ? 'border-teal-600 bg-teal-50/50 text-teal-900' : 'border-slate-100 bg-white hover:bg-slate-50'}`}
+                    ${mapType === type.id 
+                      ? 'border-teal-600 dark:border-indigo-500 bg-teal-50/50 dark:bg-indigo-900/20 text-teal-900 dark:text-indigo-100' 
+                      : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'}`}
                 >
                   <div className={`w-10 h-10 rounded-[4px] flex items-center justify-center ${mapType === type.id ? 'bg-teal-600 text-white' : 'bg-slate-900 text-white'}`}>
                      {type.icon && <type.icon size={18} strokeWidth={2} />}
@@ -203,41 +207,43 @@ const EnhancedSidebarWindows = ({
                 <div className="space-y-3">
                   {posts.filter(p => favoritePosts.has(p.id)).map((p, idx) => (
                     <motion.div key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-                      className="p-4 bg-white border border-slate-100 rounded-[4px] flex gap-4 shadow-sm hover:border-slate-300 transition-all cursor-pointer group"
+                      className="p-4 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-[4px] flex gap-4 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer group"
                     >
-                      <div className="w-12 h-12 rounded-[4px] bg-slate-50 flex-shrink-0 flex items-center justify-center text-slate-900 overflow-hidden border border-slate-100 group-hover:border-slate-300">
+                      <div className="w-12 h-12 rounded-[4px] bg-slate-50 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center text-slate-900 dark:text-white overflow-hidden border border-slate-100 dark:border-slate-800 group-hover:border-slate-300 dark:group-hover:border-slate-700">
                         {p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-cover" /> : <MapPin size={22} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                         <h5 className="font-black text-slate-900 text-sm tracking-tighter truncate">{p.title}</h5>
-                         <p className="text-[10px] font-black uppercase tracking-widest text-teal-600 mt-1">{p.category || 'POINT'}</p>
+                         <h5 className="font-black text-slate-900 dark:text-white text-sm tracking-tighter truncate">{p.title}</h5>
+                         <p className="text-[10px] font-black uppercase tracking-widest text-teal-600 dark:text-indigo-400 mt-1">{p.category || 'POINT'}</p>
                       </div>
-                      <button onClick={() => togglePostBookmark(p)} className="text-slate-300 hover:text-slate-900 p-2 transition-colors">
-                         <LogOut size={16} /> {/* Logout icon used as 'remove' in pro style often */}
+                      <button onClick={() => togglePostBookmark(p)} className="text-slate-300 dark:text-slate-600 hover:text-slate-900 dark:hover:text-white p-2 transition-colors">
+                         <LogOut size={16} /> 
                       </button>
                     </motion.div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-20 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
-                   <Inbox className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/30 rounded-2xl border border-slate-100 dark:border-slate-800 border-dashed">
+                   <Inbox className="w-12 h-12 text-slate-200 dark:text-slate-800 mx-auto mb-4" />
                    <div className="space-y-1">
-                      <p className="text-xs font-black text-slate-900 uppercase tracking-widest leading-none">Nothing found</p>
+                      <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest leading-none">Nothing found</p>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Empty Collection</p>
                    </div>
                 </div>
               )}
             </div>
 
-            <div className="mt-12 pt-10 border-t border-slate-100 space-y-4">
+            <div className="mt-12 pt-10 border-t border-slate-100 dark:border-slate-800 space-y-4">
                <button onClick={() => updateUserLocation()} 
-                  className="w-full h-14 bg-slate-900 text-white rounded-[4px] flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-black active:scale-[0.98] transition-all">
+                  className="w-full h-14 bg-slate-900 dark:bg-indigo-600 text-white rounded-[4px] flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-slate-200 dark:shadow-none hover:bg-black dark:hover:bg-indigo-700 active:scale-[0.98] transition-all">
                   <Navigation2 size={16} strokeWidth={3}/>
                   Precision Sync
                </button>
                <button onClick={() => setShowSavedLocationsOnMap(!showSavedLocationsOnMap)}
                   className={`w-full h-14 rounded-[4px] flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-[0.2em] transition-all border-2
-                    ${showSavedLocationsOnMap ? 'bg-teal-50 border-teal-200 text-teal-900' : 'bg-white border-slate-100 text-slate-400'}`}>
+                    ${showSavedLocationsOnMap 
+                      ? 'bg-teal-50 dark:bg-indigo-900/20 border-teal-200 dark:border-indigo-500 text-teal-900 dark:text-indigo-200' 
+                      : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500'}`}>
                   <Bookmark size={16} />
                   {showSavedLocationsOnMap ? 'Hide Collection' : 'Show Collection'}
                </button>

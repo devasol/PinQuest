@@ -101,10 +101,10 @@ const AuthModal = ({ isOpen, onClose }) => {
         return (
           <>
             <div className="mb-6">
-               <h3 className="text-2xl font-black text-slate-900 tracking-tighter font-jakarta uppercase">
+               <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter font-jakarta uppercase">
                   {mode === 'login' ? "Welcome Back" : "Create Account"}
                </h3>
-               <p className="text-slate-500 font-bold text-[10px] mt-1 font-jakarta uppercase tracking-wider">
+               <p className="text-slate-500 dark:text-slate-400 font-bold text-[10px] mt-1 font-jakarta uppercase tracking-wider">
                   {mode === 'login' ? "Sign in to access your dashboard" : "Join the PinQuest explorer community"}
                </p>
             </div>
@@ -112,12 +112,12 @@ const AuthModal = ({ isOpen, onClose }) => {
             <form onSubmit={handleSubmit} className="space-y-4">
                {mode === 'signup' && (
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Full Name</label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 font-jakarta ml-0.5">Full Name</label>
                     <div className="relative group">
-                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
+                       <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 transition-colors group-focus-within:text-slate-900 dark:group-focus-within:text-white" size={16} />
                        <input 
                          type="text" name="username" value={formData.username} onChange={handleInputChange} required
-                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                         className="w-full h-11 pl-10 pr-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-slate-900 dark:focus:border-indigo-500 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 text-sm font-outfit"
                          placeholder="Ex: John Doe"
                        />
                     </div>
@@ -125,12 +125,12 @@ const AuthModal = ({ isOpen, onClose }) => {
                )}
 
                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Email Address</label>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 font-jakarta ml-0.5">Email Address</label>
                   <div className="relative group">
-                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
+                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 transition-colors group-focus-within:text-slate-900 dark:group-focus-within:text-white" size={16} />
                      <input 
                        type="email" name="email" value={formData.email} onChange={handleInputChange} required
-                       className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                       className="w-full h-11 pl-10 pr-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-slate-900 dark:focus:border-indigo-500 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 text-sm font-outfit"
                        placeholder="name@example.com"
                      />
                   </div>
@@ -138,19 +138,19 @@ const AuthModal = ({ isOpen, onClose }) => {
 
                <div className="space-y-1">
                   <div className="flex justify-between items-center px-0.5">
-                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta">Password</label>
+                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 font-jakarta">Password</label>
                      {mode === 'login' && <button onClick={() => setMode('forgot')} type="button" className="text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-600 font-jakarta outline-none">Forgot Password?</button>}
                   </div>
                   <div className="relative group">
-                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
+                     <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 transition-colors group-focus-within:text-slate-900 dark:group-focus-within:text-white" size={16} />
                      <input 
                        type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange} required
-                       className="w-full h-11 pl-10 pr-10 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                       className="w-full h-11 pl-10 pr-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-slate-900 dark:focus:border-indigo-500 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 text-sm font-outfit"
                        placeholder="••••••••"
                      />
                      <button 
                         type="button" onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-900 transition-colors outline-none"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors outline-none"
                      >
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                      </button>
@@ -162,7 +162,7 @@ const AuthModal = ({ isOpen, onClose }) => {
 
                <button 
                  type="submit" disabled={isLoading}
-                 className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.25em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
+                 className="w-full h-11 bg-slate-900 dark:bg-indigo-600 text-white font-black text-[11px] uppercase tracking-[0.25em] hover:bg-black dark:hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2 shadow-lg shadow-indigo-500/10 dark:shadow-none"
                >
                   {isLoading ? "Wait a moment..." : (mode === 'login' ? "Sign In" : "Sign Up")}
                   {!isLoading && <ArrowRight size={14} strokeWidth={3} />}
@@ -170,15 +170,15 @@ const AuthModal = ({ isOpen, onClose }) => {
 
                <div className="mt-6">
                   <div className="relative flex items-center py-2">
-                      <div className="flex-grow border-t border-slate-100"></div>
-                      <span className="flex-shrink mx-4 text-[8px] font-black uppercase tracking-[0.2em] text-slate-300 font-jakarta">Or Continue With</span>
-                      <div className="flex-grow border-t border-slate-100"></div>
+                      <div className="flex-grow border-t border-slate-100 dark:border-slate-800"></div>
+                      <span className="flex-shrink mx-4 text-[8px] font-black uppercase tracking-[0.2em] text-slate-300 dark:text-slate-700 font-jakarta">Or Continue With</span>
+                      <div className="flex-grow border-t border-slate-100 dark:border-slate-800"></div>
                   </div>
                   
                   <button 
                     type="button"
                     onClick={() => googleLogin()}
-                    className="w-full h-10 bg-white border border-slate-200 flex items-center justify-center gap-2 font-black text-[9px] uppercase tracking-widest text-slate-900 hover:bg-slate-50 transition-all font-jakarta mt-3 shadow-sm"
+                    className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2 font-black text-[9px] uppercase tracking-widest text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-all font-jakarta mt-3 shadow-sm"
                   >
                       <Chrome size={14} />
                       Google Account
@@ -186,8 +186,8 @@ const AuthModal = ({ isOpen, onClose }) => {
                </div>
             </form>
 
-            <div className="mt-8 text-center border-t border-slate-50 pt-6">
-               <p className="text-slate-400 font-bold text-[9px] font-jakarta uppercase tracking-widest">
+            <div className="mt-8 text-center border-t border-slate-50 dark:border-slate-900 pt-6">
+               <p className="text-slate-400 dark:text-slate-500 font-bold text-[9px] font-jakarta uppercase tracking-widest">
                   {mode === 'login' ? "New Explorer? " : "Already have an account? "}
                   <button 
                     onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); handleReset(); }}
@@ -205,10 +205,10 @@ const AuthModal = ({ isOpen, onClose }) => {
         return (
           <>
             <div className="mb-6">
-               <h3 className="text-2xl font-black text-slate-900 tracking-tighter font-jakarta uppercase">
+               <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter font-jakarta uppercase">
                   {mode === 'forgot' ? "Forgot Password" : mode === 'verify' ? "Verify Email" : "Reset Password"}
                </h3>
-               <p className="text-slate-500 font-bold text-[10px] mt-1 font-jakarta uppercase tracking-wider">
+               <p className="text-slate-500 dark:text-slate-400 font-bold text-[10px] mt-1 font-jakarta uppercase tracking-wider">
                   {mode === 'forgot' ? "Input your account email" : mode === 'verify' ? "Enter the 6-digit code" : "Establish a new password"}
                </p>
             </div>
@@ -216,12 +216,12 @@ const AuthModal = ({ isOpen, onClose }) => {
             <form onSubmit={handleSubmit} className="space-y-4">
                {mode === 'forgot' && (
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">Email Address</label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 font-jakarta ml-0.5">Email Address</label>
                     <div className="relative group">
-                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
+                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 transition-colors group-focus-within:text-slate-900 dark:group-focus-within:text-white" size={16} />
                        <input 
                          type="email" name="email" value={formData.email} onChange={handleInputChange} required
-                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                         className="w-full h-11 pl-10 pr-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-slate-900 dark:focus:border-indigo-500 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 text-sm font-outfit"
                          placeholder="name@example.com"
                        />
                     </div>
@@ -232,7 +232,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                  <div className="space-y-4">
                     <input 
                       type="text" maxLength="6" name="otp" value={formData.otp} onChange={handleInputChange} required
-                      className="w-full h-16 text-center text-3xl font-black bg-slate-50 border border-slate-200 focus:outline-none focus:border-slate-900 transition-all text-slate-900 tracking-[0.2em] font-jakarta"
+                      className="w-full h-16 text-center text-3xl font-black bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-slate-900 dark:focus:border-indigo-500 transition-all text-slate-900 dark:text-white tracking-[0.2em] font-jakarta"
                       placeholder="000000"
                     />
                  </div>
@@ -240,12 +240,12 @@ const AuthModal = ({ isOpen, onClose }) => {
 
                {mode === 'reset' && (
                  <div className="space-y-1">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 font-jakarta ml-0.5">New Password</label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 font-jakarta ml-0.5">New Password</label>
                     <div className="relative group">
-                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-slate-900" size={16} />
+                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-700 transition-colors group-focus-within:text-slate-900 dark:group-focus-within:text-white" size={16} />
                        <input 
                          type="password" name="password" value={formData.password} onChange={handleInputChange} required
-                         className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 focus:outline-none focus:border-slate-900 font-bold text-slate-900 placeholder:text-slate-300 text-sm font-outfit"
+                         className="w-full h-11 pl-10 pr-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-slate-900 dark:focus:border-indigo-500 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 text-sm font-outfit"
                          placeholder="Min 6 characters"
                        />
                     </div>
@@ -257,7 +257,7 @@ const AuthModal = ({ isOpen, onClose }) => {
 
                <button 
                  type="submit" disabled={isLoading}
-                 className="w-full h-11 bg-slate-900 text-white font-black text-[11px] uppercase tracking-[0.25em] hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
+                 className="w-full h-11 bg-slate-900 dark:bg-indigo-600 text-white font-black text-[11px] uppercase tracking-[0.25em] hover:bg-black dark:hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-jakarta mt-2"
                >
                   {isLoading ? "Please wait..." : mode === 'forgot' ? "Send Reset Link" : mode === 'verify' ? "Verify Email" : "Reset Password"}
                   {!isLoading && <ArrowRight size={14} strokeWidth={3} />}
@@ -266,7 +266,7 @@ const AuthModal = ({ isOpen, onClose }) => {
                <button 
                  type="button" 
                  onClick={() => { setMode('login'); handleReset(); }} 
-                 className="w-full text-center text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors font-jakarta outline-none mt-2"
+                 className="w-full text-center text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors font-jakarta outline-none mt-2"
                >
                   Back to Login
                </button>
@@ -291,7 +291,7 @@ const AuthModal = ({ isOpen, onClose }) => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-[420px] bg-white shadow-2xl overflow-hidden z-10"
+          className="relative w-full max-w-[420px] bg-white dark:bg-slate-950 shadow-2xl dark:shadow-none border dark:border-slate-800 overflow-hidden z-10"
           style={{ borderRadius: '4px' }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -301,7 +301,7 @@ const AuthModal = ({ isOpen, onClose }) => {
           {/* Close Button */}
           <button 
             onClick={onClose}
-            className="absolute right-4 top-4 text-slate-300 hover:text-slate-900 transition-colors outline-none"
+            className="absolute right-4 top-4 text-slate-300 dark:text-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors outline-none"
           >
             <X size={18} />
           </button>

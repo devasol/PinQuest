@@ -116,18 +116,18 @@ const EmailVerification = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4 transition-colors duration-500">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl dark:shadow-none border dark:border-slate-800 p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Verify Your Email</h1>
-          <p className="text-gray-600">
-            We've sent a 6-digit code to <span className="font-semibold">{email}</span>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2 font-space">Verify Your Email</h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            We've sent a 6-digit code to <span className="font-semibold text-indigo-600 dark:text-indigo-400">{email}</span>
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-medium mb-3 text-center">
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-3 text-center uppercase tracking-widest text-[10px]">
               Enter the 6-digit verification code
             </label>
             <div className="flex justify-center space-x-3">
@@ -141,7 +141,7 @@ const EmailVerification = () => {
                   value={digit}
                   onChange={(e) => handleCodeChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="w-12 h-12 text-center text-xl border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+                  className="w-12 h-14 text-center text-2xl font-black border-2 border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-xl focus:border-indigo-500 dark:focus:border-indigo-500 focus:outline-none transition-all text-slate-900 dark:text-white"
                 />
               ))}
             </div>
@@ -150,10 +150,10 @@ const EmailVerification = () => {
           <button
             type="submit"
             disabled={loading || code.some(digit => !digit)}
-            className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition-colors ${
+            className={`w-full py-4 px-4 rounded-xl text-white font-black uppercase tracking-widest text-[11px] transition-all shadow-lg ${
               loading || code.some(digit => !digit)
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
+                ? 'bg-slate-400 dark:bg-slate-800 cursor-not-allowed opacity-50'
+                : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'
             }`}
           >
             {loading ? 'Verifying...' : 'Verify Email'}
@@ -161,12 +161,12 @@ const EmailVerification = () => {
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-gray-600 text-sm">
+          <p className="text-gray-600 dark:text-gray-400 text-[11px] font-bold uppercase tracking-tight">
             Didn't receive the code?{' '}
             <button
               onClick={handleResendCode}
               disabled={resending || countdown > 0}
-              className={`text-blue-600 hover:text-blue-800 font-medium ${
+              className={`text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-black transition-colors ${
                 resending || countdown > 0 ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
@@ -182,7 +182,7 @@ const EmailVerification = () => {
         <div className="mt-4 text-center">
           <button
             onClick={() => navigate('/signup')}
-            className="text-gray-600 hover:text-gray-800 text-sm font-medium"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-800 dark:hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors"
           >
             Back to Sign Up
           </button>

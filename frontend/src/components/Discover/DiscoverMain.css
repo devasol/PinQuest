@@ -70,14 +70,34 @@
   outline: none !important;
 }
 
+.dark .modern-input {
+  background: #0f172a !important; /* slate-900 */
+  border-color: #1e293b !important; /* slate-800 */
+  color: #f1f5f9 !important; /* slate-100 */
+}
+
+.dark .modern-input:focus {
+  border-color: #6366f1 !important; /* indigo-500 */
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+}
+
 /* Placeholder styling */
 .modern-input::placeholder {
   color: #5f6368 !important;
 }
 
+.dark .modern-input::placeholder {
+  color: #64748b !important; /* slate-500 */
+}
+
 .modern-input option {
   background: white !important;
   color: #202124 !important;
+}
+
+.dark .modern-input option {
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
 }
 
 /* Focus ring utility */
@@ -102,6 +122,23 @@
   background: #4285f4 !important;
   color: white !important;
   border-color: #4285f4 !important;
+}
+
+.dark .category-btn {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #94a3b8 !important;
+}
+
+.dark .category-btn:hover {
+  background: #1e293b !important;
+  color: white !important;
+}
+
+.dark .category-btn.active {
+  background: #6366f1 !important;
+  color: white !important;
+  border-color: #6366f1 !important;
 }
 
 
@@ -136,6 +173,16 @@
 .discover-card:hover {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
   border-color: #d2e3fc !important;
+}
+
+.dark .discover-card {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+}
+
+.dark .discover-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  border-color: #312e81 !important; /* indigo-900 */
 }
 
 /* Interactive elements */
@@ -313,6 +360,11 @@
     padding: 0 0.5rem;
   }
 
+  .dark .bottom-nav {
+    background: #020617; /* slate-950 */
+    border-top-color: #1e293b;
+  }
+
   .bottom-nav-item {
     display: flex;
     flex-direction: column;
@@ -327,6 +379,10 @@
 
   .bottom-nav-item:hover {
     background-color: #f3f4f6;
+  }
+
+  .dark .bottom-nav-item:hover {
+    background-color: #0f172a;
   }
 
   .bottom-nav-icon {
@@ -472,6 +528,10 @@
 .sidebar-window-content::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 2px;
+}
+
+.dark .sidebar-window-content::-webkit-scrollbar-thumb {
+  background: #334155;
 }
 
 .sidebar-window-content::-webkit-scrollbar-thumb:hover {

@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Search, Menu, X, Bell, User, MapPin, ChevronDown, Check, Trash2 } from "lucide-react";
+import { Search, Menu, X, Bell, User, MapPin, ChevronDown, Check, Trash2, Sun, Moon } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext.jsx";
+import { useTheme } from "../../../contexts/ThemeContext.jsx";
 import { connectSocket, getSocket, disconnectSocket } from "../../../services/socketService";
 import SearchBar from "../../Search/SearchBar";
 
 const Header = ({ isDiscoverPage = false }) => {
   const { isAuthenticated, user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -223,10 +225,10 @@ const Header = ({ isDiscoverPage = false }) => {
     <header
       className={`fixed top-0 left-0 right-0 z-[7000] transition-all duration-300 ${
         isDiscoverPage
-          ? "bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200"
+          ? "bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-lg border-b border-gray-200 dark:border-slate-800"
           : isScrolled
-          ? "bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200"
-          : "bg-white/90 backdrop-blur-sm"
+          ? "bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-lg border-b border-gray-200 dark:border-slate-800"
+          : "bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -257,10 +259,10 @@ const Header = ({ isDiscoverPage = false }) => {
                   key={item.name}
                   to={item.to}
                   className={({ isActive }) =>
-                    `text-gray-700 font-medium transition-all duration-300 ${
+                    `font-medium transition-all duration-300 ${
                       isActive || (item.to === "/" && (window.location.pathname === "/" || window.location.pathname === "/discover"))
                         ? "text-blue-600 pb-1 border-b-2 border-blue-600"
-                        : "hover:text-blue-600"
+                        : "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
                     }`
                   }
                   onClick={() => {
@@ -273,7 +275,7 @@ const Header = ({ isDiscoverPage = false }) => {
                 <a
                   key={item.name}
                   href={item.href || item.to}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200"
+                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors duration-200"
                   onClick={() => {
                     if (isMenuOpen) setIsMenuOpen(false);
                   }}
@@ -299,9 +301,18 @@ const Header = ({ isDiscoverPage = false }) => {
 
           {/* Right Side Actions */}
           <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+
             {/* Mobile Search Button */}
             <button
-              className="lg:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-md hover:bg-gray-100"
+              className="lg:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
               onClick={() => {
                 setIsMobileSearchOpen(!isMobileSearchOpen);
                 setIsMenuOpen(false); // Close menu when opening search
@@ -314,7 +325,7 @@ const Header = ({ isDiscoverPage = false }) => {
             {/* Notifications */}
             <div className="relative">
               <button 
-                className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-md hover:bg-gray-100"
+                className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsNotificationOpen(!isNotificationOpen);
@@ -333,11 +344,11 @@ const Header = ({ isDiscoverPage = false }) => {
               {isNotificationOpen && isAuthenticated && (
                 <div 
                   ref={notificationRef}
-                  className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-[7001]"
+                  className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-gray-200 dark:border-slate-800 z-[7001]"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-semibold text-gray-800">Notifications</h3>
+                  <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
+                    <h3 className="font-semibold text-gray-800 dark:text-gray-100">Notifications</h3>
                     {notifications.length > 0 && (
                       <button 
                         onClick={(e) => {
@@ -412,7 +423,7 @@ const Header = ({ isDiscoverPage = false }) => {
               <div className="hidden md:flex items-center space-x-2">
                 <Link
                   to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
-                  className="flex items-center space-x-2 p-2 text-gray-700 hover:text-blue-600 transition-colors rounded-lg hover:bg-gray-100"
+                  className="flex items-center space-x-2 p-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
                 >
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                     <User className="h-4 w-4 text-white" />
@@ -424,7 +435,7 @@ const Header = ({ isDiscoverPage = false }) => {
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="p-2 text-gray-700 hover:text-red-600 transition-colors rounded-lg hover:bg-gray-100"
+                  className="p-2 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
                 >
                   Logout
                 </button>
@@ -443,7 +454,7 @@ const Header = ({ isDiscoverPage = false }) => {
             {/* Mobile Menu Button */}
             <button
               onClick={toggleMobileMenu}
-              className="md:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors rounded-md hover:bg-gray-100"
+              className="md:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
               aria-expanded={isMenuOpen}
               aria-label={isMenuOpen ? "Close menu" : "Open menu"}
             >
@@ -475,7 +486,7 @@ const Header = ({ isDiscoverPage = false }) => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200 shadow-lg z-[7002]">
+        <div className="md:hidden bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 shadow-lg z-[7002]">
           <div className="px-4 py-2 space-y-1">
             {/* Mobile navigation items */}
             {navigationItems.map((item) => {
@@ -487,8 +498,8 @@ const Header = ({ isDiscoverPage = false }) => {
                   className={({ isActive }) =>
                     `block px-3 py-3 font-medium transition-all duration-300 ${
                       isActive || (item.to === "/" && (window.location.pathname === "/" || window.location.pathname === "/discover"))
-                        ? "text-blue-600 bg-blue-50 rounded-lg border-l-4 border-blue-600"
-                        : "text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                        ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-600"
+                        : "text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
                     }`
                   }
                   onClick={() => setIsMenuOpen(false)}
@@ -499,7 +510,7 @@ const Header = ({ isDiscoverPage = false }) => {
                 <a
                   key={item.name}
                   href={item.href || item.to}
-                  className="block px-3 py-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors duration-200"
+                  className="block px-3 py-3 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg font-medium transition-colors duration-200"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
@@ -512,7 +523,7 @@ const Header = ({ isDiscoverPage = false }) => {
               <>
                 <Link
                   to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
-                  className="block px-3 py-3 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors duration-200 flex items-center"
+                  className="block px-3 py-3 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg font-medium transition-colors duration-200 flex items-center"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <User className="h-4 w-4 mr-2" />
