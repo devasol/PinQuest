@@ -224,11 +224,11 @@ const PostWindow = ({
              <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-900 flex items-center justify-between bg-white dark:bg-slate-950 shrink-0">
                 <div className="flex items-center gap-4">
                    <div className="w-12 h-12 rounded-[4px] bg-slate-900 dark:bg-slate-800 flex items-center justify-center text-teal-400 dark:text-teal-300 font-black text-lg border-2 border-slate-900 dark:border-slate-700 shadow-xl">
-                      {(typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : \"A\").charAt(0).toUpperCase()}
+                      {(typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : "A").charAt(0).toUpperCase()}
                    </div>
                    <div className="flex flex-col">
                       <span className="text-sm font-black text-slate-900 dark:text-white font-jakarta uppercase tracking-tight">
-                         {typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : \"Anonymous Explorer\"}
+                         {typeof currentPost.postedBy === 'object' ? currentPost.postedBy.name : "Anonymous Explorer"}
                       </span>
                       <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 font-outfit uppercase tracking-widest">
                          {formatDate(currentPost.datePosted)}
@@ -254,7 +254,7 @@ const PostWindow = ({
                            onClick={handleBookmarkAction}
                            className={`shrink-0 w-12 h-12 rounded-[4px] border flex items-center justify-center transition-all ${bookmarked ? 'bg-teal-400 border-teal-400 text-slate-900 shadow-lg shadow-teal-200' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
                          >
-                            <Bookmark size={20} fill={bookmarked ? \"currentColor\" : \"none\"} strokeWidth={2.5} />
+                            <Bookmark size={20} fill={bookmarked ? "currentColor" : "none"} strokeWidth={2.5} />
                          </button>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -365,12 +365,12 @@ const ReviewItem = ({ comment }) => (
   <div className="group animate-in fade-in slide-in-from-bottom-2 duration-300">
      <div className="flex items-start gap-4">
         <div className="w-9 h-9 rounded-[4px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-600 font-black text-sm font-jakarta shrink-0">
-           {(comment.user?.name || \"A\").charAt(0).toUpperCase()}
+           {(comment.user?.name || "A").charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 space-y-1">
            <div className="flex items-center justify-between">
               <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest font-jakarta">
-                 {comment.user?.name || \"Anonymous Explorer\"}
+                 {comment.user?.name || "Anonymous Explorer"}
               </span>
               <span className="text-[8px] font-bold text-slate-300 dark:text-slate-700 uppercase font-outfit">
                  {formatDate(comment.createdAt)}
