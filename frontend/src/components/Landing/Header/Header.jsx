@@ -243,10 +243,10 @@ const Header = ({ isDiscoverPage = false }) => {
               if (isMobileSearchOpen) setIsMobileSearchOpen(false);
             }}
           >
-            <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
-              <MapPin className="h-6 w-6 text-white" />
+            <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shrink-0">
+              <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
-            <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">
               PinQuest
             </span>
           </Link>
@@ -287,21 +287,19 @@ const Header = ({ isDiscoverPage = false }) => {
             })}
           </nav>
 
-          {/* Search Bar - Hidden on mobile until search icon is clicked */}
-          <div className="hidden lg:flex flex-1 max-w-xs lg:max-w-md mx-4 xl:mx-8">
+          {/* Search Bar - Visible from md screens up */}
+          <div className="hidden md:flex flex-1 max-w-sm lg:max-w-md mx-4 lg:mx-8">
             <SearchBar
-              placeholder="Search locations, pins, users..."
+              placeholder="Search locations..."
               className="w-full"
               onLocationSelect={(location) => {
-                // Navigate to discover page and show the selected location
                 navigate('/discover');
-                // In a real implementation, you might want to pass the location data to the discover page
               }}
             />
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center space-x-1 sm:space-x-4 ml-auto">
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -313,7 +311,7 @@ const Header = ({ isDiscoverPage = false }) => {
 
             {/* Mobile Search Button */}
             <button
-              className="lg:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
+              className="md:hidden p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-slate-800"
               onClick={() => {
                 setIsMobileSearchOpen(!isMobileSearchOpen);
                 setIsMenuOpen(false); // Close menu when opening search
@@ -426,10 +424,10 @@ const Header = ({ isDiscoverPage = false }) => {
                   to={user?.role === "admin" ? "/admin/dashboard" : "/profile"}
                   className="flex items-center space-x-2 p-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-white" />
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shrink-0">
+                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                   </div>
-                  <span className="hidden sm:block font-medium max-w-[100px] truncate">
+                  <span className="hidden lg:block font-medium max-w-[80px] truncate text-sm">
                     {user?.name ||
                       (user?.role === "admin" ? "Admin" : "Profile")}
                   </span>
@@ -470,9 +468,9 @@ const Header = ({ isDiscoverPage = false }) => {
 
         {/* Mobile Search Bar - Only shown when mobile search is open */}
         {isMobileSearchOpen && (
-          <div className="lg:hidden px-4 pb-3">
+          <div className="md:hidden px-4 pb-3">
             <SearchBar
-              placeholder="Search locations, pins, users..."
+              placeholder="Search locations..."
               autoFocus={true}
               onLocationSelect={(location) => {
                 // Navigate to discover page and show the selected location

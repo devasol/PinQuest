@@ -735,13 +735,12 @@ const MapView = () => {
             );
           })}
           
-          {/* Loading overlay for posts */}
-          {loading && filteredPosts.length === 0 && (
-            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[49999] flex items-center justify-center">
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                <p className="text-xl font-medium text-gray-700">Loading map data...</p>
-                <p className="text-sm text-gray-500 mt-2">Discovering amazing places near you</p>
+          {/* Non-blocking loading indicator */}
+          {loading && (
+            <div className="absolute top-4 right-4 z-[49999]">
+              <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-lg flex items-center space-x-2 border border-blue-500/30">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-200">SyncingPins...</span>
               </div>
             </div>
           )}
