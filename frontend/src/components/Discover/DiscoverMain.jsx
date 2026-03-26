@@ -23,9 +23,7 @@ import { getImageUrl } from '../../utils/imageUtils'; // Import getImageUrl util
 import Sidebar from '../Sidebar/Sidebar';
 import SearchBar from '../Search/SearchBar';
 import AuthModal from '../Auth/AuthModal';
-
-// API base URL - adjust based on your backend URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+import { API_BASE_URL, API_TIMEOUT } from '../../utils/config';
 
 // Custom hook for map events
 const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
@@ -214,7 +212,7 @@ const DiscoverMain = () => {
       if (!token) return;
 
       const response = await fetch(
-        `${API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/${notificationId}/read`,
+        `${API_BASE_URL}/notifications/${notificationId}/read`,
         {
           method: "PUT",
           headers: {
@@ -247,7 +245,7 @@ const DiscoverMain = () => {
       if (!token) return;
 
       const response = await fetch(
-        `${API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/read-all`,
+        `${API_BASE_URL}/notifications/read-all`,
         {
           method: "PUT",
           headers: {
@@ -346,7 +344,7 @@ const DiscoverMain = () => {
       try {
         // Fetch unread count
         const countResponse = await fetch(
-          `${API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/unread-count`,
+          `${API_BASE_URL}/notifications/unread-count`,
           {
             headers: {
               'Content-Type': 'application/json',
@@ -363,7 +361,7 @@ const DiscoverMain = () => {
 
         // Fetch recent notifications to display in dropdown
         const notifResponse = await fetch(
-          `${API_BASE_URL || "http://localhost:5000/api/v1"}/notifications?page=1&limit=5`,
+          `${API_BASE_URL}/notifications?page=1&limit=5`,
           {
             headers: {
               'Content-Type': 'application/json',
@@ -581,7 +579,8 @@ const DiscoverMain = () => {
 
       // Add a timeout to the fetch request to avoid hanging
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      // Using centralized timeout (45-50s) to allow for backend cold starts
+      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT); 
 
       const response = await fetch(url, {
         // Use cache to improve performance
@@ -725,9 +724,9 @@ const DiscoverMain = () => {
 
       // Provide more user-friendly error message based on error type
       if (err.name === 'AbortError') {
-        setError("Request timed out. Please check your network connection and try again.");
+        setError("Request timed out. The server might be taking longer than usual to wake up (Render cold-start). Please wait a few seconds and try 'Try to Reconnect'.");
       } else if (err.message.includes('Failed to fetch') || err.message.includes('load failed')) {
-        setError("Unable to connect to the server. The server may be waking up (Render cold-start) or unreachable. Please wait a moment and try again.");
+        setError("Unable to connect to the server. The server may be waking up (Render cold-start) or unreachable. This is common on free hosting. Please wait a moment and try again.");
       } else if (err.message.includes('Too many requests')) {
         console.log("Rate limit exceeded. Slowing down requests...");
       } else {

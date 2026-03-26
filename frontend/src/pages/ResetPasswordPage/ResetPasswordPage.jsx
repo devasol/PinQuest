@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
+import { API_BASE_URL } from "../../utils/config";
 
 const ResetPasswordPage = () => {
   const { resetToken } = useParams();
@@ -20,7 +21,7 @@ const ResetPasswordPage = () => {
   useEffect(() => {
     const validateToken = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/auth/reset-password/${resetToken}`, {
+        const response = await fetch(`${API_BASE_URL}/auth/reset-password/${resetToken}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

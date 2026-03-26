@@ -1,7 +1,9 @@
 // frontend/src/utils/imageUtils.js
 // Extract the base server URL from the API base URL for image paths
+import { API_BASE_URL } from './config';
+
 const getServerBaseUrl = () => {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+  const apiBaseUrl = API_BASE_URL;
 
   try {
     // If it's a full URL, parse it properly

@@ -4,6 +4,7 @@ import { Search, Menu, X, Bell, User, MapPin, ChevronDown, Check, Trash2, Sun, M
 import { useAuth } from "../../../contexts/AuthContext.jsx";
 import { useTheme } from "../../../contexts/ThemeContext.jsx";
 import { connectSocket, getSocket, disconnectSocket } from "../../../services/socketService";
+import { API_BASE_URL } from "../../../utils/config";
 import SearchBar from "../../Search/SearchBar";
 
 const Header = ({ isDiscoverPage = false }) => {
@@ -48,7 +49,7 @@ const Header = ({ isDiscoverPage = false }) => {
       try {
         // Fetch unread count
         const countResponse = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/unread-count`,
+          `${API_BASE_URL}/notifications/unread-count`,
           {
             headers: {
               'Content-Type': 'application/json',
@@ -65,7 +66,7 @@ const Header = ({ isDiscoverPage = false }) => {
 
         // Fetch recent notifications to display in dropdown
         const notifResponse = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications?page=1&limit=5`,
+          `${API_BASE_URL}/notifications?page=1&limit=5`,
           {
             headers: {
               'Content-Type': 'application/json',
@@ -124,7 +125,7 @@ const Header = ({ isDiscoverPage = false }) => {
       if (!token) return;
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/${notificationId}/read`,
+        `${API_BASE_URL}/notifications/${notificationId}/read`,
         {
           method: "PUT",
           headers: {
@@ -157,7 +158,7 @@ const Header = ({ isDiscoverPage = false }) => {
       if (!token) return;
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"}/notifications/read-all`,
+        `${API_BASE_URL}/notifications/read-all`,
         {
           method: "PUT",
           headers: {

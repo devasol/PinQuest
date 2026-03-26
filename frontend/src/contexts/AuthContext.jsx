@@ -3,6 +3,7 @@ import { authService } from '../services/api.jsx';
 import { directAuthApi } from '../services/authApi';
 import { getRedirectResult } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import { API_BASE_URL } from '../utils/config';
 
 const AuthContext = createContext();
 
@@ -86,9 +87,8 @@ export const AuthProvider = ({ children }) => {
     handleRedirectResult();
   }, []);
 
-  // Helper function to exchange Firebase token for backend JWT token
   const exchangeFirebaseToken = async (firebaseToken) => {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+    const apiBase = API_BASE_URL;
     
     try {
       const response = await fetch(`${API_BASE_URL}/auth/firebase`, {

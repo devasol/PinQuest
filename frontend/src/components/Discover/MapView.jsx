@@ -6,9 +6,8 @@ import CustomMarker from './CustomMarker';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useModal } from '../../contexts/ModalContext';
+import { API_BASE_URL } from '../../utils/config';
 
-// API base URL - adjust based on your backend URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
 
 const MapView = () => {
   const [posts, setPosts] = useState([]);
@@ -749,7 +748,8 @@ const MapView = () => {
         </MapContainer>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default MapView;

@@ -6,7 +6,7 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "../config/firebase";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+import { API_BASE_URL } from '../utils/config';
 
 // Firebase authentication service
 export const firebaseAuthService = {

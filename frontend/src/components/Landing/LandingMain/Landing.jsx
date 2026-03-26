@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import MapComponent from "../MapComponent/MapComponent";
 import { postApi } from "../../../services/api";
+import { API_BASE_URL } from "../../../utils/config";
 
 const Landing = () => {
   const [currentFeature, setCurrentFeature] = useState(0);
@@ -40,7 +41,7 @@ const Landing = () => {
     const fetchStats = async () => {
       try {
         // Use a health endpoint or posts endpoint to get stats
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/health`);
+        const response = await fetch(`${API_BASE_URL}/health`);
         if (response.ok) {
           const data = await response.json();
           if (data.status === 'success' && data.counts) {

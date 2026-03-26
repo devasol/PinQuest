@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, MessageCircle } from 'lucide-react';
+import { API_BASE_URL } from '../utils/config';
 
-// API base URL - adjust based on your backend URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 const PostCardRatings = ({ postId, isAuthenticated: authState, user, onOpenComments }) => {
   const [rating, setRating] = useState(0);

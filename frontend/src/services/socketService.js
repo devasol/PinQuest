@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { API_BASE_URL } from '../utils/config';
 
 let socket;
 
@@ -8,16 +9,16 @@ const connectSocket = (token) => {
   }
 
   // Extract the base URL from the API_BASE_URL (remove /api/v1)
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+  const apiBaseUrl = API_BASE_URL;
   // Handle different URL formats properly
   let SOCKET_URL;
-  if (API_BASE_URL.includes('/api/v1')) {
-    SOCKET_URL = API_BASE_URL.replace('/api/v1', '');
-  } else if (API_BASE_URL.includes('/api')) {
-    SOCKET_URL = API_BASE_URL.replace('/api', '');
+  if (apiBaseUrl.includes('/api/v1')) {
+    SOCKET_URL = apiBaseUrl.replace('/api/v1', '');
+  } else if (apiBaseUrl.includes('/api')) {
+    SOCKET_URL = apiBaseUrl.replace('/api', '');
   } else {
     // If URL doesn't match expected format, just remove the last path segment
-    SOCKET_URL = API_BASE_URL.split('/').slice(0, -1).join('/');
+    SOCKET_URL = apiBaseUrl.split('/').slice(0, -1).join('/');
   }
 
   socket = io(SOCKET_URL, {

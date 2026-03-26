@@ -13,6 +13,7 @@ import OptimizedImage from '../../components/OptimizedImage';
 import { getImageUrl } from '../../utils/imageUtils';
 import usePageTitle from '../../services/usePageTitle';
 import './ProfilePage.css';
+import { API_BASE_URL } from '../../utils/config';
 
 // --- Atomic Components ---
 
@@ -87,7 +88,7 @@ const ProfilePage = () => {
     try {
       setLoadingData(true);
       const token = localStorage.getItem('token');
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+      const apiBase = API_BASE_URL;
 
       const savedRes = await fetch(`${apiBase}/users/saved-locations`, { headers: { Authorization: `Bearer ${token}` } });
       if (savedRes.ok) {
@@ -111,7 +112,7 @@ const ProfilePage = () => {
   const handleUpdateProfile = async () => {
     try {
       setLoadingData(true);
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1'}/auth/profile`, {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify(editData),

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, Loader2, AlertTriangle } from 'lucide-react';
 import usePageTitle from '../../services/usePageTitle';
 import './AdminLogin.css';
+import { API_BASE_URL } from '../../utils/config';
 
 const AdminLogin = () => {
   usePageTitle("Admin Login");
@@ -28,19 +29,7 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      // Use a more flexible approach to determine the API URL
-      let apiUrl = import.meta.env.VITE_API_BASE_URL;
-      
-      // If environment variable is not set, try to determine from current origin
-      if (!apiUrl) {
-        const currentOrigin = window.location.origin;
-        if (currentOrigin.includes('localhost:5173')) {
-          apiUrl = 'http://localhost:5000/api/v1';
-        } else {
-          // If frontend is hosted elsewhere, you might need to adjust this
-          apiUrl = 'http://localhost:5000/api/v1';
-        }
-      }
+      const apiUrl = API_BASE_URL;
       
       const response = await fetch(`${apiUrl}/auth/login`, {
         method: 'POST',
@@ -80,7 +69,7 @@ const AdminLogin = () => {
       }
     } catch (err) {
       if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        setError('Cannot connect to server. Please make sure the backend server is running on http://localhost:5000');
+        setError(`Cannot connect to server. Please make sure the backend server is running.`);
       } else {
         setError(err.message || 'An error occurred. Please check your connection and try again.');
       }
