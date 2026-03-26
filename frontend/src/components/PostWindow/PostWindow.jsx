@@ -163,7 +163,7 @@ const PostWindow = ({
           initial={{ scale: 0.95, opacity: 0, y: 30 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 30 }}
-          className="relative w-full max-w-5xl max-h-[90vh] bg-white dark:bg-slate-950 rounded-[4px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-slate-800"
+          className="relative w-full max-w-5xl h-[90vh] md:h-[80vh] bg-white dark:bg-slate-950 rounded-[4px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col md:flex-row border border-white/20 dark:border-slate-800"
           onClick={e => e.stopPropagation()}
         >
           {/* Top Gradient Accent */}
@@ -218,7 +218,7 @@ const PostWindow = ({
           </div>
 
           {/* RIGHT: Modern Info & Interaction */}
-          <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 h-full overflow-hidden">
+          <div className="flex-1 flex flex-col bg-white dark:bg-slate-950 h-full overflow-hidden min-h-0">
              
              {/* Header: Author Info */}
              <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-900 flex items-center justify-between bg-white dark:bg-slate-950 shrink-0">
@@ -241,7 +241,7 @@ const PostWindow = ({
              </div>
 
              {/* Scrollable Content */}
-             <div className="flex-1 overflow-y-auto px-8 py-8 scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-white dark:bg-slate-950">
+             <div className="flex-1 overflow-y-auto px-8 py-8 custom-scrollbar bg-white dark:bg-slate-950 min-h-0">
                 <div className="space-y-8">
                    
                    {/* Title & Category */}
