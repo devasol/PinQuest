@@ -471,7 +471,7 @@ const Header = ({ isDiscoverPage = false }) => {
           <div className="lg:hidden px-4 pb-3">
             <SearchBar
               placeholder="Search locations..."
-              autoFocus={true}
+              autoFocus={false}
               onLocationSelect={(location) => {
                 // Navigate to discover page and show the selected location
                 navigate('/discover');

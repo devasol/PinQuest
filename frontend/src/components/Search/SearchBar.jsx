@@ -14,6 +14,7 @@ const SearchBar = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
+  const [userHasClicked, setUserHasClicked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -164,6 +165,7 @@ const SearchBar = ({
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setIsFocused(false);
+        setUserHasClicked(false);
       }
     };
 
@@ -202,6 +204,7 @@ const SearchBar = ({
             value={searchQuery}
             onChange={handleInputChange}
             onFocus={() => setIsFocused(true)}
+            onClick={() => setUserHasClicked(true)}
             className="w-full pl-4 pr-12 py-4 bg-transparent outline-none font-black text-sm tracking-tighter text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 placeholder:font-bold transition-all"
             autoFocus={autoFocus}
           />
@@ -235,7 +238,7 @@ const SearchBar = ({
 
       {/* Search Results Dropdown - Structural Style */}
       <AnimatePresence>
-        {isFocused && (
+        {isFocused && (searchQuery.trim() !== '' || userHasClicked) && (
           <motion.div 
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
