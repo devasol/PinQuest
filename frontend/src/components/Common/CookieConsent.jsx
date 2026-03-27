@@ -1,6 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cookie, X, Check, Settings2 } from 'lucide-react';
+
+// Memoized Toggle component to prevent unnecessary re-renders
+const Toggle = memo(({ id, enabled, onClick, disabled }) => {
+  // Use a stable click handler that calls the parent onClick with the id
+  const handleClick = useCallback(() => {
+    if (!disabled) onClick(id);
+  }, [id, onClick, disabled]);
+
+  return (
+    <div className="flex items-center">
+      <button
+        onClick={handleClick}
+        disabled={disabled}
+        className={`relative inline-flex items-center rounded-full transition-colors duration-200 focus:outline-none flex-shrink-0 ${
+          enabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
+        } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+        style={{ width: '40px', height: '22px', minWidth: '40px', minHeight: '22px' }}
+      >
+        <motion.span
+          animate={{ x: enabled ? 20 : 2 }}
+          transition={{ type: "spring", stiffness: 700, damping: 40 }}
+          className="inline-block rounded-full bg-white shadow-sm"
+          style={{ width: '18px', height: '18px' }}
+        />
+      </button>
+    </div>
+  );
+});
+
+Toggle.displayName = 'Toggle';
+
+// Static categories outside component to prevent re-creation
+const COOKIE_CATEGORIES = [
+  { id: 'necessary', title: 'Necessary', desc: 'Required for basic site functionality.', required: true },
+  { id: 'analytics', title: 'Analytics', desc: 'Helps us understand how you use the site.' },
+  { id: 'marketing', title: 'Personalization', desc: 'Used for personalized content and features.' }
+];
 
 const CookieConsent = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -21,54 +58,38 @@ const CookieConsent = () => {
     }
   }, []);
 
-  const handleAccept = () => {
+  const handleAccept = useCallback(() => {
     localStorage.setItem('cookie-consent', JSON.stringify({
       all: true,
       timestamp: new Date().toISOString()
     }));
     setIsVisible(false);
-  };
+  }, []);
 
-  const handleReject = () => {
+  const handleReject = useCallback(() => {
     localStorage.setItem('cookie-consent', JSON.stringify({
       all: false,
       timestamp: new Date().toISOString()
     }));
     setIsVisible(false);
-  };
+  }, []);
 
-  const handleSavePreferences = () => {
+  const handleSavePreferences = useCallback(() => {
     localStorage.setItem('cookie-consent', JSON.stringify({
       ...preferences,
       timestamp: new Date().toISOString()
     }));
     setIsVisible(false);
-  };
+  }, [preferences]);
 
-  const togglePreference = (key) => {
+  const togglePreference = useCallback((key) => {
     if (key === 'necessary') return;
     setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  }, []);
 
-  const Toggle = ({ enabled, onClick, disabled }) => (
-    <div className="flex items-center">
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        className={`relative inline-flex items-center rounded-full transition-colors duration-200 focus:outline-none flex-shrink-0 ${
-          enabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
-        } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-        style={{ width: '40px', height: '22px', minWidth: '40px', minHeight: '22px' }}
-      >
-        <motion.span
-          animate={{ x: enabled ? 20 : 2 }}
-          transition={{ type: "spring", stiffness: 700, damping: 40 }}
-          className="inline-block rounded-full bg-white shadow-sm"
-          style={{ width: '18px', height: '18px' }}
-        />
-      </button>
-    </div>
-  );
+  const closeConsent = useCallback(() => setIsVisible(false), []);
+  const openSettings = useCallback(() => setShowSettings(true), []);
+  const closeSettings = useCallback(() => setShowSettings(false), []);
 
   return (
     <AnimatePresence>
@@ -91,7 +112,6 @@ const CookieConsent = () => {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {/* Header Section */}
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-3">
                       <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-600 dark:text-indigo-400">
@@ -102,20 +122,19 @@ const CookieConsent = () => {
                       </h3>
                     </div>
                     <button 
-                      onClick={() => setIsVisible(false)}
+                      onClick={closeConsent}
                       className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       <X size={18} />
                     </button>
                   </div>
 
-                  {/* Content Section */}
                   <div className="space-y-4 mb-7">
                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-outfit">
                       We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.
                     </p>
                     <button 
-                      onClick={() => setShowSettings(true)}
+                      onClick={openSettings}
                       className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors uppercase tracking-widest"
                     >
                       <Settings2 size={12} strokeWidth={3} />
@@ -123,7 +142,6 @@ const CookieConsent = () => {
                     </button>
                   </div>
 
-                  {/* Action Section */}
                   <div className="flex flex-col sm:flex-row gap-3">
                     <motion.button
                       whileHover={{ y: -2 }}
@@ -158,7 +176,7 @@ const CookieConsent = () => {
                       Preference Center
                     </h3>
                     <button 
-                      onClick={() => setShowSettings(false)}
+                      onClick={closeSettings}
                       className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                     >
                       Back
@@ -166,19 +184,16 @@ const CookieConsent = () => {
                   </div>
 
                   <div className="space-y-5 mb-8">
-                    {[
-                      { id: 'necessary', title: 'Necessary', desc: 'Required for basic site functionality.', required: true },
-                      { id: 'analytics', title: 'Analytics', desc: 'Helps us understand how you use the site.' },
-                      { id: 'marketing', title: 'Personalization', desc: 'Used for personalized content and features.' }
-                    ].map((item) => (
+                    {COOKIE_CATEGORIES.map((item) => (
                       <div key={item.id} className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{item.title}</h4>
                           <p className="text-xs text-slate-500 dark:text-slate-500 leading-tight">{item.desc}</p>
                         </div>
                         <Toggle 
+                          id={item.id}
                           enabled={preferences[item.id]} 
-                          onClick={() => togglePreference(item.id)}
+                          onClick={togglePreference}
                           disabled={item.required}
                         />
                       </div>
@@ -197,7 +212,6 @@ const CookieConsent = () => {
               )}
             </AnimatePresence>
 
-            {/* Decorative Line */}
             <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent" />
           </div>
         </motion.div>
@@ -206,5 +220,6 @@ const CookieConsent = () => {
   );
 };
 
-export default CookieConsent;
+export default memo(CookieConsent);
+
 

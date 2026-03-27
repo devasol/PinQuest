@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, MapPin, Grid3X3, Bookmark, Navigation, Home, 
@@ -24,7 +24,26 @@ const getWindowLeftPosition = (isSidebarExpanded, windowWidth) => {
   return isSidebarExpanded ? '240px' : '90px';
 };
 
-const EnhancedSidebarWindows = ({ 
+const categories = [
+  { id: 'all', name: 'All Locations', icon: MapIcon, description: 'Every destination explored' },
+  { id: 'nature', name: 'Nature & Parks', icon: Trees, description: 'Green spaces and scenery' },
+  { id: 'culture', name: 'Art & History', icon: Building2, description: 'Museums and galleries' },
+  { id: 'shopping', name: 'Shopping Hubs', icon: ShoppingBag, description: 'Boutiques and markets' },
+  { id: 'food', name: 'Food & Drink', icon: Utensils, description: 'Restaurants and bars' },
+  { id: 'event', name: 'Active Events', icon: Calendar, description: 'Festivals and happenings' },
+  { id: 'general', name: 'General Sites', icon: MapPin, description: 'Other points of interest' }
+];
+
+const mapTypes = [
+  { id: 'street', name: 'Standard View', description: 'Clean vector navigation', icon: MapIcon },
+  { id: 'satellite', name: 'Satellite Map', description: 'Real-world vertical view', icon: Globe },
+  { id: 'terrain', name: 'Physical Terrain', description: 'Elevation & landscape', icon: Mountain },
+  { id: 'dark', name: 'Midnight Map', description: 'Low-light high contrast', icon: Moon },
+  { id: 'light', name: 'Soft Daylight', description: 'Minimalist clean view', icon: Sun },
+  { id: 'navigation', name: 'Tactical Flow', description: 'Route-optimized view', icon: Navigation2 }
+];
+
+const EnhancedSidebarWindows = React.memo(({ 
   showWindows = {},
   setShowWindows = () => {},
   selectedCategory = 'all',
@@ -47,25 +66,6 @@ const EnhancedSidebarWindows = ({
   activeSidebarWindow = null,
   setActiveSidebarWindow = () => {}
 }) => {
-  const categories = [
-    { id: 'all', name: 'All Locations', icon: MapIcon, description: 'Every destination explored' },
-    { id: 'nature', name: 'Nature & Parks', icon: Trees, description: 'Green spaces and scenery' },
-    { id: 'culture', name: 'Art & History', icon: Building2, description: 'Museums and galleries' },
-    { id: 'shopping', name: 'Shopping Hubs', icon: ShoppingBag, description: 'Boutiques and markets' },
-    { id: 'food', name: 'Food & Drink', icon: Utensils, description: 'Restaurants and bars' },
-    { id: 'event', name: 'Active Events', icon: Calendar, description: 'Festivals and happenings' },
-    { id: 'general', name: 'General Sites', icon: MapPin, description: 'Other points of interest' }
-  ];
-
-  const mapTypes = [
-    { id: 'street', name: 'Standard View', description: 'Clean vector navigation', icon: MapIcon },
-    { id: 'satellite', name: 'Satellite Map', description: 'Real-world vertical view', icon: Globe },
-    { id: 'terrain', name: 'Physical Terrain', description: 'Elevation & landscape', icon: Mountain },
-    { id: 'dark', name: 'Midnight Map', description: 'Low-light high contrast', icon: Moon },
-    { id: 'light', name: 'Soft Daylight', description: 'Minimalist clean view', icon: Sun },
-    { id: 'navigation', name: 'Tactical Flow', description: 'Route-optimized view', icon: Navigation2 }
-  ];
-
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -78,7 +78,7 @@ const EnhancedSidebarWindows = ({
     setActiveSidebarWindow(null);
   }, [setShowWindows, setActiveSidebarWindow]);
 
-  const closeAllWindows = () => {
+  const closeAllWindows = useCallback(() => {
     setShowWindows({
       'category-window': false,
       'view-mode-window': false,
@@ -87,16 +87,16 @@ const EnhancedSidebarWindows = ({
       'notifications-window': false
     });
     setActiveSidebarWindow(null);
-  };
+  }, [setShowWindows, setActiveSidebarWindow]);
 
   const hasOpenWindow = Object.values(showWindows).some(open => open);
   const isMobile = windowWidth < 768;
 
-  const windowVariants = {
+  const windowVariants = useMemo(() => ({
     hidden: { x: isMobile ? 0 : -20, opacity: 0 },
     visible: { x: 0, opacity: 1, transition: { type: 'spring', damping: 25, stiffness: 220 } },
     exit: { x: isMobile ? 0 : -20, opacity: 0, transition: { duration: 0.2 } }
-  };
+  }), [isMobile]);
 
   const WindowShell = ({ id, title, children, icon: HeaderIcon }) => (
     <motion.div 
@@ -104,12 +104,11 @@ const EnhancedSidebarWindows = ({
       initial="hidden" animate="visible" exit="exit"
       className="fixed top-0 bottom-0 z-[8040] flex flex-col font-jakarta bg-white dark:bg-slate-950 border-r border-slate-100 dark:border-slate-800 shadow-[20px_0_50px_-15px_rgba(0,0,0,0.05)] dark:shadow-none"
       style={{ 
-        width: isMobile ? '100%' : getResponsiveWidth(),
+        width: isMobile ? '100vw' : getResponsiveWidth(),
         left: isMobile ? '0' : getWindowLeftPosition(isSidebarExpanded, windowWidth),
       }}
     >
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Superior Header - Bold UIBlocks Style */}
         <div className="px-8 pt-10 pb-6 flex items-center justify-between">
           <div className="flex flex-col">
              <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400 mb-2">
@@ -126,7 +125,6 @@ const EnhancedSidebarWindows = ({
           </button>
         </div>
 
-        {/* Fluid Content - Structural & Simple */}
         <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar space-y-2">
           {children}
         </div>
@@ -144,7 +142,6 @@ const EnhancedSidebarWindows = ({
       )}
 
       <AnimatePresence mode="wait">
-        {/* Categories */}
         {showWindows['category-window'] && (
           <WindowShell id="category-window" title="Library" icon={Grid3X3}>
             {categories.map((cat, idx) => (
@@ -170,7 +167,6 @@ const EnhancedSidebarWindows = ({
           </WindowShell>
         )}
 
-        {/* Map Layers */}
         {showWindows['map-type-window'] && (
           <WindowShell id="map-type-window" title="Map Core" icon={Layers}>
             <div className="grid grid-cols-1 gap-2">
@@ -197,7 +193,6 @@ const EnhancedSidebarWindows = ({
           </WindowShell>
         )}
 
-        {/* Collections with UIBlocks Grid Aesthetic */}
         {showWindows['saved-locations-window'] && (
           <WindowShell id="saved-locations-window" title="Collections" icon={Bookmark}>
             <div className="mb-4">
@@ -253,6 +248,6 @@ const EnhancedSidebarWindows = ({
       </AnimatePresence>
     </div>
   );
-};
+});
 
 export default EnhancedSidebarWindows;

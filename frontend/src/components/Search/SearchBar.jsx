@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, MapPin, Star, Compass } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { postApi } from '../../services/api';
 import { useModal } from '../../contexts/ModalContext';
 
-const SearchBar = ({
+const SearchBar = React.memo(({
   placeholder = "Search locations, pins, users...",
   onSearchResults = null,
   onLocationSelect = null,
@@ -21,10 +21,11 @@ const SearchBar = ({
 
   const searchTimeoutRef = useRef(null);
   const containerRef = useRef(null);
+  
+  // Use a stable ref for callbacks to avoid re-triggering effects unnecessarily
   const onSearchResultsRef = useRef(onSearchResults);
   const onLocationSelectRef = useRef(onLocationSelect);
 
-  // Update refs when props change
   useEffect(() => {
     onSearchResultsRef.current = onSearchResults;
     onLocationSelectRef.current = onLocationSelect;
@@ -114,13 +115,6 @@ const SearchBar = ({
             type: "warning",
             confirmText: "OK"
           });
-        } else {
-          showModal({
-            title: "Search Error",
-            message: "An error occurred while searching. Please try again.",
-            type: "error",
-            confirmText: "OK"
-          });
         }
 
         setSearchResults([]);
@@ -137,28 +131,28 @@ const SearchBar = ({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery, isFocused]);
+  }, [searchQuery, showModal]);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     setSearchQuery(e.target.value);
-  };
+  }, []);
 
-  const handleClearSearch = () => {
+  const handleClearSearch = useCallback(() => {
     setSearchQuery('');
     setSearchResults([]);
-    if (onSearchResults) {
-      onSearchResults([]);
+    if (onSearchResultsRef.current) {
+      onSearchResultsRef.current([]);
     }
-  };
+  }, []);
 
-  const handleResultClick = (item) => {
+  const handleResultClick = useCallback((item) => {
     if (onLocationSelectRef.current) {
       onLocationSelectRef.current(item);
     }
     // Clear the search results and close the dropdown after selecting a location
     setSearchResults([]);
     setIsFocused(false);
-  };
+  }, []);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -331,6 +325,6 @@ const SearchBar = ({
       </AnimatePresence>
     </div>
   );
-};
+});
 
 export default SearchBar;

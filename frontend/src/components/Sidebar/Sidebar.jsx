@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Menu, X, Search, MapPin, Grid3X3, Bookmark, Navigation, 
@@ -11,7 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const Sidebar = ({
+const Sidebar = React.memo(({
   onLogout = () => {},
   user = null,
   toggleWindow = () => {},
@@ -31,7 +31,7 @@ const Sidebar = ({
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
-  const navGroups = [
+  const navGroups = useMemo(() => [
     {
       title: 'Navigation',
       items: [
@@ -50,33 +50,33 @@ const Sidebar = ({
         { id: 'saved-locations', label: 'Saved', icon: Bookmark, action: () => toggleWindow('saved-locations-window') }
       ]
     }
-  ];
+  ], [toggleWindow, followUser, updateUserLocation, setFollowUser]);
 
-  const sidebarVariants = {
+  const sidebarVariants = useMemo(() => ({
     expanded: { width: 240 },
     collapsed: { width: 90 }
-  };
+  }), []);
 
-  const navItemVariants = {
+  const navItemVariants = useMemo(() => ({
     expanded: { width: '100%' },
     collapsed: { width: '48px' }
-  };
+  }), []);
 
   const hasWindowOpen = activeSidebarWindow !== null;
 
   // PREMIUM MOBILE HUB: Interactive & High-End
-  if (isMobile) {
-    const mobileItems = [
-      { id: 'dashboard', label: 'HUB', icon: LayoutGrid, path: '/' },
-      { id: 'category', label: 'LIBRARY', icon: Compass, action: () => toggleWindow('category-window') },
-      { id: 'track', label: 'SYNC', icon: LocateFixed, action: () => {
-        updateUserLocation();
-        setFollowUser(!followUser);
-      }},
-      { id: 'map-type', label: 'CORE', icon: Layers, action: () => toggleWindow('map-type-window') },
-      { id: 'profile', label: 'ENTITY', icon: User, action: user ? null : openAuthModal, path: user ? '/profile' : null }
-    ];
+  const mobileItems = useMemo(() => [
+    { id: 'dashboard', label: 'HUB', icon: LayoutGrid, path: '/' },
+    { id: 'category', label: 'LIBRARY', icon: Compass, action: () => toggleWindow('category-window') },
+    { id: 'track', label: 'SYNC', icon: LocateFixed, action: () => {
+      updateUserLocation();
+      setFollowUser(!followUser);
+    }},
+    { id: 'map-type', label: 'CORE', icon: Layers, action: () => toggleWindow('map-type-window') },
+    { id: 'profile', label: 'ENTITY', icon: User, action: user ? null : openAuthModal, path: user ? '/profile' : null }
+  ], [toggleWindow, updateUserLocation, setFollowUser, followUser, user, openAuthModal]);
 
+  if (isMobile) {
     return (
       <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[94%] max-w-[440px] z-[9000] font-jakarta">
         {/* Superior Floating Container */}
@@ -329,6 +329,6 @@ const Sidebar = ({
         </div>
     </div>
   );
-};
+});
 
 export default Sidebar;

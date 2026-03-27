@@ -56,7 +56,6 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
 const DiscoverMain = () => {
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
-  const [filteredPosts, setFilteredPosts] = useState([]);
   const [loading, setLoading] = useState(false); // Don't block initial render
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -75,6 +74,7 @@ const DiscoverMain = () => {
   const [mapCenter, setMapCenter] = useState([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
   const [userLocation, setUserLocation] = useState(null);
+  
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [showWindows, setShowWindows] = useState({
     'category-window': false,
@@ -83,9 +83,12 @@ const DiscoverMain = () => {
     'saved-locations-window': false,
     'notifications-window': false
   });
+  const [activeSidebarWindow, setActiveSidebarWindow] = useState(null);
+  const [isSearchBarVisible, setIsSearchBarVisible] = useState(false);
+  const [enhancedSearchResults, setEnhancedSearchResults] = useState([]);
 
-  const toggleSidebar = () => {
-    setIsSidebarExpanded(!isSidebarExpanded);
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarExpanded(prev => !prev);
     // Close any open sidebar windows
     if (!isSidebarExpanded) { // If sidebar is being opened
       if (window.innerWidth < 640) {
@@ -96,8 +99,26 @@ const DiscoverMain = () => {
         acc[key] = false;
         return acc;
       }, {}));
+      setActiveSidebarWindow(null);
     }
-  };
+  }, [isSidebarExpanded]);
+
+  const toggleWindow = useCallback((windowId) => {
+    setShowWindows(prev => {
+      const newState = { ...prev };
+      // Close all other windows
+      Object.keys(newState).forEach(key => {
+        if (key !== windowId) newState[key] = false;
+      });
+      // Toggle the target window
+      newState[windowId] = !prev[windowId];
+      
+      // Update the active window reference for the sidebar layout
+      setActiveSidebarWindow(newState[windowId] ? windowId : null);
+      
+      return newState;
+    });
+  }, []);
   const [routingActive, setRoutingActive] = useState(false); // Track if routing is active
   const [routingDestination, setRoutingDestination] = useState(null); // Store destination for routing
   const [routingLoading, setRoutingLoading] = useState(false); // Track if routing is being calculated
@@ -116,6 +137,62 @@ const DiscoverMain = () => {
     imageLinks: [] // Store image URLs added via input
   });
   const [searchQuery, setSearchQuery] = useState(''); // Track search query for filtering
+
+  // Use useMemo for filteredPosts to eliminate unnecessary state update cycle
+  const filteredPosts = useMemo(() => {
+    let source = enhancedSearchResults.length > 0 ? enhancedSearchResults : posts;
+    let result = [...source];
+
+    // Filter by category
+    if (selectedCategory !== 'all') {
+      result = result.filter(post => post.category?.toLowerCase() === selectedCategory.toLowerCase());
+    }
+
+    // Filter by search query
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(post => 
+        post.title?.toLowerCase().includes(q) || 
+        post.description?.toLowerCase().includes(q)
+      );
+    }
+
+    // Filter by rating
+    if (rating > 0) {
+      result = result.filter(post => (post.averageRating || 0) >= rating);
+    }
+
+    // Filter by price range
+    if (priceRange !== 'all') {
+      if (priceRange === 'free') {
+        result = result.filter(post => post.price === 0);
+      } else if (priceRange === 'low') {
+        result = result.filter(post => post.price > 0 && post.price <= 10);
+      } else if (priceRange === 'medium') {
+        result = result.filter(post => post.price > 10 && post.price <= 50);
+      } else if (priceRange === 'high') {
+        result = result.filter(post => post.price > 50);
+      }
+    }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.datePosted) - new Date(a.datePosted);
+        case 'oldest':
+          return new Date(a.datePosted) - new Date(b.datePosted);
+        case 'rating':
+          return (b.averageRating || 0) - (a.averageRating || 0);
+        case 'popular':
+          return (b.totalRatings || 0) - (a.totalRatings || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [posts, enhancedSearchResults, selectedCategory, rating, priceRange, sortBy, searchQuery]);
 
   const handlePostCreationFormChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -150,7 +227,6 @@ const DiscoverMain = () => {
   // Mobile Bottom Navigation States - moved to top to satisfy Rules of Hooks
   const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
   // Removed showBottomNav to ensure immersive map background
-  const [activeSidebarWindow, setActiveSidebarWindow] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -167,12 +243,10 @@ const DiscoverMain = () => {
   };
 
 
-  // State for enhanced search results
-  const [enhancedSearchResults, setEnhancedSearchResults] = useState([]);
 
   // State for responsive search bar functionality
   const searchContainerRef = useRef(null);
-  const [isSearchBarVisible, setIsSearchBarVisible] = useState(false); // Start with search bar hidden, will be shown by default on larger screens through CSS
+  // State for geocoding search results
 
   // Effect to handle responsive search bar visibility
   useEffect(() => {
@@ -401,9 +475,6 @@ const DiscoverMain = () => {
 
     // Handle post deletion events - remove deleted posts from all states
     socket.on('post-deleted', (deletedPostId) => {
-      setPosts(prevPosts => prevPosts.filter(post => post._id !== deletedPostId));
-      setFilteredPosts(prevFiltered => prevFiltered.filter(post => post._id !== deletedPostId));
-
       // Also close the selected post if it's the one being deleted
       if (selectedPost && selectedPost._id === deletedPostId) {
         setSelectedPost(null);
@@ -454,23 +525,6 @@ const DiscoverMain = () => {
       }
       return post;
     }));
-
-    // Update filtered posts as well
-    setFilteredPosts(prevFiltered => prevFiltered.map(post => {
-      if (post._id === postId) {
-        return {
-          ...post,
-          likes: isLiked
-            ? [...(post.likes || []), { user: user?._id }]
-            : (post.likes || []).filter(like => {
-                const userId = typeof like.user === 'object' ? like.user._id : like.user;
-                return userId !== user?._id;
-              }),
-          likesCount: isLiked ? (post.likesCount || 0) + 1 : (post.likesCount || 0) - 1
-        };
-      }
-      return post;
-    }));
   }, [selectedPost, user, showModal]);
 
   const handlePostSave = useCallback((postId, isSaved) => {
@@ -505,18 +559,6 @@ const DiscoverMain = () => {
       }
       return post;
     }));
-
-    // Also update filteredPosts if needed
-    setFilteredPosts(prevFilteredPosts => prevFilteredPosts.map(post => {
-      if (post && post._id === postId) {
-        return {
-          ...post,
-          bookmarked: isSaved,
-          saved: isSaved
-        };
-      }
-      return post;
-    }));
   }, [selectedPost, showModal]);
 
   const handlePostRate = useCallback((postId, newAverageRating, newTotalRatings) => {
@@ -531,18 +573,6 @@ const DiscoverMain = () => {
 
     // Also update the main posts array to reflect the rating change
     setPosts(prevPosts => prevPosts.map(post => {
-      if (post._id === postId) {
-        return {
-          ...post,
-          averageRating: newAverageRating,
-          totalRatings: newTotalRatings
-        };
-      }
-      return post;
-    }));
-
-    // Update filtered posts as well
-    setFilteredPosts(prevFiltered => prevFiltered.map(post => {
       if (post._id === postId) {
         return {
           ...post,
@@ -701,12 +731,10 @@ const DiscoverMain = () => {
         // Filter out any null or undefined posts before setting state
         const validTransformedPosts = transformedPosts.filter(post => post && post._id);
         setPosts(validTransformedPosts);
-        setFilteredPosts(validTransformedPosts);
       } else {
         console.error("Error: Invalid API response format", result);
         setError("Failed to load posts from server: Invalid response format");
         setPosts([]);
-        setFilteredPosts([]);
       }
     } catch (err) {
       console.error("Error fetching posts:", err);
@@ -733,7 +761,6 @@ const DiscoverMain = () => {
         setError("Failed to load posts: " + err.message);
       }
       setPosts([]);
-      setFilteredPosts([]);
 
       // Set error dismissed state to false since an error occurred
       setErrorDismissed(false);
@@ -868,19 +895,8 @@ const DiscoverMain = () => {
             })
           );
 
-          // Also update filtered posts
-          setFilteredPosts(prevFilteredPosts =>
-            prevFilteredPosts.map(post => {
-              if (post && post._id) {
-                return {
-                  ...post,
-                  bookmarked: favoritePostIds.has(post._id),
-                  saved: favoritePostIds.has(post._id)
-                };
-              }
-              return post;
-            })
-          );
+
+          // Also update selected post if it exists
 
           // Also update selected post if it exists
           if (selectedPost && selectedPost._id) {
@@ -923,19 +939,8 @@ const DiscoverMain = () => {
         })
       );
 
-      // Also update filtered posts
-      setFilteredPosts(prevFilteredPosts =>
-        prevFilteredPosts.map(post => {
-          if (post && post._id) {
-            return {
-              ...post,
-              bookmarked: favoritePosts.has(post._id),
-              saved: favoritePosts.has(post._id)
-            };
-          }
-          return post;
-        })
-      );
+
+      // Also update selected post if it exists
 
       // Also update selected post if it exists
       if (selectedPost && selectedPost._id) {
@@ -989,98 +994,12 @@ const DiscoverMain = () => {
     };
   }, [fetchPosts, fetchSavedLocations, fetchUserFavoritePosts, isAuthenticated]); // Remove selectedPost to avoid interval recreation
 
-  // Apply filters when category, or other filters change (search is handled by SearchBar component)
-  useEffect(() => {
-    // If we have enhanced search results, apply filters to them
-    if (enhancedSearchResults.length > 0) {
-      let result = [...enhancedSearchResults];
-
-      // Apply category filter
-      if (selectedCategory !== 'all') {
-        result = result.filter(post => post.category.toLowerCase() === selectedCategory.toLowerCase());
-      }
-
-      // Apply rating filter
-      if (rating > 0) {
-        result = result.filter(post => post.averageRating >= rating);
-      }
-
-      // Apply price range filter
-      if (priceRange !== 'all') {
-        if (priceRange === 'free') {
-          result = result.filter(post => post.price === 0);
-        } else if (priceRange === 'low') {
-          result = result.filter(post => post.price > 0 && post.price <= 10);
-        } else if (priceRange === 'medium') {
-          result = result.filter(post => post.price > 10 && post.price <= 50);
-        } else if (priceRange === 'high') {
-          result = result.filter(post => post.price > 50);
-        }
-      }
-
-      // Apply sorting
-      result.sort((a, b) => {
-        switch (sortBy) {
-          case 'newest':
-            return new Date(b.datePosted) - new Date(a.datePosted);
-          case 'oldest':
-            return new Date(a.datePosted) - new Date(b.datePosted);
-          case 'rating':
-            return b.averageRating - a.averageRating;
-          case 'popular':
-            return b.totalRatings - a.totalRatings;
-          default:
-            return 0;
-        }
-      });
-
-      setFilteredPosts(result);
-    } else {
-      // Use the original filtering logic when no enhanced search results
-      let result = [...posts];
-
-      // Apply category filter
-      if (selectedCategory !== 'all') {
-        result = result.filter(post => post.category.toLowerCase() === selectedCategory.toLowerCase());
-      }
-
-      // Apply rating filter
-      if (rating > 0) {
-        result = result.filter(post => post.averageRating >= rating);
-      }
-
-      // Apply price range filter
-      if (priceRange !== 'all') {
-        if (priceRange === 'free') {
-          result = result.filter(post => post.price === 0);
-        } else if (priceRange === 'low') {
-          result = result.filter(post => post.price > 0 && post.price <= 10);
-        } else if (priceRange === 'medium') {
-          result = result.filter(post => post.price > 10 && post.price <= 50);
-        } else if (priceRange === 'high') {
-          result = result.filter(post => post.price > 50);
-        }
-      }
-
-      // Apply sorting
-      result.sort((a, b) => {
-        switch (sortBy) {
-          case 'newest':
-            return new Date(b.datePosted) - new Date(a.datePosted);
-          case 'oldest':
-            return new Date(a.datePosted) - new Date(b.datePosted);
-          case 'rating':
-            return b.averageRating - a.averageRating;
-          case 'popular':
-            return b.totalRatings - a.totalRatings;
-          default:
-            return 0;
-        }
-      });
-
-      setFilteredPosts(result);
+  // Centered search bar - Dynamically shifts to avoid windows
+  const flyToPost = useCallback((position) => {
+    if (mapRef.current && position && Array.isArray(position) && position.length >= 2) {
+      mapRef.current.flyTo(position, 15);
     }
-  }, [selectedCategory, rating, priceRange, sortBy, posts, enhancedSearchResults]);
+  }, []);
 
   // Get user location for initial centering - non-blocking
   useEffect(() => {
@@ -1265,11 +1184,6 @@ const DiscoverMain = () => {
   }, [userLocation]);
 
   // Fly to a post's location on the map
-  const flyToPost = useCallback((position) => {
-    if (mapRef.current && position && Array.isArray(position) && position.length >= 2) {
-      mapRef.current.flyTo(position, 15);
-    }
-  }, []);
 
   // Toggle post bookmark/favorite status
   const togglePostBookmark = async (post) => {
@@ -1882,33 +1796,6 @@ const DiscoverMain = () => {
 
 
 
-  // Function to toggle windows - closes previous window and opens new one
-  const toggleWindow = (windowId) => {
-    // Check if the window is already open
-    const isAlreadyOpen = showWindows[windowId];
-
-    if (isAlreadyOpen) {
-      // Close all windows
-      setShowWindows({
-        'category-window': false,
-        'view-mode-window': false,
-        'map-type-window': false,
-        'saved-locations-window': false,
-        'notifications-window': false
-      });
-      setActiveSidebarWindow(null);
-    } else {
-      // Close others and open requested
-      setShowWindows({
-        'category-window': windowId === 'category-window',
-        'view-mode-window': windowId === 'view-mode-window',
-        'map-type-window': windowId === 'map-type-window',
-        'saved-locations-window': windowId === 'saved-locations-window',
-        'notifications-window': windowId === 'notifications-window'
-      });
-      setActiveSidebarWindow(windowId.replace('-window', ''));
-    }
-  };
 
 
 
@@ -2045,7 +1932,6 @@ const DiscoverMain = () => {
               placeholder="Search destinations, categories..."
               autoFocus
               onSearchResults={(results, query) => {
-                setFilteredPosts(results);
                 setEnhancedSearchResults(results);
                 setSearchQuery(query || '');
               }}
