@@ -3,6 +3,40 @@ import { X, Plus, MapPin, Hash, FileImage, Link as LinkIcon, Upload, Sparkles, I
 import { motion, AnimatePresence } from 'framer-motion';
 import './PostCreationForm.css';
 
+// Local individual file preview component safely manages its own memory
+const FilePreview = ({ file, onRemove }) => {
+  const [preview, setPreview] = useState('');
+
+  useEffect(() => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+      className="relative aspect-square rounded-[4px] border border-slate-200 dark:border-slate-800 overflow-hidden group/img shadow-sm"
+    >
+      {preview ? (
+        <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
+      )}
+      <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); onRemove(); }}
+          className="p-1.5 bg-rose-500 text-white rounded-[4px] shadow-lg transform translate-y-2 group-hover/img:translate-y-0 transition-all"
+        >
+          <X className="w-4 h-4" strokeWidth={3} />
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
 const PostCreationForm = ({
   creatingPostAt,
   postCreationForm,
@@ -14,27 +48,9 @@ const PostCreationForm = ({
   const [urlInput, setUrlInput] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [activeField, setActiveField] = useState(null);
-  const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
 
   // Ref for the scrollable container
   const scrollableContainerRef = useRef(null);
-
-  // Manage image preview URLs
-  useEffect(() => {
-    // Revoke old URLs
-    imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
-
-    if (postCreationForm.images && postCreationForm.images.length > 0) {
-      const urls = Array.from(postCreationForm.images).map(file => URL.createObjectURL(file));
-      setImagePreviewUrls(urls);
-    } else {
-      setImagePreviewUrls([]);
-    }
-
-    return () => {
-      imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
-    };
-  }, [postCreationForm.images]);
 
   // Prevent map interaction when scrolling form
   useEffect(() => {
@@ -80,6 +96,8 @@ const PostCreationForm = ({
   const handleImageChange = useCallback((e) => {
     if (e.target.files && e.target.files.length > 0) {
       addFiles(e.target.files);
+      // Reset input value to allow selecting the same file again if it was removed
+      e.target.value = null;
     }
   }, [addFiles]);
 
@@ -179,9 +197,9 @@ const PostCreationForm = ({
             </div>
             <div>
               <h3 className="text-xl font-black uppercase tracking-tighter leading-none mb-1">
-                Pin Experience
+                Create New Pin
               </h3>
-              <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] opacity-80">Sync discovery to the nexus</p>
+              <p className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] opacity-80">Share your discovery</p>
             </div>
           </div>
           
@@ -209,7 +227,7 @@ const PostCreationForm = ({
           <div className="space-y-3 group">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
               <Hash className="w-3.5 h-3.5 text-teal-500" strokeWidth={3} />
-              Entity Title
+              Title
             </label>
             <input
               type="text"
@@ -220,7 +238,7 @@ const PostCreationForm = ({
               onBlur={() => setActiveField(null)}
               className="w-full h-12 px-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-slate-900 dark:focus:border-indigo-500 focus:ring-4 focus:ring-slate-900/5 dark:focus:ring-indigo-500/10 transition-all duration-300 font-bold text-slate-900 dark:text-white placeholder:text-slate-200 dark:placeholder:text-slate-700 text-sm font-outfit"
               style={{ borderRadius: '4px' }}
-              placeholder="Give your discovery a catchy name..."
+              placeholder="Enter a title for this location..."
               required
             />
           </div>
@@ -229,7 +247,7 @@ const PostCreationForm = ({
           <div className="space-y-3 group">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
               <MapPin className="w-3.5 h-3.5 text-teal-500" strokeWidth={3} />
-              Data Description
+              Description
             </label>
             <textarea
               name="description"
@@ -248,7 +266,7 @@ const PostCreationForm = ({
           <div className="space-y-4">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
               <Sparkles className="w-3.5 h-3.5 text-teal-500" strokeWidth={3} />
-              Classify Resource
+              Category
             </label>
             <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-3">
               {categories.map((cat) => {
@@ -289,10 +307,10 @@ const PostCreationForm = ({
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-3.5 h-3.5 text-teal-500" strokeWidth={3} />
-                Visual Data Node
+                Images
               </div>
               <span className={`text-[9px] px-2 py-0.5 font-black uppercase tracking-widest ${totalMedia >= 10 ? 'text-rose-500' : 'text-teal-600'}`}>
-                {totalMedia} / 10 Entities
+                {totalMedia} / 10 Added
               </span>
             </label>
 
@@ -315,38 +333,30 @@ const PostCreationForm = ({
                       <Upload className="w-6 h-6 text-teal-500" strokeWidth={2.5} />
                     </div>
                     <div>
-                      <p className="text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest">Transmit Assets</p>
-                      <p className="text-slate-400 dark:text-slate-600 text-[9px] font-bold uppercase tracking-wider mt-1 opacity-60">Drag files or click to initiate</p>
+                      <p className="text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest">Upload Images</p>
+                      <p className="text-slate-400 dark:text-slate-600 text-[9px] font-bold uppercase tracking-wider mt-1 opacity-60">Drag files or click to add</p>
                     </div>
                   </div>
                 )}
 
                 {/* Secret Inputs */}
                 <input type="file" id="image-upload-modern" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
-                <label htmlFor="image-upload-modern" className="absolute inset-0 cursor-pointer z-10" />
+                {totalMedia === 0 && (
+                  <label htmlFor="image-upload-modern" className="absolute inset-0 cursor-pointer z-10" />
+                )}
 
                 {/* Sharp Previews */}
                 {totalMedia > 0 && (
                   <div className="relative z-20 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
                     <AnimatePresence>
                       {Array.from(postCreationForm.images || []).map((file, i) => (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+                        <FilePreview 
                           key={`file-${i}`} 
-                          className="relative aspect-square rounded-[4px] border border-slate-200 dark:border-slate-800 overflow-hidden group/img shadow-sm"
-                        >
-                          <img src={imagePreviewUrls[i]} alt="Preview" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
-                            <button
-                              type="button"
-                              onClick={(e) => { e.preventDefault(); handleRemoveMedia(i); }}
-                              className="p-1.5 bg-rose-500 text-white rounded-[4px] shadow-lg transform translate-y-2 group-hover/img:translate-y-0 transition-all"
-                            >
-                              <X className="w-4 h-4" strokeWidth={3} />
-                            </button>
-                          </div>
-                        </motion.div>
+                          file={file} 
+                          onRemove={() => handleRemoveMedia(i)} 
+                        />
                       ))}
+
                       
                       {Array.from(postCreationForm.imageLinks || []).map((link, i) => {
                         const globalIndex = (postCreationForm.images?.length || 0) + i;
@@ -378,9 +388,9 @@ const PostCreationForm = ({
                     </AnimatePresence>
                     
                     {totalMedia < 10 && (
-                      <div className="relative aspect-square rounded-[4px] border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors pointer-events-none">
-                        <Plus className="w-6 h-6 text-slate-300 dark:text-slate-700" strokeWidth={2} />
-                      </div>
+                      <label htmlFor="image-upload-modern" className="relative aspect-square rounded-[4px] border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors cursor-pointer group">
+                        <Plus className="w-6 h-6 text-slate-300 dark:text-slate-600 group-hover:text-teal-500 transition-colors" strokeWidth={2} />
+                      </label>
                     )}
                   </div>
                 )}
@@ -404,7 +414,7 @@ const PostCreationForm = ({
                 disabled={!urlInput.trim()}
                 className="px-4 py-2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-[2px] hover:bg-black disabled:opacity-30 transition-all"
               >
-                Ingest
+                Add Link
               </button>
             </div>
           </div>
@@ -442,11 +452,11 @@ const PostCreationForm = ({
           {postCreationForm.loading ? (
             <>
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Transmitting...</span>
+              <span>Saving...</span>
             </>
           ) : (
             <>
-              <span>Plant Pin Node</span>
+              <span>Create Pin</span>
               <Zap className="w-4 h-4 text-teal-400 fill-teal-400" />
             </>
           )}

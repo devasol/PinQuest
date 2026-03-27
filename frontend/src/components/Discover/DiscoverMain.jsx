@@ -1678,56 +1678,6 @@ const DiscoverMain = () => {
 
         setPosts(prev => [newPost, ...prev]);
 
-        // Apply current filters to determine if the new post should be in the filtered list
-        let shouldIncludeInFiltered = true;
-
-        // Apply category filter
-        if (selectedCategory !== 'all' && shouldIncludeInFiltered) {
-          shouldIncludeInFiltered = newPost.category.toLowerCase() === selectedCategory.toLowerCase();
-        }
-
-        // Apply rating filter
-        if (rating > 0 && shouldIncludeInFiltered) {
-          shouldIncludeInFiltered = newPost.averageRating >= rating;
-        }
-
-        // Apply price range filter
-        if (priceRange !== 'all' && shouldIncludeInFiltered) {
-          if (priceRange === 'free') {
-            shouldIncludeInFiltered = newPost.price === 0;
-          } else if (priceRange === 'low') {
-            shouldIncludeInFiltered = newPost.price > 0 && newPost.price <= 10;
-          } else if (priceRange === 'medium') {
-            shouldIncludeInFiltered = newPost.price > 10 && newPost.price <= 50;
-          } else if (priceRange === 'high') {
-            shouldIncludeInFiltered = newPost.price > 50;
-          }
-        }
-
-        // Only add to filtered posts if it passes all current filters
-        if (shouldIncludeInFiltered) {
-          setFilteredPosts(prev => {
-            const updatedList = [newPost, ...prev];
-
-            // Apply sorting based on current sort setting
-            updatedList.sort((a, b) => {
-              switch (sortBy) {
-                case 'newest':
-                  return new Date(b.datePosted) - new Date(a.datePosted);
-                case 'oldest':
-                  return new Date(a.datePosted) - new Date(b.datePosted);
-                case 'rating':
-                  return b.averageRating - a.averageRating;
-                case 'popular':
-                  return b.totalRatings - a.totalRatings;
-                default:
-                  return 0;
-              }
-            });
-
-            return updatedList;
-          });
-        }
 
         // Show success message
         showModal({
