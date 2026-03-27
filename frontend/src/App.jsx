@@ -5,6 +5,7 @@ import router from "./routes/router";
 import "leaflet/dist/leaflet.css";
 import L from 'leaflet';
 import { useEffect } from 'react';
+import CookieConsent from "./components/Common/CookieConsent";
 
 // Leaflet icon configuration
 const configureLeafletIcons = () => {
@@ -39,6 +40,7 @@ const App = () => {
         draggable
         pauseOnHover
       />
+      <CookieConsent />
     </div>
   );
 };
