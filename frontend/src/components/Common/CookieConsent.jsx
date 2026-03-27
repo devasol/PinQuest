@@ -54,15 +54,17 @@ const CookieConsent = () => {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-all duration-300 focus:outline-none ${
-        enabled 
-          ? 'bg-indigo-600 dark:bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.3)]' 
-          : 'bg-slate-200 dark:bg-slate-800'
-      } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:brightness-110'}`}
+      className={`relative inline-flex flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+        enabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      style={{ width: '44px', height: '24px' }}
     >
       <motion.span
         animate={{ x: enabled ? 22 : 2 }}
-        className="inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform"
+        initial={false}
+        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        className="inline-block rounded-full bg-white shadow-md transform"
+        style={{ width: '20px', height: '20px' }}
       />
     </button>
   );
