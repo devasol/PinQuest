@@ -50,7 +50,8 @@
 
 /* Custom marker styling */
 .leaflet-marker-icon.custom-marker {
-  transition: transform 0.2s ease;
+  /* Intentional override - do not add transitions to markers to fix placement lag */
+  transition: transform 0s !important;
 }
 
 .leaflet-marker-icon.custom-marker:hover {

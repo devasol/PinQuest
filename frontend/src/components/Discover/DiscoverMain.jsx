@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapContainer, TileLayer, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Popup, useMapEvents, CircleMarker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import CustomMarker from './CustomMarker';
@@ -1645,6 +1645,11 @@ const DiscoverMain = () => {
 
       if (result.success && result.data && result.data.status === 'success' && result.data.data) {
         // Add the new post to our local state
+        // Use the exact coordinates the user clicked on (creatingPostAt) to guarantee
+        // the pin appears exactly where clicked, avoiding any API coordinate parsing ambiguity.
+        const clickedLat = creatingPostAt.lat;
+        const clickedLng = creatingPostAt.lng;
+
         const newPost = {
           _id: result.data.data._id,
           id: result.data.data._id,
@@ -1657,22 +1662,18 @@ const DiscoverMain = () => {
           postedBy: result.data.data.postedBy?.name || user?.name || user?.email || "Anonymous",
           category: result.data.data.category,
           datePosted: result.data.data.datePosted || new Date().toISOString(),
-          position: Array.isArray(result.data.data.location.coordinates) && result.data.data.location.coordinates.length === 2
-            ? [result.data.data.location.coordinates[1], result.data.data.location.coordinates[0]] // [lat, lng] from [lng, lat]
-            : [result.data.data.location.latitude, result.data.data.location.longitude],
+          // Use the original clicked coordinates – this is exactly where the user placed the pin
+          position: [clickedLat, clickedLng],
           price: result.data.data.price || 0,
           tags: result.data.data.tags || [],
           comments: result.data.data.comments || [],
           likes: result.data.data.likes || [],
           likesCount: result.data.data.likesCount || 0,
           location: {
-            latitude: Array.isArray(result.data.data.location.coordinates) && result.data.data.location.coordinates.length === 2
-              ? result.data.data.location.coordinates[1]  // latitude from [lng, lat] array
-              : result.data.data.location.latitude,
-            longitude: Array.isArray(result.data.data.location.coordinates) && result.data.data.location.coordinates.length === 2
-              ? result.data.data.location.coordinates[0]  // longitude from [lng, lat] array
-              : result.data.data.location.longitude,
-            ...(result.data.data.location || {})
+            latitude: clickedLat,
+            longitude: clickedLng,
+            type: 'Point',
+            coordinates: [clickedLng, clickedLat], // GeoJSON [lng, lat]
           },
         };
 
@@ -2136,6 +2137,37 @@ const DiscoverMain = () => {
             />
           )}
 
+
+          {/* Preview point to help the user see exactly where the click was registered */}
+          {creatingPostAt && (
+            <CircleMarker
+              center={[creatingPostAt.lat, creatingPostAt.lng]}
+              radius={4}
+              pathOptions={{ fillColor: '#ef4444', fillOpacity: 1, stroke: true, color: 'white', weight: 2 }}
+            />
+          )}
+
+          {/* Preview pin for the post being created - shows exactly where the pin will land */}
+          {creatingPostAt && (
+            <CustomMarker
+              key="preview-marker"
+              post={{
+                position: [creatingPostAt.lat, creatingPostAt.lng],
+                category: postCreationForm.category || 'general',
+                averageRating: 0,
+                id: 'preview',
+                location: {
+                  latitude: creatingPostAt.lat,
+                  longitude: creatingPostAt.lng,
+                  type: 'Point',
+                  coordinates: [creatingPostAt.lng, creatingPostAt.lat]
+                }
+              }}
+              isLiked={false}
+              isSaved={false}
+              onClick={() => {}} // No action on click for preview
+            />
+          )}
 
           {/* Map-based Post Creation Overlay - Replaces Leaflet Popup to prevent flickering */}
           {creatingPostAt && (

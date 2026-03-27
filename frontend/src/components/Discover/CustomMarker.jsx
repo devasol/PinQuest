@@ -63,11 +63,66 @@ const createCustomMarker = (category = 'general', averageRating = 0, isSaved = f
       </g>`;
   }
 
+  // Define colors for gradient based on fillColor
+  const colors = {
+    start: fillColor,
+    end: fillColor, // Default to solid color
+  };
+
+  // Example: if fillColor is green, make gradient from light green to dark green
+  if (fillColor === '#10b981') { // Green
+    colors.start = '#34d399';
+    colors.end = '#059669';
+  } else if (fillColor === '#8b5cf6') { // Violet
+    colors.start = '#a78bfa';
+    colors.end = '#7c3aed';
+  } else if (fillColor === '#ec4899') { // Pink
+    colors.start = '#f472b6';
+    colors.end = '#db2777';
+  } else if (fillColor === '#f59e0b') { // Amber
+    colors.start = '#fbbf24';
+    colors.end = '#d97706';
+  } else if (fillColor === '#14b8a6') { // Teal
+    colors.start = '#2dd4bf';
+    colors.end = '#0d9488';
+  } else if (fillColor === '#ef4444') { // Red
+    colors.start = '#f87171';
+    colors.end = '#dc2626';
+  } else if (fillColor === '#6b7280') { // Gray
+    colors.start = '#9ca3af';
+    colors.end = '#4b5563';
+  }
+
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="56">
-      <path fill="${fillColor}" stroke="white" stroke-width="3" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-      <circle fill="white" cx="12" cy="9" r="3"/>
-      ${additionalIcons}
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="56" style="display: block; overflow: visible;">
+      <defs>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="1" />
+          <feOffset dx="0" dy="1" result="offsetblur" />
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="0.3" />
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <linearGradient id="pinGradient-${category}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:${colors.start};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:${colors.end};stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <g filter="url(#shadow)">
+        <path
+          d="M12 2C8.13 2 5 5.13 5 9c0 6 7 15 7 15s7-9 7-15c0-3.87-3.13-7-7-7z"
+          fill="url(#pinGradient-${category})"
+          stroke="white"
+          stroke-width="1.5"
+        />
+        <circle fill="white" cx="12" cy="9" r="3" />
+        ${isSaved ? '<circle cx="12" cy="9" r="4.5" fill="none" stroke="#facc15" stroke-width="1.5" />' : ''}
+        ${isLiked ? '<circle cx="12" cy="9" r="6" fill="none" stroke="#ef4444" stroke-width="1" stroke-dasharray="1,1" />' : ''}
+      </g>
     </svg>
   `;
 
@@ -76,7 +131,7 @@ const createCustomMarker = (category = 'general', averageRating = 0, isSaved = f
     iconSize: [40, 56],
     iconAnchor: [20, 56],
     popupAnchor: [0, -56],
-    className: 'custom-marker pulse'
+    className: 'custom-marker'
   });
 };
 
