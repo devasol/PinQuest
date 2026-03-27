@@ -51,22 +51,23 @@ const CookieConsent = () => {
   };
 
   const Toggle = ({ enabled, onClick, disabled }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`relative inline-flex flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none ${
-        enabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-      style={{ width: '44px', height: '24px' }}
-    >
-      <motion.span
-        animate={{ x: enabled ? 22 : 2 }}
-        initial={false}
-        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        className="inline-block rounded-full bg-white shadow-md transform"
-        style={{ width: '20px', height: '20px' }}
-      />
-    </button>
+    <div className="flex items-center">
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className={`relative inline-flex items-center rounded-full transition-colors duration-200 focus:outline-none flex-shrink-0 ${
+          enabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
+        } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+        style={{ width: '40px', height: '22px', minWidth: '40px', minHeight: '22px' }}
+      >
+        <motion.span
+          animate={{ x: enabled ? 20 : 2 }}
+          transition={{ type: "spring", stiffness: 700, damping: 40 }}
+          className="inline-block rounded-full bg-white shadow-sm"
+          style={{ width: '18px', height: '18px' }}
+        />
+      </button>
+    </div>
   );
 
   return (
