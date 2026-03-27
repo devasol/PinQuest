@@ -29,6 +29,56 @@ html, body, #root {
   padding: 0;
 }
 
+/* ─── Global cursor rules ───────────────────────────────────────────────────── */
+/* Every interactive element should show a pointer cursor */
+button,
+a,
+[role="button"],
+[role="link"],
+[role="menuitem"],
+[role="tab"],
+[role="option"],
+[role="checkbox"],
+[role="radio"],
+[role="switch"],
+select,
+label[for],
+summary,
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+input[type="file"],
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"],
+.cursor-pointer,
+[onClick],
+[tabindex]:not([tabindex="-1"]) {
+  cursor: pointer !important;
+}
+
+/* Disabled elements should show not-allowed */
+button:disabled,
+input:disabled,
+select:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
+}
+
+/* Text inputs, textareas stay as text cursor */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="date"],
+textarea {
+  cursor: text !important;
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 body {
   background-color: #f1f5f9; /* Soft Slate */
   color: #0f172a;
