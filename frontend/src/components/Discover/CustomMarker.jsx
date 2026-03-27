@@ -148,17 +148,9 @@ const CustomMarker = React.memo(({ post, isLiked, onSave, isSaved, onGetDirectio
       };
       
       marker.on('click', handleClick);
-      marker.on('mouseover', () => {
-        marker.getElement().classList.add('pulse');
-      });
-      marker.on('mouseout', () => {
-        marker.getElement().classList.remove('pulse');
-      });
       
       return () => {
         marker.off('click', handleClick);
-        marker.off('mouseover');
-        marker.off('mouseout');
       };
     }
   }, [onClick, post]);
