@@ -8,6 +8,21 @@
   height: 100%;
   width: 100%;
   z-index: 1;
+  background: #e8e0d5; /* Warm neutral — matches OSM tile edge color, prevents black flash */
+}
+
+/* Ensure tile pane background matches to prevent black showing through */
+.leaflet-tile-pane {
+  background: #e8e0d5;
+}
+
+/* Smooth tile fade-in to mask loading gaps */
+.leaflet-tile {
+  transition: opacity 0.15s ease-in !important;
+}
+
+.leaflet-tile-loaded {
+  opacity: 1 !important;
 }
 
 /* Custom styles for the map container */
@@ -76,9 +91,9 @@
   padding: 0 !important;
 }
 
-/* Map container styling */
+/* Map container styling - override with warm neutral to prevent black flash on drag */
 .leaflet-container {
-  background-color: #f8fafc;
+  background-color: #e8e0d5 !important;
 }
 
 /* Responsive adjustments */
@@ -160,6 +175,7 @@
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

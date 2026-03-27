@@ -14,6 +14,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users, Bell, User, Check, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './DiscoverMain.css';
+import './MapView.css'; // Import map styles to prevent black tile flash on drag
 import './ResponsiveLayout.css'; // Import the new responsive layout CSS
 import { useModal } from '../../contexts/ModalContext';
 import { connectSocket } from '../../services/socketService';
@@ -1998,11 +1999,11 @@ const DiscoverMain = () => {
             tileSize={256}
             zoomOffset={0}
             detectRetina={true}
-            updateWhenIdle={true}
+            updateWhenIdle={false}
             updateWhenZooming={false}
-            unloadInvisibleTiles={true}
+            unloadInvisibleTiles={false}
             reuseTiles={true}
-            keepBuffer={2}
+            keepBuffer={8}
           />
 
           <MapClickHandler
