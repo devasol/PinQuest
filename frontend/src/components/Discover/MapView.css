@@ -48,14 +48,24 @@
   background-color: #111827; /* gray-900 */
 }
 
-/* Custom marker styling */
+/* Custom marker styling - critical: do NOT change transform-origin or add margins */
 .leaflet-marker-icon.custom-marker {
-  /* Intentional override - do not add transitions to markers to fix placement lag */
-  transition: transform 0s !important;
+  /* Intentional override - suppress all transitions to prevent placement lag */
+  transition: none !important;
+  /* Ensure the SVG inside sits flush */
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  overflow: visible !important;
+  background: none !important;
+  border: none !important;
+  /* Lock transform origin to bottom-center so hover scale doesn't shift the anchor */
+  transform-origin: center bottom !important;
 }
 
 .leaflet-marker-icon.custom-marker:hover {
-  transform: scale(1.05);
+  transform: scale(1.1) !important;
+  transform-origin: center bottom !important;
 }
 
 /* Current location marker styling */

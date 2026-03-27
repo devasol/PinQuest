@@ -28,16 +28,22 @@ import { API_BASE_URL, API_TIMEOUT } from '../../utils/config';
 
 // Custom hook for map events
 const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
-  useMapEvents({
+  const map = useMapEvents({
     click: (e) => {
-      if (onMapClick) onMapClick(e.latlng);
+      // Force immediate re-evaluation of map's layout to correct any pixel offsets
+      map.invalidateSize();
+      
+      // Wrap coordinates to standard -180/180 range to prevent ghost placements
+      const wrapped = e.latlng.wrap();
+      
+      if (onMapClick) onMapClick(wrapped);
 
       // If user is authenticated, allow them to create a post at the clicked location
       if (onMapPositionSelected) {
         // Convert the Leaflet LatLng object to a simple position object
         onMapPositionSelected({
-          lat: e.latlng.lat,
-          lng: e.latlng.lng
+          lat: wrapped.lat,
+          lng: wrapped.lng
         });
       }
 
@@ -667,11 +673,13 @@ const DiscoverMain = () => {
                 && post.location.coordinates.length === 2) {
               // Convert to [latitude, longitude] for Leaflet
               position = [post.location.coordinates[1] || 0, post.location.coordinates[0] || 0];
+              console.log('📍 Fetch Posts - Transformed post', post._id, '- GeoJSON coords:', post.location.coordinates, '-> position:', position);
             }
             // Handle separate latitude/longitude format
             else if (post && post.location && typeof post.location.latitude === 'number' &&
                      typeof post.location.longitude === 'number') {
               position = [post.location.latitude, post.location.longitude];
+              console.log('📍 Fetch Posts - Transformed post', post._id, '- Lat/Lng coords:', { lat: post.location.latitude, lng: post.location.longitude }, '-> position:', position);
             }
 
             return {
@@ -731,7 +739,19 @@ const DiscoverMain = () => {
 
         // Filter out any null or undefined posts before setting state
         const validTransformedPosts = transformedPosts.filter(post => post && post._id);
-        setPosts(validTransformedPosts);
+        
+        // Preserve any locally created posts that haven't been synced to the server yet
+        // by checking if there are posts in the current state that don't exist in the fetched data
+        setPosts(prev => {
+          // Create a map of fetched posts by ID for quick lookup
+          const fetchedPostIds = new Set(validTransformedPosts.map(p => p._id));
+          
+          // Find locally created posts that aren't in the fetched data yet
+          const localPosts = prev.filter(post => post && post._id && !fetchedPostIds.has(post._id));
+          
+          // Combine fetched posts with local posts (local posts first since they're newer)
+          return [...localPosts, ...validTransformedPosts];
+        });
       } else {
         console.error("Error: Invalid API response format", result);
         setError("Failed to load posts from server: Invalid response format");
@@ -994,6 +1014,15 @@ const DiscoverMain = () => {
       }
     };
   }, [fetchPosts, fetchSavedLocations, fetchUserFavoritePosts, isAuthenticated]); // Remove selectedPost to avoid interval recreation
+
+  // Invalidate map size when the layout changes to ensure click coordinates remain accurate
+  useEffect(() => {
+    if (mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.invalidateSize();
+      }, 300); // Wait for transition to finish
+    }
+  }, [activeSidebarWindow]);
 
   // Centered search bar - Dynamically shifts to avoid windows
   const flyToPost = useCallback((position) => {
@@ -1618,6 +1647,12 @@ const DiscoverMain = () => {
         throw new Error('Authentication token not found');
       }
 
+      console.log('📍 Post creation - creatingPostAt:', creatingPostAt);
+      console.log('📍 Post creation - Sending to server:', {
+        latitude: creatingPostAt.lat.toString(),
+        longitude: creatingPostAt.lng.toString()
+      });
+
       // Create form data for the post with location
       const formData = new FormData();
       formData.append('title', postCreationForm.title);
@@ -1650,6 +1685,9 @@ const DiscoverMain = () => {
         const clickedLat = creatingPostAt.lat;
         const clickedLng = creatingPostAt.lng;
 
+        console.log('📍 Post creation - User clicked at:', { lat: clickedLat, lng: clickedLng });
+        console.log('📍 Post creation - creatingPostAt:', creatingPostAt);
+
         const newPost = {
           _id: result.data.data._id,
           id: result.data.data._id,
@@ -1676,6 +1714,10 @@ const DiscoverMain = () => {
             coordinates: [clickedLng, clickedLat], // GeoJSON [lng, lat]
           },
         };
+
+        console.log('📍 Post creation - New post position:', newPost.position);
+        console.log('📍 Post creation - New post location:', newPost.location);
+        console.log('📍 Post creation - Server returned location:', result.data.data.location);
 
         setPosts(prev => [newPost, ...prev]);
 
@@ -2169,10 +2211,26 @@ const DiscoverMain = () => {
             />
           )}
 
-          {/* Map-based Post Creation Overlay - Replaces Leaflet Popup to prevent flickering */}
+
+        </MapContainer>
+
+        {/* Map-based Post Creation Overlay - Positioned outside MapContainer to prevent event leakage */}
+        <AnimatePresence>
           {creatingPostAt && (
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 sm:p-0">
-              <div className="w-full h-full max-w-lg max-h-[85vh] sm:max-h-[90vh] bg-transparent flex items-center justify-center pointer-events-auto">
+            <div 
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 sm:p-0"
+              onClick={(e) => e.stopPropagation()}
+              onWheel={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
+            >
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="w-full h-full max-w-lg max-h-[85vh] sm:max-h-[90vh] bg-transparent flex items-center justify-center pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <PostCreationForm
                   creatingPostAt={creatingPostAt}
                   postCreationForm={postCreationForm}
@@ -2180,10 +2238,10 @@ const DiscoverMain = () => {
                   handleMapPostCreation={handleMapPostCreation}
                   setCreatingPostAt={setCreatingPostAt}
                 />
-              </div>
+              </motion.div>
             </div>
           )}
-        </MapContainer>
+        </AnimatePresence>
 
         {/* Close Directions Button - appears when routing is active - positioned outside MapContainer to prevent click conflicts */}
         {routingActive && (

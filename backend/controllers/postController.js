@@ -174,15 +174,20 @@ const createPost = async (req, res) => {
       };
     }
 
+    console.log('📍 Backend - Location received from client:', parsedLocation);
+    console.log('📍 Backend - Parsed lat/lng:', { lat, lng });
+    console.log('📍 Backend - Location to be saved (GeoJSON [lng, lat]):', postFields.location);
+
     const newPost = new Post(postFields);
-    
+
     // Log the images being saved to verify correctness
     console.log("Saving post to DB. Image data:", {
       imageId: req.user._id,
       hasSingleImage: !!image,
       singleImageUrl: image ? image.url : 'none',
       imagesCount: imagesArr ? imagesArr.length : 0,
-      firstImageUrl: imagesArr && imagesArr.length > 0 ? imagesArr[0].url : 'none'
+      firstImageUrl: imagesArr && imagesArr.length > 0 ? imagesArr[0].url : 'none',
+      location: postFields.location
     });
 
     const savedPost = await newPost.save();
@@ -193,6 +198,8 @@ const createPost = async (req, res) => {
       "by user:",
       req.user._id
     );
+    console.log('📍 Backend - Saved post location from DB:', savedPost.location);
+    console.log('📍 Backend - Saved post location coordinates:', savedPost.location?.coordinates);
 
     // Send success response IMMEDIATELY with basic post data
     // Populate the postedBy field for response will happen in background

@@ -159,5 +159,74 @@ export const authService = {
   },
 };
 
+// Upload function for handling FormData (file uploads)
+// This is separate from apiRequest because FormData requires different handling
+const upload = async (endpoint, formData, token = null) => {
+  try {
+    // Get fresh token if not provided
+    let authToken = token;
+    if (!authToken) {
+      const freshToken = await getFreshToken();
+      authToken = freshToken || localStorage.getItem('token');
+    }
+
+    if (!authToken) {
+      throw new Error('Authentication token not found');
+    }
+
+    // Use fetch directly since FormData can't use the standard apiRequest
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken.trim()}`,
+        // Don't set Content-Type header - browser will set it automatically with boundary for FormData
+      },
+      body: formData,
+    });
+
+    // Check if response is HTML (error page)
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/html')) {
+      const htmlError = await response.text();
+      if (htmlError.includes('<!DOCTYPE html') || htmlError.includes('<html')) {
+        throw new Error(`Server error occurred. The server returned an error page instead of a valid response.`);
+      }
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        // If it's not JSON, use the text as error message
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+      }
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    // Parse JSON response
+    const result = await response.json();
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error(`Upload error for ${endpoint}:`, error.message);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
 // Export the apiRequest function so it can be imported by other modules
 export { apiRequest };
+
+// Export upload function for file uploads
+export const apiService = {
+  upload,
+  apiRequest,
+};
+
+export default apiService;
