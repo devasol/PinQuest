@@ -28,11 +28,8 @@ import { API_BASE_URL, API_TIMEOUT } from '../../utils/config';
 
 // Custom hook for map events
 const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
-  const map = useMapEvents({
+  useMapEvents({
     click: (e) => {
-      // Force immediate re-evaluation of map's layout to correct any pixel offsets
-      map.invalidateSize();
-      
       // Wrap coordinates to standard -180/180 range to prevent ghost placements
       const wrapped = e.latlng.wrap();
       
@@ -40,7 +37,6 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
 
       // If user is authenticated, allow them to create a post at the clicked location
       if (onMapPositionSelected) {
-        // Convert the Leaflet LatLng object to a simple position object
         onMapPositionSelected({
           lat: wrapped.lat,
           lng: wrapped.lng
@@ -945,38 +941,31 @@ const DiscoverMain = () => {
 
   // Update posts when favoritePosts changes to ensure correct bookmark status
   useEffect(() => {
-    if (favoritePosts) {
-      // Update the posts array to mark them as bookmarked based on favoritePosts
-      setPosts(prevPosts =>
-        prevPosts.map(post => {
-          if (post && post._id) {
-            return {
-              ...post,
-              bookmarked: favoritePosts.has(post._id),
-              saved: favoritePosts.has(post._id)
-            };
-          }
-          return post;
-        })
-      );
+    if (!favoritePosts) return;
+    
+    // Check if any post actually needs updating to prevent unnecessary setPosts
+    const needsUpdate = (postsToUpdate) => postsToUpdate.some(post => 
+      post && post._id && post.bookmarked !== favoritePosts.has(post._id)
+    );
 
+    setPosts(prevPosts => {
+      if (!needsUpdate(prevPosts)) return prevPosts;
+      return prevPosts.map(post => {
+        if (!post || !post._id) return post;
+        const isFav = favoritePosts.has(post._id);
+        if (post.bookmarked === isFav) return post;
+        return { ...post, bookmarked: isFav, saved: isFav };
+      });
+    });
 
-      // Also update selected post if it exists
-
-      // Also update selected post if it exists
-      if (selectedPost && selectedPost._id) {
-        setSelectedPost(prev => {
-          // Check if prev is null to avoid the error
-          if (!prev || !prev._id) return prev;
-          return {
-            ...prev,
-            bookmarked: favoritePosts.has(prev._id),
-            saved: favoritePosts.has(prev._id)
-          };
-        });
-      }
+    if (selectedPost && selectedPost._id && selectedPost.bookmarked !== favoritePosts.has(selectedPost._id)) {
+      setSelectedPost(prev => {
+        if (!prev || !prev._id) return prev;
+        const isFav = favoritePosts.has(prev._id);
+        return { ...prev, bookmarked: isFav, saved: isFav };
+      });
     }
-  }, [favoritePosts]); // Removed selectedPost to prevent circular dependency
+  }, [favoritePosts]); // Dependency remains favoritePosts
 
 
 
@@ -1016,13 +1005,15 @@ const DiscoverMain = () => {
   }, [fetchPosts, fetchSavedLocations, fetchUserFavoritePosts, isAuthenticated]); // Remove selectedPost to avoid interval recreation
 
   // Invalidate map size when the layout changes to ensure click coordinates remain accurate
+  // Consolidated logic with a slightly longer delay to ensure sidebar transition is fully complete
   useEffect(() => {
     if (mapRef.current) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         mapRef.current.invalidateSize();
-      }, 300); // Wait for transition to finish
+      }, 400); 
+      return () => clearTimeout(timer);
     }
-  }, [activeSidebarWindow]);
+  }, [activeSidebarWindow, isSidebarExpanded, screenWidth]);
 
   // Centered search bar - Dynamically shifts to avoid windows
   const flyToPost = useCallback((position) => {
@@ -1216,7 +1207,7 @@ const DiscoverMain = () => {
   // Fly to a post's location on the map
 
   // Toggle post bookmark/favorite status
-  const togglePostBookmark = async (post) => {
+  const togglePostBookmark = useCallback(async (post) => {
     if (!isAuthenticated) {
       showModal({
         title: "Authentication Required",
@@ -1247,50 +1238,33 @@ const DiscoverMain = () => {
     // Set loading state for this specific post
     setBookmarkLoading(post.id);
 
-    let isBookmarked;
-
     try {
-      isBookmarked = favoritePosts.has(post.id);
-
+      const isBookmarked = favoritePosts.has(post.id);
       let response;
+      
       if (isBookmarked) {
-        // Unbookmark the post
         response = await fetch(`${API_BASE_URL}/users/favorites/${post.id}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
       } else {
-        // Bookmark the post
         response = await fetch(`${API_BASE_URL}/users/favorites`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            postId: post.id
-          })
+          body: JSON.stringify({ postId: post.id })
         });
       }
 
       if (response.ok) {
-        const result = await response.json();
-        if (result.status === 'success') {
-          // Update local state
-          setFavoritePosts(prev => {
-            const newFavorites = new Set(prev);
-            if (isBookmarked) {
-              newFavorites.delete(post.id);
-            } else {
-              newFavorites.add(post.id);
-            }
-            return newFavorites;
-          });
-
-          console.log(`Post ${isBookmarked ? 'un' : ''}bookmarked successfully`);
-        }
+        setFavoritePosts(prev => {
+          const newFavorites = new Set(prev);
+          if (isBookmarked) newFavorites.delete(post.id);
+          else newFavorites.add(post.id);
+          return newFavorites;
+        });
       } else {
         showModal({
           title: "Error",
@@ -1300,21 +1274,14 @@ const DiscoverMain = () => {
         });
       }
     } catch (err) {
-      console.error(`Error ${isBookmarked ? 'un' : ''}bookmarking post:`, err);
-      showModal({
-        title: "Error",
-        message: `Error ${isBookmarked ? 'un' : 'book' }marking post`,
-        type: 'error',
-        confirmText: 'OK'
-      });
+      console.error("Error toggling bookmark:", err);
     } finally {
-      // Reset loading state for this post
       setBookmarkLoading(null);
     }
-  };
+  }, [isAuthenticated, favoritePosts, showModal]);
 
   // Save a location (separate functionality from bookmarking posts)
-  const saveLocation = async (locationData) => {
+  const saveLocation = useCallback(async (locationData) => {
     if (!isAuthenticated) {
       showModal({
         title: "Authentication Required",
@@ -1327,33 +1294,16 @@ const DiscoverMain = () => {
 
     try {
       const token = localStorage.getItem('token');
-      // Check if the location is already saved
       const isAlreadySaved = savedLocations.some(loc => loc.id === locationData.id);
 
+      let response;
       if (isAlreadySaved) {
-        // If already saved, remove it
-        const response = await fetch(`${API_BASE_URL}/users/saved-locations/${locationData.id}`, {
+        response = await fetch(`${API_BASE_URL}/users/saved-locations/${locationData.id}`, {
           method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        if (response.ok) {
-          // Refresh saved locations
-          fetchSavedLocations(); // Fetch from server to ensure consistency
-          console.log('Location removed from saved locations');
-        } else {
-          showModal({
-            title: "Error",
-            message: 'Failed to remove location',
-            type: 'error',
-            confirmText: 'OK'
-          });
-        }
       } else {
-        // If not saved, add it
-        const response = await fetch(`${API_BASE_URL}/users/saved-locations`, {
+        response = await fetch(`${API_BASE_URL}/users/saved-locations`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1361,33 +1311,22 @@ const DiscoverMain = () => {
           },
           body: JSON.stringify(locationData)
         });
+      }
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.status === 'success') {
-            // Refresh saved locations
-            fetchSavedLocations(); // Fetch from server to ensure consistency
-            console.log('Location added to saved locations');
-          }
-        } else {
-          showModal({
-            title: "Error",
-            message: 'Failed to save location',
-            type: 'error',
-            confirmText: 'OK'
-          });
-        }
+      if (response.ok) {
+        fetchSavedLocations();
+      } else {
+        showModal({
+          title: "Error",
+          message: 'Action failed',
+          type: 'error',
+          confirmText: 'OK'
+        });
       }
     } catch (err) {
       console.error('Error saving location:', err);
-      showModal({
-        title: "Error",
-        message: 'Error saving location',
-        type: 'error',
-        confirmText: 'OK'
-      });
     }
-  };
+  }, [isAuthenticated, savedLocations, fetchSavedLocations, showModal]);
 
 
 
@@ -1964,12 +1903,6 @@ const DiscoverMain = () => {
           maxBoundsViscosity={0.75}
           worldCopyJump={true}
           attributionControl={true}
-          whenCreated={(map) => {
-            // Ensure the map handles resize events properly on mobile
-            window.addEventListener('resize', () => {
-              setTimeout(() => map.invalidateSize(), 100); // Small delay to ensure DOM is updated
-            });
-          }}
         >
           <TileLayer
             attribution={mapType === 'satellite'
@@ -2063,41 +1996,37 @@ const DiscoverMain = () => {
 
 
           {/* Render custom markers for each post */}
-          <AnimatePresence>
-            {filteredPosts.map((post) => {
-              // Determine if the current user has liked this post based on the likes array
-              const userHasLiked = post.likes?.some(like =>
-                like.user &&
-                (like.user._id === user?._id ||
-                 (typeof like.user === 'string' && like.user === user?._id) ||
-                 (typeof like.user === 'object' && like.user._id === user?._id))
-              );
+          {filteredPosts.map((post) => {
+            // Determine if the current user has liked this post based on the likes array
+            const userHasLiked = post.likes?.some(like =>
+              like.user &&
+              (like.user._id === user?._id ||
+               (typeof like.user === 'string' && like.user === user?._id) ||
+               (typeof like.user === 'object' && like.user._id === user?._id))
+            );
 
-              // Check if this post is also in the saved locations to avoid duplicate markers
-              const isSaved = favoritePosts.has(post.id);
+            // Check if this post is also in the saved locations to avoid duplicate markers
+            const isSaved = favoritePosts.has(post.id);
 
-              // Only render markers for posts with valid IDs to prevent duplicate key errors
-              if (!post.id) {
-                return null;
-              }
+            // Only render markers for posts with valid IDs to prevent duplicate key errors
+            if (!post.id) {
+              return null;
+            }
 
-              return (
-                <CustomMarker
-                  key={`post-${post.id}`}
-                  post={post}
-                  isLiked={userHasLiked}
-                  onSave={togglePostBookmark}
-                  isSaved={isSaved}
-                  onGetDirections={getDirections}
-                  onClick={(post) => {
-                    setSelectedPost(post);
-                    // Handle click on marker
-                    console.log('Marker clicked for post:', post.title);
-                  }}
-                />
-              );
-            })}
-          </AnimatePresence>
+            return (
+              <CustomMarker
+                key={`post-${post.id}`}
+                post={post}
+                isLiked={userHasLiked}
+                onSave={togglePostBookmark}
+                isSaved={isSaved}
+                onGetDirections={getDirections}
+                onClick={(post) => {
+                  setSelectedPost(post);
+                }}
+              />
+            );
+          })}
 
           {/* Loading overlay for posts */}
           {loading && filteredPosts.length === 0 && (
