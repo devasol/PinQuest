@@ -1,5 +1,10 @@
 # PinQuest: A Precision-Engineered Social Exploration Ecosystem
 
+[![Live Demo](https://img.shields.io/badge/Demo-Live%20Now-emerald?style=for-the-badge&logo=render&logoColor=white)](https://pinquest-app.onrender.com/)
+[![React](https://img.shields.io/badge/Frontend-React%2019-blue?style=for-the-badge&logo=react)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Backend-Node.js-green?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/Database-MongoDB-darkgreen?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
+
 PinQuest is a sophisticated, full-stack social mapping platform designed for high-performance geographical discovery and community interaction. It leverages the MERN stack—MongoDB, Express.js, React, and Node.js—augmented by real-time WebSocket communication and a specialized design system to provide an immersive, premium user experience.
 
 The platform is engineered to handle complex spatial data with high precision, ensuring that the digital representation of landmarks correlates exactly with real-world coordinates through advanced layout management and coordinate projection logic.
