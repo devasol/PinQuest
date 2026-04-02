@@ -1842,45 +1842,75 @@ const DiscoverMain = () => {
 
 
   if (error && !errorDismissed) {
-    const isNetworkError = error.includes('load failed') || error.includes('Failed to fetch') || error.includes('Unable to connect');
+    const isNetworkError = error?.includes('load failed') || error?.includes('Failed to fetch') || error?.includes('Unable to connect');
     
     return (
-      <div className="min-h-screen bg-gray-900/40 backdrop-blur-md fixed inset-0 z-[60000] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[60000] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xl transition-all duration-500">
         <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center p-8 bg-white rounded-2xl shadow-2xl max-w-md w-full relative border border-gray-100"
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", duration: 0.7, bounce: 0.4 }}
+          className="relative w-full max-w-lg overflow-hidden bg-white/90 dark:bg-slate-900/80 rounded-[2rem] border border-white/40 dark:border-slate-700/50 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
         >
-          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <X className="w-8 h-8 text-red-500" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Connection Issue</h2>
-          <p className="text-gray-600 mb-6">
-            {isNetworkError 
-              ? "The server is currently waking up or unreachable. This is common on free hosting during initial load. Please wait 30 seconds and try again."
-              : error}
-          </p>
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => {
-                setError(null);
-                fetchPosts();
-              }}
-              className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
-            >
-              Try to Reconnect
-            </button>
-            <button
-              onClick={() => setErrorDismissed(true)}
-              className="w-full px-6 py-3 bg-gray-100 text-gray-600 font-medium rounded-xl hover:bg-gray-200 transition-all"
-            >
-              Explore Offline mode
-            </button>
-          </div>
+          {/* Ambient Background Glows */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 dark:bg-red-500/20 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
           
-          <p className="mt-6 text-[10px] text-gray-400 uppercase tracking-widest font-bold">
-            Technical Details: {error}
-          </p>
+          <div className="relative p-8 sm:p-12 flex flex-col items-center text-center">
+            {/* Icon Container */}
+            <motion.div 
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.15, type: "spring", stiffness: 200, damping: 15 }}
+              className="w-24 h-24 mb-6 rounded-[1.5rem] bg-gradient-to-tr from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-100 dark:border-red-500/20 flex items-center justify-center shadow-inner relative group"
+            >
+              <div className="absolute inset-0 bg-red-500/10 dark:bg-red-500/20 rounded-[1.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <X className="w-12 h-12 text-red-500 dark:text-red-400 relative z-10" strokeWidth={2.5} />
+            </motion.div>
+            
+            {/* Header Text */}
+            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-4">
+              Connection <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-500">Lost</span>
+            </h2>
+            
+            {/* Body Text */}
+            <p className="text-slate-600 dark:text-slate-300 text-[15px] sm:text-base leading-relaxed mb-10 max-w-[280px] sm:max-w-sm mx-auto font-medium">
+              {isNetworkError 
+                ? "Our servers are currently waking up from hibernation. This usually takes about 30 seconds."
+                : error}
+            </p>
+            
+            {/* Actions */}
+            <div className="w-full flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={() => {
+                  setError(null);
+                  fetchPosts();
+                }}
+                className="group relative flex-1 inline-flex items-center justify-center px-6 py-4 text-[15px] font-bold text-white transition-all bg-gray-900 dark:bg-white dark:text-slate-900 rounded-2xl hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-gray-900/20 dark:shadow-white/20 overflow-hidden"
+              >
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 dark:via-black/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+                <span className="relative flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                  Try to Reconnect
+                </span>
+              </button>
+              
+              <button
+                onClick={() => setErrorDismissed(true)}
+                className="group flex-1 inline-flex items-center justify-center px-6 py-4 text-[15px] font-bold text-slate-700 dark:text-slate-200 transition-all bg-slate-100/80 dark:bg-slate-800/60 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 hover:scale-[1.02] active:scale-[0.98] border border-transparent hover:border-slate-300/50 dark:hover:border-slate-600/50"
+              >
+                <span className="group-hover:-translate-x-1 transition-transform duration-300">Offline Mode</span>
+              </button>
+            </div>
+            
+            {/* Footer Details */}
+            <div className="mt-8 pt-6 w-full border-t border-slate-200/60 dark:border-slate-700/50 overflow-hidden">
+               <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate w-full text-center hover:whitespace-normal hover:text-clip transition-all duration-300">
+                ERR: {error}
+              </p>
+            </div>
+          </div>
         </motion.div>
       </div>
     );
