@@ -11,7 +11,7 @@ import EnhancedSidebarWindows from './EnhancedSidebarWindows';
 import PostCreationForm from './PostCreationForm';
 
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users, Bell, User, Check, LogOut } from 'lucide-react';
+import { Search, Filter, MapPin, Heart, Star, Grid3X3, ThumbsUp, X, SlidersHorizontal, Navigation, Bookmark, Plus, ChevronDown, ChevronUp, TrendingUp, Award, Globe, Users, Bell, User, Check, LogOut, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './DiscoverMain.css';
 import './MapView.css'; // Import map styles to prevent black tile flash on drag
@@ -2184,11 +2184,11 @@ const DiscoverMain = () => {
                           animate={{ opacity: 1, y: 0 }}
                           className="text-3xl font-black italic uppercase tracking-tighter text-white font-jakarta"
                         >
-                          Synchronizing <span className="text-blue-400">Nexus</span>
+                          Loading <span className="text-blue-400">Map</span>
                         </motion.h2>
                         
                         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400/80 font-jakarta ml-1">
-                          Global Coordinate Mesh
+                          Retrieving Locations
                         </p>
                       </div>
                       
