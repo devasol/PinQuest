@@ -4,6 +4,7 @@ import { directAuthApi } from '../services/authApi';
 import { getRedirectResult } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { API_BASE_URL } from '../utils/config';
+import { connectSocket, disconnectSocket } from '../services/socketService';
 
 const AuthContext = createContext();
 
@@ -19,6 +20,36 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const exchangeFirebaseToken = async (firebaseToken) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/firebase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ firebaseToken }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.status === 'success') {
+        return {
+          success: true,
+          user: data.data,
+          token: data.data.token
+        };
+      } else {
+        throw new Error(data.message || 'Token exchange failed');
+      }
+    } catch (error) {
+      console.error('Firebase token exchange error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  };
 
   // Check if user is logged in on initial load and handle redirect results
   useEffect(() => {
@@ -59,26 +90,14 @@ export const AuthProvider = ({ children }) => {
                 setIsAuthenticated(true);
               } catch (error) {
                 console.error('Error parsing stored user:', error);
+                localStorage.removeItem('token');
+                localStorage.removeItem('firebaseUser');
               }
             }
           }
         }
       } catch (error) {
         console.error('Error handling redirect result:', error);
-        // Fallback to checking stored token if redirect result fails
-        const token = localStorage.getItem('token');
-        if (token) {
-          const storedUser = localStorage.getItem('firebaseUser');
-          if (storedUser) {
-            try {
-              const parsedUser = JSON.parse(storedUser);
-              setUser(parsedUser);
-              setIsAuthenticated(true);
-            } catch (error) {
-              console.error('Error parsing stored user:', error);
-            }
-          }
-        }
       } finally {
         setLoading(false);
       }
@@ -94,7 +113,6 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const { connectSocket, disconnectSocket } = require('../services/socketService');
     const socket = connectSocket(token);
 
     // Identify user to receive targeted events
@@ -137,37 +155,6 @@ export const AuthProvider = ({ children }) => {
     };
   }, [user, isAuthenticated]);
 
-  const exchangeFirebaseToken = async (firebaseToken) => {
-    const apiBase = API_BASE_URL;
-    
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/firebase`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ firebaseToken }),
-      });
-
-      const data = await response.json();
-      
-      if (response.ok && data.status === 'success') {
-        return {
-          success: true,
-          user: data.data,
-          token: data.data.token
-        };
-      } else {
-        throw new Error(data.message || 'Token exchange failed');
-      }
-    } catch (error) {
-      console.error('Firebase token exchange error:', error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  };
 
   const login = async (email, password) => {
     try {

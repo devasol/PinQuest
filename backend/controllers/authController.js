@@ -455,11 +455,15 @@ const firebaseAuthLogin = async (req, res) => {
     }
 
 
+    // Use sub as the UID from standard Firebase/Google ID tokens
+    const uid = decodedToken.sub || decodedToken.uid;
+    const email = decodedToken.email;
+
     // Check if user exists in our database
     let user = await User.findOne({
       $or: [
-        { googleId: decodedToken.uid }, // For Google auth users
-        { email: decodedToken.email }, // For email/password users
+        { googleId: uid }, // For Google auth users
+        { email: email }, // For email/password users
       ],
     });
 
@@ -467,13 +471,13 @@ const firebaseAuthLogin = async (req, res) => {
       // Create a new user if they don't exist
       // For Google users, we'll create a random password since OAuth users don't have passwords
       const userData = {
-        googleId: decodedToken.uid,
-        email: decodedToken.email,
+        googleId: uid,
+        email: email,
         name:
           decodedToken.name ||
           decodedToken.displayName ||
-          decodedToken.email.split("@")[0] ||
-          decodedToken.uid,
+          email.split("@")[0] ||
+          uid,
         avatar: decodedToken.picture
           ? { url: decodedToken.picture }
           : undefined,
@@ -482,7 +486,7 @@ const firebaseAuthLogin = async (req, res) => {
 
       // Since this is a Google/Firebase user (has googleId), we set a random password to satisfy schema requirements
       // OAuth users won't actually use this password for authentication
-      if (decodedToken.uid) {
+      if (uid) {
         // Generate a random password for OAuth users (they won't use it)
         const randomPassword =
           Math.random().toString(36).slice(-8) +
