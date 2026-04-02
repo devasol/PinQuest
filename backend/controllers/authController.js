@@ -433,172 +433,27 @@ const firebaseAuthLogin = async (req, res) => {
 
     logger.info("Firebase token exchange attempt");
 
-    // Import Firebase Admin SDK inside the function to avoid conflicts
-    const { initializeApp, cert } = require("firebase-admin/app");
-    const { getAuth } = require("firebase-admin/auth");
+    const { verifyFirebaseToken } = require("../utils/firebaseUtils");
 
-    // Initialize Firebase Admin SDK if credentials are properly configured
-    let app;
     let decodedToken;
     let isVerifiedToken = false;
 
-    // Check if we have the required Firebase credentials
-    if (
-      process.env.FIREBASE_PRIVATE_KEY &&
-      process.env.FIREBASE_PROJECT_ID &&
-      process.env.FIREBASE_CLIENT_EMAIL
-    ) {
-      try {
-        // Replace escaped newlines in the private key and ensure proper format
-        let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-        // Handle different possible formats of the private key
-        if (typeof privateKey === "string") {
-          // Replace escaped newlines with actual newlines
-          privateKey = privateKey.replace(/\\n/g, "\n").replace(/\\r/g, "\r");
-
-          // Ensure the private key starts and ends correctly
-          if (!privateKey.startsWith("-----BEGIN PRIVATE KEY-----")) {
-            privateKey = "-----BEGIN PRIVATE KEY-----\n" + privateKey;
-          }
-          if (!privateKey.endsWith("-----END PRIVATE KEY-----\n")) {
-            privateKey = privateKey + "\n-----END PRIVATE KEY-----\n";
-          }
-        }
-
-        // Validate that the private key looks like a proper PEM format
-        if (
-          !privateKey.includes("-----BEGIN PRIVATE KEY-----") ||
-          !privateKey.includes("-----END PRIVATE KEY-----")
-        ) {
-          logger.error(
-            "Invalid Firebase private key format: key does not contain proper PEM boundaries"
-          );
-          
-          // If the private key format is invalid, try development fallback
-          logger.warn(
-            "Invalid Firebase private key format, attempting development fallback. THIS IS NOT SECURE FOR PRODUCTION!"
-          );
-        } else {
-          // Check if app is already initialized
-          const firebaseApps = require("firebase-admin/app").getApps();
-          const existingApp = firebaseApps.find(
-            (app) => app && app.name === "firebase-auth"
-          );
-
-          if (existingApp) {
-            app = existingApp;
-          } else {
-            app = initializeApp(
-              {
-                credential: cert({
-                  projectId: process.env.FIREBASE_PROJECT_ID,
-                  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                  privateKey: privateKey,
-                }),
-              },
-              "firebase-auth"
-            ); // Use a specific name for the app instance
-          }
-
-          // Verify the Firebase ID token properly using Firebase Admin SDK
-          const auth = getAuth(app);
-          decodedToken = await auth.verifyIdToken(firebaseToken);
-          logger.debug("Firebase token verified successfully", {
-            userId: decodedToken.uid,
-            email: decodedToken.email,
-            isEmailVerified: decodedToken.email_verified,
-          });
-          isVerifiedToken = true;
-        }
-      } catch (verificationError) {
-        logger.error(
-          "Firebase token verification failed with Admin SDK:",
-          verificationError.message
-        );
-        logger.error("Token verification error details:", {
-          code: verificationError.code,
-          stack: verificationError.stack
-        });
-        
-        // If Firebase Admin SDK verification fails, try development fallback
-        logger.warn(
-          "Firebase Admin SDK verification failed, attempting development fallback. THIS IS NOT SECURE FOR PRODUCTION!"
-        );
-      }
+    try {
+      // Securely verify the Firebase ID token using Google's public keys
+      decodedToken = await verifyFirebaseToken(firebaseToken);
+      logger.info('Firebase token verified successfully during exchange', { 
+        userId: decodedToken.uid || decodedToken.sub, 
+        email: decodedToken.email 
+      });
+      isVerifiedToken = true;
+    } catch (authError) {
+      logger.error('Firebase token verification failed during exchange:', authError.message);
+      return res.status(401).json({
+        status: "fail",
+        message: "Invalid or expired Firebase token: " + authError.message,
+      });
     }
 
-    // If token hasn't been decoded yet (either Admin SDK failed or credentials not configured)
-    if (!decodedToken) {
-      // DEVELOPMENT FALLBACK: Try to decode the token manually
-      // This is NOT secure and should only be used for development purposes
-      try {
-        // In a real Firebase token, the payload is the second part of the JWT
-        // Split the token into parts and decode the payload
-        const tokenParts = firebaseToken.split(".");
-        if (tokenParts.length !== 3) {
-          throw new Error("Invalid token format - Firebase token should have 3 parts separated by dots");
-        }
-
-        // Decode the payload (second part)
-        // Firebase JWT tokens use base64url encoding, not standard base64
-        let payloadPart = tokenParts[1];
-        
-        // Add proper padding for base64 decoding if needed
-        const padding = 4 - (payloadPart.length % 4);
-        if (padding !== 4) {
-          payloadPart += '='.repeat(padding);
-        }
-        
-        // Replace URL-safe characters back to standard base64
-        payloadPart = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
-        
-        const payload = JSON.parse(
-          Buffer.from(payloadPart, 'base64').toString()
-        );
-
-        // For Google tokens, the fields might be named differently
-        // Try different possible field names
-        const uid = payload.sub || payload.user_id || payload.uid;
-        const email = payload.email;
-        
-        if (!uid || !email) {
-          logger.debug("Token payload fields:", payload);
-          throw new Error(
-            "Token does not contain required fields (uid, email). Missing fields: " + 
-            (uid ? "" : "uid ") + (email ? "" : "email")
-          );
-        }
-
-        // For development, we'll accept this as decoded if it has the basic fields
-        decodedToken = {
-          uid: uid,
-          email: email,
-          name: payload.name,
-          picture: payload.picture,
-          email_verified: payload.email_verified || payload.emailVerified || false,
-          displayName: payload.name,
-          ...payload // Include all original payload data
-        };
-        
-        logger.debug("Firebase token decoded in development mode", {
-          userId: decodedToken.uid,
-          email: decodedToken.email,
-          isEmailVerified: decodedToken.email_verified,
-        });
-        isVerifiedToken = false; // Mark as not verified since we didn't use proper Firebase verification
-      } catch (decodeError) {
-        logger.error(
-          "Firebase token decoding failed in development mode:",
-          decodeError.message
-        );
-        logger.error("Failed token (first 50 chars):", firebaseToken.substring(0, 50) + "...");
-        return res.status(401).json({
-          status: "fail",
-          message: "Invalid or expired Firebase token. Error: " + decodeError.message,
-        });
-      }
-    }
 
     // Check if user exists in our database
     let user = await User.findOne({

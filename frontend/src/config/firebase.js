@@ -3,13 +3,13 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAslFpF-R3gQxobqJ23HO7-dATiQjlZRes",
-  authDomain: "pin-quest-595fb.firebaseapp.com",
-  projectId: "pin-quest-595fb",
-  storageBucket: "pin-quest-595fb.firebasestorage.app",
-  messagingSenderId: "1033153541677",
-  appId: "1:1033153541677:web:5b80aa5aab02da1f25aaa4",
-  measurementId: "G-QNNZ25NLNP",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
