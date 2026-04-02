@@ -47,38 +47,29 @@ const Header = ({ isDiscoverPage = false }) => {
     // Fetch notifications on mount and periodically
     const fetchNotifications = async () => {
       try {
+        // Dynamically import apiRequest to avoid circular dependencies
+        const { apiRequest } = await import('../../../services/api.jsx');
+        
         // Fetch unread count
-        const countResponse = await fetch(
-          `${API_BASE_URL}/notifications/unread-count`,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        );
-        if (countResponse.ok) {
-          const countData = await countResponse.json();
-          setUnreadCount(countData.data?.count || 0);
+        const countResponse = await apiRequest('/notifications/unread-count', {
+           method: 'GET'
+        });
+        
+        if (countResponse && countResponse.status === 'success') {
+          setUnreadCount(countResponse.data?.count || 0);
         } else {
-          console.error('Failed to fetch unread count:', countResponse.status, countResponse.statusText);
+          console.error('Failed to fetch unread count:', countResponse);
         }
 
         // Fetch recent notifications to display in dropdown
-        const notifResponse = await fetch(
-          `${API_BASE_URL}/notifications?page=1&limit=5`,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          }
-        );
-        if (notifResponse.ok) {
-          const notifData = await notifResponse.json();
-          setNotifications(notifData.data?.notifications || []);
+        const notifResponse = await apiRequest('/notifications?page=1&limit=5', {
+           method: 'GET'
+        });
+        
+        if (notifResponse && notifResponse.status === 'success') {
+          setNotifications(notifResponse.data?.notifications || []);
         } else {
-          console.error('Failed to fetch notifications:', notifResponse.status, notifResponse.statusText);
+          console.error('Failed to fetch notifications:', notifResponse);
         }
       } catch (error) {
         console.error("Error fetching notifications:", error);
