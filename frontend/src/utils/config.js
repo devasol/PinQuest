@@ -41,6 +41,9 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+// Log the active API endpoint for debugging
+console.log('🚀 PinQuest API initialized at:', API_BASE_URL);
+
 // Timeout configuration (in milliseconds)
 // Increased to 50 seconds to account for free-tier backend cold starts (Render/Vercel)
 export const API_TIMEOUT = 50000;

@@ -59,7 +59,9 @@ const MapClickHandler = ({ onMapClick, onMapPositionSelected }) => {
 const DiscoverMain = () => {
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(false); // Don't block initial render
+  const [loading, setLoading] = useState(false); // Controlled by initial fetch
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // Track first-ever load
+  const [retryStatus, setRetryStatus] = useState(null); // Track retry attempts for UI
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [mapType, setMapType] = useState('street'); // street, satellite, terrain, dark, light, topographic, navigation, cycle, google
@@ -683,8 +685,11 @@ const DiscoverMain = () => {
         cache: 'default',
         signal: controller.signal
       });
-
+      
       clearTimeout(timeoutId);
+
+      // If we made it here, the connection succeeded
+      setRetryStatus(null);
 
       if (!response.ok) {
         // Handle 429 specifically to avoid UI spam
@@ -823,34 +828,44 @@ const DiscoverMain = () => {
       console.error("Error fetching posts:", err);
 
       // Auto-retry logic for "Load failed" or general network errors
-      // Limit retries to prevent infinite loops if server is completely down
       if (!preserveSelectedPost && (err.message.includes('load failed') || err.message.includes('Failed to fetch')) && retryCountRef.current < MAX_RETRIES) {
         retryCountRef.current++;
+        setRetryStatus(`Attempt ${retryCountRef.current} of ${MAX_RETRIES}...`);
+        
+        // Don't call setLoading(false) yet to avoid flickering
         console.log(`Network error detected. Retry ${retryCountRef.current}/${MAX_RETRIES} in 3 seconds...`);
+        
         setTimeout(() => {
           fetchPosts(null, limit);
         }, 3000);
-        return; // Exit current execution and wait for retry
+        return; // Exit and wait for the retried call to finish
       }
 
       // Provide more user-friendly error message based on error type
       if (err.name === 'AbortError') {
-        setError("Request timed out. The server might be taking longer than usual to wake up (Render cold-start). Please wait a few seconds and try 'Try to Reconnect'.");
+        setError("Request timed out. The server might be taking longer than usual to wake up (Render cold-start). This is common on free-tier hosting. Please wait a moment.");
       } else if (err.message.includes('Failed to fetch') || err.message.includes('load failed')) {
-        setError("Unable to connect to the server. The server may be waking up (Render cold-start) or unreachable. This is common on free hosting. Please wait a moment and try again.");
+        setError(`Unable to connect to the server at ${API_BASE_URL.split('/api')[0]}. The server may be waking up (Render cold-start) or unreachable. This is common on free hosting.`);
       } else if (err.message.includes('Too many requests')) {
         console.log("Rate limit exceeded. Slowing down requests...");
       } else {
         setError("Failed to load posts: " + err.message);
       }
       setPosts([]);
-
-      // Set error dismissed state to false since an error occurred
       setErrorDismissed(false);
     } finally {
-      // Reset the flag and loading state
+      // Reset the fetch flag
       fetchPostsRef.current = false;
-      setLoading(false);
+      
+      // ONLY set loading to false if we are NOT in the middle of a retry
+      // This prevents the flickering "again and again" effect
+      const isRetrying = retryCountRef.current > 0 && retryCountRef.current < MAX_RETRIES;
+      
+      if (!isRetrying) {
+        setLoading(false);
+        setIsInitialLoading(false);
+        setRetryStatus(null);
+      }
     }
   }, []); // Empty dependency array since we're using ref to track state
 
@@ -2096,16 +2111,16 @@ const DiscoverMain = () => {
 
           {/* Premium Loading Overlay for Map Data */}
           <AnimatePresence>
-            {loading && filteredPosts.length === 0 && (
+            {(loading || isInitialLoading) && filteredPosts.length === 0 && (
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-slate-900/40 backdrop-blur-md z-[49999] flex items-center justify-center p-6"
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl z-[49999] flex items-center justify-center p-6"
               >
                 <div className="relative max-w-sm w-full">
                   {/* Modern Pulsing Background Glow */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-blue-500/20 blur-[60px] rounded-full animate-pulse" />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full animate-pulse" />
                   
                   <div className="relative text-center">
                     <div className="relative inline-block mb-8">
@@ -2123,56 +2138,72 @@ const DiscoverMain = () => {
                         }}
                         className="relative z-10"
                       >
-                        <MapPin className="h-16 w-16 text-blue-400 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]" strokeWidth={1.5} />
+                        <MapPin className="h-20 w-20 text-blue-400 drop-shadow-[0_0_20px_rgba(96,165,250,0.6)]" strokeWidth={1} />
                       </motion.div>
                       
                       {/* Realistic floor shadow */}
                       <motion.div
                         animate={{ 
                           scale: [1, 0.6, 1],
-                          opacity: [0.3, 0.15, 0.3]
+                          opacity: [0.3, 0.1, 0.3]
                         }}
                         transition={{ 
                           repeat: Infinity, 
                           duration: 1.5,
                           ease: "easeInOut"
                         }}
-                        className="mx-auto mt-2 h-1.5 w-8 bg-slate-900/50 rounded-[100%] blur-[2px]"
+                        className="mx-auto mt-2 h-2 w-10 bg-slate-950/50 rounded-[100%] blur-[3px]"
                       />
                     </div>
 
-                    <div className="space-y-4">
-                      <motion.h2 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-2xl font-black italic uppercase tracking-tighter text-white font-jakarta"
-                      >
-                        Synchronizing <span className="text-blue-400">Nexus</span>
-                      </motion.h2>
-                      
-                      <div className="flex flex-col items-center gap-1.5">
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 font-jakarta">
-                          Scanning Global Coordinates
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <motion.h2 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-3xl font-black italic uppercase tracking-tighter text-white font-jakarta"
+                        >
+                          Synchronizing <span className="text-blue-400">Nexus</span>
+                        </motion.h2>
+                        
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400/80 font-jakarta ml-1">
+                          Global Coordinate Mesh
                         </p>
-                        <div className="flex gap-1">
-                          {[0, 1, 2].map((i) => (
-                            <motion.div
-                              key={i}
-                              animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-                              transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-                              className="w-1 h-1 bg-blue-400 rounded-full"
-                            />
-                          ))}
-                        </div>
                       </div>
                       
-                      <div className="pt-4 max-w-[240px] mx-auto">
-                        <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/10 backdrop-blur-sm">
+                          <div className="relative w-2 h-2">
+                            <motion.div 
+                              animate={{ scale: [1, 1.8, 1], opacity: [1, 0, 1] }} 
+                              transition={{ repeat: Infinity, duration: 1.5 }}
+                              className="absolute inset-0 bg-blue-400 rounded-full"
+                            />
+                            <div className="absolute inset-0 bg-blue-400 rounded-full" />
+                          </div>
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-slate-300">
+                            {retryStatus || "Initializing Secure Link..."}
+                          </span>
+                        </div>
+
+                        {retryStatus && (
+                          <motion.p 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="text-[9px] text-slate-500 uppercase tracking-widest italic"
+                          >
+                            Backend node waking up from sleep...
+                          </motion.p>
+                        )}
+                      </div>
+                      
+                      <div className="pt-2 max-w-[200px] mx-auto">
+                        <div className="h-0.5 w-full bg-white/5 rounded-full overflow-hidden">
                           <motion.div 
                             initial={{ x: "-100%" }}
                             animate={{ x: "100%" }}
-                            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                            className="h-full w-1/3 bg-gradient-to-r from-transparent via-blue-400 to-transparent shadow-[0_0_10px_rgba(96,165,250,0.8)]"
+                            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                            className="h-full w-1/2 bg-gradient-to-r from-transparent via-blue-400 to-transparent shadow-[0_0_15px_rgba(96,165,250,0.8)]"
                           />
                         </div>
                       </div>
