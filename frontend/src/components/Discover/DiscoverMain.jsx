@@ -477,10 +477,67 @@ const DiscoverMain = () => {
     });
 
     // Handle post deletion events - remove deleted posts from all states
-    socket.on('post-deleted', (deletedPostId) => {
+    socket.on('post-deleted', (data) => {
+      const deletedPostId = data?.postId || data;
+      console.log('Socket event: post-deleted', deletedPostId);
+      
+      // Update posts state to remove the deleted post
+      setPosts(prevPosts => prevPosts.filter(p => (p._id || p.id) !== deletedPostId));
+      
       // Also close the selected post if it's the one being deleted
-      if (selectedPost && selectedPost._id === deletedPostId) {
+      if (selectedPostRef.current && (selectedPostRef.current._id === deletedPostId || selectedPostRef.current.id === deletedPostId)) {
         setSelectedPost(null);
+      }
+    });
+
+    // Handle post update events - update posts in real-time
+    socket.on('post-updated', (data) => {
+      const updatedPost = data?.post || data;
+      if (!updatedPost || !updatedPost._id) return;
+      console.log('Socket event: post-updated', updatedPost._id);
+      
+      setPosts(prevPosts => {
+        const existingIndex = prevPosts.findIndex(p => (p._id || p.id) === updatedPost._id);
+        
+        // If post exists in local state
+        if (existingIndex !== -1) {
+          // If it's still published, update it
+          if (!updatedPost.status || updatedPost.status === 'published') {
+            return prevPosts.map(p => (p._id || p.id) === updatedPost._id ? { ...p, ...updatedPost } : p);
+          } 
+          // If it's no longer published (e.g. rejected by admin), remove it from user view
+          else {
+            return prevPosts.filter(p => (p._id || p.id) !== updatedPost._id);
+          }
+        } 
+        // If post doesn't exist but is now published, add it
+        else if (updatedPost.status === 'published') {
+          // We need to transform it to the format expected by our app
+          // This transformation logic is similar to what's in fetchPosts
+          let position;
+          if (updatedPost.location?.coordinates && Array.isArray(updatedPost.location.coordinates)) {
+            position = [updatedPost.location.coordinates[1], updatedPost.location.coordinates[0]];
+          } else if (updatedPost.location?.latitude && updatedPost.location?.longitude) {
+            position = [updatedPost.location.latitude, updatedPost.location.longitude];
+          }
+
+          const transformed = {
+            ...updatedPost,
+            id: updatedPost._id,
+            position: position
+          };
+          return [transformed, ...prevPosts];
+        }
+        return prevPosts;
+      });
+      
+      // Update selected post if it's the one being modified
+      if (selectedPostRef.current && (selectedPostRef.current._id === updatedPost._id || selectedPostRef.current.id === updatedPost._id)) {
+        if (updatedPost.status && updatedPost.status !== 'published') {
+          setSelectedPost(null);
+        } else {
+          setSelectedPost(prev => ({ ...prev, ...updatedPost }));
+        }
       }
     });
 

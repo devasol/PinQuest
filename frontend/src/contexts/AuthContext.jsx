@@ -87,6 +87,56 @@ export const AuthProvider = ({ children }) => {
     handleRedirectResult();
   }, []);
 
+  // Real-time account level socket events
+  useEffect(() => {
+    if (!user || !isAuthenticated) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const { connectSocket, disconnectSocket } = require('../services/socketService');
+    const socket = connectSocket(token);
+
+    // Identify user to receive targeted events
+    socket.emit('join-user-room', user._id);
+
+    // Global listener for account deletion
+    socket.on('user-deleted', (data) => {
+      console.log('Account deleted by admin:', data.message);
+      alert(data.message || 'Your account has been deleted by an administrator.');
+      logout();
+    });
+
+    // Global listener for account ban
+    socket.on('ban-status-updated', (data) => {
+      if (data.isBanned) {
+        console.log('Account banned by admin:', data.message);
+        alert(data.message || 'Your account has been banned by an administrator.');
+        logout();
+      } else {
+        console.log('Account unbanned by admin:', data.message);
+      }
+    });
+
+    // Global listener for role updates
+    socket.on('role-updated', (data) => {
+      console.log('Role updated by admin:', data.message);
+      setUser(prev => ({ ...prev, role: data.role }));
+      const storedUser = localStorage.getItem('firebaseUser');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        parsed.role = data.role;
+        localStorage.setItem('firebaseUser', JSON.stringify(parsed));
+      }
+    });
+
+    return () => {
+      socket.off('user-deleted');
+      socket.off('ban-status-updated');
+      socket.off('role-updated');
+    };
+  }, [user, isAuthenticated]);
+
   const exchangeFirebaseToken = async (firebaseToken) => {
     const apiBase = API_BASE_URL;
     

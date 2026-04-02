@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const { deleteImageFromCloudinary } = require('../utils/mediaUtils');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { getAllPostsForAdmin, deletePostByAdmin } = require('../controllers/postController');
+const { emitGlobal, emitToPost } = require('../utils/socketUtils');
 const router = express.Router();
 
 // @desc    Initialize admin user (only works if no admin exists)
@@ -293,6 +294,15 @@ const deleteUser = async (req, res) => {
       message: 'User deleted successfully',
       data: null,
     });
+
+    // Emit socket event to the deleted user room
+    const io = req.app.get("io");
+    if (io) {
+      const { emitToUser } = require('../utils/socketUtils');
+      emitToUser(io, req.params.id, "user-deleted", {
+         message: "Your account has been deleted by an administrator."
+      });
+    }
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({
@@ -358,6 +368,15 @@ const updatePost = async (req, res) => {
 
     await post.save();
 
+    // Emit real-time event for updated post
+    const io = req.app.get("io");
+    if (io) {
+      emitGlobal(io, "post-updated", {
+        post: post,
+        message: "A post was updated by admin",
+      });
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'Post updated successfully',
@@ -391,6 +410,15 @@ const approvePost = async (req, res) => {
     post.status = 'published';
     await post.save();
 
+    // Emit real-time event for approved post
+    const io = req.app.get("io");
+    if (io) {
+      emitGlobal(io, "post-updated", {
+        post: post,
+        message: "A post was approved by admin",
+      });
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'Post approved successfully',
@@ -423,6 +451,15 @@ const rejectPost = async (req, res) => {
     // Update post status to rejected
     post.status = 'rejected';
     await post.save();
+
+    // Emit real-time event for rejected post (hide it from users)
+    const io = req.app.get("io");
+    if (io) {
+      emitGlobal(io, "post-deleted", {
+        postId: post._id,
+        message: "A post was rejected and hidden by admin",
+      });
+    }
 
     res.status(200).json({
       status: 'success',
@@ -479,6 +516,15 @@ const deletePost = async (req, res) => {
     }
 
     await Post.findByIdAndDelete(req.params.id);
+
+    // Emit real-time event for deleted post
+    const io = req.app.get("io");
+    if (io) {
+      emitGlobal(io, "post-deleted", {
+        postId: req.params.id,
+        message: "A post was deleted by admin",
+      });
+    }
 
     res.status(200).json({
       status: 'success',
@@ -701,6 +747,16 @@ const updateUserRole = async (req, res) => {
         role: user.role
       }
     });
+
+    // Emit socket event to the user room
+    const io = req.app.get("io");
+    if (io) {
+      const { emitToUser } = require('../utils/socketUtils');
+      emitToUser(io, userId, "role-updated", {
+         role: user.role,
+         message: `Your role has been updated to ${user.role} by an administrator.`
+      });
+    }
   } catch (error) {
     console.error('Error updating user role:', error);
     res.status(500).json({
@@ -751,6 +807,18 @@ const banUser = async (req, res) => {
         isBanned: user.isBanned
       }
     });
+
+    // Emit socket event to the user room
+    const io = req.app.get("io");
+    if (io) {
+      const { emitToUser } = require('../utils/socketUtils');
+      emitToUser(io, userId, "ban-status-updated", {
+         isBanned: user.isBanned,
+         message: user.isBanned 
+            ? "Your account has been banned by an administrator." 
+            : "Your account has been unbanned by an administrator."
+      });
+    }
   } catch (error) {
     console.error('Error updating user ban status:', error);
     res.status(500).json({
