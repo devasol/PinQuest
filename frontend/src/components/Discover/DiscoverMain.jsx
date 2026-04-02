@@ -2308,61 +2308,6 @@ const DiscoverMain = () => {
         onClose={() => setShowAuthModal(false)} 
       />
 
-      {/* Premium Logout Confirmation Modal */}
-      <AnimatePresence>
-        {showLogoutModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 font-jakarta"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              className="bg-white border border-slate-200 shadow-2xl w-full max-w-sm overflow-hidden"
-              style={{ borderRadius: '4px' }}
-            >
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-10 h-10 rounded-[4px] bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0">
-                    <LogOut className="w-5 h-5 text-rose-500" strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black uppercase tracking-widest text-slate-900 leading-tight">Terminate Sync</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Disconnect from Nexus</p>
-                  </div>
-                </div>
-                
-                <p className="text-sm font-medium text-slate-600 mb-6 font-outfit">
-                  Are you sure you want to log out? You will need to re-authenticate to transmit new discovery pins to the network.
-                </p>
-
-                <div className="flex gap-3">
-                  <motion.button
-                    whileHover={{ backgroundColor: '#f8fafc' }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setShowLogoutModal(false)}
-                    className="flex-1 py-2.5 px-4 bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-[4px] transition-colors"
-                  >
-                    Cancel
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={confirmLogout}
-                    className="flex-[2] flex items-center justify-center gap-2 py-2.5 px-4 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-[4px] shadow-lg shadow-rose-500/30 hover:bg-rose-600 transition-colors"
-                  >
-                    <span>Disconnect</span>
-                    <LogOut className="w-3.5 h-3.5" strokeWidth={3} />
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Enhanced Sidebar Windows */}
       <EnhancedSidebarWindows
