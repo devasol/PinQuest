@@ -231,18 +231,22 @@ const DiscoverMain = () => {
   const [mobileBottomNavActive, setMobileBottomNavActive] = useState('');
   // Removed showBottomNav to ensure immersive map background
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const { showModal } = useModal();
   
   const handleLogout = () => {
-    setShowLogoutModal(true);
-  };
-
-  const confirmLogout = () => {
-    logout(); // Clear authentication state
-    setShowLogoutModal(false);
-    navigate("/"); // Redirect to home page after logout
+    showModal({
+      title: "End Session",
+      message: "Are you sure you want to log out of PinQuest? You will need to sign in again to create new posts or save locations.",
+      type: 'warning',
+      showCancelButton: true,
+      confirmText: 'Log Out',
+      cancelText: 'Stay Logged In',
+      onConfirm: () => {
+        logout();
+        navigate("/");
+      }
+    });
   };
 
 

@@ -163,7 +163,21 @@ const ProfilePage = () => {
               >
                   {isEditing ? 'Cancel' : 'Edit Profile'}
               </button>
-              <button onClick={logout} className="w-10 h-10 bg-rose-500 text-white flex items-center justify-center custom-rounded hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20">
+              <button 
+                onClick={() => showModal({
+                  title: "End Session",
+                  message: "Are you sure you want to log out? Any unsaved profile changes may be lost.",
+                  type: 'warning',
+                  showCancelButton: true,
+                  confirmText: 'Log Out',
+                  cancelText: 'Stay',
+                  onConfirm: () => {
+                    logout();
+                    navigate("/");
+                  }
+                })} 
+                className="w-10 h-10 bg-rose-500 text-white flex items-center justify-center custom-rounded hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20"
+              >
                   <LogOut className="w-4 h-4" />
               </button>
           </div>
