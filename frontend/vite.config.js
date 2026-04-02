@@ -27,13 +27,14 @@ export default defineConfig({
     open: true, // Automatically open browser on dev start
     port: 5173, // Default Vite port
     host: true, // Allow external connections
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
+    // Proxy is disabled so requests hit the VITE_API_BASE_URL (Render) instead of localhost
+    // proxy: {
+    //   '/api': {
+    //     target: 'http://localhost:5000',
+    //     changeOrigin: true,
+    //     secure: false,
+    //   },
+    // },
   },
   preview: {
     port: 4173,

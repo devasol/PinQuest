@@ -1,8 +1,8 @@
 // frontend/src/services/api.js
 import { toast } from 'react-toastify';
 
-// API base URL - should be consistent across the application
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+// API base URL - imported from centralized config
+import { API_BASE_URL } from '../utils/config';
 
 // Create a base API service with common functionality
 class ApiService {
