@@ -650,6 +650,8 @@ const DiscoverMain = () => {
 
   // Fetch posts from the backend API - with concurrency control
   const fetchPostsRef = useRef();
+  const retryCountRef = useRef(0);
+  const MAX_RETRIES = 3;
   const fetchPosts = useCallback(async (preserveSelectedPost = null, limit = 50) => {
     // Prevent multiple concurrent requests for the same data
     if (fetchPostsRef.current) {
@@ -809,6 +811,9 @@ const DiscoverMain = () => {
           // Combine fetched posts with local posts (local posts first since they're newer)
           return [...localPosts, ...validTransformedPosts];
         });
+
+        // Success - reset retry count
+        retryCountRef.current = 0;
       } else {
         console.error("Error: Invalid API response format", result);
         setError("Failed to load posts from server: Invalid response format");
@@ -818,13 +823,13 @@ const DiscoverMain = () => {
       console.error("Error fetching posts:", err);
 
       // Auto-retry logic for "Load failed" or general network errors
-      // This is helpful for Render's cold start where the first request might fail due to timeout/DNS
-      // Only retry if it's a network error and not an explicit abort or already retrying
-      if (!preserveSelectedPost && (err.message.includes('load failed') || err.message.includes('Failed to fetch'))) {
-        console.log("Network error detected. Retrying in 2 seconds...");
+      // Limit retries to prevent infinite loops if server is completely down
+      if (!preserveSelectedPost && (err.message.includes('load failed') || err.message.includes('Failed to fetch')) && retryCountRef.current < MAX_RETRIES) {
+        retryCountRef.current++;
+        console.log(`Network error detected. Retry ${retryCountRef.current}/${MAX_RETRIES} in 3 seconds...`);
         setTimeout(() => {
           fetchPosts(null, limit);
-        }, 2000);
+        }, 3000);
         return; // Exit current execution and wait for retry
       }
 
@@ -2089,16 +2094,94 @@ const DiscoverMain = () => {
             );
           })}
 
-          {/* Loading overlay for posts */}
-          {loading && filteredPosts.length === 0 && (
-            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[49999] flex items-center justify-center">
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-                <p className="text-xl font-medium text-gray-700">Loading map data...</p>
-                <p className="text-sm text-gray-500 mt-2">Discovering amazing places near you</p>
-              </div>
-            </div>
-          )}
+          {/* Premium Loading Overlay for Map Data */}
+          <AnimatePresence>
+            {loading && filteredPosts.length === 0 && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-900/40 backdrop-blur-md z-[49999] flex items-center justify-center p-6"
+              >
+                <div className="relative max-w-sm w-full">
+                  {/* Modern Pulsing Background Glow */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-blue-500/20 blur-[60px] rounded-full animate-pulse" />
+                  
+                  <div className="relative text-center">
+                    <div className="relative inline-block mb-8">
+                      {/* Unique custom SVG map pin animation */}
+                      <motion.div
+                        animate={{ 
+                          y: [0, -15, 0],
+                          scaleX: [1, 1.1, 1],
+                          scaleY: [1, 0.9, 1]
+                        }}
+                        transition={{ 
+                          repeat: Infinity, 
+                          duration: 1.5,
+                          ease: "easeInOut"
+                        }}
+                        className="relative z-10"
+                      >
+                        <MapPin className="h-16 w-16 text-blue-400 drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]" strokeWidth={1.5} />
+                      </motion.div>
+                      
+                      {/* Realistic floor shadow */}
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 0.6, 1],
+                          opacity: [0.3, 0.15, 0.3]
+                        }}
+                        transition={{ 
+                          repeat: Infinity, 
+                          duration: 1.5,
+                          ease: "easeInOut"
+                        }}
+                        className="mx-auto mt-2 h-1.5 w-8 bg-slate-900/50 rounded-[100%] blur-[2px]"
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <motion.h2 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-2xl font-black italic uppercase tracking-tighter text-white font-jakarta"
+                      >
+                        Synchronizing <span className="text-blue-400">Nexus</span>
+                      </motion.h2>
+                      
+                      <div className="flex flex-col items-center gap-1.5">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 font-jakarta">
+                          Scanning Global Coordinates
+                        </p>
+                        <div className="flex gap-1">
+                          {[0, 1, 2].map((i) => (
+                            <motion.div
+                              key={i}
+                              animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                              transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+                              className="w-1 h-1 bg-blue-400 rounded-full"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="pt-4 max-w-[240px] mx-auto">
+                        <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ x: "-100%" }}
+                            animate={{ x: "100%" }}
+                            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                            className="h-full w-1/3 bg-gradient-to-r from-transparent via-blue-400 to-transparent shadow-[0_0_10px_rgba(96,165,250,0.8)]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Render markers for saved locations when toggle is enabled */}
           {isAuthenticated && showSavedLocationsOnMap && savedLocations.map((savedLocation) => {
