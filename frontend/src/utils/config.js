@@ -1,51 +1,84 @@
 /**
  * Centralized configuration for the PinQuest frontend.
- * This handles environment-aware constants like API URLs.
+ * Handles environment-aware API URLs for local dev, Vercel, and Render.
  */
 
-// Deployment specific backend URL
-const PRODUCTION_API_URL = 'https://pinquest.onrender.com/api/v1';
+// Fallback when no env is set (legacy Render deployment)
+const RENDER_API_URL = 'https://pinquest.onrender.com/api/v1';
+
+const normalizeApiUrl = (url) => url.replace(/\/+$/, '');
+
+/**
+ * Returns true when envUrl points at the same host as the page but is not an API path
+ * (common misconfiguration: VITE_API_BASE_URL set to the frontend Vercel URL).
+ */
+const isFrontendMisconfiguration = (envUrl) => {
+  if (typeof window === 'undefined' || !envUrl) return false;
+
+  try {
+    const resolved = new URL(envUrl, window.location.origin);
+    const sameHost = resolved.hostname === window.location.hostname;
+    const hasApiPath = resolved.pathname.startsWith('/api');
+    return sameHost && !hasApiPath;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Dynamically determines the API base URL based on the current environment.
- * 
- * Logic:
- * 1. Check if VITE_API_BASE_URL is explicitly set in environment variables (preferred)
- * 2. If not, check if we're running on localhost (development)
- * 3. If running on a production domain, use the production Render URL as a fallback
+ *
+ * Priority:
+ * 1. VITE_API_BASE_URL (build-time) — must be the BACKEND URL, e.g. https://your-api.vercel.app/api/v1
+ * 2. Relative /api/v1 on production hosts (when using Vercel rewrites to proxy the API)
+ * 3. Render fallback for production
+ * 4. localhost for development
  */
 const getApiBaseUrl = () => {
-  // 1. Explicit environment variable check (Vite)
-  // Note: import.meta.env.VITE_API_BASE_URL is replaced at build time
-  const envUrl = import.meta.env.VITE_API_BASE_URL;
-  
-  if (envUrl && !envUrl.includes('localhost') && envUrl !== '') {
-    return envUrl;
-  }
+  const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
-  // 2. Runtime domain-based detection
-  if (typeof window !== 'undefined' && window.location) {
-    const { hostname } = window.location;
-    
-    // If we're not on localhost/127.0.0.1, we're likely in a production build
-    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.');
-    
-    if (!isLocal) {
-      return PRODUCTION_API_URL;
+  if (envUrl) {
+    if (envUrl.startsWith('/')) {
+      if (typeof window !== 'undefined') {
+        return normalizeApiUrl(`${window.location.origin}${envUrl}`);
+      }
+      return normalizeApiUrl(envUrl);
+    }
+
+    if (!envUrl.includes('localhost')) {
+      if (!isFrontendMisconfiguration(envUrl)) {
+        return normalizeApiUrl(envUrl);
+      }
+      console.warn(
+        '[PinQuest] VITE_API_BASE_URL points at the frontend host. ' +
+          'Set it to your backend deployment URL (e.g. https://pin-quest-api.vercel.app/api/v1).'
+      );
+    } else if (envUrl.includes('localhost')) {
+      return normalizeApiUrl(envUrl);
     }
   }
 
-  // 3. Final fallback for local development if everything else fails
-  return envUrl || 'http://localhost:5000/api/v1';
+  if (typeof window !== 'undefined' && window.location) {
+    const { hostname } = window.location;
+    const isLocal =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.startsWith('192.168.');
+
+    if (!isLocal) {
+      // Production without a valid env: use Render backend (works out of the box)
+      return RENDER_API_URL;
+    }
+  }
+
+  return normalizeApiUrl(envUrl || 'http://localhost:5000/api/v1');
 };
 
 export const API_BASE_URL = getApiBaseUrl();
 
-// Log the active API endpoint for debugging
-console.log('🚀 PinQuest API initialized at:', API_BASE_URL);
+console.log('PinQuest API:', API_BASE_URL);
 
-// Timeout configuration (in milliseconds)
-// Increased to 50 seconds to account for free-tier backend cold starts (Render/Vercel)
+// Timeout for free-tier / serverless cold starts
 export const API_TIMEOUT = 50000;
 
 export default {

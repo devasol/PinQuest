@@ -836,7 +836,7 @@ const DiscoverMain = () => {
       if (err.name === 'AbortError') {
         setError("Request timed out. The server might be taking longer than usual to wake up (Render cold-start). This is common on free-tier hosting. Please wait a moment.");
       } else if (err.message.includes('Failed to fetch') || err.message.includes('load failed')) {
-        setError(`Unable to connect to the server at ${API_BASE_URL.split('/api')[0]}. The server may be waking up (Render cold-start) or unreachable. This is common on free hosting.`);
+        setError(`Unable to connect to the server at ${API_BASE_URL.split('/api')[0]}. The API may be cold-starting, misconfigured (check VITE_API_BASE_URL points to your backend), or unreachable.`);
       } else if (err.message.includes('Too many requests')) {
         console.log("Rate limit exceeded. Slowing down requests...");
       } else {
@@ -1876,7 +1876,7 @@ const DiscoverMain = () => {
             {/* Body Text */}
             <p className="text-slate-600 dark:text-slate-300 text-[15px] sm:text-base leading-relaxed mb-10 max-w-[280px] sm:max-w-sm mx-auto font-medium">
               {isNetworkError 
-                ? "Our servers are currently waking up from hibernation. This usually takes about 30 seconds."
+                ? "The API is starting up or unreachable. If this persists, confirm VITE_API_BASE_URL in Vercel points to your backend URL (not the frontend)."
                 : error}
             </p>
             

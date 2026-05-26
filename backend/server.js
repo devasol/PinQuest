@@ -294,7 +294,9 @@ io.on("connection", (socket) => {
 // Make io available to other modules
 app.set("io", io);
 
-dbConnect();
+if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
+  dbConnect();
+}
 
 // Global error handler middleware
 app.use(globalErrorHandler);
@@ -303,7 +305,7 @@ app.use(globalErrorHandler);
 module.exports = { app, server, io };
 
 // Only start the server if this file is run directly (not imported)
-if (require.main === module) {
+if (require.main === module && !process.env.VERCEL && !process.env.VERCEL_ENV) {
   const PORT = process.env.PORT || 5000;
   server.listen(PORT, (err) => {
     return err

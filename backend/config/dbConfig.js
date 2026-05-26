@@ -2,12 +2,26 @@ const mongoose = require("mongoose");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 
+// Reuse connection across Vercel serverless invocations
+const globalCache = global;
+
+if (!globalCache.__pinquestMongoose) {
+  globalCache.__pinquestMongoose = { conn: null, promise: null };
+}
+
 const dbConnect = async () => {
+  if (globalCache.__pinquestMongoose.conn) {
+    return globalCache.__pinquestMongoose.conn;
+  }
+
+  if (globalCache.__pinquestMongoose.promise) {
+    return globalCache.__pinquestMongoose.promise;
+  }
+
   try {
     const db = process.env.MONGODB_URL || process.env.MONGODB_URI || "mongodb://localhost:27017/pin_quest";
-    
-    // Add secure connection options
-    const conn = await mongoose.connect(db, {
+
+    globalCache.__pinquestMongoose.promise = mongoose.connect(db, {
       // Remove deprecated options
       maxPoolSize: 10, // Maintain up to 10 socket connections
       serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
@@ -15,8 +29,11 @@ const dbConnect = async () => {
       // Use new recommended options for MongoDB Atlas
       retryWrites: true,
       w: 'majority'
-    });
-    
+    }).then((mongooseInstance) => mongooseInstance);
+
+    const conn = await globalCache.__pinquestMongoose.promise;
+    globalCache.__pinquestMongoose.conn = conn;
+
     console.log(`Database connected successfully to: ${conn.connection.name}`);
     console.log(`Database host: ${conn.connection.host}`);
     console.log(`Database port: ${conn.connection.port}`);
@@ -38,15 +55,23 @@ const dbConnect = async () => {
       console.log('MongoDB reconnected');
     });
     
-    process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      console.log('MongoDB connection closed through app termination');
-      process.exit(0);
-    });
-    
+    if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
+      process.on('SIGINT', async () => {
+        await mongoose.connection.close();
+        console.log('MongoDB connection closed through app termination');
+        process.exit(0);
+      });
+    }
+
+    return conn;
   } catch (error) {
+    globalCache.__pinquestMongoose.promise = null;
     console.error("Database connection failed!", error);
-    process.exit(1); // Exit the process if database connection fails
+    // process.exit breaks Vercel serverless; rethrow so the handler can return 503
+    if (process.env.VERCEL || process.env.VERCEL_ENV) {
+      throw error;
+    }
+    process.exit(1);
   }
 };
 

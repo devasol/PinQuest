@@ -141,8 +141,10 @@ const io = socketIo(server, {
     origin: [
       process.env.CLIENT_URL,
       "http://localhost:5173",
-      "https://pinquest-app.onrender.com", // Production frontend URL
-      "https://www.pinquest-app.onrender.com" // Alternative production URL
+      "https://pinquest-app.onrender.com",
+      "https://www.pinquest-app.onrender.com",
+      "https://pin-quest.vercel.app",
+      "https://www.pin-quest.vercel.app"
     ].filter(Boolean),
     methods: ["GET", "POST"],
   },
@@ -159,7 +161,9 @@ const allowedOrigins = [
   "http://localhost:4173", // Alternative Vite port
   "https://pinquest-app.onrender.com", // Production frontend URL
   "https://www.pinquest-app.onrender.com", // Alternative production URL
-  "https://pinquest.onrender.com" // Backend domain (for same-origin requests)
+  "https://pinquest.onrender.com", // Backend domain (for same-origin requests)
+  "https://pin-quest.vercel.app",
+  "https://www.pin-quest.vercel.app"
 ].filter(Boolean);
 
 // Add environment-specific CORS configuration
@@ -320,8 +324,10 @@ io.on("connection", (socket) => {
 // Make io available to other modules
 app.set("io", io);
 
-// Connect to database
-dbConnect();
+// Connect when running a traditional Node server (not on Vercel serverless)
+if (!process.env.VERCEL && !process.env.VERCEL_ENV) {
+  dbConnect();
+}
 
 // Global error handler middleware
 app.use(globalErrorHandler);
@@ -329,8 +335,8 @@ app.use(globalErrorHandler);
 // Export app and server separately for testing
 module.exports = { app, server, io };
 
-// Only start the server if this file is run directly (not imported)
-if (require.main === module) {
+// Only start the server if this file is run directly (not imported by Vercel)
+if (require.main === module && !process.env.VERCEL && !process.env.VERCEL_ENV) {
   const PORT = process.env.PORT || 5000;
   server.listen(PORT, (err) => {
     return err
