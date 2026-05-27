@@ -430,14 +430,14 @@ const ContentManagement = () => {
                     type="date"
                     placeholder="Start date"
                     className="content-management-form-input"
-                    onChange={(e) => console.log("Start date:", e.target.value)} // Placeholder for functionality
+                    onChange={() => {}} // Placeholder for functionality
                   />
                   <span className="content-management-date-separator">to</span>
                   <input
                     type="date"
                     placeholder="End date"
                     className="content-management-form-input"
-                    onChange={(e) => console.log("End date:", e.target.value)} // Placeholder for functionality
+                    onChange={() => {}} // Placeholder for functionality
                   />
                 </div>
               </div>
