@@ -848,13 +848,7 @@ const DiscoverMain = () => {
                   post.location.coordinates[1] || 0,
                   post.location.coordinates[0] || 0,
                 ];
-                  "📍 Fetch Posts - Transformed post",
-                  post._id,
-                  "- GeoJSON coords:",
-                  post.location.coordinates,
-                  "-> position:",
-                  position,
-                );
+                // debug lines removed
               }
               // Handle separate latitude/longitude format
               else if (
@@ -864,13 +858,7 @@ const DiscoverMain = () => {
                 typeof post.location.longitude === "number"
               ) {
                 position = [post.location.latitude, post.location.longitude];
-                  "📍 Fetch Posts - Transformed post",
-                  post._id,
-                  "- Lat/Lng coords:",
-                  { lat: post.location.latitude, lng: post.location.longitude },
-                  "-> position:",
-                  position,
-                );
+                // debug lines removed
               }
 
               return {
@@ -984,8 +972,7 @@ const DiscoverMain = () => {
           );
 
           // Don't call setLoading(false) yet to avoid flickering
-            `Network error detected. Retry ${retryCountRef.current}/${MAX_RETRIES} in 3 seconds...`,
-          );
+          // network retry message removed (debug)
 
           setTimeout(() => {
             fetchPosts(null, limit);
@@ -1036,8 +1023,7 @@ const DiscoverMain = () => {
     if (isAuthenticated) {
       // Prevent multiple concurrent requests
       if (fetchSavedLocationsRef.current) {
-          "Saved locations fetch already in progress, skipping duplicate request",
-        );
+        // fetch already in progress - skip duplicate request
         return;
       }
 
@@ -1062,8 +1048,7 @@ const DiscoverMain = () => {
           .default;
         if (!response.ok) {
           if (response.status === 429) {
-              "Rate limit exceeded for saved locations API. Skipping this request...",
-            );
+            // Rate limit - skip this request
             return;
           }
           let errorData = {};
@@ -1110,8 +1095,7 @@ const DiscoverMain = () => {
     if (isAuthenticated && user) {
       // Prevent multiple concurrent requests
       if (fetchUserFavoritePostsRef.current) {
-          "Favorite posts fetch already in progress, skipping duplicate request",
-        );
+        // favorite posts fetch already in progress - skip
         return;
       }
 
@@ -1132,8 +1116,7 @@ const DiscoverMain = () => {
 
         if (!response.ok) {
           if (response.status === 429) {
-              "Rate limit exceeded for favorites API. Skipping this request...",
-            );
+            // Rate limit for favorites API - skip
             return;
           }
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -1347,6 +1330,7 @@ const DiscoverMain = () => {
                 }
               },
               (fallbackError) => {
+                console.error(
                   "Geolocation fallback also failed:",
                   fallbackError.message,
                 );
@@ -1437,6 +1421,7 @@ const DiscoverMain = () => {
             setMapZoom(13);
           }
         } catch (error) {
+          console.error(
             "Location permission denied or unavailable on first attempt:",
             error.message,
           );
@@ -1464,6 +1449,7 @@ const DiscoverMain = () => {
                 setMapZoom(13);
               }
             } catch (fallbackError) {
+              console.error(
                 "Fallback location request also failed:",
                 fallbackError.message,
               );
@@ -1806,8 +1792,7 @@ const DiscoverMain = () => {
           }
 
           // Success after retry
-            `Location updated to: [${latitude}, ${longitude}] with fallback settings`,
-          );
+          // debug lines removed
           return; // Exit successfully after retry
         } catch (retryError) {
           console.error("Geolocation error on retry:", retryError);
@@ -1895,9 +1880,7 @@ const DiscoverMain = () => {
           throw new Error("Authentication token not found");
         }
 
-          latitude: creatingPostAt.lat.toString(),
-          longitude: creatingPostAt.lng.toString(),
-        });
+        // debug lines removed
 
         // Create form data for the post with location
         const formData = new FormData();
@@ -1939,9 +1922,7 @@ const DiscoverMain = () => {
           const clickedLat = creatingPostAt.lat;
           const clickedLng = creatingPostAt.lng;
 
-            lat: clickedLat,
-            lng: clickedLng,
-          });
+          // debug lines removed
 
           const newPost = {
             _id: result.data.data._id,
@@ -1974,15 +1955,7 @@ const DiscoverMain = () => {
             },
           };
 
-            "📍 Post creation - New post position:",
-            newPost.position,
-          );
-            "📍 Post creation - New post location:",
-            newPost.location,
-          );
-            "📍 Post creation - Server returned location:",
-            result.data.data.location,
-          );
+          // debug lines removed
 
           setPosts((prev) => [newPost, ...prev]);
 
@@ -2606,9 +2579,6 @@ const DiscoverMain = () => {
                     onGetDirections={getDirections}
                     onClick={(post) => {
                       setSelectedPost(post);
-                        "Saved location marker clicked:",
-                        savedLocation.name,
-                      );
                     }}
                   />
                 );
