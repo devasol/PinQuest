@@ -59,11 +59,9 @@ const TestPostWindow = () => {
   };
 
   const handleLike = (postId, isLiked) => {
-    console.log(`Post ${postId} ${isLiked ? 'liked' : 'unliked'}`);
   };
 
   const handleComment = (postId) => {
-    console.log(`Comment clicked for post ${postId}`);
   };
 
   return (

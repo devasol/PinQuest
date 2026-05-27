@@ -43,7 +43,6 @@ const EnhancedSearchComponent = ({
           });
         },
         (error) => {
-          console.log("Geolocation error on first attempt:", error.message);
           
           // If first attempt fails due to timeout, try with fallback settings
           if (error.code === error.TIMEOUT) {
@@ -55,7 +54,6 @@ const EnhancedSearchComponent = ({
                 });
               },
               (fallbackError) => {
-                console.log("Geolocation fallback also failed:", fallbackError.message);
               },
               {
                 enableHighAccuracy: false, // Use less accuracy to get faster response

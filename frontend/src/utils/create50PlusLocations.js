@@ -768,7 +768,6 @@ const fiftyPlusLocations = [
 // Function to create sample posts with working images
 const createSamplePosts = async (authToken) => {
   try {
-    console.log("Creating sample posts with more than 50 well-known places...");
     
     for (let i = 0; i < fiftyPlusLocations.length; i++) {
       const place = fiftyPlusLocations[i];
@@ -796,14 +795,8 @@ const createSamplePosts = async (authToken) => {
         formData.append('location', JSON.stringify(postData.location));
       }
       
-      console.log(`Created sample post for: ${place.title}`);
-      console.log(`Location: ${place.location.latitude}, ${place.location.longitude}`);
-      console.log(`Category: ${place.category}`);
-      console.log(`Images available: ${place.images.length}`);
-      console.log("---");
     }
     
-    console.log(`${fiftyPlusLocations.length} sample posts created successfully!`);
     return true;
   } catch (error) {
     console.error("Error creating sample posts:", error);

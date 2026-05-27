@@ -136,7 +136,6 @@ const Security = () => {
       
       if (result.status === 'success') {
         // The setting is already updated in the UI, so just show success
-        console.log(`Updated ${setting} to ${newValue} successfully`);
       } else {
         throw new Error(result.message || 'Failed to update setting');
       }
@@ -175,7 +174,6 @@ const Security = () => {
       
       if (result.status === 'success') {
         // The setting is already updated in the UI, so just show success
-        console.log(`Updated autoLogout to ${newValue} successfully`);
       } else {
         throw new Error(result.message || 'Failed to update auto logout setting');
       }
@@ -214,7 +212,6 @@ const Security = () => {
       
       if (result.status === 'success') {
         // The setting is already updated in the UI, so just show success
-        console.log(`Updated passwordExpiry to ${newValue} successfully`);
       } else {
         throw new Error(result.message || 'Failed to update password expiry setting');
       }

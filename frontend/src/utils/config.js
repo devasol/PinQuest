@@ -76,7 +76,6 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
-console.log('PinQuest API:', API_BASE_URL);
 
 // Timeout for free-tier / serverless cold starts
 export const API_TIMEOUT = 50000;

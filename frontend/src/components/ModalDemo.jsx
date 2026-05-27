@@ -20,12 +20,10 @@ const ModalDemo = () => {
   };
 
   const handleConfirm = (type) => {
-    console.log(`${type} confirmed!`);
     closeModal(type);
   };
 
   const handleRetry = () => {
-    console.log('Retrying operation...');
     // Simulate retry functionality
   };
 

@@ -199,13 +199,8 @@ const responsiveTests = {
 
 // Function to run responsive tests
 function runResponsiveTests() {
-  console.log("Running responsive design tests...");
   
   // Log test configuration
-  console.log(`Testing on ${responsiveTests.deviceTests.length} different device sizes`);
-  console.log(`Testing ${responsiveTests.orientationTests.length} orientation changes`);
-  console.log(`Testing ${responsiveTests.contentTests.length} content scenarios`);
-  console.log(`Running ${responsiveTests.performanceTests.length} performance tests`);
   
   // In a real implementation, this would use a testing framework
   // like Cypress, Puppeteer, or similar to automate browser testing

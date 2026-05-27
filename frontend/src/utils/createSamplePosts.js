@@ -124,7 +124,6 @@ const wellKnownPlaces = [
 // Function to create sample posts with working images
 const createSamplePosts = async (authToken) => {
   try {
-    console.log("Creating sample posts with well-known places...");
     
     for (let i = 0; i < wellKnownPlaces.length; i++) {
       const place = wellKnownPlaces[i];
@@ -152,14 +151,8 @@ const createSamplePosts = async (authToken) => {
         formData.append('location', JSON.stringify(postData.location));
       }
       
-      console.log(`Created sample post for: ${place.title}`);
-      console.log(`Location: ${place.location.latitude}, ${place.location.longitude}`);
-      console.log(`Category: ${place.category}`);
-      console.log(`Images available: ${place.images.length}`);
-      console.log("---");
     }
     
-    console.log(`${wellKnownPlaces.length} sample posts created successfully!`);
     return true;
   } catch (error) {
     console.error("Error creating sample posts:", error);

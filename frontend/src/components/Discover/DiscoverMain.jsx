@@ -532,7 +532,6 @@ const DiscoverMain = () => {
     // Handle post deletion events - remove deleted posts from all states
     socket.on("post-deleted", (data) => {
       const deletedPostId = data?.postId || data;
-      console.log("Socket event: post-deleted", deletedPostId);
 
       // Update posts state to remove the deleted post
       setPosts((prevPosts) =>
@@ -553,7 +552,6 @@ const DiscoverMain = () => {
     socket.on("post-updated", (data) => {
       const updatedPost = data?.post || data;
       if (!updatedPost || !updatedPost._id) return;
-      console.log("Socket event: post-updated", updatedPost._id);
 
       setPosts((prevPosts) => {
         const existingIndex = prevPosts.findIndex(
@@ -754,7 +752,6 @@ const DiscoverMain = () => {
     async (preserveSelectedPost = null, limit = 50) => {
       // Prevent multiple concurrent requests for the same data
       if (fetchPostsRef.current) {
-        console.log("Request already in progress, skipping duplicate fetch");
         setLoading(false); // Ensure loading is not stuck if request is blocked
         return;
       }
@@ -791,7 +788,6 @@ const DiscoverMain = () => {
         if (!response.ok) {
           // Handle 429 specifically to avoid UI spam
           if (response.status === 429) {
-            console.log("Rate limit exceeded. Slowing down requests...");
             // Don't set error for rate limit to avoid spamming the UI
             return;
           }
@@ -852,7 +848,6 @@ const DiscoverMain = () => {
                   post.location.coordinates[1] || 0,
                   post.location.coordinates[0] || 0,
                 ];
-                console.log(
                   "📍 Fetch Posts - Transformed post",
                   post._id,
                   "- GeoJSON coords:",
@@ -869,7 +864,6 @@ const DiscoverMain = () => {
                 typeof post.location.longitude === "number"
               ) {
                 position = [post.location.latitude, post.location.longitude];
-                console.log(
                   "📍 Fetch Posts - Transformed post",
                   post._id,
                   "- Lat/Lng coords:",
@@ -990,7 +984,6 @@ const DiscoverMain = () => {
           );
 
           // Don't call setLoading(false) yet to avoid flickering
-          console.log(
             `Network error detected. Retry ${retryCountRef.current}/${MAX_RETRIES} in 3 seconds...`,
           );
 
@@ -1013,7 +1006,6 @@ const DiscoverMain = () => {
             `Unable to connect to the server at ${API_BASE_URL.split("/api")[0]}. The API may be cold-starting, misconfigured (check VITE_API_BASE_URL points to your backend), or unreachable.`,
           );
         } else if (err.message.includes("Too many requests")) {
-          console.log("Rate limit exceeded. Slowing down requests...");
         } else {
           setError("Failed to load posts: " + err.message);
         }
@@ -1044,7 +1036,6 @@ const DiscoverMain = () => {
     if (isAuthenticated) {
       // Prevent multiple concurrent requests
       if (fetchSavedLocationsRef.current) {
-        console.log(
           "Saved locations fetch already in progress, skipping duplicate request",
         );
         return;
@@ -1071,7 +1062,6 @@ const DiscoverMain = () => {
           .default;
         if (!response.ok) {
           if (response.status === 429) {
-            console.log(
               "Rate limit exceeded for saved locations API. Skipping this request...",
             );
             return;
@@ -1120,7 +1110,6 @@ const DiscoverMain = () => {
     if (isAuthenticated && user) {
       // Prevent multiple concurrent requests
       if (fetchUserFavoritePostsRef.current) {
-        console.log(
           "Favorite posts fetch already in progress, skipping duplicate request",
         );
         return;
@@ -1143,7 +1132,6 @@ const DiscoverMain = () => {
 
         if (!response.ok) {
           if (response.status === 429) {
-            console.log(
               "Rate limit exceeded for favorites API. Skipping this request...",
             );
             return;
@@ -1340,7 +1328,6 @@ const DiscoverMain = () => {
           }
         },
         (error) => {
-          console.log("Geolocation error on first attempt:", error.message);
 
           // If first attempt fails, try with fallback settings
           if (error.code === error.TIMEOUT) {
@@ -1360,7 +1347,6 @@ const DiscoverMain = () => {
                 }
               },
               (fallbackError) => {
-                console.log(
                   "Geolocation fallback also failed:",
                   fallbackError.message,
                 );
@@ -1402,7 +1388,6 @@ const DiscoverMain = () => {
           }
         },
         (error) => {
-          console.log("Geolocation watch error:", error.message);
         },
         {
           enableHighAccuracy: true, // Changed back to true for accurate location
@@ -1412,7 +1397,6 @@ const DiscoverMain = () => {
       );
     } else {
       // Geolocation is not supported
-      console.log("Geolocation is not supported by this browser");
       // Use a default location
       if (mapRef.current) {
         mapRef.current.setView(defaultLocation, 3);
@@ -1453,7 +1437,6 @@ const DiscoverMain = () => {
             setMapZoom(13);
           }
         } catch (error) {
-          console.log(
             "Location permission denied or unavailable on first attempt:",
             error.message,
           );
@@ -1461,7 +1444,6 @@ const DiscoverMain = () => {
           // If the first attempt with high accuracy fails, try with fallback settings
           if (error.code === error.TIMEOUT) {
             try {
-              console.log("Retrying location with fallback settings...");
               const position = await new Promise((resolve, reject) => {
                 navigator.geolocation.getCurrentPosition(resolve, reject, {
                   enableHighAccuracy: false, // Use less accuracy for faster response
@@ -1482,7 +1464,6 @@ const DiscoverMain = () => {
                 setMapZoom(13);
               }
             } catch (fallbackError) {
-              console.log(
                 "Fallback location request also failed:",
                 fallbackError.message,
               );
@@ -1791,14 +1772,12 @@ const DiscoverMain = () => {
       }
 
       // Show success message to confirm location update
-      console.log(`Location updated to: [${latitude}, ${longitude}]`);
     } catch (error) {
       console.error("Geolocation error on first attempt:", error);
 
       // If first attempt with high accuracy fails due to timeout, try with less strict settings
       if (error.code === error.TIMEOUT) {
         try {
-          console.log("Retrying with less strict geolocation settings...");
           const position = await new Promise((resolve, reject) => {
             const geoOptions = {
               enableHighAccuracy: false, // Use less accuracy to get faster response
@@ -1827,7 +1806,6 @@ const DiscoverMain = () => {
           }
 
           // Success after retry
-          console.log(
             `Location updated to: [${latitude}, ${longitude}] with fallback settings`,
           );
           return; // Exit successfully after retry
@@ -1917,8 +1895,6 @@ const DiscoverMain = () => {
           throw new Error("Authentication token not found");
         }
 
-        console.log("📍 Post creation - creatingPostAt:", creatingPostAt);
-        console.log("📍 Post creation - Sending to server:", {
           latitude: creatingPostAt.lat.toString(),
           longitude: creatingPostAt.lng.toString(),
         });
@@ -1963,11 +1939,9 @@ const DiscoverMain = () => {
           const clickedLat = creatingPostAt.lat;
           const clickedLng = creatingPostAt.lng;
 
-          console.log("📍 Post creation - User clicked at:", {
             lat: clickedLat,
             lng: clickedLng,
           });
-          console.log("📍 Post creation - creatingPostAt:", creatingPostAt);
 
           const newPost = {
             _id: result.data.data._id,
@@ -2000,15 +1974,12 @@ const DiscoverMain = () => {
             },
           };
 
-          console.log(
             "📍 Post creation - New post position:",
             newPost.position,
           );
-          console.log(
             "📍 Post creation - New post location:",
             newPost.location,
           );
-          console.log(
             "📍 Post creation - Server returned location:",
             result.data.data.location,
           );
@@ -2394,7 +2365,6 @@ const DiscoverMain = () => {
               position={userLocation}
               onClick={(position) => {
                 // Optional: Add click functionality for user location marker
-                console.log("User location marker clicked");
                 // Center the map on the user's location when marker is clicked
                 if (mapRef.current) {
                   mapRef.current.flyTo(position, 15);
@@ -2636,7 +2606,6 @@ const DiscoverMain = () => {
                     onGetDirections={getDirections}
                     onClick={(post) => {
                       setSelectedPost(post);
-                      console.log(
                         "Saved location marker clicked:",
                         savedLocation.name,
                       );
@@ -3152,7 +3121,6 @@ const DiscoverMain = () => {
             onRate={handlePostRate}
             onGetDirections={getDirections}
             onComment={(postId) => {
-              console.log("Comment clicked for post:", postId);
               // Handle comment click if needed
             }}
           />

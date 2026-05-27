@@ -120,7 +120,6 @@ export const AuthProvider = ({ children }) => {
 
     // Global listener for account deletion
     socket.on('user-deleted', (data) => {
-      console.log('Account deleted by admin:', data.message);
       alert(data.message || 'Your account has been deleted by an administrator.');
       logout();
     });
@@ -128,17 +127,14 @@ export const AuthProvider = ({ children }) => {
     // Global listener for account ban
     socket.on('ban-status-updated', (data) => {
       if (data.isBanned) {
-        console.log('Account banned by admin:', data.message);
         alert(data.message || 'Your account has been banned by an administrator.');
         logout();
       } else {
-        console.log('Account unbanned by admin:', data.message);
       }
     });
 
     // Global listener for role updates
     socket.on('role-updated', (data) => {
-      console.log('Role updated by admin:', data.message);
       setUser(prev => ({ ...prev, role: data.role }));
       const storedUser = localStorage.getItem('firebaseUser');
       if (storedUser) {

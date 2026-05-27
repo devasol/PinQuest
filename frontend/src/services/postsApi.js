@@ -66,7 +66,6 @@ export const postsApi = {
              errorText.includes('expired') || 
              errorText.includes('invalid'))) {
               
-          console.log('Token expired during file upload, attempting refresh...');
           const refreshedToken = await getFreshToken();
           if (refreshedToken) {
             // Retry the request with the fresh token

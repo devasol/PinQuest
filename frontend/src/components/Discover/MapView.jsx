@@ -263,7 +263,6 @@ const MapView = () => {
           }
         },
         (error) => {
-          console.log("Geolocation error:", error.message);
           // Default to world view if geolocation fails
         },
         {
@@ -943,7 +942,6 @@ const MapView = () => {
                   onClick={(post) => {
                     setSelectedPost(post);
                     // Handle click on marker
-                    console.log("Marker clicked for post:", post.title);
                   }}
                   onSave={saveLocation}
                 />
