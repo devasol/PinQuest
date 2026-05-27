@@ -692,7 +692,9 @@ const DiscoverMain = () => {
         throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
       }
 
-      const result = await response.json();
+      // Parse response safely and detect HTML error pages
+      const parseResponse = (await import('../../utils/parseResponse')).default;
+      const result = await parseResponse(response);
 
       if (result.status === 'success' && Array.isArray(result.data)) {
         // Transform the API data to match the format expected by the frontend
@@ -887,16 +889,22 @@ const DiscoverMain = () => {
           }
         });
 
+        const parseResponse = (await import('../../utils/parseResponse')).default;
         if (!response.ok) {
           if (response.status === 429) {
             console.log("Rate limit exceeded for saved locations API. Skipping this request...");
             return;
           }
-          const errorData = await response.json().catch(() => ({}));
+          let errorData = {};
+          try {
+            errorData = await parseResponse(response);
+          } catch (e) {
+            errorData = {};
+          }
           throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
-        const result = await response.json();
+        const result = await parseResponse(response);
         if (result.status === 'success' && Array.isArray(result.data?.savedLocations)) {
           setSavedLocations(result.data.savedLocations);
         } else {
@@ -950,7 +958,8 @@ const DiscoverMain = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const result = await response.json();
+        const parseResponse = (await import('../../utils/parseResponse')).default;
+        const result = await parseResponse(response);
         if (result.status === 'success' && Array.isArray(result.data?.favorites)) {
           // Extract post IDs from favorites to create a Set of favorite post IDs
           const favoritePostIds = new Set(

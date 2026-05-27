@@ -115,7 +115,9 @@ const PostPopup = ({ post, onClose, onSave, isSaved, onGetDirections, onClick })
         });
         setUserRating(0); // Reset rating after submission
       } else {
-        const result = await response.json();
+        const parseResponse = (await import('../../utils/parseResponse')).default;
+        let result;
+        try { result = await parseResponse(response); } catch (e) { result = {}; }
         setError(result.message || 'Failed to submit rating');
       }
     } catch (err) {
@@ -145,11 +147,14 @@ const PostPopup = ({ post, onClose, onSave, isSaved, onGetDirections, onClick })
       });
       
       if (response.ok) {
-        const result = await response.json();
+        const parseResponse = (await import('../../utils/parseResponse')).default;
+        const result = await parseResponse(response);
         setComments([...comments, result.data.comment]);
         setError(''); // Clear any previous error
       } else {
-        const result = await response.json();
+        const parseResponse = (await import('../../utils/parseResponse')).default;
+        let result;
+        try { result = await parseResponse(response); } catch (e) { result = {}; }
         setError(result.message || 'Failed to add comment');
       }
     } catch (err) {

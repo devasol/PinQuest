@@ -45,7 +45,8 @@ const MapView = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const result = await response.json();
+      const parseResponse = (await import('../../utils/parseResponse')).default;
+      const result = await parseResponse(response);
       
       if (result.status === 'success' && Array.isArray(result.data)) {
         // Transform the API data to match the format expected by the frontend
@@ -151,7 +152,8 @@ const MapView = () => {
         });
         
         if (response.ok) {
-          const result = await response.json();
+          const parseResponse = (await import('../../utils/parseResponse')).default;
+          const result = await parseResponse(response);
           if (result.status === 'success' && Array.isArray(result.data?.savedLocations)) {
             setSavedLocations(result.data.savedLocations);
           }
@@ -297,7 +299,8 @@ const MapView = () => {
       });
       
       if (response.ok) {
-        const result = await response.json();
+        const parseResponse = (await import('../../utils/parseResponse')).default;
+        const result = await parseResponse(response);
         if (result.status === 'success') {
           fetchSavedLocations(); // Refresh saved locations
           showModal({

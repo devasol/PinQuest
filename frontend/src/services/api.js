@@ -24,12 +24,18 @@ class ApiService {
 
   // Handle API response
   handleResponse = async (response) => {
+    const parseResponse = (await import('../utils/parseResponse')).default;
     if (response.ok) {
-      const data = await response.json();
+      const data = await parseResponse(response);
       return { success: true, data };
     } else {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.message || `HTTP error ${response.status}`;
+      let errorData = {};
+      try {
+        errorData = await parseResponse(response);
+      } catch (e) {
+        errorData = {};
+      }
+      const errorMessage = errorData && errorData.message ? errorData.message : `HTTP error ${response.status}`;
       
       // Show toast notification for errors except 404 for user not found (which is common in comments)
       // Also avoid showing toast for comment-related errors to prevent UI clutter
